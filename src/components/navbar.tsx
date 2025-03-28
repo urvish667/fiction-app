@@ -10,26 +10,35 @@ import {
   NavigationMenuList,
   navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Search, Menu } from "lucide-react"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import LoginModal from "./login-modal"
+import { Search, Menu } from "lucide-react"
 import { motion } from "framer-motion"
+import LoginModal from "./login-modal"
+import UserAvatarMenu from "./user-avatar-menu"
+
+// Mock user data for demonstration
+const mockUser = {
+  id: "user_1",
+  name: "James Watson",
+  username: "jwatson213",
+  avatar: "/placeholder-user.jpg",
+  isWriter: true,
+  unreadNotifications: 3,
+}
 
 export default function Navbar() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [showLoginModal, setShowLoginModal] = useState(false)
+  const [user, setUser] = useState(mockUser)
 
   // Toggle login state (for demo purposes)
-  const toggleLogin = () => {
-    setIsLoggedIn(!isLoggedIn)
+  const handleLogin = () => {
+    setIsLoggedIn(true)
+    setShowLoginModal(false)
+  }
+
+  const handleLogout = () => {
+    setIsLoggedIn(false)
   }
 
   return (
@@ -73,32 +82,7 @@ export default function Navbar() {
           </NavigationMenu>
 
           {isLoggedIn ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src="/placeholder-user.jpg" alt="User" />
-                    <AvatarFallback>US</AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem>
-                  <Link href="/profile">Profile</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Link href="/my-stories">My Stories</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Link href="/bookmarks">Bookmarks</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Link href="/settings">Settings</Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={toggleLogin}>Log out</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <UserAvatarMenu user={user} onLogout={handleLogout} />
           ) : (
             <Button onClick={() => setShowLoginModal(true)}>Login</Button>
           )}
@@ -126,13 +110,32 @@ export default function Navbar() {
                 </Link>
                 {isLoggedIn ? (
                   <>
-                    <Link href="/profile" className="text-lg font-medium">
+                    <Link href={`/user/${user.username}`} className="text-lg font-medium">
                       Profile
                     </Link>
-                    <Link href="/my-stories" className="text-lg font-medium">
-                      My Stories
+                    <Link href="/library" className="text-lg font-medium">
+                      Library
                     </Link>
-                    <Button variant="ghost" onClick={toggleLogin}>
+                    <Link href="/works" className="text-lg font-medium">
+                      My Works
+                    </Link>
+                    <Link href="/notifications" className="text-lg font-medium flex items-center">
+                      Notifications
+                      {user.unreadNotifications > 0 && (
+                        <span className="ml-2 bg-destructive text-destructive-foreground rounded-full px-2 py-0.5 text-xs">
+                          {user.unreadNotifications}
+                        </span>
+                      )}
+                    </Link>
+                    <Link href="/settings" className="text-lg font-medium">
+                      Settings
+                    </Link>
+                    {user.isWriter && (
+                      <Link href="/dashboard" className="text-lg font-medium">
+                        Dashboard
+                      </Link>
+                    )}
+                    <Button variant="ghost" onClick={handleLogout}>
                       Log out
                     </Button>
                   </>
@@ -146,14 +149,7 @@ export default function Navbar() {
       </div>
 
       {/* Login Modal */}
-      <LoginModal
-        isOpen={showLoginModal}
-        onClose={() => setShowLoginModal(false)}
-        onLogin={() => {
-          setIsLoggedIn(true)
-          setShowLoginModal(false)
-        }}
-      />
+      <LoginModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} onLogin={handleLogin} />
     </header>
   )
 }
