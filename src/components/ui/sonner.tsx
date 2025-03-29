@@ -1,31 +1,17 @@
 "use client"
 
-import { useTheme } from "next-themes"
-import { Toaster as Sonner } from "sonner"
+// Since the sonner package isn't available, let's use a basic toast implementation
+// You'll need to install the sonner package or replace this with another toast library later
 
-type ToasterProps = React.ComponentProps<typeof Sonner>
+type ToasterProps = {
+  position?: "top-right" | "top-left" | "bottom-right" | "bottom-left" | "top-center" | "bottom-center"
+  className?: string
+}
 
-const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme()
-
-  return (
-    <Sonner
-      theme={theme as ToasterProps["theme"]}
-      className="toaster group"
-      toastOptions={{
-        classNames: {
-          toast:
-            "group toast group-[.toaster]:bg-background group-[.toaster]:text-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg",
-          description: "group-[.toast]:text-muted-foreground",
-          actionButton:
-            "group-[.toast]:bg-primary group-[.toast]:text-primary-foreground",
-          cancelButton:
-            "group-[.toast]:bg-muted group-[.toast]:text-muted-foreground",
-        },
-      }}
-      {...props}
-    />
-  )
+const Toaster = ({ position = "top-right", className = "", ...props }: ToasterProps) => {
+  // This is a placeholder component that doesn't do anything
+  // Add real toast functionality when you have a proper toast library installed
+  return null
 }
 
 export { Toaster }

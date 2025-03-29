@@ -18,8 +18,6 @@ import {
   AlignJustify,
   Minus,
   Plus,
-  Moon,
-  Sun,
 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
@@ -48,7 +46,6 @@ export default function ReadingPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [showComments, setShowComments] = useState(false)
   const [fontSize, setFontSize] = useState(16)
-  const [isDarkMode, setIsDarkMode] = useState(false)
   const [readingProgress, setReadingProgress] = useState(0)
   const [liked, setLiked] = useState(false)
   const [following, setFollowing] = useState(false)
@@ -103,15 +100,6 @@ export default function ReadingPage() {
     window.addEventListener("scroll", handleScroll)
     return () => window.removeEventListener("scroll", handleScroll)
   }, [chapter])
-
-  // Toggle dark mode
-  useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add("dark")
-    } else {
-      document.documentElement.classList.remove("dark")
-    }
-  }, [isDarkMode])
 
   // Handle navigation to previous/next chapter
   const navigateToChapter = (direction: "prev" | "next") => {
@@ -284,20 +272,6 @@ export default function ReadingPage() {
                     </Button>
                   </div>
                 </div>
-                <Separator className="my-2" />
-                <DropdownMenuItem onClick={() => setIsDarkMode(!isDarkMode)}>
-                  {isDarkMode ? (
-                    <>
-                      <Sun size={16} className="mr-2" />
-                      Light Mode
-                    </>
-                  ) : (
-                    <>
-                      <Moon size={16} className="mr-2" />
-                      Dark Mode
-                    </>
-                  )}
-                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
