@@ -70,21 +70,13 @@ export default function Navbar() {
                   <NavigationMenuLink className={navigationMenuTriggerStyle()}>Browse</NavigationMenuLink>
                 </Link>
               </NavigationMenuItem>
-              <NavigationMenuItem>
-                <Link href="/search" legacyBehavior passHref>
-                  <NavigationMenuLink className={navigationMenuTriggerStyle()}>
-                    <Search className="h-4 w-4 mr-1" />
-                    Search
-                  </NavigationMenuLink>
-                </Link>
-              </NavigationMenuItem>
             </NavigationMenuList>
           </NavigationMenu>
 
           {isLoggedIn ? (
             <UserAvatarMenu user={user} onLogout={handleLogout} />
           ) : (
-            <Button onClick={() => setShowLoginModal(true)}>Login</Button>
+            <Button onClick={() => setShowLoginModal(true)}>Login / Signup</Button>
           )}
         </div>
 
@@ -104,9 +96,6 @@ export default function Navbar() {
                 </Link>
                 <Link href="/browse" className="text-lg font-medium">
                   Browse
-                </Link>
-                <Link href="/search" className="text-lg font-medium">
-                  Search
                 </Link>
                 {isLoggedIn ? (
                   <>
@@ -140,7 +129,7 @@ export default function Navbar() {
                     </Button>
                   </>
                 ) : (
-                  <Button onClick={() => setShowLoginModal(true)}>Login</Button>
+                  <Button onClick={() => setShowLoginModal(true)}>Login / Signup</Button>
                 )}
               </div>
             </SheetContent>
