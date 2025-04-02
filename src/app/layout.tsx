@@ -4,6 +4,7 @@ import { Inter } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import Providers from "./providers"
+import { ProfileCheck } from "./profile-check"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -24,6 +25,7 @@ export default function RootLayout({
         <Providers>
           <ThemeProvider>
             {children}
+            <ProfileCheck />
           </ThemeProvider>
         </Providers>
       </body>

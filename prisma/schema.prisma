@@ -10,15 +10,15 @@ datasource db {
 model Account {
   id                 String  @id @default(cuid())
   userId             String
-  type               String
-  provider           String
-  providerAccountId  String
-  refresh_token      String?
-  access_token       String?
+  type               String  // OAuth or credentials
+  provider           String  // google, facebook, etc.
+  providerAccountId  String  // ID from the OAuth provider
+  refresh_token      String? @db.Text  // Changed to Text for longer tokens
+  access_token       String? @db.Text  // Changed to Text for longer tokens
   expires_at         Int?
   token_type         String?
   scope              String?
-  id_token           String?
+  id_token           String? @db.Text  // Changed to Text for longer tokens
   session_state      String?
   oauth_token_secret String?
   oauth_token        String?
@@ -45,22 +45,25 @@ model User {
   emailVerified     DateTime?
   image             String?
   username          String?   @unique
-  password          String?
+  password          String?   // Hashed password for credentials auth
   birthdate         DateTime?
-  bio               String?
+  bio               String?   @db.Text  // Changed to Text for longer bios
   pronoun           String?
   termsAccepted     Boolean   @default(false)
   marketingOptIn    Boolean   @default(false)
   isProfileComplete Boolean   @default(false)
-  provider          String?
+  provider          String?   // Primary OAuth provider if any
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
   lastLogin         DateTime?
   accounts          Account[]
   sessions          Session[]
+  notifications     Notification[]
 
   @@index([email])
   @@index([username])
+  @@index([provider])  // Added index for provider queries
+  @@index([isProfileComplete])  // Added index for profile completion queries
 }
 
 model VerificationToken {
@@ -70,4 +73,20 @@ model VerificationToken {
 
   @@unique([identifier, token])
   @@index([identifier])
+  @@index([expires])  // Added index for token cleanup
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // Type of notification (e.g., "comment", "like", "follow")
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([read])
+  @@index([createdAt])
 }

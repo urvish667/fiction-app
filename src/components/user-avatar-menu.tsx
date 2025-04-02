@@ -3,6 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { signOut } from "next-auth/react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -15,7 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { User, BookMarked, PenSquare, Bell, Settings, LogOut, Home } from "lucide-react"
+import { BookMarked, PenSquare, Bell, Settings, LogOut, Home, LayoutDashboard } from "lucide-react"
 import { motion } from "framer-motion"
 
 interface UserAvatarMenuProps {
@@ -24,7 +25,6 @@ interface UserAvatarMenuProps {
     name: string
     username: string
     avatar: string
-    isWriter: boolean
     unreadNotifications: number
   }
   onLogout: () => void
@@ -32,11 +32,20 @@ interface UserAvatarMenuProps {
 
 export default function UserAvatarMenu({ user, onLogout }: UserAvatarMenuProps) {
   const router = useRouter()
-  const [isOpen, setIsOpen] = useState(false)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
 
-  const handleLogout = () => {
-    onLogout()
-    setIsOpen(false)
+  const handleLogout = async () => {
+    try {
+      setIsLoggingOut(true)
+      await signOut({ redirect: false })
+      onLogout() // Notify parent component
+      router.push("/") // Redirect to home page
+      router.refresh() // Refresh the page to update auth state
+    } catch (error) {
+      console.error("Logout error:", error)
+    } finally {
+      setIsLoggingOut(false)
+    }
   }
 
   const menuItems = [
@@ -62,6 +71,11 @@ export default function UserAvatarMenu({ user, onLogout }: UserAvatarMenuProps) 
       badge: user.unreadNotifications > 0 ? user.unreadNotifications : null,
     },
     {
+      icon: <LayoutDashboard className="mr-2 h-4 w-4" />,
+      label: "Dashboard",
+      href: "/dashboard",
+    },
+    {
       icon: <Settings className="mr-2 h-4 w-4" />,
       label: "Settings",
       href: "/settings",
@@ -69,29 +83,27 @@ export default function UserAvatarMenu({ user, onLogout }: UserAvatarMenuProps) 
   ]
 
   return (
-    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+    <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-          <Avatar className="h-8 w-8 border">
+          <Avatar className="h-8 w-8">
             <AvatarImage src={user.avatar} alt={user.name} />
             <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
           </Avatar>
           {user.unreadNotifications > 0 && (
             <motion.div
-              initial={{ scale: 0.5, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="absolute -top-1 -right-1"
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              className="absolute -right-1 -top-1"
             >
-              <Badge
-                variant="destructive"
-                className="h-4 w-4 rounded-full p-0 flex items-center justify-center text-[10px]"
-              >
+              <Badge variant="destructive" className="h-4 w-4 rounded-full p-0 text-[10px]">
                 {user.unreadNotifications}
               </Badge>
             </motion.div>
           )}
         </Button>
       </DropdownMenuTrigger>
+
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
@@ -119,19 +131,11 @@ export default function UserAvatarMenu({ user, onLogout }: UserAvatarMenuProps) 
               </Link>
             </DropdownMenuItem>
           ))}
-          {user.isWriter && (
-            <DropdownMenuItem asChild>
-              <Link href="/dashboard" className="flex items-center cursor-pointer">
-                <User className="mr-2 h-4 w-4" />
-                Dashboard
-              </Link>
-            </DropdownMenuItem>
-          )}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive cursor-pointer">
+        <DropdownMenuItem disabled={isLoggingOut} onSelect={handleLogout} className="text-destructive focus:text-destructive cursor-pointer">
           <LogOut className="mr-2 h-4 w-4" />
-          Log out
+          <span>{isLoggingOut ? "Logging out..." : "Log out"}</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
