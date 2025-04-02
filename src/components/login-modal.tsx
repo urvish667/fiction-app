@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
@@ -13,6 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { motion, AnimatePresence } from "framer-motion"
 import { CalendarIcon, AlertCircle } from "lucide-react"
 import { format } from "date-fns"
+import { signIn } from "next-auth/react"
+import { useRouter } from "next/navigation"
+import { debounce } from "lodash"
 
 interface LoginModalProps {
   isOpen: boolean
@@ -24,6 +27,7 @@ type SignupStep = "initial" | "details"
 type SignupMethod = "email" | "google" | "facebook" | null
 
 export default function LoginModal({ isOpen, onClose, onLogin }: LoginModalProps) {
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState("login")
   const [signupStep, setSignupStep] = useState<SignupStep>("initial")
   const [signupMethod, setSignupMethod] = useState<SignupMethod>(null)
@@ -46,6 +50,16 @@ export default function LoginModal({ isOpen, onClose, onLogin }: LoginModalProps
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [usernameAvailability, setUsernameAvailability] = useState<{
+    available: boolean;
+    error: string | null;
+    isChecking: boolean;
+  }>({
+    available: true,
+    error: null,
+    isChecking: false,
+  })
 
   // Handle login form change
   const handleLoginChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -67,6 +81,11 @@ export default function LoginModal({ isOpen, onClose, onLogin }: LoginModalProps
     // Clear error when field is edited
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }))
+    }
+
+    // Check username availability as user types
+    if (name === "username") {
+      checkUsernameAvailability(value);
     }
   }
 
@@ -95,24 +114,42 @@ export default function LoginModal({ isOpen, onClose, onLogin }: LoginModalProps
   }
 
   // Handle login submission
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault()
-    // Here you would typically validate and submit the login credentials
-    onLogin()
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      const result = await signIn("credentials", {
+        email: loginForm.email,
+        password: loginForm.password,
+        redirect: false,
+      });
+
+      if (result?.error) {
+        setErrors({ login: "Invalid email or password" });
+      } else {
+        // Successfully logged in
+        router.refresh(); // Refresh to update auth state
+        onLogin();
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      setErrors({ login: "An error occurred while logging in" });
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   // Handle OAuth signup
-  const handleOAuthSignup = (provider: "google" | "facebook") => {
-    // In a real implementation, this would trigger the OAuth flow
-    // For now, we'll simulate a successful OAuth login and move to the next step
-    setSignupMethod(provider)
-    setSignupStep("details")
-
-    // Simulate getting email from OAuth provider
-    if (provider === "google") {
-      setSignupForm((prev) => ({ ...prev, email: "user@gmail.com" }))
-    } else {
-      setSignupForm((prev) => ({ ...prev, email: "user@facebook.com" }))
+  const handleOAuthSignup = async (provider: "google" | "facebook") => {
+    setIsSubmitting(true);
+    
+    try {
+      await signIn(provider, { callbackUrl: window.location.href });
+      // Note: This will redirect the page, so no need to set isSubmitting to false
+    } catch (error) {
+      console.error(`${provider} sign in error:`, error);
+      setIsSubmitting(false);
     }
   }
 
@@ -174,13 +211,63 @@ export default function LoginModal({ isOpen, onClose, onLogin }: LoginModalProps
   }
 
   // Handle signup submission
-  const handleSignupSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSignupSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
     if (validateSignupForm()) {
-      // Here you would typically submit the signup data
-      console.log("Signup form submitted:", signupForm)
-      onLogin()
+      setIsSubmitting(true);
+
+      try {
+        // Submit signup data to the API
+        const response = await fetch("/api/auth/signup", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: signupForm.email,
+            username: signupForm.username,
+            password: signupForm.password,
+            birthdate: signupForm.birthdate ? signupForm.birthdate.toISOString().split("T")[0] : "",
+            pronoun: signupForm.pronoun,
+            termsAccepted: signupForm.termsAccepted,
+            marketingOptIn: signupForm.marketingOptIn,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          if (data.fields) {
+            // Field-specific validation errors
+            setErrors(data.fields);
+          } else {
+            // General error
+            setErrors({ form: data.error || "An error occurred during signup" });
+          }
+        } else {
+          // After successful signup, log the user in automatically
+          const loginResult = await signIn("credentials", {
+            email: signupForm.email,
+            password: signupForm.password,
+            redirect: false,
+          });
+
+          if (loginResult?.error) {
+            setErrors({ login: "Account created but couldn't log in automatically. Please try logging in." });
+            setActiveTab("login");
+          } else {
+            // Successfully signed up and logged in
+            router.refresh(); // Refresh to update auth state
+            onLogin();
+          }
+        }
+      } catch (error) {
+        console.error("Signup error:", error);
+        setErrors({ form: "An error occurred during signup" });
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   }
 
@@ -201,6 +288,50 @@ export default function LoginModal({ isOpen, onClose, onLogin }: LoginModalProps
     setErrors({})
     onClose()
   }
+
+  // Check username availability with debounce
+  const checkUsernameAvailability = debounce(async (username: string) => {
+    if (!username || username.length < 3) {
+      return;
+    }
+
+    setUsernameAvailability((prev) => ({ ...prev, isChecking: true }));
+
+    try {
+      const response = await fetch(`/api/auth/username-check?username=${encodeURIComponent(username)}`);
+      const data = await response.json();
+
+      setUsernameAvailability({
+        available: data.available,
+        error: data.error,
+        isChecking: false,
+      });
+
+      if (!data.available && data.error) {
+        setErrors((prev) => ({ ...prev, username: data.error }));
+      } else {
+        setErrors((prev) => {
+          const newErrors = { ...prev };
+          delete newErrors.username;
+          return newErrors;
+        });
+      }
+    } catch (error) {
+      console.error("Error checking username availability:", error);
+      setUsernameAvailability({
+        available: false,
+        error: "Error checking username availability",
+        isChecking: false,
+      });
+    }
+  }, 500);
+
+  // Clear username availability check when component unmounts
+  useEffect(() => {
+    return () => {
+      checkUsernameAvailability.cancel();
+    };
+  }, [checkUsernameAvailability]);
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -237,9 +368,10 @@ export default function LoginModal({ isOpen, onClose, onLogin }: LoginModalProps
                         placeholder="your@email.com"
                         value={loginForm.email}
                         onChange={handleLoginChange}
+                        disabled={isSubmitting}
                       />
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-2 mt-4">
                       <div className="flex items-center justify-between">
                         <Label htmlFor="login-password">Password</Label>
                         <Button variant="link" className="p-0 h-auto text-xs">
@@ -252,21 +384,29 @@ export default function LoginModal({ isOpen, onClose, onLogin }: LoginModalProps
                         type="password"
                         value={loginForm.password}
                         onChange={handleLoginChange}
+                        disabled={isSubmitting}
                       />
                     </div>
+                    {errors.login && (
+                      <p className="text-xs text-destructive flex items-center gap-1 mt-2">
+                        <AlertCircle className="h-3 w-3" />
+                        {errors.login}
+                      </p>
+                    )}
                     <div className="flex items-center space-x-2 mt-4">
                       <Checkbox
                         id="remember"
                         name="remember"
                         checked={loginForm.remember}
                         onCheckedChange={(checked) => setLoginForm((prev) => ({ ...prev, remember: checked === true }))}
+                        disabled={isSubmitting}
                       />
                       <Label htmlFor="remember" className="text-sm">
                         Remember me
                       </Label>
                     </div>
-                    <Button className="w-full mt-4" type="submit">
-                      Login
+                    <Button className="w-full mt-4" type="submit" disabled={isSubmitting}>
+                      {isSubmitting ? "Logging in..." : "Login"}
                     </Button>
                     <div className="relative my-4">
                       <div className="absolute inset-0 flex items-center">
@@ -281,7 +421,9 @@ export default function LoginModal({ isOpen, onClose, onLogin }: LoginModalProps
                       <Button
                         variant="outline"
                         className="flex items-center justify-center gap-2"
-                        onClick={() => onLogin()} // In a real app, this would trigger Google OAuth
+                        onClick={() => handleOAuthSignup("google")}
+                        disabled={isSubmitting}
+                        type="button"
                       >
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
@@ -304,7 +446,9 @@ export default function LoginModal({ isOpen, onClose, onLogin }: LoginModalProps
                       <Button
                         variant="outline"
                         className="flex items-center justify-center gap-2"
-                        onClick={() => onLogin()} // In a real app, this would trigger Facebook OAuth
+                        onClick={() => handleOAuthSignup("facebook")}
+                        disabled={isSubmitting}
+                        type="button"
                       >
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
@@ -449,11 +593,28 @@ export default function LoginModal({ isOpen, onClose, onLogin }: LoginModalProps
                         placeholder="coolwriter123"
                         value={signupForm.username}
                         onChange={handleSignupChange}
+                        disabled={isSubmitting}
                       />
                       {errors.username && (
                         <p className="text-xs text-destructive flex items-center gap-1">
                           <AlertCircle className="h-3 w-3" />
                           {errors.username}
+                        </p>
+                      )}
+                      {/* Username availability indicator */}
+                      {signupForm.username && signupForm.username.length >= 3 && !errors.username && (
+                        <p className={`text-xs flex items-center gap-1 ${
+                          usernameAvailability.isChecking 
+                            ? "text-muted-foreground"
+                            : usernameAvailability.available 
+                              ? "text-green-500" 
+                              : "text-destructive"
+                        }`}>
+                          {usernameAvailability.isChecking 
+                            ? "Checking availability..." 
+                            : usernameAvailability.available 
+                              ? "Username is available" 
+                              : usernameAvailability.error}
                         </p>
                       )}
                     </div>
@@ -563,8 +724,16 @@ export default function LoginModal({ isOpen, onClose, onLogin }: LoginModalProps
                       </div>
                     </div>
 
-                    <Button className="w-full mt-4" type="submit">
-                      Create Account
+                    {/* General form error */}
+                    {errors.form && (
+                      <p className="text-xs text-destructive flex items-center gap-1 mt-2">
+                        <AlertCircle className="h-3 w-3" />
+                        {errors.form}
+                      </p>
+                    )}
+
+                    <Button className="w-full mt-4" type="submit" disabled={isSubmitting}>
+                      {isSubmitting ? "Creating Account..." : "Create Account"}
                     </Button>
                   </form>
 
