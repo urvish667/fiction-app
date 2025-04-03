@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import {
   NavigationMenu,
@@ -15,30 +16,46 @@ import { Search, Menu } from "lucide-react"
 import { motion } from "framer-motion"
 import LoginModal from "./login-modal"
 import UserAvatarMenu from "./user-avatar-menu"
-
-// Mock user data for demonstration
-const mockUser = {
-  id: "user_1",
-  name: "James Watson",
-  username: "jwatson213",
-  avatar: "/placeholder-user.jpg",
-  isWriter: true,
-  unreadNotifications: 3,
-}
+import { Skeleton } from "@/components/ui/skeleton"
 
 export default function Navbar() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const { data: session, status } = useSession()
   const [showLoginModal, setShowLoginModal] = useState(false)
-  const [user, setUser] = useState(mockUser)
+  const isLoading = status === "loading"
+  const isAuthenticated = status === "authenticated"
 
-  // Toggle login state (for demo purposes)
-  const handleLogin = () => {
-    setIsLoggedIn(true)
-    setShowLoginModal(false)
-  }
+  const userWithAvatar = session?.user ? {
+    id: session.user.id,
+    name: session.user.name || 'User',
+    username: session.user.username || session.user.name?.split(' ')[0].toLowerCase() || 'user',
+    avatar: session.user.image || '/placeholder-user.jpg',
+    unreadNotifications: session.user.unreadNotifications || 0
+  } : null
 
   const handleLogout = () => {
-    setIsLoggedIn(false)
+    // NextAuth signOut will be handled by UserAvatarMenu
+  }
+
+  if (isLoading) {
+    return (
+      <header className="px-8 sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container flex h-16 items-center justify-between">
+          <Link href="/" className="flex items-center">
+            <motion.h1
+              className="text-2xl font-bold font-serif"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              FableSpace
+            </motion.h1>
+          </Link>
+          <div className="hidden md:flex md:gap-6 items-center">
+            <Skeleton className="h-10 w-[200px]" />
+          </div>
+        </div>
+      </header>
+    )
   }
 
   return (
@@ -73,8 +90,8 @@ export default function Navbar() {
             </NavigationMenuList>
           </NavigationMenu>
 
-          {isLoggedIn ? (
-            <UserAvatarMenu user={user} onLogout={handleLogout} />
+          {isAuthenticated && userWithAvatar ? (
+            <UserAvatarMenu user={userWithAvatar} onLogout={handleLogout} />
           ) : (
             <Button onClick={() => setShowLoginModal(true)}>Login / Signup</Button>
           )}
@@ -97,9 +114,9 @@ export default function Navbar() {
                 <Link href="/browse" className="text-lg font-medium">
                   Browse
                 </Link>
-                {isLoggedIn ? (
+                {isAuthenticated && session.user ? (
                   <>
-                    <Link href={`/user/${user.username}`} className="text-lg font-medium">
+                    <Link href={`/user/${session.user.name}`} className="text-lg font-medium">
                       Profile
                     </Link>
                     <Link href="/library" className="text-lg font-medium">
@@ -110,20 +127,18 @@ export default function Navbar() {
                     </Link>
                     <Link href="/notifications" className="text-lg font-medium flex items-center">
                       Notifications
-                      {user.unreadNotifications > 0 && (
+                      {session.user.unreadNotifications > 0 && (
                         <span className="ml-2 bg-destructive text-destructive-foreground rounded-full px-2 py-0.5 text-xs">
-                          {user.unreadNotifications}
+                          {session.user.unreadNotifications}
                         </span>
                       )}
                     </Link>
                     <Link href="/settings" className="text-lg font-medium">
                       Settings
                     </Link>
-                    {user.isWriter && (
-                      <Link href="/dashboard" className="text-lg font-medium">
-                        Dashboard
-                      </Link>
-                    )}
+                    <Link href="/dashboard" className="text-lg font-medium">
+                      Dashboard
+                    </Link>
                     <Button variant="ghost" onClick={handleLogout}>
                       Log out
                     </Button>
@@ -138,7 +153,7 @@ export default function Navbar() {
       </div>
 
       {/* Login Modal */}
-      <LoginModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} onLogin={handleLogin} />
+      <LoginModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} onLogin={() => setShowLoginModal(false)} />
     </header>
   )
 }
