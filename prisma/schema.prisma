@@ -39,26 +39,33 @@ model Session {
 }
 
 model User {
-  id                String    @id @default(cuid())
-  name              String?
-  email             String?   @unique
-  emailVerified     DateTime?
-  image             String?
-  username          String?   @unique
-  password          String?   // Hashed password for credentials auth
-  birthdate         DateTime?
-  bio               String?   @db.Text  // Changed to Text for longer bios
-  pronoun           String?
-  termsAccepted     Boolean   @default(false)
-  marketingOptIn    Boolean   @default(false)
-  isProfileComplete Boolean   @default(false)
-  provider          String?   // Primary OAuth provider if any
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-  lastLogin         DateTime?
-  accounts          Account[]
-  sessions          Session[]
-  notifications     Notification[]
+  id                  String    @id @default(cuid())
+  name                String?
+  email               String?   @unique
+  emailVerified       DateTime?
+  image               String?
+  username            String?   @unique
+  password            String?
+  birthdate           DateTime?
+  bio                 String?
+  pronoun             String?
+  location            String?
+  website             String?
+  socialLinks         Json?     // For storing Twitter, Instagram, etc.
+  language            String?   @default("en")
+  theme               String?   @default("system")
+  termsAccepted       Boolean   @default(false)
+  marketingOptIn      Boolean   @default(false)
+  isProfileComplete   Boolean   @default(false)
+  provider            String?   // Primary OAuth provider if any
+  unreadNotifications Int       @default(0)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  lastLogin           DateTime?
+  accounts            Account[]
+  sessions            Session[]
+  notifications       Notification[]
+  preferences         Json?     @default("{\"emailNotifications\":{\"newFollower\":false,\"newComment\":false,\"newLike\":false,\"newChapter\":false},\"privacySettings\":{\"publicProfile\":false,\"showEmail\":false,\"showLocation\":false,\"allowMessages\":false}}")
 
   @@index([email])
   @@index([username])
