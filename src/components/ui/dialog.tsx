@@ -33,16 +33,6 @@ const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
 >(({ className, children, ...props }, ref) => {
-  const hasTitle = React.Children.toArray(children).some(
-    (child: any) => child?.type?.displayName === DialogTitle.displayName
-  );
-
-  if (!hasTitle) {
-    console.warn(
-      "DialogContent requires a DialogTitle for the component to be accessible for screen reader users. If you want to hide the DialogTitle, you can wrap it with our VisuallyHidden component. For more information, see https://radix-ui.com/primitives/docs/components/dialog"
-    );
-  }
-
   return (
     <DialogPortal>
       <DialogOverlay />

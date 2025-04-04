@@ -18,6 +18,7 @@ declare module "next-auth" {
       unreadNotifications: number
       preferences?: UserPreferences
       marketingOptIn?: boolean
+      provider?: string
     }
     expires: string
   }
@@ -31,5 +32,6 @@ declare module "next-auth/jwt" {
     unreadNotifications: number
     preferences?: UserPreferences
     marketingOptIn?: boolean
+    provider?: string
   }
 }
