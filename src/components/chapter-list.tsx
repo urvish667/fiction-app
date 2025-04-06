@@ -6,11 +6,11 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Lock, Calendar, CheckCircle2 } from "lucide-react"
-import type { Chapter } from "@/lib/types"
+import type { Chapter as ChapterType } from "@/types/story"
 import { Progress } from "@/components/ui/progress"
 
 interface ChapterListProps {
-  chapters: Chapter[]
+  chapters: ChapterType[]
   storySlug: string
   currentChapter: number | null
 }
@@ -19,7 +19,8 @@ export default function ChapterList({ chapters, storySlug, currentChapter }: Cha
   const [expanded, setExpanded] = useState(true)
 
   // Format date
-  const formatDate = (date: Date) => {
+  const formatDate = (dateString: string | Date) => {
+    const date = typeof dateString === 'string' ? new Date(dateString) : dateString
     return new Intl.DateTimeFormat("en-US", {
       month: "short",
       day: "numeric",
@@ -42,7 +43,7 @@ export default function ChapterList({ chapters, storySlug, currentChapter }: Cha
           <div className="flex justify-between items-center w-full">
             <span>Chapters ({chapters.length})</span>
             <span className="text-sm text-muted-foreground">
-              Last updated: {formatDate(chapters[chapters.length - 1].publishDate)}
+              Last updated: {formatDate(chapters[chapters.length - 1].updatedAt)}
             </span>
           </div>
         </AccordionTrigger>
@@ -50,8 +51,8 @@ export default function ChapterList({ chapters, storySlug, currentChapter }: Cha
           <div className="divide-y">
             {chapters.map((chapter) => {
               const isLocked = chapter.isPremium
-              const isFuture = chapter.publishDate > new Date()
-              const isRead = chapter.number < (currentChapter || 0)
+              const isFuture = new Date(chapter.updatedAt) > new Date()
+              const isRead = chapter.readingProgress && chapter.readingProgress > 90
               const isCurrent = chapter.number === currentChapter
 
               return (
@@ -86,10 +87,10 @@ export default function ChapterList({ chapters, storySlug, currentChapter }: Cha
                       )}
                     </div>
 
-                    {chapter.readProgress > 0 && chapter.readProgress < 100 && (
+                    {chapter.readingProgress && chapter.readingProgress > 0 && chapter.readingProgress < 100 && (
                       <div className="mt-2 flex items-center gap-2">
-                        <Progress value={chapter.readProgress} className="h-2 flex-1" />
-                        <span className="text-xs text-muted-foreground">{chapter.readProgress}%</span>
+                        <Progress value={chapter.readingProgress} className="h-2 flex-1" />
+                        <span className="text-xs text-muted-foreground">{Math.round(chapter.readingProgress)}%</span>
                       </div>
                     )}
                   </div>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
@@ -11,23 +11,60 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { PenSquare, Eye, BarChart3, MoreVertical, Trash2, Copy, Archive, X, Heart, MessageSquare } from "lucide-react"
+import { PenSquare, Eye, BarChart3, MoreVertical, Trash2, Copy, Archive, X, Heart, MessageSquare, BookOpen } from "lucide-react"
 import Navbar from "@/components/navbar"
-import { sampleStories } from "@/lib/sample-data"
+import { useToast } from "@/components/ui/use-toast"
+import { StoryService } from "@/services/story-service"
+import { useSession } from "next-auth/react"
+import type { Story } from "@/types/story"
 
-// Mock story data with additional fields for works
-const myWorks = sampleStories.slice(0, 8).map((story, index) => ({
-  ...story,
-  status: index < 5 ? "published" : "draft",
-  lastEdited: new Date(Date.now() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000),
-  completionPercentage: index < 5 ? 100 : Math.floor(Math.random() * 90) + 10,
-  chapters: Math.floor(Math.random() * 20) + 1,
-}))
+// Extended story type with UI-specific properties
+interface WorkStory extends Story {
+  status: "published" | "draft";
+  lastEdited: Date;
+}
 
 export default function MyWorksPage() {
-  const router = useRouter()
+  const { data: session } = useSession()
+  const { toast } = useToast()
   const [activeTab, setActiveTab] = useState("published")
   const [searchQuery, setSearchQuery] = useState("")
+  const [isLoading, setIsLoading] = useState(true)
+  const [myWorks, setMyWorks] = useState<WorkStory[]>([])
+
+  // Fetch user's stories from the database
+  useEffect(() => {
+    const fetchStories = async () => {
+      if (!session?.user?.id) return
+
+      try {
+        setIsLoading(true)
+        const response = await StoryService.getStories({
+          authorId: session.user.id
+        })
+
+        // Transform API response to our WorkStory format
+        const works = response.stories.map(story => ({
+          ...story,
+          status: story.isDraft ? "draft" : "published",
+          lastEdited: new Date(story.updatedAt)
+        })) as WorkStory[]
+
+        setMyWorks(works)
+      } catch (error) {
+        console.error("Failed to fetch stories:", error)
+        toast({
+          title: "Error",
+          description: "Failed to load your stories. Please try again.",
+          variant: "destructive"
+        })
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchStories()
+  }, [session, toast])
 
   // Filter stories based on active tab and search query
   const filteredWorks = myWorks.filter((work) => {
@@ -35,7 +72,7 @@ export default function MyWorksPage() {
     const matchesSearch =
       !searchQuery ||
       work.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      work.genre.toLowerCase().includes(searchQuery.toLowerCase())
+      (work.genre && work.genre.toLowerCase().includes(searchQuery.toLowerCase()))
 
     return matchesTab && matchesSearch
   })
@@ -89,15 +126,15 @@ export default function MyWorksPage() {
           </TabsList>
 
           <TabsContent value="all">
-            <WorksContent works={filteredWorks} searchQuery={searchQuery} />
+            <WorksContent works={filteredWorks} searchQuery={searchQuery} isLoading={isLoading} />
           </TabsContent>
 
           <TabsContent value="published">
-            <WorksContent works={filteredWorks} searchQuery={searchQuery} />
+            <WorksContent works={filteredWorks} searchQuery={searchQuery} isLoading={isLoading} />
           </TabsContent>
 
           <TabsContent value="draft">
-            <WorksContent works={filteredWorks} searchQuery={searchQuery} />
+            <WorksContent works={filteredWorks} searchQuery={searchQuery} isLoading={isLoading} />
           </TabsContent>
         </Tabs>
       </main>
@@ -106,23 +143,37 @@ export default function MyWorksPage() {
 }
 
 interface WorksContentProps {
-  works: typeof myWorks
+  works: WorkStory[]
   searchQuery: string
+  isLoading: boolean
 }
 
-function WorksContent({ works, searchQuery }: WorksContentProps) {
+function WorksContent({ works, searchQuery, isLoading }: WorksContentProps) {
   const router = useRouter()
 
-  const handleContinueEditing = (storyId: number) => {
-    router.push(`/write/editor/${storyId}`)
+  const handleContinueEditing = (storyId: string) => {
+    // Redirect to story-metadata page instead of editor
+    router.push(`/write/story-info?id=${storyId}`)
   }
 
-  const handleViewStory = (storyId: number) => {
-    router.push(`/story/${storyId}`)
+  const handleViewStory = (_storyId: string, slug: string) => {
+    router.push(`/story/${slug}`)
   }
 
-  const handleViewAnalytics = (storyId: number) => {
+  const handleViewAnalytics = (storyId: string) => {
     router.push(`/dashboard/analytics/${storyId}`)
+  }
+
+  if (isLoading) {
+    return (
+      <div className="text-center py-12 bg-muted/30 rounded-lg">
+        <h3 className="text-xl font-semibold mb-2">Loading your stories...</h3>
+        <div className="animate-pulse flex flex-col items-center">
+          <div className="h-4 bg-muted-foreground/20 rounded w-48 mb-4"></div>
+          <div className="h-4 bg-muted-foreground/20 rounded w-32"></div>
+        </div>
+      </div>
+    )
   }
 
   if (works.length === 0) {
@@ -150,7 +201,7 @@ function WorksContent({ works, searchQuery }: WorksContentProps) {
         {works.map((work) => (
           <Card key={work.id} className="overflow-hidden flex flex-col">
             <div className="relative aspect-[3/2] overflow-hidden">
-              <Image src={work.thumbnail || "/placeholder.svg"} alt={work.title} fill className="object-cover" />
+              <Image src={work.coverImage || "/placeholder.svg"} alt={work.title} fill className="object-cover" />
               <Badge
                 className={`absolute top-2 right-2 ${work.status === "published" ? "bg-green-500" : "bg-amber-500"}`}
               >
@@ -160,14 +211,10 @@ function WorksContent({ works, searchQuery }: WorksContentProps) {
               {work.status === "draft" && (
                 <div className="absolute bottom-0 left-0 right-0 bg-background/80 px-3 py-1 text-xs">
                   <div className="flex justify-between items-center">
-                    <span>Completion: {work.completionPercentage}%</span>
-                    <span>Chapters: {work.chapters}</span>
-                  </div>
-                  <div className="w-full bg-muted rounded-full h-1.5 mt-1">
-                    <div
-                      className="bg-primary h-1.5 rounded-full"
-                      style={{ width: `${work.completionPercentage}%` }}
-                    ></div>
+                    <span className="flex items-center gap-1">
+                      <BookOpen className="h-3.5 w-3.5" />
+                      <span>Chapters: {work.chapterCount || 0}</span>
+                    </span>
                   </div>
                 </div>
               )}
@@ -192,7 +239,7 @@ function WorksContent({ works, searchQuery }: WorksContentProps) {
                       Edit Story
                     </DropdownMenuItem>
                     {work.status === "published" && (
-                      <DropdownMenuItem onClick={() => handleViewStory(work.id)}>
+                      <DropdownMenuItem onClick={() => handleViewStory(work.id, work.slug)}>
                         <Eye className="h-4 w-4 mr-2" />
                         View Story
                       </DropdownMenuItem>
@@ -227,15 +274,19 @@ function WorksContent({ works, searchQuery }: WorksContentProps) {
                 <div className="flex gap-4 mt-3 text-sm">
                   <div className="flex items-center gap-1">
                     <Eye className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span>{work.reads.toLocaleString()}</span>
+                    <span>{work.readCount?.toLocaleString() || 0}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <Heart className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span>{work.likes.toLocaleString()}</span>
+                    <span>{work.likeCount?.toLocaleString() || 0}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span>{work.comments.toLocaleString()}</span>
+                    <span>{work.commentCount?.toLocaleString() || 0}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <BookOpen className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span>{work.chapterCount?.toLocaleString() || 0} chapters</span>
                   </div>
                 </div>
               )}
@@ -252,7 +303,7 @@ function WorksContent({ works, searchQuery }: WorksContentProps) {
                 </>
               ) : (
                 <>
-                  <Button variant="outline" className="flex-1" onClick={() => handleViewStory(work.id)}>
+                  <Button variant="outline" className="flex-1" onClick={() => handleViewStory(work.id, work.slug)}>
                     <Eye className="h-4 w-4 mr-2" />
                     View
                   </Button>

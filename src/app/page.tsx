@@ -179,7 +179,9 @@ function StoryCard({ story }: { story: Story }) {
         </div>
         <CardHeader className="pb-2">
           <h3 className="font-bold text-lg line-clamp-1">{story.title}</h3>
-          <p className="text-sm text-muted-foreground">by {story.author}</p>
+          <p className="text-sm text-muted-foreground">by {typeof story.author === 'object' ?
+            (story.author?.name || story.author?.username || "Unknown Author") :
+            story.author}</p>
         </CardHeader>
         <CardContent className="pb-2 flex-grow">
           <p className="text-sm text-muted-foreground line-clamp-2">{story.excerpt}</p>

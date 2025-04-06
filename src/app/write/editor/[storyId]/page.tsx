@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
+import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -17,8 +18,10 @@ import { ArrowLeft, Save, Eye, AlertCircle } from "lucide-react"
 import { useDebounce } from "@/hooks/use-debounce"
 import { Editor } from "@/components/editor"
 import ChapterSidebar from "@/components/chapter-sidebar"
+import { StoryService } from "@/services/story-service"
+import { Story, Chapter } from "@/types/story"
 
-// Types for story and chapter data
+// Types for local state
 interface StoryMetadata {
   id: string
   title: string
@@ -29,14 +32,17 @@ interface StoryMetadata {
   coverImage: string
   isDraft: boolean
   lastSaved: Date | null
+  slug: string
 }
 
 interface ChapterData {
   id: string
   title: string
   content: string
-  order: number
+  number: number // Changed from order to match API
   lastSaved: Date | null
+  wordCount?: number
+  isPremium?: boolean
 }
 
 export default function StoryEditorPage() {
@@ -59,70 +65,98 @@ export default function StoryEditorPage() {
   // Create debounced version of active chapter for auto-save
   const debouncedChapter = useDebounce(activeChapter, 1500)
 
+  // Get the session for authentication
+  const { data: session } = useSession();
+
+  // Check authentication
+  useEffect(() => {
+    if (!session) {
+      // Redirect to login if not authenticated
+      router.push(`/login?callbackUrl=/write/editor/${storyId}`)
+    }
+  }, [session, router, storyId])
+
   // Load story data
   useEffect(() => {
-    if (!storyId) return
+    if (!storyId || !session?.user?.id) return
 
-    // In a real app, we would fetch from API
-    // For this demo, we'll use localStorage
-    const savedStory = localStorage.getItem("draftStory")
-    if (savedStory) {
+    const fetchStory = async () => {
       try {
-        const parsedStory = JSON.parse(savedStory)
-        if (parsedStory.id === storyId) {
-          setStoryMetadata(parsedStory)
-        } else {
-          // Story ID mismatch
+        const story = await StoryService.getStory(storyId);
+
+        // Check if the user is the author
+        if (story.authorId !== session.user.id) {
           toast({
-            title: "Story not found",
-            description: "The requested story could not be found.",
+            title: "Unauthorized",
+            description: "You can only edit your own stories.",
             variant: "destructive",
-          })
-          router.push("/write/story-info")
+          });
+          router.push("/write/story-info");
+          return;
         }
+
+        // Convert to our local state format
+        setStoryMetadata({
+          id: story.id,
+          title: story.title,
+          description: story.description || "",
+          genre: story.genre || "",
+          language: story.language || "English",
+          isMature: story.isMature,
+          coverImage: story.coverImage || "/placeholder.svg?height=600&width=400",
+          isDraft: story.isDraft,
+          lastSaved: new Date(story.updatedAt),
+          slug: story.slug,
+        });
       } catch (error) {
-        console.error("Failed to parse saved story", error)
+        console.error("Failed to fetch story", error);
         toast({
           title: "Error loading story",
           description: "Failed to load story data. Please try again.",
           variant: "destructive",
-        })
-        router.push("/write/story-info")
+        });
+        router.push("/write/story-info");
       }
-    } else {
-      // No saved story
-      toast({
-        title: "Story not found",
-        description: "The requested story could not be found.",
-        variant: "destructive",
-      })
-      router.push("/write/story-info")
-    }
+    };
 
-    // Load chapters
-    const savedChapters = localStorage.getItem(`chapters_${storyId}`)
-    if (savedChapters) {
+    fetchStory();
+
+    // Load chapters from API
+    const fetchChapters = async () => {
       try {
-        const parsedChapters = JSON.parse(savedChapters)
-        setChapters(parsedChapters)
+        const chaptersData = await StoryService.getChapters(storyId);
+
+        // Convert to our local state format
+        const formattedChapters = chaptersData.map(chapter => ({
+          id: chapter.id,
+          title: chapter.title,
+          content: chapter.content || '',
+          number: chapter.number,
+          lastSaved: new Date(chapter.updatedAt),
+          wordCount: chapter.wordCount,
+          isPremium: chapter.isPremium
+        }));
+
+        setChapters(formattedChapters);
 
         // Set active chapter to the first one if available
-        if (parsedChapters.length > 0) {
-          setActiveChapter(parsedChapters[0])
+        if (formattedChapters.length > 0) {
+          // Sort chapters by number
+          const sortedChapters = [...formattedChapters].sort((a, b) => a.number - b.number);
+          setActiveChapter(sortedChapters[0]);
         } else {
           // Create a first chapter if none exist
-          createFirstChapter()
+          createFirstChapter();
         }
       } catch (error) {
-        console.error("Failed to parse saved chapters", error)
-        // Create a first chapter if parsing fails
-        createFirstChapter()
+        console.error("Failed to fetch chapters", error);
+        // Create a first chapter if fetching fails
+        createFirstChapter();
       }
-    } else {
-      // No saved chapters, create the first one
-      createFirstChapter()
-    }
-  }, [storyId, router, toast])
+    };
+
+    fetchChapters();
+  }, [storyId, router, toast, session?.user?.id])
 
   // Auto-save effect for active chapter
   useEffect(() => {
@@ -131,21 +165,75 @@ export default function StoryEditorPage() {
     }
   }, [debouncedChapter])
 
-  // Create first chapter
-  const createFirstChapter = () => {
-    const firstChapter: ChapterData = {
-      id: `chapter_${Date.now()}`,
-      title: "Chapter 1",
-      content: "",
-      order: 1,
-      lastSaved: null,
+  // Helper function to find the next available chapter number
+  const getNextChapterNumber = async () => {
+    // If we have chapters locally, find the highest number and add 1
+    if (chapters.length > 0) {
+      const highestNumber = Math.max(...chapters.map(chapter => chapter.number));
+      return highestNumber + 1;
     }
 
-    setChapters([firstChapter])
-    setActiveChapter(firstChapter)
+    // If no chapters locally, try to get them from the API
+    try {
+      const chaptersData = await StoryService.getChapters(storyId);
+      if (chaptersData.length > 0) {
+        const highestNumber = Math.max(...chaptersData.map(chapter => chapter.number));
+        return highestNumber + 1;
+      }
+    } catch (error) {
+      console.error("Error fetching chapters for numbering:", error);
+    }
 
-    // Save to localStorage
-    localStorage.setItem(`chapters_${storyId}`, JSON.stringify([firstChapter]))
+    // If all else fails, start with chapter 1
+    return 1;
+  };
+
+  // Create first chapter
+  const createFirstChapter = async (retryCount = 0) => {
+    try {
+      // Get the next available chapter number
+      const chapterNumber = await getNextChapterNumber();
+
+      // Create a new chapter via API
+      const newChapter = await StoryService.createChapter(storyId, {
+        title: chapterNumber === 1 ? "Chapter 1" : `Chapter ${chapterNumber}`,
+        content: "",
+        number: chapterNumber,
+        isPremium: false
+      });
+
+      // Format for local state
+      const firstChapter: ChapterData = {
+        id: newChapter.id,
+        title: newChapter.title,
+        content: newChapter.content,
+        number: newChapter.number,
+        lastSaved: new Date(newChapter.updatedAt),
+        wordCount: newChapter.wordCount,
+        isPremium: newChapter.isPremium
+      };
+
+      setChapters([firstChapter]);
+      setActiveChapter(firstChapter);
+    } catch (error) {
+      console.error("Failed to create first chapter", error);
+
+      // If we get a unique constraint error and haven't retried too many times, try again
+      if (error instanceof Error &&
+          error.message.includes("already exists") &&
+          retryCount < 3) {
+        console.log(`Retrying chapter creation (attempt ${retryCount + 1})`);
+        // Wait a short time before retrying to avoid race conditions
+        setTimeout(() => createFirstChapter(retryCount + 1), 500);
+        return;
+      }
+
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to create chapter. Please try again.",
+        variant: "destructive",
+      });
+    }
   }
 
   // Handle editor content change
@@ -169,41 +257,50 @@ export default function StoryEditorPage() {
     setIsSaving(true)
 
     try {
-      // Update the chapter in the chapters array
+      // Save chapter to API
+      const updatedChapterData = await StoryService.updateChapter(storyId, activeChapter.id, {
+        title: activeChapter.title,
+        content: activeChapter.content,
+        number: activeChapter.number,
+        isPremium: activeChapter.isPremium || false
+      });
+
+      // Format for local state
       const updatedChapter = {
         ...activeChapter,
         lastSaved: new Date(),
-      }
+        wordCount: updatedChapterData.wordCount
+      };
 
-      const updatedChapters = chapters.map((chapter) => (chapter.id === activeChapter.id ? updatedChapter : chapter))
+      // Update the chapters array
+      const updatedChapters = chapters.map((chapter) =>
+        chapter.id === activeChapter.id ? updatedChapter : chapter
+      );
 
       // Update state
-      setChapters(updatedChapters)
-      setActiveChapter(updatedChapter)
-
-      // Save to localStorage
-      localStorage.setItem(`chapters_${storyId}`, JSON.stringify(updatedChapters))
+      setChapters(updatedChapters);
+      setActiveChapter(updatedChapter);
 
       if (showToast) {
         toast({
           title: "Chapter saved",
           description: "Your chapter has been saved.",
-        })
+        });
       }
     } catch (error) {
-      console.error("Failed to save chapter", error)
+      console.error("Failed to save chapter", error);
       toast({
         title: "Save failed",
-        description: "Failed to save your chapter. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to save your chapter. Please try again.",
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
   }
 
   // Add new chapter
-  const addNewChapter = () => {
+  const addNewChapter = async (retryCount = 0) => {
     if (!newChapterTitle.trim()) {
       toast({
         title: "Chapter title required",
@@ -213,37 +310,91 @@ export default function StoryEditorPage() {
       return
     }
 
-    // Create new chapter
-    const newChapter: ChapterData = {
-      id: `chapter_${Date.now()}`,
-      title: newChapterTitle,
-      content: "",
-      order: chapters.length + 1,
-      lastSaved: null,
+    try {
+      // Get the next available chapter number
+      const chapterNumber = await getNextChapterNumber();
+
+      // Create new chapter via API
+      const newChapterData = await StoryService.createChapter(storyId, {
+        title: newChapterTitle,
+        content: "",
+        number: chapterNumber,
+        isPremium: false
+      });
+
+      // Format for local state
+      const newChapter: ChapterData = {
+        id: newChapterData.id,
+        title: newChapterData.title,
+        content: newChapterData.content,
+        number: newChapterData.number,
+        lastSaved: new Date(newChapterData.updatedAt),
+        wordCount: newChapterData.wordCount,
+        isPremium: newChapterData.isPremium
+      };
+
+      // Add to chapters array
+      const updatedChapters = [...chapters, newChapter];
+      setChapters(updatedChapters);
+
+      // Set as active chapter
+      setActiveChapter(newChapter);
+
+      // Reset form
+      setNewChapterTitle("");
+      setIsAddingChapter(false);
+
+      toast({
+        title: "Chapter added",
+        description: `"${newChapterTitle}" has been added.`,
+      });
+    } catch (error) {
+      console.error("Failed to create chapter", error);
+
+      // If we get a unique constraint error and haven't retried too many times, try again
+      if (error instanceof Error &&
+          error.message.includes("already exists") &&
+          retryCount < 3) {
+        console.log(`Retrying chapter creation (attempt ${retryCount + 1})`);
+        // Wait a short time before retrying to avoid race conditions
+        setTimeout(() => addNewChapter(retryCount + 1), 500);
+        return;
+      }
+
+      // Extract detailed error information if available
+      let errorMessage = "Failed to create chapter. Please try again.";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+
+        // Check for specific error types
+        if (errorMessage.includes("already exists")) {
+          // Chapter number conflict
+          errorMessage = "A chapter with this number already exists. The system will automatically assign the next available number when you try again.";
+        } else {
+          // Try to parse JSON error details if present
+          try {
+            if (error.message.includes("Validation error") && error.cause) {
+              const details = JSON.parse(String(error.cause));
+              if (details.details && Array.isArray(details.details)) {
+                errorMessage = details.details.map((err: any) => err.message).join(", ");
+              }
+            }
+          } catch (e) {
+            // If parsing fails, use the original error message
+          }
+        }
+      }
+
+      toast({
+        title: "Failed to add chapter",
+        description: errorMessage,
+        variant: "destructive",
+      });
     }
-
-    // Add to chapters array
-    const updatedChapters = [...chapters, newChapter]
-    setChapters(updatedChapters)
-
-    // Set as active chapter
-    setActiveChapter(newChapter)
-
-    // Save to localStorage
-    localStorage.setItem(`chapters_${storyId}`, JSON.stringify(updatedChapters))
-
-    // Reset form
-    setNewChapterTitle("")
-    setIsAddingChapter(false)
-
-    toast({
-      title: "Chapter added",
-      description: `"${newChapterTitle}" has been added.`,
-    })
   }
 
   // Delete chapter
-  const deleteChapter = (chapterId: string) => {
+  const deleteChapter = async (chapterId: string) => {
     // Don't allow deleting the only chapter
     if (chapters.length <= 1) {
       toast({
@@ -254,29 +405,38 @@ export default function StoryEditorPage() {
       return
     }
 
-    // Remove chapter from array
-    const updatedChapters = chapters.filter((chapter) => chapter.id !== chapterId)
+    try {
+      // Delete chapter via API
+      await StoryService.deleteChapter(storyId, chapterId);
 
-    // Reorder remaining chapters
-    const reorderedChapters = updatedChapters.map((chapter, index) => ({
-      ...chapter,
-      order: index + 1,
-    }))
+      // Remove chapter from array
+      const updatedChapters = chapters.filter((chapter) => chapter.id !== chapterId);
 
-    setChapters(reorderedChapters)
+      // If we need to reorder chapters, we would need to update each chapter's number
+      // This would require multiple API calls, which we'll skip for now
+      // Instead, we'll just update the local state
 
-    // If active chapter was deleted, set a new active chapter
-    if (activeChapter?.id === chapterId) {
-      setActiveChapter(reorderedChapters[0])
+      setChapters(updatedChapters);
+
+      // If active chapter was deleted, set a new active chapter
+      if (activeChapter?.id === chapterId) {
+        // Sort chapters by number to ensure we select the first one
+        const sortedChapters = [...updatedChapters].sort((a, b) => a.number - b.number);
+        setActiveChapter(sortedChapters[0]);
+      }
+
+      toast({
+        title: "Chapter deleted",
+        description: "The chapter has been deleted.",
+      });
+    } catch (error) {
+      console.error("Failed to delete chapter", error);
+      toast({
+        title: "Failed to delete chapter",
+        description: error instanceof Error ? error.message : "Failed to delete chapter. Please try again.",
+        variant: "destructive",
+      });
     }
-
-    // Save to localStorage
-    localStorage.setItem(`chapters_${storyId}`, JSON.stringify(reorderedChapters))
-
-    toast({
-      title: "Chapter deleted",
-      description: "The chapter has been deleted.",
-    })
   }
 
   // Switch active chapter
@@ -343,40 +503,47 @@ export default function StoryEditorPage() {
       return
     }
 
+    // Confirm publishing
+    if (!window.confirm("Are you sure you want to publish this story? Published stories will be visible to all users.")) {
+      return
+    }
+
     setIsPublishing(true)
 
     try {
       // Save all chapters first
       await saveChapter(false)
 
-      // In a real app, we would send to an API
-      // For this demo, we'll just update the draft status
-      const publishedStory = {
+      // Update the story in the database to set isDraft to false
+      const publishedStory = await StoryService.updateStory(storyId, {
+        isDraft: false
+      })
+
+      // Log the published story details for debugging
+      console.log("Published story:", publishedStory)
+
+      // Update local state
+      setStoryMetadata({
         ...storyMetadata,
         isDraft: false,
         lastSaved: new Date(),
-      }
-
-      // Save to localStorage
-      localStorage.setItem("draftStory", JSON.stringify(publishedStory))
-
-      // Update state
-      setStoryMetadata(publishedStory)
+        slug: publishedStory.slug // Make sure we have the latest slug
+      })
 
       toast({
         title: "Story published",
         description: "Your story has been published successfully!",
       })
 
-      // Redirect to story page
+      // Redirect to story page using the slug from the API response
       setTimeout(() => {
-        router.push(`/story/${storyId}`)
+        router.push(`/story/${publishedStory.slug}`)
       }, 1500)
     } catch (error) {
       console.error("Failed to publish story", error)
       toast({
         title: "Publish failed",
-        description: "Failed to publish your story. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to publish your story. Please try again.",
         variant: "destructive",
       })
     } finally {

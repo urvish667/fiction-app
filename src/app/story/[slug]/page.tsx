@@ -2,54 +2,65 @@
 
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
+import { useSession } from "next-auth/react"
 import { motion } from "framer-motion"
 import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, BookOpen } from "lucide-react"
+import { ArrowLeft, BookOpen, Heart, Bookmark } from "lucide-react"
 import Navbar from "@/components/navbar"
 import ChapterList from "@/components/chapter-list"
 import StoryMetadata from "@/components/story-metadata"
-import LikeShareFollow from "@/components/like-share-follow"
 import CommentSection from "@/components/comment-section"
 import AdBanner from "@/components/ad-banner"
-import type { Story, Chapter } from "@/lib/types"
-import { sampleStories } from "@/lib/sample-data"
-import { sampleChapters } from "@/lib/sample-chapters"
+import { StoryService } from "@/services/story-service"
+import { Story as StoryType, Chapter as ChapterType } from "@/types/story"
 
 export default function StoryInfoPage() {
   const params = useParams()
   const router = useRouter()
   const slug = params?.slug as string
 
-  const [story, setStory] = useState<Story | null>(null)
-  const [chapters, setChapters] = useState<Chapter[]>([])
+  const { data: session } = useSession()
+  const [story, setStory] = useState<StoryType | null>(null)
+  const [chapters, setChapters] = useState<ChapterType[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   // Fetch story data based on slug
   useEffect(() => {
-    // In a real app, this would be an API call
-    // For demo purposes, we're using sample data
-    const fetchStory = () => {
+    const fetchStory = async () => {
+      if (!slug) return
+
       setIsLoading(true)
+      setError(null)
 
-      // Find story by converting ID to string (simulating slug)
-      const foundStory = sampleStories.find((s) => s.id.toString() === slug)
+      try {
+        // Try to find the story by slug
+        const storyBySlug = await StoryService.getStoryBySlug(slug)
 
-      if (foundStory) {
-        setStory(foundStory)
-        // Get chapters for this story
-        const storyChapters = sampleChapters.filter((c) => c.storyId.toString() === slug)
-        setChapters(storyChapters)
+        if (!storyBySlug) {
+          setError("Story not found")
+          setIsLoading(false)
+          return
+        }
+
+        // Set the story details
+        setStory(storyBySlug)
+
+        // Fetch chapters for this story
+        const chaptersData = await StoryService.getChapters(storyBySlug.id)
+        setChapters(chaptersData)
+      } catch (err) {
+        console.error("Error fetching story:", err)
+        setError("Failed to load story. Please try again.")
+      } finally {
+        setIsLoading(false)
       }
-
-      setIsLoading(false)
     }
 
-    if (slug) {
-      fetchStory()
-    }
+    fetchStory()
   }, [slug])
 
   // Handle back button
@@ -60,7 +71,57 @@ export default function StoryInfoPage() {
   // Handle start reading
   const handleStartReading = () => {
     if (chapters.length > 0) {
-      router.push(`/story/${slug}/chapter/1`)
+      // Find the first chapter by number
+      const firstChapter = [...chapters].sort((a, b) => a.number - b.number)[0]
+      router.push(`/story/${slug}/chapter/${firstChapter.number}`)
+    }
+  }
+
+  // Handle like/unlike
+  const handleLike = async () => {
+    if (!session) {
+      router.push(`/login?callbackUrl=/story/${slug}`)
+      return
+    }
+
+    try {
+      if (!story) return;
+
+      if (story.isLiked) {
+        await StoryService.unlikeStory(story.id)
+      } else {
+        await StoryService.likeStory(story.id)
+      }
+
+      // Refresh story data to update like status
+      const updatedStory = await StoryService.getStory(story!.id)
+      setStory(updatedStory)
+    } catch (err) {
+      console.error("Error updating like status:", err)
+    }
+  }
+
+  // Handle bookmark/unbookmark
+  const handleBookmark = async () => {
+    if (!session) {
+      router.push(`/login?callbackUrl=/story/${slug}`)
+      return
+    }
+
+    try {
+      if (!story) return;
+
+      if (story.isBookmarked) {
+        await StoryService.removeBookmark(story.id)
+      } else {
+        await StoryService.bookmarkStory(story.id)
+      }
+
+      // Refresh story data to update bookmark status
+      const updatedStory = await StoryService.getStory(story!.id)
+      setStory(updatedStory)
+    } catch (err) {
+      console.error("Error updating bookmark status:", err)
     }
   }
 
@@ -77,13 +138,13 @@ export default function StoryInfoPage() {
     )
   }
 
-  if (!story) {
+  if (error || !story) {
     return (
       <div className="min-h-screen">
         <Navbar />
         <div className="container mx-auto px-4 py-8">
           <div className="flex flex-col justify-center items-center h-[60vh]">
-            <h1 className="text-2xl font-bold mb-4">Story not found</h1>
+            <h1 className="text-2xl font-bold mb-4">{error || "Story not found"}</h1>
             <p className="text-muted-foreground mb-6">
               The story you're looking for doesn't exist or has been removed.
             </p>
@@ -116,7 +177,7 @@ export default function StoryInfoPage() {
               className="relative aspect-[2/3] rounded-lg overflow-hidden shadow-lg"
             >
               <Image
-                src={story.thumbnail || "/placeholder.svg?height=600&width=400"}
+                src={story.coverImage || "/placeholder.svg?height=600&width=400"}
                 alt={story.title}
                 fill
                 className="object-cover"
@@ -147,14 +208,16 @@ export default function StoryInfoPage() {
                 <span className="text-lg">
                   By{" "}
                   <Link
-                    href={`/author/${story.author.toLowerCase().replace(/\s+/g, "-")}`}
+                    href={`/user/${story.author?.username || "unknown"}`}
                     className="font-medium hover:underline"
                   >
-                    {story.author}
+                    {typeof story.author === 'object' ?
+                      (story.author?.name || story.author?.username || "Unknown Author") :
+                      "Unknown Author"}
                   </Link>
                 </span>
                 <span className="text-muted-foreground">•</span>
-                <Badge variant="secondary">{story.genre}</Badge>
+                <Badge variant="secondary">{story.genre || "General"}</Badge>
               </div>
 
               {/* Story Metadata */}
@@ -164,11 +227,7 @@ export default function StoryInfoPage() {
               <div className="mb-6">
                 <h2 className="text-xl font-semibold mb-2">Description</h2>
                 <p className="text-muted-foreground">
-                  {story.excerpt}
-                  {/* Adding more text for a realistic description */}
-                  {` In this captivating tale, readers will embark on a journey through ${story.genre.toLowerCase()} worlds, 
-                  exploring themes of adventure, discovery, and personal growth. The author weaves a rich tapestry of 
-                  characters and settings that will keep you engaged from the first page to the last.`}
+                  {story.description || "No description available for this story."}
                 </p>
               </div>
 
@@ -181,7 +240,27 @@ export default function StoryInfoPage() {
               </div>
 
               {/* Like, Share, Follow */}
-              <LikeShareFollow story={story} />
+              <div className="flex items-center gap-4 mb-6">
+                <Button
+                  variant={story.isLiked ? "default" : "outline"}
+                  size="sm"
+                  onClick={handleLike}
+                  className="flex items-center gap-2"
+                >
+                  <Heart size={16} className={story.isLiked ? "fill-current" : ""} />
+                  {story.likeCount || 0} Likes
+                </Button>
+
+                <Button
+                  variant={story.isBookmarked ? "default" : "outline"}
+                  size="sm"
+                  onClick={handleBookmark}
+                  className="flex items-center gap-2"
+                >
+                  <Bookmark size={16} className={story.isBookmarked ? "fill-current" : ""} />
+                  Bookmark
+                </Button>
+              </div>
             </motion.div>
           </div>
         </div>
@@ -224,7 +303,9 @@ export default function StoryInfoPage() {
           <p className="text-muted-foreground mb-4">
             If you enjoyed this story, consider supporting the author to help them create more amazing content.
           </p>
-          <Button variant="default">Support {story.author}</Button>
+          <Button variant="default">Support {typeof story.author === 'object' ?
+            (story.author?.name || story.author?.username || "the Author") :
+            story.author || "the Author"}</Button>
         </motion.div>
       </main>
 

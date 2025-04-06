@@ -22,15 +22,15 @@ import {
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Separator } from "@/components/ui/separator"
+// import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
 import Navbar from "@/components/navbar"
 import ChapterList from "@/components/chapter-list"
 import CommentSection from "@/components/comment-section"
 import AdBanner from "@/components/ad-banner"
-import type { Story, Chapter } from "@/lib/types"
-import { sampleStories } from "@/lib/sample-data"
-import { sampleChapters } from "@/lib/sample-chapters"
+import { useSession } from "next-auth/react"
+import { StoryService } from "@/services/story-service"
+import { Story as StoryType, Chapter as ChapterType } from "@/types/story"
 
 export default function ReadingPage() {
   const params = useParams()
@@ -40,10 +40,12 @@ export default function ReadingPage() {
   const slug = params?.slug as string
   const chapterNumber = Number.parseInt(params?.chapterNumber as string, 10)
 
-  const [story, setStory] = useState<Story | null>(null)
-  const [chapter, setChapter] = useState<Chapter | null>(null)
-  const [chapters, setChapters] = useState<Chapter[]>([])
+  const { data: session } = useSession()
+  const [story, setStory] = useState<StoryType | null>(null)
+  const [chapter, setChapter] = useState<ChapterType | null>(null)
+  const [chapters, setChapters] = useState<ChapterType[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [showComments, setShowComments] = useState(false)
   const [fontSize, setFontSize] = useState(16)
   const [readingProgress, setReadingProgress] = useState(0)
@@ -52,32 +54,55 @@ export default function ReadingPage() {
 
   // Fetch story and chapter data
   useEffect(() => {
-    const fetchData = () => {
+    const fetchData = async () => {
+      if (!slug || !chapterNumber) return
+
       setIsLoading(true)
+      setError(null)
 
-      // Find story by ID (simulating slug)
-      const foundStory = sampleStories.find((s) => s.id.toString() === slug)
+      try {
+        // Find the story by exact slug
+        const storyBySlug = await StoryService.getStoryBySlug(slug)
 
-      if (foundStory) {
-        setStory(foundStory)
-
-        // Get all chapters for this story
-        const storyChapters = sampleChapters.filter((c) => c.storyId.toString() === slug)
-        setChapters(storyChapters)
-
-        // Get current chapter
-        const currentChapter = storyChapters.find((c) => c.number === chapterNumber)
-        if (currentChapter) {
-          setChapter(currentChapter)
+        // If no story found, show error
+        if (!storyBySlug) {
+          setError("Story not found")
+          setIsLoading(false)
+          return
         }
+
+        // Set the story details
+        const storyDetails = storyBySlug
+        setStory(storyDetails)
+
+        // Fetch chapters for this story
+        const chaptersData = await StoryService.getChapters(storyDetails.id)
+        setChapters(chaptersData)
+
+        // Find the current chapter by number
+        const currentChapter = chaptersData.find(c => c.number === chapterNumber)
+
+        if (currentChapter) {
+          // Fetch the full chapter details
+          const chapterDetails = await StoryService.getChapter(storyDetails.id, currentChapter.id)
+          setChapter(chapterDetails)
+
+          // Update reading progress if available
+          if (chapterDetails.readingProgress) {
+            setReadingProgress(chapterDetails.readingProgress)
+          }
+        } else {
+          setError("Chapter not found")
+        }
+      } catch (err) {
+        console.error("Error fetching chapter data:", err)
+        setError("Failed to load chapter. Please try again.")
+      } finally {
+        setIsLoading(false)
       }
-
-      setIsLoading(false)
     }
 
-    if (slug && chapterNumber) {
-      fetchData()
-    }
+    fetchData()
   }, [slug, chapterNumber])
 
   // Track reading progress
@@ -90,10 +115,20 @@ export default function ReadingPage() {
       const progress = (scrollTop / windowHeight) * 100
       setReadingProgress(Math.min(Math.round(progress), 100))
 
-      // Update chapter progress in local storage
-      if (chapter) {
-        // In a real app, this would be sent to an API
-        console.log(`Reading progress: ${progress}% for chapter ${chapter.id}`)
+      // Update chapter progress in the API
+      if (chapter && session?.user?.id) {
+        // Debounce the API call to avoid too many requests
+        // Only send updates when progress changes by at least 5%
+        const debounceProgress = Math.floor(progress / 5) * 5
+
+        if (Math.abs(debounceProgress - readingProgress) >= 5) {
+          // Update reading progress in the API
+          StoryService.updateReadingProgress(chapter.id, debounceProgress)
+            .catch(err => console.error("Error updating reading progress:", err))
+
+          // Update local state
+          setReadingProgress(debounceProgress)
+        }
       }
     }
 
@@ -132,12 +167,18 @@ export default function ReadingPage() {
   }
 
   // Format date
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    }).format(date)
+  const formatDate = (dateInput: Date | string) => {
+    try {
+      const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput
+      return new Intl.DateTimeFormat("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }).format(date)
+    } catch (error) {
+      console.error("Error formatting date:", error)
+      return "Unknown date"
+    }
   }
 
   if (isLoading) {
@@ -153,17 +194,17 @@ export default function ReadingPage() {
     )
   }
 
-  if (!story || !chapter) {
+  if (error || !story || !chapter) {
     return (
       <div className="min-h-screen">
         <Navbar />
         <div className="container mx-auto px-4 py-8">
           <div className="flex flex-col justify-center items-center h-[60vh]">
-            <h1 className="text-2xl font-bold mb-4">Chapter not found</h1>
+            <h1 className="text-2xl font-bold mb-4">{error || "Chapter not found"}</h1>
             <p className="text-muted-foreground mb-6">
               The chapter you're looking for doesn't exist or has been removed.
             </p>
-            <Button onClick={() => router.push("/browse")}>Go to Browse</Button>
+            <Button onClick={() => router.push(`/story/${slug}`)}>Back to Story</Button>
           </div>
         </div>
       </div>
@@ -292,13 +333,15 @@ export default function ReadingPage() {
                 {story.title}
               </Link>
               <span>•</span>
-              <Link href={`/author/${story.author.toLowerCase().replace(/\s+/g, "-")}`} className="hover:underline">
-                By {story.author}
+              <Link href={`/user/${story.author?.username || "unknown"}`} className="hover:underline">
+                By {typeof story.author === 'object' ?
+                  (story.author?.name || story.author?.username || "Unknown Author") :
+                  "Unknown Author"}
               </Link>
               <span>•</span>
               <Badge variant="outline">{story.genre}</Badge>
               <span>•</span>
-              <span>Updated {formatDate(chapter.publishDate)}</span>
+              <span>Updated {formatDate(chapter.updatedAt)}</span>
             </div>
           </motion.div>
 
@@ -311,125 +354,10 @@ export default function ReadingPage() {
             className="prose prose-lg dark:prose-invert max-w-none mb-12"
             style={{ fontSize: `${fontSize}px` }}
           >
-            {/* This would be the actual chapter content, rendered from markdown */}
-            <p>
-              The lighthouse stood tall against the darkening sky, its beam cutting through the encroaching fog like a
-              sword of light. Emma had never seen anything quite like it—a solitary sentinel against the coming night.
-            </p>
-
-            <p>
-              "It's been here for centuries," her grandfather said, his voice barely audible above the crashing waves.
-              "Some say it's the last of its kind."
-            </p>
-
-            <p>
-              Emma nodded, though she wasn't entirely sure what he meant. At twelve years old, she had seen lighthouses
-              before, in books and movies. But there was something different about this one, something almost alive in
-              the way it pulsed with light.
-            </p>
+            {/* Render the actual chapter content */}
+            <div dangerouslySetInnerHTML={{ __html: chapter.content || 'Content not available.' }} />
 
             <AdBanner type="interstitial" className="my-8 w-full h-32" />
-
-            <p>"Can we go inside?" she asked, already moving toward the winding path that led up the cliff.</p>
-
-            <p>
-              Her grandfather hesitated, glancing at the darkening horizon. "We shouldn't stay long. The tide comes in
-              quickly here, and when darkness falls..." He trailed off, leaving the warning unfinished.
-            </p>
-
-            <p>
-              But Emma was already halfway up the path, her curiosity pulling her forward like an invisible thread. The
-              lighthouse called to her, its rhythmic flashes seeming to speak a language she almost understood.
-            </p>
-
-            <p>
-              The door at the base was heavier than she expected, ancient wood bound with iron that had turned green
-              with age. It swung open with a groan that seemed to echo up the spiral staircase within.
-            </p>
-
-            <p>
-              "Hello?" Emma called, her voice bouncing back at her from stone walls. No answer came, but she hadn't
-              really expected one. According to her grandfather, the lighthouse had been automated decades ago, its
-              human keepers replaced by machines.
-            </p>
-
-            <p>
-              "We really shouldn't be in here," her grandfather said as he stepped in behind her, but there was a note
-              of resignation in his voice. He knew as well as she did that they would climb to the top.
-            </p>
-
-            <p>
-              The stairs wound upward in a tight spiral, each step worn smooth by generations of keepers' feet. Emma ran
-              her hand along the wall as she climbed, feeling the cool stone beneath her fingertips. It was almost as if
-              the lighthouse was breathing, a slow and steady rhythm that matched the pulse of its light.
-            </p>
-
-            <AdBanner type="interstitial" className="my-8 w-full h-32" />
-
-            <p>
-              When they reached the top, Emma gasped. The lantern room was a marvel of glass and brass, the massive lens
-              at its center catching and amplifying the light from a source she couldn't quite see. But it wasn't the
-              mechanism that took her breath away—it was the view.
-            </p>
-
-            <p>
-              From this height, she could see for miles in every direction. The ocean stretched to the horizon, a vast
-              expanse of deepening blue as twilight settled over the world. But to the east, where the land should have
-              been, there was only darkness.
-            </p>
-
-            <p>"Grandfather," she whispered, "where are the lights from the town?"</p>
-
-            <p>
-              He stood beside her, his weathered face solemn in the glow of the lighthouse beam. "That's why they call
-              it the Last Lighthouse, Emma. It stands at the edge of our world, keeping the darkness at bay."
-            </p>
-
-            <p>
-              As if on cue, the darkness to the east seemed to shift and move, like something alive and hungry. Emma
-              felt a chill run down her spine that had nothing to do with the evening air.
-            </p>
-
-            <p>"What is it?" she asked, though part of her didn't want to know.</p>
-
-            <p>
-              "Some call it the Void," her grandfather replied. "Others have different names for it. But all agree on
-              one thing—it consumes. Towns, cities, entire countries have been swallowed by it over the centuries. And
-              it's still growing."
-            </p>
-
-            <p>
-              Emma stared at the darkness, trying to make sense of what she was seeing. It wasn't just an absence of
-              light—it was something more, something that seemed to devour the very concept of existence.
-            </p>
-
-            <p>"And the lighthouse stops it?" she asked, her voice small.</p>
-
-            <p>
-              "For now," her grandfather said. "As long as the light shines, the darkness cannot advance. That's why it
-              must never go out."
-            </p>
-
-            <p>
-              As they watched, the beam of light swept across the boundary between the world and the Void. Where it
-              touched, the darkness recoiled, hissing like water on hot metal.
-            </p>
-
-            <p>
-              "But what happens when the lighthouse fails?" Emma asked, unable to tear her eyes away from the spectacle.
-            </p>
-
-            <p>
-              Her grandfather was silent for a long moment. "Then we'll need someone brave enough to become the new
-              light," he finally said, placing a hand on her shoulder. "Someone who isn't afraid of the dark."
-            </p>
-
-            <p>
-              Emma felt something stir within her, a sense of purpose she had never known before. She placed her hand on
-              the cool glass of the lantern room, feeling the pulse of the light through her palm.
-            </p>
-
-            <p>"I'm not afraid," she whispered, and in that moment, the light seemed to burn just a little brighter.</p>
           </motion.div>
 
           {/* Chapter Navigation Buttons */}
@@ -476,7 +404,7 @@ export default function ReadingPage() {
                   className="flex items-center gap-2"
                 >
                   <MessageSquare size={16} />
-                  Comments ({story.comments})
+                  Comments ({story.commentCount || 0})
                 </Button>
 
                 <DropdownMenu>
@@ -527,30 +455,29 @@ export default function ReadingPage() {
               <p className="text-muted-foreground mb-4">
                 If you enjoyed this chapter, consider supporting the author to help them create more amazing content.
               </p>
-              <Button variant="default">Support {story.author}</Button>
+              <Button variant="default">Support {typeof story.author === 'object' ?
+                (story.author?.name || story.author?.username || "the Author") :
+                story.author || "the Author"}</Button>
             </div>
 
             {/* More from this Author */}
             <div className="mb-12">
-              <h2 className="text-2xl font-bold mb-6">More from {story.author}</h2>
+              <h2 className="text-2xl font-bold mb-6">More from {typeof story.author === 'object' ?
+                (story.author?.name || story.author?.username || "this author") :
+                "this author"}</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                {sampleStories.slice(0, 3).map((relatedStory) => (
-                  <Link key={relatedStory.id} href={`/story/${relatedStory.id}`} className="group block">
-                    <div className="border rounded-lg overflow-hidden transition-all group-hover:border-primary">
-                      <div className="aspect-[3/2] relative bg-muted">
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <BookOpen className="text-muted-foreground" />
-                        </div>
-                      </div>
-                      <div className="p-4">
-                        <h3 className="font-medium line-clamp-1 group-hover:text-primary transition-colors">
-                          {relatedStory.title}
-                        </h3>
-                        <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{relatedStory.excerpt}</p>
-                      </div>
+                {/* Sample stories will be loaded dynamically */}
+                <div className="border rounded-lg overflow-hidden transition-all hover:border-primary">
+                  <div className="aspect-[3/2] relative bg-muted">
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <BookOpen className="text-muted-foreground" />
                     </div>
-                  </Link>
-                ))}
+                  </div>
+                  <div className="p-4">
+                    <h3 className="font-medium line-clamp-1 hover:text-primary transition-colors">Coming soon</h3>
+                    <p className="text-sm text-muted-foreground line-clamp-2 mt-1">More stories from this author will appear here</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

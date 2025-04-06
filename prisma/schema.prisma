@@ -67,6 +67,17 @@ model User {
   notifications       Notification[]
   preferences         Json?     @default("{\"emailNotifications\":{\"newFollower\":false,\"newComment\":false,\"newLike\":false,\"newChapter\":false},\"privacySettings\":{\"publicProfile\":false,\"showEmail\":false,\"showLocation\":false,\"allowMessages\":false}}")
 
+  // Story management relations
+  stories             Story[]
+  comments            Comment[]
+  likes               Like[]
+  bookmarks           Bookmark[]
+  readingProgresses   ReadingProgress[]
+
+  // Social relations
+  followers           Follow[] @relation("Followers")
+  following           Follow[] @relation("Following")
+
   @@index([email])
   @@index([username])
   @@index([provider])  // Added index for provider queries
@@ -96,4 +107,135 @@ model Notification {
   @@index([userId])
   @@index([read])
   @@index([createdAt])
+}
+
+// Story Management Models
+
+model Story {
+  id          String    @id @default(cuid())
+  title       String
+  slug        String    @unique
+  description String?   @db.Text
+  coverImage  String?
+  genre       String?
+  language    String    @default("en")
+  isMature    Boolean   @default(false)
+  isDraft     Boolean   @default(true)
+  wordCount   Int       @default(0)
+  readCount   Int       @default(0)
+
+  authorId    String
+  author      User      @relation(fields: [authorId], references: [id])
+
+  chapters    Chapter[]
+  comments    Comment[]
+  likes       Like[]
+  bookmarks   Bookmark[]
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([authorId])
+  @@index([genre])
+  @@index([isDraft])
+  @@index([createdAt])
+}
+
+model Chapter {
+  id          String    @id @default(cuid())
+  title       String
+  contentKey  String    // S3 object key for content
+  number      Int
+  wordCount   Int       @default(0)
+  isPremium   Boolean   @default(false)
+  readCount   Int       @default(0)
+
+  storyId     String
+  story       Story     @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  readingProgresses ReadingProgress[]
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([storyId, number])
+  @@index([storyId])
+}
+
+model Comment {
+  id          String    @id @default(cuid())
+  content     String    @db.Text
+
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+
+  storyId     String
+  story       Story     @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  parentId    String?
+  parent      Comment?  @relation("CommentToReply", fields: [parentId], references: [id])
+  replies     Comment[] @relation("CommentToReply")
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([storyId])
+  @@index([parentId])
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  storyId   String
+  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, storyId])
+  @@index([userId])
+  @@index([storyId])
+}
+
+model Bookmark {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  storyId   String
+  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, storyId])
+  @@index([userId])
+  @@index([storyId])
+}
+
+model ReadingProgress {
+  id        String   @id @default(cuid())
+  progress  Float    @default(0) // 0-100 percentage
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+
+  chapterId String
+  chapter   Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  lastRead  DateTime @default(now())
+
+  @@unique([userId, chapterId])
+  @@index([userId])
+  @@index([chapterId])
+}
+
+model Follow {
+  id           String   @id @default(cuid())
+  followerId   String
+  follower     User     @relation("Following", fields: [followerId], references: [id])
+  followingId  String
+  following    User     @relation("Followers", fields: [followingId], references: [id])
+  createdAt    DateTime @default(now())
+
+  @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
 }

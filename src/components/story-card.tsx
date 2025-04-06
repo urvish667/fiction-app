@@ -70,7 +70,9 @@ export default function StoryCard({ story, viewMode = "grid" }: StoryCardProps) 
             <div className="flex justify-between items-start">
               <div>
                 <h3 className="font-bold text-lg line-clamp-1">{story.title}</h3>
-                <p className="text-sm text-muted-foreground">by {story.author}</p>
+                <p className="text-sm text-muted-foreground">by {typeof story.author === 'object' ?
+                  (story.author?.name || story.author?.username || "Unknown Author") :
+                  story.author}</p>
               </div>
               <span className="text-xs text-muted-foreground">{formatDate(story.date)}</span>
             </div>
