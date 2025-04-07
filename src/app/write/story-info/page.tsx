@@ -14,7 +14,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
-import { ArrowLeft, Upload, Save, Trash2, AlertCircle, Eye, BookOpen } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Card, CardContent } from "@/components/ui/card"
+import { ArrowLeft, Upload, Save, Trash2, AlertCircle, Eye, BookOpen, Plus, FileText, Clock, CheckCircle2, Edit } from "lucide-react"
 import Navbar from "@/components/navbar"
 import { useDebounce } from "@/hooks/use-debounce"
 import { StoryService } from "@/services/story-service"
@@ -66,6 +68,7 @@ export default function StoryInfoPage() {
     isMature: false,
     coverImage: "/placeholder.svg?height=600&width=400",
     isDraft: true,
+    status: "ongoing", // "ongoing" or "completed"
     lastSaved: null as Date | null,
     slug: "", // For URL routing
   })
@@ -81,16 +84,27 @@ export default function StoryInfoPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [isPublishing, setIsPublishing] = useState(false)
+  const [isLoadingChapters, setIsLoadingChapters] = useState(false)
 
   // Track if story data has changed since last save
   const [hasChanges, setHasChanges] = useState(false);
+
+  // Chapters state
+  const [chapters, setChapters] = useState<Array<{
+    id: string;
+    title: string;
+    status: "published" | "draft" | "scheduled" | "premium";
+    wordCount: number;
+    lastUpdated: Date;
+    number: number;
+  }>>([]);
 
   // Create debounced version of storyData for auto-save
   const debouncedStoryData = useDebounce(storyData, 3000);
 
   // Auto-save effect
   useEffect(() => {
-    // Only auto-save if we have a title and there are changes
+    // Auto-save if we have a title and there are changes
     if (debouncedStoryData.title.trim() && hasChanges && !isSaving) {
       const autoSave = async () => {
         try {
@@ -129,9 +143,13 @@ export default function StoryInfoPage() {
             isMature: story.isMature,
             coverImage: story.coverImage || "/placeholder.svg?height=600&width=400",
             isDraft: story.isDraft,
+            status: story.status || "ongoing", // Load the story status
             lastSaved: new Date(story.updatedAt),
             slug: story.slug,
           });
+
+          // Fetch chapters for this story
+          fetchChapters(story.id);
         } catch (error) {
           console.error("Failed to fetch story", error);
           toast({
@@ -145,6 +163,49 @@ export default function StoryInfoPage() {
       fetchStory();
     }
   }, [toast])
+
+  // Fetch chapters for a story
+  const fetchChapters = async (storyId: string) => {
+    if (!storyId) return;
+
+    setIsLoadingChapters(true);
+
+    try {
+      const chaptersData = await StoryService.getChapters(storyId);
+
+      // Debug: Log the raw chapter data to see what's coming from the API
+      console.log('Raw chapter data:', chaptersData);
+
+      // Convert to our local format
+      const formattedChapters = chaptersData.map(chapter => {
+        // Debug: Log each chapter's draft status
+        console.log(`Chapter ${chapter.id} isDraft:`, chapter.isDraft);
+
+        return {
+          id: chapter.id,
+          title: chapter.title,
+          status: chapter.isDraft ? "draft" : (chapter.isPremium ? "premium" : "published"),
+          wordCount: chapter.wordCount,
+          lastUpdated: new Date(chapter.updatedAt),
+          number: chapter.number
+        };
+      });
+
+      // Debug: Log the formatted chapters
+      console.log('Formatted chapters:', formattedChapters);
+
+      setChapters(formattedChapters);
+    } catch (error) {
+      console.error("Failed to fetch chapters", error);
+      toast({
+        title: "Error loading chapters",
+        description: "Failed to load chapter data. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingChapters(false);
+    }
+  };
 
   // Handle input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -190,7 +251,36 @@ export default function StoryInfoPage() {
   }
 
   // Handle switch changes
-  const handleSwitchChange = (name: string, checked: boolean) => {
+  const handleSwitchChange = async (name: string, checked: boolean) => {
+    // Special handling for status change to "completed"
+    if (name === "status" && checked) { // checked means changing to "completed"
+      // Check if the story has any draft chapters
+      if (storyData.id) {
+        try {
+          const chapters = await StoryService.getChapters(storyData.id);
+          const draftChapters = chapters.filter(chapter => chapter.isDraft);
+
+          if (draftChapters.length > 0) {
+            toast({
+              title: "Cannot mark as completed",
+              description: `This story has ${draftChapters.length} draft ${draftChapters.length === 1 ? "chapter" : "chapters"}. Please publish all draft chapters before marking the story as completed.`,
+              variant: "destructive",
+            });
+            return; // Don't update the status
+          }
+        } catch (error) {
+          console.error("Failed to check draft chapters:", error);
+          toast({
+            title: "Error",
+            description: "Failed to check draft chapters. Please try again.",
+            variant: "destructive",
+          });
+          return; // Don't update the status
+        }
+      }
+    }
+
+    // Update the state
     setStoryData((prev) => ({
       ...prev,
       [name]: checked,
@@ -317,6 +407,7 @@ export default function StoryInfoPage() {
         isMature: dataToSave.isMature,
         coverImage: dataToSave.coverImage !== "/placeholder.svg?height=600&width=400" ? dataToSave.coverImage : undefined,
         isDraft: true, // Always save as draft initially
+        status: dataToSave.status, // Include the story status
       };
 
       let savedStory;
@@ -416,17 +507,27 @@ export default function StoryInfoPage() {
     setIsPublishing(true)
 
     try {
-      // Save story data first
-      const savedStory = await saveStoryData(false)
+      // Instead of saving first and then updating, directly publish the story
+      const storyRequest: CreateStoryRequest | UpdateStoryRequest = {
+        title: storyData.title,
+        description: storyData.description,
+        genre: storyData.genre,
+        language: storyData.language,
+        isMature: storyData.isMature,
+        coverImage: storyData.coverImage !== "/placeholder.svg?height=600&width=400" ? storyData.coverImage : undefined,
+        isDraft: false, // Set to published
+        status: storyData.status // Include the story status
+      };
 
-      if (!savedStory || !savedStory.id) {
-        throw new Error("Failed to save story before publishing")
+      let publishedStory;
+
+      if (storyData.id) {
+        // Update existing story
+        publishedStory = await StoryService.updateStory(storyData.id, storyRequest);
+      } else {
+        // Create new story
+        publishedStory = await StoryService.createStory(storyRequest as CreateStoryRequest);
       }
-
-      // Update the story to set isDraft to false
-      const publishedStory = await StoryService.updateStory(savedStory.id, {
-        isDraft: false
-      })
 
       // Update local state
       setStoryData(prev => ({
@@ -472,8 +573,9 @@ export default function StoryInfoPage() {
     const savedStory = await saveStoryData(false)
 
     // Navigate to editor using the ID from the saved story
+    // We'll redirect to new-chapter to start creating the first chapter
     if (savedStory && savedStory.id) {
-      router.push(`/write/editor/${savedStory.id}`)
+      router.push(`/write/editor/${savedStory.id}/new-chapter`)
     } else {
       toast({
         title: "Error",
@@ -481,6 +583,45 @@ export default function StoryInfoPage() {
         variant: "destructive",
       })
     }
+  }
+
+  // Format date for display
+  const formatDate = (date: Date) => {
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }).format(date)
+  }
+
+  // Handle creating a new chapter
+  const handleCreateChapter = async () => {
+    // First save the story if it's not saved yet
+    if (!storyData.id) {
+      if (!validateForm()) {
+        toast({
+          title: "Please complete story details",
+          description: "Fill in all required fields before creating a chapter.",
+          variant: "destructive",
+        })
+        return
+      }
+
+      const savedStory = await saveStoryData(false)
+      if (savedStory) {
+        // Navigate to editor with new chapter using new URL pattern
+        router.push(`/write/editor/${savedStory.id}/new-chapter`)
+      }
+    } else {
+      // Navigate to editor with new chapter using new URL pattern
+      router.push(`/write/editor/${storyData.id}/new-chapter`)
+    }
+  }
+
+  // Handle editing an existing chapter
+  const handleEditChapter = (chapterId: string) => {
+    // Use the new URL pattern
+    router.push(`/write/editor/${storyData.id}/${chapterId}`)
   }
 
   // Check authentication
@@ -509,36 +650,28 @@ export default function StoryInfoPage() {
                 Published
               </div>
             )}
-
-            <Button
-              variant="outline"
-              onClick={() => saveStoryData(true)}
-              disabled={isSaving || isPublishing}
-              className="flex items-center gap-2"
-            >
-              <Save size={16} />
-              {isSaving ? "Saving..." : "Save Draft"}
-            </Button>
-
-            {storyData.id && storyData.isDraft && (
-              <Button
-                variant="default"
-                onClick={publishStory}
-                disabled={isSaving || isPublishing}
-                className="flex items-center gap-2"
-              >
-                {isPublishing ? "Publishing..." : "Publish"}
-              </Button>
-            )}
+            {/* Save Draft and Publish buttons removed */}
           </div>
         </div>
 
         {/* Last saved indicator */}
-        {storyData.lastSaved && (
-          <p className="text-sm text-muted-foreground mb-4 text-right">
-            Last saved: {storyData.lastSaved.toLocaleString()}
-          </p>
-        )}
+        <div className="mb-4 flex justify-end items-center gap-2">
+          {isSaving ? (
+            <div className="text-sm text-muted-foreground flex items-center gap-1">
+              <span className="animate-spin h-3 w-3 border-t-2 border-b-2 border-primary rounded-full"></span>
+              Auto-saving...
+            </div>
+          ) : storyData.lastSaved ? (
+            <div className="text-sm text-muted-foreground flex items-center gap-1">
+              <Clock size={14} />
+              Auto-saved: {storyData.lastSaved.toLocaleString()}
+            </div>
+          ) : hasChanges ? (
+            <div className="text-sm text-muted-foreground">
+              Unsaved changes
+            </div>
+          ) : null}
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
           {/* Cover Image */}
@@ -773,42 +906,194 @@ export default function StoryInfoPage() {
                 </div>
               </div>
 
-              {/* Action Buttons */}
+              {/* Story Status Toggle */}
+              <div className="flex items-center justify-between space-x-2 mt-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="story-status">
+                      Story Completed
+                    </Label>
+                    {isSaving && (
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <div className="animate-spin h-3 w-3 border-t-2 border-b-2 border-primary rounded-full"></div>
+                        Saving...
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {storyData.status === "completed"
+                      ? "This story is complete with all chapters published. No draft chapters allowed."
+                      : "This story is ongoing with published chapters. You can have draft chapters that are only visible to you."}
+                  </p>
+                </div>
+                <div className="relative">
+                  <Switch
+                    id="story-status"
+                    checked={storyData.status === "completed"}
+                    onCheckedChange={(checked) => handleSwitchChange("status", checked ? "completed" : "ongoing")}
+                    disabled={isSaving && !hasChanges}
+                  />
+                </div>
+              </div>
+
+              {/* Action Buttons - Removed */}
               <div className="pt-6 flex flex-wrap gap-4">
-                {storyData.id && !storyData.isDraft ? (
-                  <>
-                    <Button
-                      onClick={() => router.push(`/story/${storyData.slug}`)}
-                      size="lg"
-                      className="w-full md:w-auto flex items-center gap-2"
-                    >
-                      <BookOpen size={18} />
-                      View Published Story
-                    </Button>
-                    <Button
-                      onClick={handleProceedToEditor}
-                      variant="outline"
-                      size="lg"
-                      className="w-full md:w-auto flex items-center gap-2"
-                    >
-                      <Eye size={18} />
-                      Edit in Editor
-                    </Button>
-                  </>
-                ) : (
+                {storyData.id && !storyData.isDraft && (
                   <Button
-                    onClick={handleProceedToEditor}
+                    onClick={() => router.push(`/story/${storyData.slug}`)}
                     size="lg"
-                    className="w-full md:w-auto"
-                    disabled={isPublishing}
+                    className="w-full md:w-auto flex items-center gap-2"
                   >
-                    {storyData.id ? "Continue in Editor" : "Proceed to Editor"}
+                    <BookOpen size={18} />
+                    View Published Story
                   </Button>
                 )}
               </div>
             </motion.div>
           </div>
         </div>
+
+        {/* Chapters Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.4 }}
+          className="mb-12"
+        >
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold">Chapters</h2>
+            <Button onClick={handleCreateChapter} className="flex items-center gap-2">
+              <Plus size={16} />
+              New Chapter
+            </Button>
+          </div>
+
+          {isLoadingChapters ? (
+            <div className="flex justify-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+            </div>
+          ) : chapters.length > 0 ? (
+            <div className="grid grid-cols-1 gap-4">
+              {chapters.map((chapter) => (
+                <Card key={chapter.id} className="overflow-hidden">
+                  <CardContent className="p-0">
+                    <div className="flex items-center p-4">
+                      <div className="flex-shrink-0 mr-4">
+                        <div className="bg-muted/50 rounded-full p-3">
+                          <FileText size={24} className="text-muted-foreground" />
+                        </div>
+                      </div>
+
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-medium">{chapter.title}</h3>
+                          <div className="flex gap-1">
+                            {/* Debug: Show the actual status */}
+                            <Badge variant={chapter.status === "draft" ? "outline" : "default"} className={chapter.status === "premium" ? "bg-amber-500" : ""}>
+                              {chapter.status.charAt(0).toUpperCase() + chapter.status.slice(1)}
+                            </Badge>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <Clock size={14} />
+                            <span>Last updated: {formatDate(chapter.lastUpdated)}</span>
+                          </div>
+                          <div>{chapter.wordCount} words</div>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex items-center gap-1"
+                          onClick={() => handleEditChapter(chapter.id)}
+                        >
+                          <Edit size={14} />
+                          Edit
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex items-center gap-1"
+                          onClick={() => router.push(`/story/${storyData.slug}/chapter/${chapter.number}`)}
+                        >
+                          <Eye size={14} />
+                          Preview
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <div className="bg-muted/30 rounded-full p-4 mb-4">
+                  <FileText size={32} className="text-muted-foreground" />
+                </div>
+                <h3 className="text-xl font-medium mb-2">No chapters yet</h3>
+                <p className="text-muted-foreground mb-6 text-center max-w-md">
+                  Start writing your story by creating your first chapter. You can add as many chapters as you need.
+                </p>
+                <Button onClick={handleCreateChapter} className="flex items-center gap-2">
+                  <Plus size={16} />
+                  Create First Chapter
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </motion.div>
+
+        {/* Publishing Tips */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.6 }}
+          className="mb-12 bg-muted/30 rounded-lg p-6"
+        >
+          <h2 className="text-xl font-bold mb-4">Publishing Tips</h2>
+          <div className="space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="bg-primary/10 rounded-full p-2 mt-1">
+                <CheckCircle2 size={16} className="text-primary" />
+              </div>
+              <div>
+                <h3 className="font-medium">Complete your story details</h3>
+                <p className="text-sm text-muted-foreground">
+                  A compelling title and description will help readers find and engage with your story.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <div className="bg-primary/10 rounded-full p-2 mt-1">
+                <CheckCircle2 size={16} className="text-primary" />
+              </div>
+              <div>
+                <h3 className="font-medium">Create engaging chapters</h3>
+                <p className="text-sm text-muted-foreground">
+                  Break your story into chapters to make it easier to read and navigate.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <div className="bg-primary/10 rounded-full p-2 mt-1">
+                <CheckCircle2 size={16} className="text-primary" />
+              </div>
+              <div>
+                <h3 className="font-medium">Preview before publishing</h3>
+                <p className="text-sm text-muted-foreground">
+                  Always preview your chapters to catch any formatting issues or typos.
+                </p>
+              </div>
+            </div>
+          </div>
+        </motion.div>
       </main>
 
       {/* Footer */}

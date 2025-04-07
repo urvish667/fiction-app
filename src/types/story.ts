@@ -10,6 +10,7 @@ export type Story = {
   language: string;
   isMature: boolean;
   isDraft: boolean;
+  status: string; // "ongoing" or "completed"
   wordCount: number;
   readCount: number;
   authorId: string;
@@ -34,6 +35,8 @@ export type Chapter = {
   number: number;
   wordCount: number;
   isPremium: boolean;
+  isDraft: boolean; // Individual chapter draft status
+  publishDate?: Date; // For scheduled publishing
   readCount: number;
   storyId: string;
   story?: Story;
@@ -93,6 +96,7 @@ export type CreateStoryRequest = {
   language?: string;
   isMature?: boolean;
   isDraft?: boolean;
+  status?: string; // "ongoing" or "completed"
 };
 
 export type UpdateStoryRequest = Partial<CreateStoryRequest>;
@@ -102,6 +106,8 @@ export type CreateChapterRequest = {
   content: string;
   number: number;
   isPremium?: boolean;
+  isDraft?: boolean;
+  publishDate?: Date;
 };
 
 export type UpdateChapterRequest = Partial<CreateChapterRequest>;

@@ -14,6 +14,7 @@ const updateStorySchema = z.object({
   language: z.string().optional(),
   isMature: z.boolean().optional(),
   isDraft: z.boolean().optional(),
+  status: z.enum(["ongoing", "completed"]).optional(),
 });
 
 // GET endpoint to retrieve a specific story

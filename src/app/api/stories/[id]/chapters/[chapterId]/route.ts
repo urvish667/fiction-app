@@ -12,6 +12,8 @@ const updateChapterSchema = z.object({
   content: z.string().min(1, "Content is required").optional(),
   number: z.number().int().positive("Chapter number must be positive").optional(),
   isPremium: z.boolean().optional(),
+  isDraft: z.boolean().optional(),
+  publishDate: z.date().optional().nullable(),
 });
 
 // GET endpoint to retrieve a specific chapter

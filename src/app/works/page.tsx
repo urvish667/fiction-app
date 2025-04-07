@@ -20,14 +20,16 @@ import type { Story } from "@/types/story"
 
 // Extended story type with UI-specific properties
 interface WorkStory extends Story {
-  status: "published" | "draft";
+  publishStatus: "published" | "draft";
+  completionStatus: "ongoing" | "completed";
   lastEdited: Date;
+  draftChapters: number;
 }
 
 export default function MyWorksPage() {
   const { data: session } = useSession()
   const { toast } = useToast()
-  const [activeTab, setActiveTab] = useState("published")
+  const [activeTab, setActiveTab] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
   const [isLoading, setIsLoading] = useState(true)
   const [myWorks, setMyWorks] = useState<WorkStory[]>([])
@@ -43,12 +45,27 @@ export default function MyWorksPage() {
           authorId: session.user.id
         })
 
+        // Get chapters for each story to count draft chapters
+        const worksWithChapters = await Promise.all(response.stories.map(async (story) => {
+          let draftChapters = 0;
+          try {
+            const chapters = await StoryService.getChapters(story.id);
+            draftChapters = chapters.filter(chapter => chapter.isDraft).length;
+          } catch (error) {
+            console.error(`Failed to fetch chapters for story ${story.id}:`, error);
+          }
+
+          return {
+            ...story,
+            publishStatus: story.isDraft ? "draft" : "published",
+            completionStatus: story.status as "ongoing" | "completed",
+            lastEdited: new Date(story.updatedAt),
+            draftChapters
+          };
+        }));
+
         // Transform API response to our WorkStory format
-        const works = response.stories.map(story => ({
-          ...story,
-          status: story.isDraft ? "draft" : "published",
-          lastEdited: new Date(story.updatedAt)
-        })) as WorkStory[]
+        const works = worksWithChapters as WorkStory[]
 
         setMyWorks(works)
       } catch (error) {
@@ -68,7 +85,14 @@ export default function MyWorksPage() {
 
   // Filter stories based on active tab and search query
   const filteredWorks = myWorks.filter((work) => {
-    const matchesTab = activeTab === "all" || work.status === activeTab
+    // Define what each tab means:
+    // - draft: stories with isDraft=true (no published chapters)
+    // - ongoing: stories with isDraft=false AND status="ongoing" (at least one published chapter, more coming)
+    // - completed: stories with isDraft=false AND status="completed" (all chapters published, story ended)
+    const matchesTab = activeTab === "all" ||
+                      (activeTab === "draft" && work.publishStatus === "draft") ||
+                      (activeTab === "ongoing" && work.publishStatus === "published" && work.completionStatus === "ongoing") ||
+                      (activeTab === "completed" && work.publishStatus === "published" && work.completionStatus === "completed")
     const matchesSearch =
       !searchQuery ||
       work.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -118,22 +142,27 @@ export default function MyWorksPage() {
           </div>
         </div>
 
-        <Tabs defaultValue="published" value={activeTab} onValueChange={setActiveTab} className="mt-6">
+        <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="mt-6">
           <TabsList className="mb-8">
             <TabsTrigger value="all">All Works</TabsTrigger>
-            <TabsTrigger value="published">Published</TabsTrigger>
             <TabsTrigger value="draft">Drafts</TabsTrigger>
+            <TabsTrigger value="ongoing">Ongoing</TabsTrigger>
+            <TabsTrigger value="completed">Completed</TabsTrigger>
           </TabsList>
 
           <TabsContent value="all">
             <WorksContent works={filteredWorks} searchQuery={searchQuery} isLoading={isLoading} />
           </TabsContent>
 
-          <TabsContent value="published">
+          <TabsContent value="draft">
             <WorksContent works={filteredWorks} searchQuery={searchQuery} isLoading={isLoading} />
           </TabsContent>
 
-          <TabsContent value="draft">
+          <TabsContent value="ongoing">
+            <WorksContent works={filteredWorks} searchQuery={searchQuery} isLoading={isLoading} />
+          </TabsContent>
+
+          <TabsContent value="completed">
             <WorksContent works={filteredWorks} searchQuery={searchQuery} isLoading={isLoading} />
           </TabsContent>
         </Tabs>
@@ -202,13 +231,27 @@ function WorksContent({ works, searchQuery, isLoading }: WorksContentProps) {
           <Card key={work.id} className="overflow-hidden flex flex-col">
             <div className="relative aspect-[3/2] overflow-hidden">
               <Image src={work.coverImage || "/placeholder.svg"} alt={work.title} fill className="object-cover" />
-              <Badge
-                className={`absolute top-2 right-2 ${work.status === "published" ? "bg-green-500" : "bg-amber-500"}`}
-              >
-                {work.status === "published" ? "Published" : "Draft"}
-              </Badge>
+              <div className="absolute top-2 right-2 flex flex-col gap-1">
+                {/* Show only one primary status badge */}
+                {work.publishStatus === "draft" ? (
+                  <Badge className="bg-amber-500">Draft</Badge>
+                ) : (
+                  <Badge
+                    className={`${work.completionStatus === "completed" ? "bg-blue-500" : "bg-purple-500"}`}
+                  >
+                    {work.completionStatus === "completed" ? "Completed" : "Ongoing"}
+                  </Badge>
+                )}
 
-              {work.status === "draft" && (
+                {/* Show draft chapters count for published stories */}
+                {work.draftChapters > 0 && work.publishStatus !== "draft" && (
+                  <Badge variant="outline" className="bg-background/80">
+                    {work.draftChapters} Draft {work.draftChapters === 1 ? "Chapter" : "Chapters"}
+                  </Badge>
+                )}
+              </div>
+
+              {work.publishStatus === "draft" && (
                 <div className="absolute bottom-0 left-0 right-0 bg-background/80 px-3 py-1 text-xs">
                   <div className="flex justify-between items-center">
                     <span className="flex items-center gap-1">
@@ -293,7 +336,7 @@ function WorksContent({ works, searchQuery, isLoading }: WorksContentProps) {
             </CardContent>
 
             <CardFooter className="p-4 pt-0 flex gap-2">
-              {work.status === "draft" ? (
+              {work.publishStatus === "draft" ? (
                 <>
                   <Button className="flex-1" onClick={() => handleContinueEditing(work.id)}>
                     <PenSquare className="h-4 w-4 mr-2" />

@@ -12,6 +12,8 @@ const createChapterSchema = z.object({
   content: z.string().default(""), // Allow empty content for new chapters
   number: z.number().int().positive("Chapter number must be positive"),
   isPremium: z.boolean().default(false),
+  isDraft: z.boolean().default(true),
+  publishDate: z.date().optional(),
 });
 
 // GET endpoint to retrieve all chapters for a story
@@ -54,6 +56,7 @@ export async function GET(
         number: true,
         wordCount: true,
         isPremium: true,
+        isDraft: true, // Add isDraft field
         readCount: true,
         createdAt: true,
         updatedAt: true,
@@ -192,6 +195,8 @@ export async function POST(
           title: validatedData.title,
           number: validatedData.number,
           isPremium: validatedData.isPremium || false,
+          isDraft: validatedData.isDraft || true,
+          publishDate: validatedData.publishDate,
           wordCount,
           storyId,
           contentKey,
@@ -223,6 +228,8 @@ export async function POST(
             title,
             number: nextNumber,
             isPremium: validatedData.isPremium || false,
+            isDraft: validatedData.isDraft || true,
+            publishDate: validatedData.publishDate,
             wordCount,
             storyId,
             contentKey: `stories/${storyId}/chapters/${nextNumber}.txt`,

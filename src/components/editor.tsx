@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useEditor, EditorContent } from "@tiptap/react"
 import StarterKit from "@tiptap/starter-kit"
 import Placeholder from "@tiptap/extension-placeholder"
@@ -33,6 +33,9 @@ interface EditorProps {
 export function Editor({ content, onChange, readOnly = false }: EditorProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Track if content is being updated internally to avoid unnecessary saves
+  const [isInternalUpdate, setIsInternalUpdate] = useState(false)
+
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -50,14 +53,27 @@ export function Editor({ content, onChange, readOnly = false }: EditorProps) {
     content,
     editable: !readOnly,
     onUpdate: ({ editor }) => {
-      onChange(editor.getHTML())
+      // Only trigger onChange if it's not an internal update
+      if (!isInternalUpdate) {
+        onChange(editor.getHTML())
+      }
     },
   })
 
   // Update editor content when content prop changes
   useEffect(() => {
-    if (editor && content !== editor.getHTML()) {
-      editor.commands.setContent(content)
+    if (editor) {
+      // Normalize both strings for comparison
+      const normalizedEditorContent = editor.getHTML().replace(/\s+/g, ' ').trim()
+      const normalizedContent = content.replace(/\s+/g, ' ').trim()
+
+      // Only update if content is actually different
+      if (normalizedContent !== normalizedEditorContent) {
+        setIsInternalUpdate(true)
+        editor.commands.setContent(content)
+        // Reset the flag after the update
+        setTimeout(() => setIsInternalUpdate(false), 0)
+      }
     }
   }, [editor, content])
 

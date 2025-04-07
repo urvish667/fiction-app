@@ -121,6 +121,7 @@ model Story {
   language    String    @default("en")
   isMature    Boolean   @default(false)
   isDraft     Boolean   @default(true)
+  status      String    @default("ongoing") // "ongoing" or "completed"
   wordCount   Int       @default(0)
   readCount   Int       @default(0)
 
@@ -138,6 +139,7 @@ model Story {
   @@index([authorId])
   @@index([genre])
   @@index([isDraft])
+  @@index([status])
   @@index([createdAt])
 }
 
@@ -148,6 +150,8 @@ model Chapter {
   number      Int
   wordCount   Int       @default(0)
   isPremium   Boolean   @default(false)
+  isDraft     Boolean   @default(true) // Individual chapter draft status
+  publishDate DateTime?  // For scheduled publishing
   readCount   Int       @default(0)
 
   storyId     String
@@ -160,6 +164,8 @@ model Chapter {
 
   @@unique([storyId, number])
   @@index([storyId])
+  @@index([isDraft])
+  @@index([publishDate])
 }
 
 model Comment {
