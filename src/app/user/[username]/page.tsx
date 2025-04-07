@@ -23,6 +23,7 @@ import {
 } from "lucide-react"
 import Navbar from "@/components/navbar"
 import StoryCard from "@/components/story-card"
+import { SiteFooter } from "@/components/site-footer"
 import { sampleStories } from "@/lib/sample-data"
 
 // Mock user data
@@ -370,6 +371,9 @@ export default function UserProfilePage() {
           </TabsContent>
         </Tabs>
       </main>
+
+      {/* Footer */}
+      <SiteFooter />
     </div>
   )
 }

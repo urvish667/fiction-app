@@ -14,6 +14,7 @@ import ChapterList from "@/components/chapter-list"
 import StoryMetadata from "@/components/story-metadata"
 import CommentSection from "@/components/comment-section"
 import AdBanner from "@/components/ad-banner"
+import { SiteFooter } from "@/components/site-footer"
 import { StoryService } from "@/services/story-service"
 import { Story as StoryType, Chapter as ChapterType } from "@/types/story"
 
@@ -315,61 +316,7 @@ export default function StoryInfoPage() {
       </div>
 
       {/* Footer */}
-      <footer className="py-10 px-4 bg-muted">
-        <div className="container mx-auto">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="mb-6 md:mb-0">
-              <h2 className="text-2xl font-bold font-serif">FableSpace</h2>
-              <p className="text-muted-foreground">Unleash your stories, one page at a time.</p>
-            </div>
-            <div className="flex gap-8">
-              <div>
-                <h3 className="font-medium mb-2">Platform</h3>
-                <ul className="space-y-1">
-                  <li>
-                    <Link href="#" className="text-muted-foreground hover:text-foreground">
-                      Browse
-                    </Link>
-                  </li>
-                  <li>
-                    <Link href="#" className="text-muted-foreground hover:text-foreground">
-                      Write
-                    </Link>
-                  </li>
-                  <li>
-                    <Link href="#" className="text-muted-foreground hover:text-foreground">
-                      Challenges
-                    </Link>
-                  </li>
-                </ul>
-              </div>
-              <div>
-                <h3 className="font-medium mb-2">Company</h3>
-                <ul className="space-y-1">
-                  <li>
-                    <Link href="#" className="text-muted-foreground hover:text-foreground">
-                      About
-                    </Link>
-                  </li>
-                  <li>
-                    <Link href="#" className="text-muted-foreground hover:text-foreground">
-                      Blog
-                    </Link>
-                  </li>
-                  <li>
-                    <Link href="#" className="text-muted-foreground hover:text-foreground">
-                      Contact
-                    </Link>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-          <div className="mt-10 pt-6 border-t border-border text-center text-sm text-muted-foreground">
-            &copy; {new Date().getFullYear()} FableSpace. All rights reserved.
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   )
 }

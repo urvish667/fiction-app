@@ -8,6 +8,7 @@ import FilterPanel from "@/components/filter-panel"
 import StoryGrid from "@/components/story-grid"
 import AdBanner from "@/components/ad-banner"
 import Pagination from "@/components/pagination"
+import { SiteFooter } from "@/components/site-footer"
 import { Button } from "@/components/ui/button"
 import { Filter, Grid, List } from "lucide-react"
 import { useMediaQuery } from "@/hooks/use-media-query"
@@ -206,6 +207,9 @@ export default function BrowsePage() {
       <div className="sticky bottom-0 w-full z-40">
         <AdBanner type="banner" className="w-full h-16" />
       </div>
+
+      {/* Footer */}
+      <SiteFooter />
     </div>
   )
 }

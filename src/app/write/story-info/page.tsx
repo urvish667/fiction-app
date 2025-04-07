@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { ArrowLeft, Upload, Save, Trash2, AlertCircle, Eye, BookOpen, Plus, FileText, Clock, CheckCircle2, Edit } from "lucide-react"
 import Navbar from "@/components/navbar"
+import { SiteFooter } from "@/components/site-footer"
 import { useDebounce } from "@/hooks/use-debounce"
 import { StoryService } from "@/services/story-service"
 import { CreateStoryRequest, UpdateStoryRequest } from "@/types/story"
@@ -1097,61 +1098,7 @@ export default function StoryInfoPage() {
       </main>
 
       {/* Footer */}
-      <footer className="py-10 px-4 bg-muted">
-        <div className="container mx-auto">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="mb-6 md:mb-0">
-              <h2 className="text-2xl font-bold font-serif">FableSpace</h2>
-              <p className="text-muted-foreground">Unleash your stories, one page at a time.</p>
-            </div>
-            <div className="flex gap-8">
-              <div>
-                <h3 className="font-medium mb-2">Platform</h3>
-                <ul className="space-y-1">
-                  <li>
-                    <a href="#" className="text-muted-foreground hover:text-foreground">
-                      Browse
-                    </a>
-                  </li>
-                  <li>
-                    <a href="#" className="text-muted-foreground hover:text-foreground">
-                      Write
-                    </a>
-                  </li>
-                  <li>
-                    <a href="#" className="text-muted-foreground hover:text-foreground">
-                      Challenges
-                    </a>
-                  </li>
-                </ul>
-              </div>
-              <div>
-                <h3 className="font-medium mb-2">Company</h3>
-                <ul className="space-y-1">
-                  <li>
-                    <a href="#" className="text-muted-foreground hover:text-foreground">
-                      About
-                    </a>
-                  </li>
-                  <li>
-                    <a href="#" className="text-muted-foreground hover:text-foreground">
-                      Blog
-                    </a>
-                  </li>
-                  <li>
-                    <a href="#" className="text-muted-foreground hover:text-foreground">
-                      Contact
-                    </a>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-          <div className="mt-10 pt-6 border-t border-border text-center text-sm text-muted-foreground">
-            &copy; {new Date().getFullYear()} FableSpace. All rights reserved.
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   )
 }
