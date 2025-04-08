@@ -38,7 +38,7 @@ export default function Navbar() {
 
   if (isLoading) {
     return (
-      <header className="px-8 sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <header className="px-8 sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-md">
         <div className="container flex h-16 items-center justify-between">
           <Link href="/" className="flex items-center">
             <motion.h1
@@ -59,7 +59,7 @@ export default function Navbar() {
   }
 
   return (
-    <header className="px-8 sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="px-8 sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-md">
       <div className="container flex h-16 items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center">
@@ -114,6 +114,7 @@ export default function Navbar() {
                 <Link href="/browse" className="text-lg font-medium">
                   Browse
                 </Link>
+
                 {isAuthenticated && session.user ? (
                   <>
                     <Link href={`/user/${session.user.name}`} className="text-lg font-medium">

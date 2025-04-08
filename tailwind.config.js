@@ -11,45 +11,45 @@ module.exports = {
   			sm: 'calc(var(--radius) - 4px)'
   		},
   		colors: {
-  			background: '#F5F5DC',
-  			foreground: '#4A3F35',
+  			background: '#FFFFFF',
+  			foreground: '#000000',
   			card: {
-  				DEFAULT: '#F5F5DC',
-  				foreground: '#4A3F35'
+  				DEFAULT: '#FFFFFF',
+  				foreground: '#000000'
   			},
   			popover: {
-  				DEFAULT: '#F5F5DC',
-  				foreground: '#4A3F35'
+  				DEFAULT: '#FFFFFF',
+  				foreground: '#000000'
   			},
   			primary: {
-  				DEFAULT: '#FF6F61',
-  				foreground: '#F5F5DC'
+  				DEFAULT: '#1E90FF',
+  				foreground: '#FFFFFF'
   			},
   			secondary: {
-  				DEFAULT: '#F0F0D8',
-  				foreground: '#4A3F35'
+  				DEFAULT: '#F0F8FF',
+  				foreground: '#000000'
   			},
   			muted: {
-  				DEFAULT: '#EAEACC',
-  				foreground: '#6B5C4C'
+  				DEFAULT: '#E5E5E5',
+  				foreground: '#4B5563'
   			},
   			accent: {
-  				DEFAULT: '#FF6F61',
-  				foreground: '#F5F5DC'
+  				DEFAULT: '#1E90FF',
+  				foreground: '#FFFFFF'
   			},
   			destructive: {
   				DEFAULT: '#FF453A',
-  				foreground: '#F5F5DC'
+  				foreground: '#FFFFFF'
   			},
-  			border: '#D9D9BE',
-  			input: '#E0E0C4',
-  			ring: '#FF6F61',
+  			border: '#D1D5DB',
+  			input: '#E5E5E5',
+  			ring: '#1E90FF',
   			chart: {
-  				'1': '#FF6F61',
-  				'2': '#F5D7A1',
-  				'3': '#B2D3A8',
-  				'4': '#A8C8E1',
-  				'5': '#D8B4C8'
+  				'1': '#1E90FF',
+  				'2': '#4169E1',
+  				'3': '#00BFFF',
+  				'4': '#87CEEB',
+  				'5': '#B0E0E6'
   			}
   		}
   	}

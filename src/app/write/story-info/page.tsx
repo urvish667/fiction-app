@@ -67,7 +67,7 @@ export default function StoryInfoPage() {
     genre: "",
     language: "English",
     isMature: false,
-    coverImage: "/placeholder.svg?height=600&width=400",
+    coverImage: "/placeholder.svg?height=1600&width=900",
     status: "draft", // "draft", "ongoing", or "completed"
     lastSaved: null as Date | null,
     slug: "", // For URL routing
@@ -141,7 +141,7 @@ export default function StoryInfoPage() {
             genre: story.genre || "",
             language: story.language || "English",
             isMature: story.isMature,
-            coverImage: story.coverImage || "/placeholder.svg?height=600&width=400",
+            coverImage: story.coverImage || "/placeholder.svg?height=1600&width=900",
             status: story.status || "draft", // Load the story status
             lastSaved: new Date(story.updatedAt),
             slug: story.slug,
@@ -350,7 +350,7 @@ export default function StoryInfoPage() {
   const handleRemoveCoverImage = () => {
     setStoryData((prev) => ({
       ...prev,
-      coverImage: "/placeholder.svg?height=600&width=400",
+      coverImage: "/placeholder.svg?height=1600&width=900",
       lastSaved: null, // Mark as unsaved
     }))
   }
@@ -404,7 +404,7 @@ export default function StoryInfoPage() {
         genre: dataToSave.genre,
         language: dataToSave.language,
         isMature: dataToSave.isMature,
-        coverImage: dataToSave.coverImage !== "/placeholder.svg?height=600&width=400" ? dataToSave.coverImage : undefined,
+        coverImage: dataToSave.coverImage !== "/placeholder.svg?height=1600&width=900" ? dataToSave.coverImage : undefined,
         status: dataToSave.status || "draft", // Include the story status
       };
 
@@ -512,7 +512,7 @@ export default function StoryInfoPage() {
         genre: storyData.genre,
         language: storyData.language,
         isMature: storyData.isMature,
-        coverImage: storyData.coverImage !== "/placeholder.svg?height=600&width=400" ? storyData.coverImage : undefined,
+        coverImage: storyData.coverImage !== "/placeholder.svg?height=1600&width=900" ? storyData.coverImage : undefined,
         isDraft: false, // Set to published
         status: storyData.status // Include the story status
       };
@@ -683,7 +683,7 @@ export default function StoryInfoPage() {
               <h2 className="text-xl font-bold">Cover Image</h2>
 
               <div
-                className="relative aspect-[2/3] rounded-lg overflow-hidden border cursor-pointer group"
+                className="relative aspect-[16/9] rounded-lg overflow-hidden border cursor-pointer group"
                 onClick={handleCoverImageClick}
               >
                 {isUploading ? (
@@ -717,13 +717,13 @@ export default function StoryInfoPage() {
                 <Button
                   variant="outline"
                   onClick={handleRemoveCoverImage}
-                  disabled={storyData.coverImage === "/placeholder.svg?height=600&width=400" || isUploading}
+                  disabled={storyData.coverImage === "/placeholder.svg?height=1600&width=900" || isUploading}
                 >
                   <Trash2 size={16} />
                 </Button>
               </div>
 
-              <p className="text-xs text-muted-foreground">Recommended size: 600x900 pixels. Max file size: 5MB.</p>
+              <p className="text-xs text-muted-foreground">Recommended size: 1600x900 pixels. Max file size: 5MB.</p>
             </motion.div>
           </div>
 

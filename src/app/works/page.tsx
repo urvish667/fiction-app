@@ -129,7 +129,7 @@ export default function MyWorksPage() {
               )}
             </div>
 
-            <Button asChild>
+            <Button asChild className="border-2 border-primary">
               <Link href="/write/story-info">
                 <PenSquare className="h-4 w-4 mr-2" />
                 New Story
@@ -210,7 +210,7 @@ function WorksContent({ works, searchQuery, isLoading }: WorksContentProps) {
             ? "Try adjusting your search."
             : "You haven't created any stories yet. Start writing your first story!"}
         </p>
-        <Button asChild>
+        <Button asChild className="border-2 border-primary">
           <Link href="/write/story-info">
             <PenSquare className="h-4 w-4 mr-2" />
             Write New Story

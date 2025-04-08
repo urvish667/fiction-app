@@ -38,7 +38,7 @@ export default function Home() {
                 Start Reading
               </Button>
               <Link href="/write/story-info">
-                <Button size="lg" variant="outline" className="text-base">
+                <Button size="lg" variant="outline" className="text-base border-2 border-primary">
                   Start Writing
                 </Button>
               </Link>

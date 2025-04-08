@@ -118,7 +118,7 @@ export default function DashboardPage() {
               </SelectContent>
             </Select>
 
-            <Button asChild>
+            <Button asChild className="border-2 border-primary">
               <Link href="/write/story-info">
                 <PenSquare className="h-4 w-4 mr-2" />
                 New Story

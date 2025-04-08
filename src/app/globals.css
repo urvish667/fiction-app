@@ -24,7 +24,7 @@
 
 /* Editor content styling */
 .editor-content {
-  color: #4A3F35;
+  color: #000000;
 }
 
 .editor-content p,
@@ -39,12 +39,12 @@
 .editor-content blockquote,
 .editor-content pre,
 .editor-content code {
-  color: #4A3F35;
+  color: #000000;
 }
 
 /* Ensure proper styling for the editor's placeholder */
 .ProseMirror p.is-editor-empty:first-child::before {
-  color: #6B5C4C;
+  color: #4B5563;
   content: attr(data-placeholder);
   float: left;
   height: 0;
@@ -53,14 +53,14 @@
 
 /* Ensure proper styling for blockquotes in the editor */
 .editor-content blockquote {
-  border-left: 3px solid #D9D9BE;
+  border-left: 3px solid #1E90FF;
   padding-left: 1rem;
-  color: #6B5C4C;
+  color: #4B5563;
 }
 
 /* Ensure proper styling for code blocks in the editor */
 .editor-content pre {
-  background-color: #EAEACC;
+  background-color: #F0F8FF;
   padding: 0.75rem;
   border-radius: 0.375rem;
   overflow-x: auto;
@@ -68,7 +68,7 @@
 
 /* Ensure proper styling for inline code in the editor */
 .editor-content code {
-  background-color: #EAEACC;
+  background-color: #F0F8FF;
   padding: 0.2rem 0.4rem;
   border-radius: 0.25rem;
   font-size: 0.875em;

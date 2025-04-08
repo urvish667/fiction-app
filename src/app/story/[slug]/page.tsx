@@ -181,10 +181,10 @@ export default function StoryInfoPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
-              className="relative aspect-[2/3] rounded-lg overflow-hidden shadow-lg"
+              className="relative aspect-[16/9] rounded-lg overflow-hidden shadow-lg"
             >
               <Image
-                src={story.coverImage || "/placeholder.svg?height=600&width=400"}
+                src={story.coverImage || "/placeholder.svg?height=1600&width=900"}
                 alt={story.title}
                 fill
                 className="object-cover"

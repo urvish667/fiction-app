@@ -224,7 +224,7 @@ export default function UserProfilePage() {
               )}
 
               {user.isCurrentUser && (
-                <Button asChild>
+                <Button asChild className="border-2 border-primary">
                   <Link href="/write/story-info">Write New Story</Link>
                 </Button>
               )}
@@ -280,7 +280,7 @@ export default function UserProfilePage() {
                   {user.isCurrentUser ? (
                     <>
                       <p className="text-muted-foreground mb-6">Start writing your first story today!</p>
-                      <Button asChild>
+                      <Button asChild className="border-2 border-primary">
                         <Link href="/write/story-info">Write New Story</Link>
                       </Button>
                     </>
