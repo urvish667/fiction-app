@@ -1,7 +1,7 @@
-import { 
-  PutObjectCommand, 
-  GetObjectCommand, 
-  DeleteObjectCommand 
+import {
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectCommand
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { s3Client, BUCKET_NAME } from "./aws-config";
@@ -34,6 +34,33 @@ export const S3Service = {
   },
 
   /**
+   * Upload binary data to S3 (for images)
+   * @param key The S3 object key (path)
+   * @param data The binary data to upload
+   * @param contentType The content type (default: image/jpeg)
+   */
+  async uploadImage(key: string, data: ArrayBuffer, contentType = "image/jpeg"): Promise<string> {
+    const params = {
+      Bucket: BUCKET_NAME,
+      Key: key,
+      Body: data,
+      ContentType: contentType,
+      // Removed ACL parameter as it's not supported in the current bucket configuration
+    };
+
+    try {
+      await s3Client.send(new PutObjectCommand(params));
+
+      // Instead of using a signed URL with a long expiration,
+      // we'll return a URL that will be handled by our own API
+      return `/api/images/${encodeURIComponent(key)}`;
+    } catch (error) {
+      console.error("Error uploading image to S3:", error);
+      throw new Error("Failed to upload image");
+    }
+  },
+
+  /**
    * Get content from S3
    * @param key The S3 object key (path)
    */
@@ -46,11 +73,11 @@ export const S3Service = {
     try {
       const response = await s3Client.send(new GetObjectCommand(params));
       const content = await response.Body?.transformToString();
-      
+
       if (!content) {
         throw new Error("Empty content");
       }
-      
+
       return content;
     } catch (error) {
       console.error("Error getting content from S3:", error);

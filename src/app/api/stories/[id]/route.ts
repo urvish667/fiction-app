@@ -10,7 +10,7 @@ import { calculateStoryStatus, isStoryPublic } from "@/lib/story-helpers";
 const updateStorySchema = z.object({
   title: z.string().min(1, "Title is required").max(100, "Title must be less than 100 characters").optional(),
   description: z.string().max(1000, "Description must be less than 1000 characters").optional(),
-  coverImage: z.string().url("Invalid cover image URL").optional().nullable(),
+  coverImage: z.string().optional().nullable(),
   genre: z.string().optional().nullable(),
   language: z.string().optional(),
   isMature: z.boolean().optional(),
@@ -172,7 +172,16 @@ export async function PUT(
 
     // Parse and validate request body
     const body = await request.json();
-    const validatedData = updateStorySchema.parse(body);
+    console.log('Update story request body:', body);
+
+    let validatedData;
+    try {
+      validatedData = updateStorySchema.parse(body);
+      console.log('Validated data:', validatedData);
+    } catch (validationError) {
+      console.error('Validation error:', validationError);
+      throw validationError;
+    }
 
     // Update slug if title is changed
     let slug = story.slug;

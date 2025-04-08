@@ -10,7 +10,7 @@ import { calculateStoryStatus, isStoryPublic } from "@/lib/story-helpers";
 const createStorySchema = z.object({
   title: z.string().min(1, "Title is required").max(100, "Title must be less than 100 characters"),
   description: z.string().max(1000, "Description must be less than 1000 characters").optional(),
-  coverImage: z.string().url("Invalid cover image URL").optional(),
+  coverImage: z.string().optional(),
   genre: z.string().optional(),
   language: z.string().default("en"),
   isMature: z.boolean().default(false),
@@ -130,7 +130,16 @@ export async function POST(request: NextRequest) {
 
     // Parse and validate request body
     const body = await request.json();
-    const validatedData = createStorySchema.parse(body);
+    console.log('Create story request body:', body);
+
+    let validatedData;
+    try {
+      validatedData = createStorySchema.parse(body);
+      console.log('Validated data:', validatedData);
+    } catch (validationError) {
+      console.error('Validation error:', validationError);
+      throw validationError;
+    }
 
     // Generate a unique slug from the title
     const baseSlug = slugify(validatedData.title);

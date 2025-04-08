@@ -106,11 +106,14 @@ export default function StoryInfoPage() {
   useEffect(() => {
     // Auto-save if we have a title and there are changes
     if (debouncedStoryData.title.trim() && hasChanges && !isSaving) {
+      console.log('Auto-save triggered, current storyData:', debouncedStoryData);
       const autoSave = async () => {
         try {
           // Save the current state of the story data
           const currentData = { ...debouncedStoryData };
+          console.log('Auto-saving with data:', currentData);
           await saveStoryData(false, currentData);
+          console.log('Auto-save completed');
           // Don't set hasChanges to false here - we'll do it in saveStoryData
         } catch (error) {
           console.error("Auto-save failed:", error);
@@ -295,7 +298,7 @@ export default function StoryInfoPage() {
     fileInputRef.current?.click()
   }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
@@ -321,29 +324,75 @@ export default function StoryInfoPage() {
 
     setIsUploading(true)
 
-    // In a real app, we would upload to a server/CDN
-    // For this demo, we'll use a local URL
-    const reader = new FileReader()
-    reader.onload = (event) => {
-      if (event.target?.result) {
-        setStoryData((prev) => ({
-          ...prev,
-          coverImage: event.target?.result as string,
-          lastSaved: null, // Mark as unsaved
-        }))
-        setHasChanges(true); // Mark that we have unsaved changes
-        setIsUploading(false)
+    try {
+      // First, read the file as an ArrayBuffer for S3 upload
+      const arrayBuffer = await file.arrayBuffer();
+
+      // Generate a unique key for the image
+      const timestamp = Date.now();
+      const fileExtension = file.name.split('.').pop() || 'jpg';
+      const imageKey = `stories/covers/${storyData.id || 'new'}-${timestamp}.${fileExtension}`;
+
+      // Upload to S3
+      const response = await fetch('/api/upload-image', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          key: imageKey,
+          contentType: file.type,
+          data: Array.from(new Uint8Array(arrayBuffer)),
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to upload image');
       }
-    }
-    reader.onerror = () => {
+
+      const data = await response.json();
+      const imageUrl = data.url;
+      console.log('Image uploaded, received URL:', imageUrl);
+
+      if (!imageUrl) {
+        throw new Error('No image URL returned from server');
+      }
+
+      // Update the story data with the S3 URL
+      setStoryData((prev) => {
+        console.log('Updating story data with new coverImage:', imageUrl);
+        return {
+          ...prev,
+          coverImage: imageUrl,
+          lastSaved: null, // Mark as unsaved
+        };
+      });
+      // Explicitly trigger a save after image upload
+      setHasChanges(true); // Mark that we have unsaved changes
+      console.log('Story data updated, hasChanges set to true');
+
+      // Force a save immediately instead of waiting for auto-save
+      setTimeout(() => {
+        console.log('Forcing save after image upload');
+        // Get the latest state to ensure we have the most up-to-date data
+        setStoryData(currentState => {
+          console.log('Current state before forced save:', currentState);
+          // Save with the current state to ensure we have the latest data
+          saveStoryData(false, currentState);
+          return currentState; // Don't actually change the state
+        });
+      }, 500);
+    } catch (error) {
+      console.error('Error uploading image:', error);
       toast({
         title: "Upload failed",
-        description: "Failed to read the image file.",
+        description: "Failed to upload the image. Please try again.",
         variant: "destructive",
       })
+    } finally {
       setIsUploading(false)
     }
-    reader.readAsDataURL(file)
   }
 
   // Remove cover image
@@ -353,6 +402,7 @@ export default function StoryInfoPage() {
       coverImage: "/placeholder.svg?height=1600&width=900",
       lastSaved: null, // Mark as unsaved
     }))
+    setHasChanges(true); // Mark that we have unsaved changes
   }
 
   // Validate form
@@ -398,15 +448,28 @@ export default function StoryInfoPage() {
 
     try {
       // Prepare the story data for API
+      // Log the coverImage value for debugging
+      console.log('Cover image before save:', dataToSave.coverImage);
+
+      // Ensure coverImage is included in the request if it exists and is not the placeholder
+      const hasCoverImage = dataToSave.coverImage &&
+                          dataToSave.coverImage !== "/placeholder.svg" &&
+                          dataToSave.coverImage !== "/placeholder.svg?height=1600&width=900";
+
+      console.log('Has cover image:', hasCoverImage);
+
       const storyRequest: CreateStoryRequest | UpdateStoryRequest = {
         title: dataToSave.title,
         description: dataToSave.description,
         genre: dataToSave.genre,
         language: dataToSave.language,
         isMature: dataToSave.isMature,
-        coverImage: dataToSave.coverImage !== "/placeholder.svg?height=1600&width=900" ? dataToSave.coverImage : undefined,
+        coverImage: hasCoverImage ? dataToSave.coverImage : undefined,
         status: dataToSave.status || "draft", // Include the story status
       };
+
+      // Log the request for debugging
+      console.log('Story request:', storyRequest);
 
       let savedStory;
 
@@ -418,6 +481,8 @@ export default function StoryInfoPage() {
         savedStory = await StoryService.createStory(storyRequest as CreateStoryRequest);
       }
 
+      console.log('Story saved successfully, server response:', savedStory);
+
       // Update state with the saved story data
       const updatedStoryData = {
         ...dataToSave,
@@ -426,7 +491,11 @@ export default function StoryInfoPage() {
         lastSaved: new Date(),
         // Make sure to include the latest description from the server response
         description: savedStory.description || dataToSave.description,
+        // Preserve the coverImage from the server response if it exists
+        coverImage: savedStory.coverImage || dataToSave.coverImage,
       };
+
+      console.log('Updated story data after save:', updatedStoryData);
 
       // Only update the state if the current data matches what we tried to save
       // This prevents overwriting newer changes that happened during the save operation
@@ -458,6 +527,13 @@ export default function StoryInfoPage() {
           newData.language = prevData.language;
         }
 
+        // Cover image
+        if (prevData.coverImage !== dataToSave.coverImage) {
+          console.log('Preserving newer coverImage:', prevData.coverImage);
+          newData.coverImage = prevData.coverImage;
+        }
+
+        console.log('Final state after preserving user changes:', newData);
         return newData;
       });
 
@@ -697,6 +773,7 @@ export default function StoryInfoPage() {
                       alt="Story cover"
                       fill
                       className="object-cover transition-opacity group-hover:opacity-70"
+                      unoptimized={true} // Always use unoptimized for external images
                     />
                     <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                       <div className="bg-background/80 rounded-full p-3">

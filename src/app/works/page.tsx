@@ -226,7 +226,15 @@ function WorksContent({ works, searchQuery, isLoading }: WorksContentProps) {
         {works.map((work) => (
           <Card key={work.id} className="overflow-hidden flex flex-col">
             <div className="relative aspect-[3/2] overflow-hidden">
-              <Image src={work.coverImage || "/placeholder.svg"} alt={work.title} fill className="object-cover" />
+              {/* Log the coverImage for debugging */}
+              <>{console.log(`Story ${work.id} coverImage:`, work.coverImage)}</>
+              <Image
+                src={work.coverImage || "/placeholder.svg"}
+                alt={work.title}
+                fill
+                className="object-cover"
+                unoptimized={true} // Always use unoptimized for external images
+              />
               <div className="absolute top-2 right-2 flex flex-col gap-1">
                 {/* Show only one primary status badge */}
                 {work.status === "draft" ? (
@@ -238,25 +246,22 @@ function WorksContent({ works, searchQuery, isLoading }: WorksContentProps) {
                     {work.status === "completed" ? "Completed" : "Ongoing"}
                   </Badge>
                 )}
-
-                {/* Show draft chapters count for published stories */}
-                {work.draftChapters > 0 && work.status !== "draft" && (
-                  <Badge variant="outline" className="bg-background/80">
-                    {work.draftChapters} Draft {work.draftChapters === 1 ? "Chapter" : "Chapters"}
-                  </Badge>
-                )}
               </div>
 
-              {work.status === "draft" && (
-                <div className="absolute bottom-0 left-0 right-0 bg-background/80 px-3 py-1 text-xs">
-                  <div className="flex justify-between items-center">
+              <div className="absolute bottom-0 left-0 right-0 bg-background/80 px-3 py-1 text-xs">
+                <div className="flex justify-between items-center">
+                  <span className="flex items-center gap-1">
+                    <BookOpen className="h-3.5 w-3.5" />
+                    <span>Chapters: {work.chapterCount || 0}</span>
+                  </span>
+                  {work.status !== "draft" && work.draftChapters > 0 && (
                     <span className="flex items-center gap-1">
-                      <BookOpen className="h-3.5 w-3.5" />
-                      <span>Chapters: {work.chapterCount || 0}</span>
+                      <PenSquare className="h-3.5 w-3.5" />
+                      <span>Drafts: {work.draftChapters}</span>
                     </span>
-                  </div>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
 
             <CardContent className="flex-grow p-4">
@@ -333,13 +338,10 @@ function WorksContent({ works, searchQuery, isLoading }: WorksContentProps) {
 
             <CardFooter className="p-4 pt-0 flex gap-2">
               {work.status === "draft" ? (
-                <>
-                  <Button className="flex-1" onClick={() => handleContinueEditing(work.id)}>
-                    <PenSquare className="h-4 w-4 mr-2" />
-                    Continue Writing
-                  </Button>
-                  <Button variant="outline">Publish</Button>
-                </>
+                <Button className="flex-1" onClick={() => handleContinueEditing(work.id)}>
+                  <PenSquare className="h-4 w-4 mr-2" />
+                  Continue Writing
+                </Button>
               ) : (
                 <>
                   <Button variant="outline" className="flex-1" onClick={() => handleViewStory(work.id, work.slug)}>

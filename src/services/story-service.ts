@@ -93,6 +93,7 @@ export const StoryService = {
    * Create a new story
    */
   async createStory(data: CreateStoryRequest): Promise<Story> {
+    console.log('StoryService.createStory called with data:', data);
     const response = await fetch("/api/stories", {
       method: "POST",
       headers: {
@@ -103,16 +104,20 @@ export const StoryService = {
 
     if (!response.ok) {
       const error = await response.json();
+      console.error('Create story failed:', error);
       throw new Error(error.error || "Failed to create story");
     }
 
-    return response.json();
+    const result = await response.json();
+    console.log('Create story succeeded, result:', result);
+    return result;
   },
 
   /**
    * Update a story
    */
   async updateStory(id: string, data: UpdateStoryRequest): Promise<Story> {
+    console.log('StoryService.updateStory called with id:', id, 'data:', data);
     const response = await fetch(`/api/stories/${id}`, {
       method: "PUT",
       headers: {
@@ -123,10 +128,13 @@ export const StoryService = {
 
     if (!response.ok) {
       const error = await response.json();
+      console.error('Update story failed:', error);
       throw new Error(error.error || "Failed to update story");
     }
 
-    return response.json();
+    const result = await response.json();
+    console.log('Update story succeeded, result:', result);
+    return result;
   },
 
   /**
