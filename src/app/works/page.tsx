@@ -20,8 +20,6 @@ import type { Story } from "@/types/story"
 
 // Extended story type with UI-specific properties
 interface WorkStory extends Story {
-  publishStatus: "published" | "draft";
-  completionStatus: "ongoing" | "completed";
   lastEdited: Date;
   draftChapters: number;
 }
@@ -57,8 +55,6 @@ export default function MyWorksPage() {
 
           return {
             ...story,
-            publishStatus: story.isDraft ? "draft" : "published",
-            completionStatus: story.status as "ongoing" | "completed",
             lastEdited: new Date(story.updatedAt),
             draftChapters
           };
@@ -86,13 +82,13 @@ export default function MyWorksPage() {
   // Filter stories based on active tab and search query
   const filteredWorks = myWorks.filter((work) => {
     // Define what each tab means:
-    // - draft: stories with isDraft=true (no published chapters)
-    // - ongoing: stories with isDraft=false AND status="ongoing" (at least one published chapter, more coming)
-    // - completed: stories with isDraft=false AND status="completed" (all chapters published, story ended)
+    // - draft: stories with status="draft" (no published chapters)
+    // - ongoing: stories with status="ongoing" (at least one published chapter, more coming)
+    // - completed: stories with status="completed" (all chapters published, story ended)
     const matchesTab = activeTab === "all" ||
-                      (activeTab === "draft" && work.publishStatus === "draft") ||
-                      (activeTab === "ongoing" && work.publishStatus === "published" && work.completionStatus === "ongoing") ||
-                      (activeTab === "completed" && work.publishStatus === "published" && work.completionStatus === "completed")
+                      (activeTab === "draft" && work.status === "draft") ||
+                      (activeTab === "ongoing" && work.status === "ongoing") ||
+                      (activeTab === "completed" && work.status === "completed")
     const matchesSearch =
       !searchQuery ||
       work.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -233,25 +229,25 @@ function WorksContent({ works, searchQuery, isLoading }: WorksContentProps) {
               <Image src={work.coverImage || "/placeholder.svg"} alt={work.title} fill className="object-cover" />
               <div className="absolute top-2 right-2 flex flex-col gap-1">
                 {/* Show only one primary status badge */}
-                {work.publishStatus === "draft" ? (
+                {work.status === "draft" ? (
                   <Badge className="bg-amber-500">Draft</Badge>
                 ) : (
                   <Badge
-                    className={`${work.completionStatus === "completed" ? "bg-blue-500" : "bg-purple-500"}`}
+                    className={`${work.status === "completed" ? "bg-blue-500" : "bg-purple-500"}`}
                   >
-                    {work.completionStatus === "completed" ? "Completed" : "Ongoing"}
+                    {work.status === "completed" ? "Completed" : "Ongoing"}
                   </Badge>
                 )}
 
                 {/* Show draft chapters count for published stories */}
-                {work.draftChapters > 0 && work.publishStatus !== "draft" && (
+                {work.draftChapters > 0 && work.status !== "draft" && (
                   <Badge variant="outline" className="bg-background/80">
                     {work.draftChapters} Draft {work.draftChapters === 1 ? "Chapter" : "Chapters"}
                   </Badge>
                 )}
               </div>
 
-              {work.publishStatus === "draft" && (
+              {work.status === "draft" && (
                 <div className="absolute bottom-0 left-0 right-0 bg-background/80 px-3 py-1 text-xs">
                   <div className="flex justify-between items-center">
                     <span className="flex items-center gap-1">
@@ -336,7 +332,7 @@ function WorksContent({ works, searchQuery, isLoading }: WorksContentProps) {
             </CardContent>
 
             <CardFooter className="p-4 pt-0 flex gap-2">
-              {work.publishStatus === "draft" ? (
+              {work.status === "draft" ? (
                 <>
                   <Button className="flex-1" onClick={() => handleContinueEditing(work.id)}>
                     <PenSquare className="h-4 w-4 mr-2" />

@@ -68,8 +68,7 @@ export default function StoryInfoPage() {
     language: "English",
     isMature: false,
     coverImage: "/placeholder.svg?height=600&width=400",
-    isDraft: true,
-    status: "ongoing", // "ongoing" or "completed"
+    status: "draft", // "draft", "ongoing", or "completed"
     lastSaved: null as Date | null,
     slug: "", // For URL routing
   })
@@ -143,8 +142,7 @@ export default function StoryInfoPage() {
             language: story.language || "English",
             isMature: story.isMature,
             coverImage: story.coverImage || "/placeholder.svg?height=600&width=400",
-            isDraft: story.isDraft,
-            status: story.status || "ongoing", // Load the story status
+            status: story.status || "draft", // Load the story status
             lastSaved: new Date(story.updatedAt),
             slug: story.slug,
           });
@@ -407,8 +405,7 @@ export default function StoryInfoPage() {
         language: dataToSave.language,
         isMature: dataToSave.isMature,
         coverImage: dataToSave.coverImage !== "/placeholder.svg?height=600&width=400" ? dataToSave.coverImage : undefined,
-        isDraft: true, // Always save as draft initially
-        status: dataToSave.status, // Include the story status
+        status: dataToSave.status || "draft", // Include the story status
       };
 
       let savedStory;

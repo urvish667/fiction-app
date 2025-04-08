@@ -120,8 +120,7 @@ model Story {
   genre       String?
   language    String    @default("en")
   isMature    Boolean   @default(false)
-  isDraft     Boolean   @default(true)
-  status      String    @default("ongoing") // "ongoing" or "completed"
+  status      String    @default("ongoing") // "ongoing", "completed", or "draft"
   wordCount   Int       @default(0)
   readCount   Int       @default(0)
 
@@ -138,7 +137,7 @@ model Story {
 
   @@index([authorId])
   @@index([genre])
-  @@index([isDraft])
+
   @@index([status])
   @@index([createdAt])
 }

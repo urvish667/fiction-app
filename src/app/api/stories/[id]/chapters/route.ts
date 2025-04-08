@@ -5,6 +5,7 @@ import { prisma } from "@/lib/auth/db-adapter";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { countWords } from "@/lib/utils";
 import { S3Service } from "@/lib/s3-service";
+import { calculateStoryStatus, isStoryPublic } from "@/lib/story-helpers";
 
 // Validation schema for creating a chapter
 const createChapterSchema = z.object({
@@ -38,8 +39,17 @@ export async function GET(
       );
     }
 
+    // Get chapters to determine story status
+    const storyChapters = await prisma.chapter.findMany({
+      where: { storyId: story.id },
+      select: { isDraft: true }
+    });
+
+    // Calculate story status
+    const storyStatus = calculateStoryStatus(storyChapters as any);
+
     // Check if the story is a draft and the user is not the author
-    if (story.isDraft && (!session?.user?.id || session.user.id !== story.authorId)) {
+    if (storyStatus === "draft" && (!session?.user?.id || session.user.id !== story.authorId)) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }

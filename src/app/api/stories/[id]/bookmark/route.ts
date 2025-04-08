@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/auth/db-adapter";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { calculateStoryStatus, isStoryPublic } from "@/lib/story-helpers";
 
 // POST endpoint to bookmark a story
 export async function POST(
@@ -33,8 +34,17 @@ export async function POST(
       );
     }
 
-    // Check if the story is a draft
-    if (story.isDraft && story.authorId !== session.user.id) {
+    // Get chapters to determine story status
+    const chapters = await prisma.chapter.findMany({
+      where: { storyId: story.id },
+      select: { isDraft: true }
+    });
+
+    // Calculate story status
+    const storyStatus = calculateStoryStatus(chapters as any);
+
+    // Check if the story is a draft and the user is not the author
+    if (storyStatus === "draft" && story.authorId !== session.user.id) {
       return NextResponse.json(
         { error: "Cannot bookmark a draft story" },
         { status: 400 }

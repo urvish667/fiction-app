@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/auth/db-adapter";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { calculateStoryStatus, isStoryPublic } from "@/lib/story-helpers";
 
 // GET endpoint to retrieve a story by slug
 export async function GET(
@@ -43,8 +44,17 @@ export async function GET(
       );
     }
 
+    // Get chapters to determine story status
+    const chapters = await prisma.chapter.findMany({
+      where: { storyId: story.id },
+      select: { isDraft: true }
+    });
+
+    // Calculate story status
+    const storyStatus = calculateStoryStatus(chapters as any);
+
     // Check if the story is a draft and the user is not the author
-    if (story.isDraft && (!session?.user?.id || session.user.id !== story.authorId)) {
+    if (storyStatus === "draft" && (!session?.user?.id || session.user.id !== story.authorId)) {
       return NextResponse.json(
         { error: "Unauthorized - This story is not published" },
         { status: 403 }

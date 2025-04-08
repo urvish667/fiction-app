@@ -78,19 +78,33 @@ export default function ReadingPage() {
 
         // Fetch chapters for this story
         const chaptersData = await StoryService.getChapters(storyDetails.id)
-        setChapters(chaptersData)
+
+        // Filter out draft chapters for non-author users
+        const visibleChapters = session?.user?.id === storyDetails.authorId
+          ? chaptersData
+          : chaptersData.filter(chapter => !chapter.isDraft)
+
+        setChapters(visibleChapters)
 
         // Find the current chapter by number
-        const currentChapter = chaptersData.find(c => c.number === chapterNumber)
+        const currentChapter = visibleChapters.find(c => c.number === chapterNumber)
 
         if (currentChapter) {
           // Fetch the full chapter details
           const chapterDetails = await StoryService.getChapter(storyDetails.id, currentChapter.id)
-          setChapter(chapterDetails)
 
-          // Update reading progress if available
-          if (chapterDetails.readingProgress) {
-            setReadingProgress(chapterDetails.readingProgress)
+          // Check if chapter is a draft and if the current user is the author
+          if (chapterDetails.isDraft && (!session?.user?.id || session.user.id !== storyDetails.authorId)) {
+            // If chapter is a draft and user is not the author, show error
+            setError("This chapter is not yet published")
+          } else {
+            // Set chapter data if published or if user is the author
+            setChapter(chapterDetails)
+
+            // Update reading progress if available
+            if (chapterDetails.readingProgress) {
+              setReadingProgress(chapterDetails.readingProgress)
+            }
           }
         } else {
           setError("Chapter not found")
@@ -203,7 +217,9 @@ export default function ReadingPage() {
           <div className="flex flex-col justify-center items-center h-[60vh]">
             <h1 className="text-2xl font-bold mb-4">{error || "Chapter not found"}</h1>
             <p className="text-muted-foreground mb-6">
-              The chapter you're looking for doesn't exist or has been removed.
+              {error === "This chapter is not yet published"
+                ? "This chapter is still being worked on by the author and is not yet available for reading."
+                : "The chapter you're looking for doesn't exist or has been removed."}
             </p>
             <Button onClick={() => router.push(`/story/${slug}`)}>Back to Story</Button>
           </div>

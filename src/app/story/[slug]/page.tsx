@@ -52,7 +52,13 @@ export default function StoryInfoPage() {
 
         // Fetch chapters for this story
         const chaptersData = await StoryService.getChapters(storyBySlug.id)
-        setChapters(chaptersData)
+
+        // Filter out draft chapters for non-author users
+        const visibleChapters = session?.user?.id === storyBySlug.authorId
+          ? chaptersData
+          : chaptersData.filter(chapter => !chapter.isDraft)
+
+        setChapters(visibleChapters)
       } catch (err) {
         console.error("Error fetching story:", err)
         setError("Failed to load story. Please try again.")

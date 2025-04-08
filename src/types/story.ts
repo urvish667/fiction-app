@@ -9,8 +9,7 @@ export type Story = {
   genre?: string;
   language: string;
   isMature: boolean;
-  isDraft: boolean;
-  status: string; // "ongoing" or "completed"
+  status: string; // "draft", "ongoing", or "completed"
   wordCount: number;
   readCount: number;
   authorId: string;
@@ -95,8 +94,7 @@ export type CreateStoryRequest = {
   genre?: string;
   language?: string;
   isMature?: boolean;
-  isDraft?: boolean;
-  status?: string; // "ongoing" or "completed"
+  status?: string; // "draft", "ongoing", or "completed"
 };
 
 export type UpdateStoryRequest = Partial<CreateStoryRequest>;

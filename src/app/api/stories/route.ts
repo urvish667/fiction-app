@@ -4,6 +4,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/auth/db-adapter";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { slugify } from "@/lib/utils";
+import { calculateStoryStatus, isStoryPublic } from "@/lib/story-helpers";
 
 // Validation schema for creating a story
 const createStorySchema = z.object({
@@ -13,8 +14,7 @@ const createStorySchema = z.object({
   genre: z.string().optional(),
   language: z.string().default("en"),
   isMature: z.boolean().default(false),
-  isDraft: z.boolean().default(true),
-  status: z.enum(["ongoing", "completed"]).default("ongoing"),
+  status: z.enum(["draft", "ongoing", "completed"]).default("draft"),
 });
 
 // GET endpoint to retrieve all stories (with filtering and pagination)
@@ -27,8 +27,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "10");
     const genre = searchParams.get("genre");
     const authorId = searchParams.get("authorId");
-    const isDraft = searchParams.get("isDraft") === "true" ? true :
-                   searchParams.get("isDraft") === "false" ? false : undefined;
+    const status = searchParams.get("status");
     const search = searchParams.get("search");
 
     // Calculate pagination
@@ -39,7 +38,7 @@ export async function GET(request: NextRequest) {
 
     if (genre) where.genre = genre;
     if (authorId) where.authorId = authorId;
-    if (isDraft !== undefined) where.isDraft = isDraft;
+    if (status) where.status = status;
     if (search) {
       where.OR = [
         { title: { contains: search, mode: 'insensitive' } },
@@ -50,9 +49,9 @@ export async function GET(request: NextRequest) {
     // Get session to check if user is requesting their own drafts
     const session = await getServerSession(authOptions);
 
-    // Only show published stories unless user is requesting their own
+    // Only show non-draft stories unless user is requesting their own
     if (!session?.user?.id || (authorId !== session.user.id)) {
-      where.isDraft = false;
+      where.status = { not: "draft" };
     }
 
     // Execute query with count

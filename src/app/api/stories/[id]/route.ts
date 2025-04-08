@@ -4,6 +4,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/auth/db-adapter";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { slugify } from "@/lib/utils";
+import { calculateStoryStatus, isStoryPublic } from "@/lib/story-helpers";
 
 // Validation schema for updating a story
 const updateStorySchema = z.object({
@@ -13,8 +14,7 @@ const updateStorySchema = z.object({
   genre: z.string().optional().nullable(),
   language: z.string().optional(),
   isMature: z.boolean().optional(),
-  isDraft: z.boolean().optional(),
-  status: z.enum(["ongoing", "completed"]).optional(),
+  status: z.enum(["draft", "ongoing", "completed"]).optional(),
 });
 
 // GET endpoint to retrieve a specific story
@@ -57,8 +57,17 @@ export async function GET(
       );
     }
 
+    // Get chapters to determine story status
+    const chapters = await prisma.chapter.findMany({
+      where: { storyId: story.id },
+      select: { isDraft: true }
+    });
+
+    // Calculate story status
+    const storyStatus = calculateStoryStatus(chapters as any);
+
     // Check if the story is a draft and the user is not the author
-    if (story.isDraft && (!session?.user?.id || session.user.id !== story.authorId)) {
+    if (storyStatus === "draft" && (!session?.user?.id || session.user.id !== story.authorId)) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }

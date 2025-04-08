@@ -299,7 +299,7 @@ export default function ChapterEditorPage() {
 
       // Ensure the story stays in draft mode
       await StoryService.updateStory(storyId, {
-        isDraft: true
+        status: "draft"
       })
 
       // Update local state with saved data
@@ -408,7 +408,6 @@ export default function ChapterEditorPage() {
 
       // Update the story status based on settings
       await StoryService.updateStory(storyId, {
-        isDraft: false,
         status: publishSettings.markStoryCompleted ? "completed" : "ongoing"
       })
 

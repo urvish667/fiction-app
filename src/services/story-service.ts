@@ -21,7 +21,7 @@ export const StoryService = {
     limit?: number;
     genre?: string;
     authorId?: string;
-    isDraft?: boolean;
+    status?: string;
     search?: string;
   }): Promise<{ stories: StoryResponse[]; pagination: any }> {
     // Build query string from params
