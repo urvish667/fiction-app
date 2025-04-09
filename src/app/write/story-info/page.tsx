@@ -26,7 +26,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { ArrowLeft, Upload, Save, Trash2, AlertCircle, Eye, BookOpen, Plus, FileText, Clock, CheckCircle2, Edit, PenSquare, X, ChevronDown, Loader2 } from "lucide-react"
+import { ArrowLeft, Upload, Trash2, AlertCircle, Eye, BookOpen, Plus, FileText, Clock, CheckCircle2, Edit } from "lucide-react"
 import Navbar from "@/components/navbar"
 import { SiteFooter } from "@/components/site-footer"
 import { useDebounce } from "@/hooks/use-debounce"
@@ -93,7 +93,6 @@ export default function StoryInfoPage() {
   // Loading states
   const [isSaving, setIsSaving] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
-  const [isPublishing, setIsPublishing] = useState(false)
   const [isLoadingChapters, setIsLoadingChapters] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
@@ -129,18 +128,22 @@ export default function StoryInfoPage() {
       // Set a flag to prevent multiple auto-saves in quick succession
       const autoSaveTimeout = setTimeout(async () => {
         try {
+          // Get the current state directly to ensure we're saving the most up-to-date data
+          // This prevents the debounced (outdated) data from overwriting current edits
+          const currentStoryData = storyData;
+          console.log('Using current story data for save:', currentStoryData);
+
           // Check if the story already has an ID (existing story)
-          if (debouncedStoryData.id) {
+          if (currentStoryData.id) {
             // Only update existing stories via auto-save
-            const currentData = { ...debouncedStoryData };
-            console.log('Auto-saving existing story with data:', currentData);
-            await saveStoryData(false, currentData);
+            console.log('Auto-saving existing story with current data');
+            await saveStoryData(false, currentStoryData);
             console.log('Auto-save completed');
           } else {
             // For new stories, only auto-save if we have all required fields
-            if (debouncedStoryData.title && debouncedStoryData.description && debouncedStoryData.genre) {
-              console.log('Auto-saving new story with data:', debouncedStoryData);
-              const savedStory = await saveStoryData(false, debouncedStoryData);
+            if (currentStoryData.title && currentStoryData.description && currentStoryData.genre) {
+              console.log('Auto-saving new story with current data');
+              const savedStory = await saveStoryData(false, currentStoryData);
               if (savedStory) {
                 // Set the flag to prevent duplicate creation
                 setJustCreatedStory(true);
@@ -161,7 +164,7 @@ export default function StoryInfoPage() {
 
       return () => clearTimeout(autoSaveTimeout);
     }
-  }, [debouncedStoryData, hasChanges, isSaving, justCreatedStory])
+  }, [debouncedStoryData, hasChanges, isSaving, justCreatedStory, storyData])
 
   // Get the session for authentication
   const { data: session } = useSession();
@@ -183,11 +186,16 @@ export default function StoryInfoPage() {
             genre: story.genre || "",
             language: story.language || "English",
             isMature: story.isMature,
-            coverImage: story.coverImage || "/placeholder.svg?height=1600&width=900",
+            // Only use the actual coverImage if it exists and is not null/empty
+            coverImage: story.coverImage && story.coverImage.trim() !== ""
+              ? story.coverImage
+              : "/placeholder.svg?height=1600&width=900",
             status: story.status || "draft", // Load the story status
             lastSaved: new Date(story.updatedAt),
             slug: story.slug,
           });
+
+          console.log('Loaded story with coverImage:', story.coverImage);
 
           // Fetch chapters for this story
           fetchChapters(story.id);
@@ -222,10 +230,14 @@ export default function StoryInfoPage() {
         // Debug: Log each chapter's draft status
         console.log(`Chapter ${chapter.id} isDraft:`, chapter.isDraft);
 
+        // Ensure status is one of the allowed values
+        const status: "draft" | "published" | "scheduled" | "premium" =
+          chapter.isDraft ? "draft" : (chapter.isPremium ? "premium" : "published");
+
         return {
           id: chapter.id,
           title: chapter.title,
-          status: chapter.isDraft ? "draft" : (chapter.isPremium ? "premium" : "published"),
+          status,
           wordCount: chapter.wordCount,
           lastUpdated: new Date(chapter.updatedAt),
           number: chapter.number
@@ -235,7 +247,15 @@ export default function StoryInfoPage() {
       // Debug: Log the formatted chapters
       console.log('Formatted chapters:', formattedChapters);
 
-      setChapters(formattedChapters);
+      // Explicitly type the chapters to fix TypeScript error
+      setChapters(formattedChapters as Array<{
+        id: string;
+        title: string;
+        status: "draft" | "published" | "scheduled" | "premium";
+        wordCount: number;
+        lastUpdated: Date;
+        number: number;
+      }>);
     } catch (error) {
       console.error("Failed to fetch chapters", error);
       toast({
@@ -294,64 +314,92 @@ export default function StoryInfoPage() {
   // Handle switch changes
   const handleSwitchChange = async (name: string, checked: boolean) => {
     // Special handling for status change to "completed"
-    if (name === "status" && checked) { // checked means changing to "completed"
-      // Check if the story has any draft chapters
-      if (storyData.id) {
-        try {
-          const chapters = await StoryService.getChapters(storyData.id);
+    if (name === "status") {
+      if (checked) { // checked means changing to "completed"
+        // Check if the story has any draft chapters
+        if (storyData.id) {
+          try {
+            const chapters = await StoryService.getChapters(storyData.id);
 
-          // Check if there are any chapters at all
-          if (chapters.length === 0) {
+            // Check if there are any chapters at all
+            if (chapters.length === 0) {
+              toast({
+                title: "Cannot mark as completed",
+                description: "This story has no chapters. Please add at least one published chapter before marking the story as completed.",
+                variant: "destructive",
+              });
+              return; // Don't update the status
+            }
+
+            // Check for draft chapters
+            const draftChapters = chapters.filter(chapter => chapter.isDraft);
+            if (draftChapters.length > 0) {
+              toast({
+                title: "Cannot mark as completed",
+                description: `This story has ${draftChapters.length} draft ${draftChapters.length === 1 ? "chapter" : "chapters"}. Please publish all draft chapters before marking the story as completed.`,
+                variant: "destructive",
+              });
+              return; // Don't update the status
+            }
+
+            // Check if there are any published chapters
+            const publishedChapters = chapters.filter(chapter => !chapter.isDraft);
+            if (publishedChapters.length === 0) {
+              toast({
+                title: "Cannot mark as completed",
+                description: "This story has no published chapters. Please publish at least one chapter before marking the story as completed.",
+                variant: "destructive",
+              });
+              return; // Don't update the status
+            }
+          } catch (error) {
+            console.error("Failed to check draft chapters:", error);
             toast({
-              title: "Cannot mark as completed",
-              description: "This story has no chapters. Please add at least one published chapter before marking the story as completed.",
+              title: "Error",
+              description: "Failed to check draft chapters. Please try again.",
               variant: "destructive",
             });
             return; // Don't update the status
           }
-
-          // Check for draft chapters
-          const draftChapters = chapters.filter(chapter => chapter.isDraft);
-          if (draftChapters.length > 0) {
-            toast({
-              title: "Cannot mark as completed",
-              description: `This story has ${draftChapters.length} draft ${draftChapters.length === 1 ? "chapter" : "chapters"}. Please publish all draft chapters before marking the story as completed.`,
-              variant: "destructive",
-            });
-            return; // Don't update the status
-          }
-
-          // Check if there are any published chapters
-          const publishedChapters = chapters.filter(chapter => !chapter.isDraft);
-          if (publishedChapters.length === 0) {
-            toast({
-              title: "Cannot mark as completed",
-              description: "This story has no published chapters. Please publish at least one chapter before marking the story as completed.",
-              variant: "destructive",
-            });
-            return; // Don't update the status
-          }
-        } catch (error) {
-          console.error("Failed to check draft chapters:", error);
-          toast({
-            title: "Error",
-            description: "Failed to check draft chapters. Please try again.",
-            variant: "destructive",
-          });
-          return; // Don't update the status
         }
+
+        // If all checks pass, update the status to "completed"
+        setStoryData((prev) => ({
+          ...prev,
+          status: "completed",
+          lastSaved: null, // Mark as unsaved
+        }));
+      } else {
+        // Changing from "completed" to "ongoing"
+        setStoryData((prev) => ({
+          ...prev,
+          status: "ongoing",
+          lastSaved: null, // Mark as unsaved
+        }));
       }
+
+      // Mark that we have unsaved changes
+      setHasChanges(true);
+
+      // Save the changes immediately to avoid auto-save conflicts
+      setTimeout(() => {
+        setStoryData(currentState => {
+          console.log('Saving status change immediately:', currentState.status);
+          saveStoryData(false, currentState);
+          return currentState; // Don't actually change the state
+        });
+      }, 100);
+    } else {
+      // For other switches (like isMature), just update the state normally
+      setStoryData((prev) => ({
+        ...prev,
+        [name]: checked,
+        lastSaved: null, // Mark as unsaved
+      }));
+
+      // Mark that we have unsaved changes
+      setHasChanges(true);
     }
-
-    // Update the state
-    setStoryData((prev) => ({
-      ...prev,
-      [name]: checked,
-      lastSaved: null, // Mark as unsaved
-    }))
-
-    // Mark that we have unsaved changes
-    setHasChanges(true);
   }
 
   // Handle cover image upload
@@ -457,13 +505,72 @@ export default function StoryInfoPage() {
   }
 
   // Remove cover image
-  const handleRemoveCoverImage = () => {
-    setStoryData((prev) => ({
-      ...prev,
-      coverImage: "/placeholder.svg?height=1600&width=900",
-      lastSaved: null, // Mark as unsaved
-    }))
-    setHasChanges(true); // Mark that we have unsaved changes
+  const handleRemoveCoverImage = async () => {
+    console.log('Removing cover image, setting to placeholder');
+
+    try {
+      setIsSaving(true);
+
+      // Create a special request that explicitly sets coverImage to null
+      // This is a special value that will be interpreted by the server as a request to remove the image
+      const deleteImageRequest = {
+        coverImage: null
+      };
+
+      // Only proceed if we have an ID (existing story)
+      if (storyData.id) {
+        console.log('Sending direct API request to remove cover image with null value');
+
+        // Make a direct fetch call to ensure we're bypassing any client-side type checking
+        const response = await fetch(`/api/stories/${storyData.id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(deleteImageRequest),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || "Failed to remove cover image");
+        }
+
+        const result = await response.json();
+        console.log('Cover image removal result:', result);
+
+        // Update the state with the result
+        setStoryData(prev => ({
+          ...prev,
+          coverImage: "/placeholder.svg?height=1600&width=900",
+          lastSaved: new Date()
+        }));
+
+        setHasChanges(false);
+
+        toast({
+          title: "Cover image removed",
+          description: "The cover image has been removed successfully."
+        });
+      } else {
+        // If it's a new story, just update the local state
+        setStoryData(prev => ({
+          ...prev,
+          coverImage: "/placeholder.svg?height=1600&width=900",
+          lastSaved: null
+        }));
+
+        setHasChanges(true);
+      }
+    } catch (error) {
+      console.error('Failed to remove cover image:', error);
+      toast({
+        title: "Error",
+        description: "Failed to remove cover image. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   // Validate form
@@ -512,12 +619,29 @@ export default function StoryInfoPage() {
       // Log the coverImage value for debugging
       console.log('Cover image before save:', dataToSave.coverImage);
 
-      // Ensure coverImage is included in the request if it exists and is not the placeholder
-      const hasCoverImage = dataToSave.coverImage &&
-                          dataToSave.coverImage !== "/placeholder.svg" &&
-                          dataToSave.coverImage !== "/placeholder.svg?height=1600&width=900";
+      // Determine how to handle the coverImage field
+      const isPlaceholder = dataToSave.coverImage === "/placeholder.svg" ||
+                          dataToSave.coverImage === "/placeholder.svg?height=1600&width=900";
 
-      console.log('Has cover image:', hasCoverImage);
+      // If we have a real image, include it. If it's a placeholder and we're updating an existing story,
+      // we need to handle it differently. For TypeScript compatibility, we'll use undefined instead of null.
+      let coverImageValue: string | undefined;
+      if (!dataToSave.coverImage) {
+        coverImageValue = undefined; // Omit if empty
+      } else if (isPlaceholder && dataToSave.id) {
+        // For existing stories with placeholder, we'll handle this specially in the API call
+        coverImageValue = undefined; // Will be handled separately for existing stories
+      } else if (isPlaceholder) {
+        coverImageValue = undefined; // Omit the field for new stories with placeholder
+      } else {
+        coverImageValue = dataToSave.coverImage; // Include real image URL
+      }
+
+      console.log('Cover image handling:');
+      console.log('- Original value:', dataToSave.coverImage);
+      console.log('- Is placeholder:', isPlaceholder);
+      console.log('- Is existing story:', !!dataToSave.id);
+      console.log('- Final coverImage value for API:', coverImageValue);
 
       const storyRequest: CreateStoryRequest | UpdateStoryRequest = {
         title: dataToSave.title,
@@ -525,9 +649,11 @@ export default function StoryInfoPage() {
         genre: dataToSave.genre,
         language: dataToSave.language,
         isMature: dataToSave.isMature,
-        coverImage: hasCoverImage ? dataToSave.coverImage : undefined,
+        coverImage: coverImageValue,
         status: dataToSave.status || "draft", // Include the story status
       };
+
+      console.log('Final storyRequest:', storyRequest);
 
       // Log the request for debugging
       console.log('Story request:', storyRequest);
@@ -597,6 +723,12 @@ export default function StoryInfoPage() {
           newData.language = prevData.language;
         }
 
+        // Status (toggle)
+        if (prevData.status !== dataToSave.status) {
+          console.log('Preserving newer status:', prevData.status);
+          newData.status = prevData.status;
+        }
+
         // Cover image
         if (prevData.coverImage !== dataToSave.coverImage) {
           console.log('Preserving newer coverImage:', prevData.coverImage);
@@ -631,103 +763,9 @@ export default function StoryInfoPage() {
     }
   }
 
-  // Publish story
-  const publishStory = async () => {
-    // Validate form
-    if (!validateForm()) {
-      toast({
-        title: "Validation failed",
-        description: "Please fix the errors in the form before publishing.",
-        variant: "destructive",
-      })
-      return
-    }
 
-    // Confirm publishing
-    if (!window.confirm("Are you sure you want to publish this story? Published stories will be visible to all users.")) {
-      return
-    }
 
-    setIsPublishing(true)
 
-    try {
-      // Instead of saving first and then updating, directly publish the story
-      const storyRequest: CreateStoryRequest | UpdateStoryRequest = {
-        title: storyData.title,
-        description: storyData.description,
-        genre: storyData.genre,
-        language: storyData.language,
-        isMature: storyData.isMature,
-        coverImage: storyData.coverImage !== "/placeholder.svg?height=1600&width=900" ? storyData.coverImage : undefined,
-        isDraft: false, // Set to published
-        status: storyData.status // Include the story status
-      };
-
-      let publishedStory;
-
-      if (storyData.id) {
-        // Update existing story
-        publishedStory = await StoryService.updateStory(storyData.id, storyRequest);
-      } else {
-        // Create new story
-        publishedStory = await StoryService.createStory(storyRequest as CreateStoryRequest);
-      }
-
-      // Update local state
-      setStoryData(prev => ({
-        ...prev,
-        isDraft: false,
-        lastSaved: new Date()
-      }))
-
-      toast({
-        title: "Story published",
-        description: "Your story has been published successfully!",
-      })
-
-      // Redirect to the story page
-      setTimeout(() => {
-        router.push(`/story/${publishedStory.slug}`)
-      }, 1500)
-    } catch (error) {
-      console.error("Failed to publish story", error)
-      toast({
-        title: "Publish failed",
-        description: error instanceof Error ? error.message : "Failed to publish your story. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsPublishing(false)
-    }
-  }
-
-  // Handle proceed to editor
-  const handleProceedToEditor = async () => {
-    // Validate form
-    if (!validateForm()) {
-      toast({
-        title: "Validation failed",
-        description: "Please fix the errors in the form.",
-        variant: "destructive",
-      })
-      return
-    }
-
-    // Save story data and get the updated data with ID
-    const savedStory = await saveStoryData(false)
-
-    // Navigate to editor using the ID from the saved story
-    // We'll redirect to new-chapter to start creating the first chapter
-    if (savedStory && savedStory.id) {
-      router.push(`/write/editor/${savedStory.id}/new-chapter`)
-    } else {
-      toast({
-        title: "Error",
-        description: "Failed to create story. Please try again.",
-        variant: "destructive",
-      })
-    }
-  }
 
   // Format date for display
   const formatDate = (date: Date) => {
@@ -828,40 +866,40 @@ export default function StoryInfoPage() {
       <Navbar />
 
       <main className="flex-1 container mx-auto px-8 py-8">
-        {/* Header */}
+        {/* Header with Back button and Auto-save status on the same line */}
         <div className="flex justify-between items-center mb-8">
-          <Button variant="ghost" onClick={() => router.back()} className="pl-0 flex items-center gap-2">
-            <ArrowLeft size={16} />
-            Back
-          </Button>
-
           <div className="flex items-center gap-2">
+            <Button variant="ghost" onClick={() => router.back()} className="pl-0 flex items-center gap-2">
+              <ArrowLeft size={16} />
+              Back
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-4">
+            {/* Auto-save status with single loading animation */}
+            {isSaving ? (
+              <div className="text-sm text-muted-foreground flex items-center gap-1">
+                <span className="animate-spin h-3 w-3 border-t-2 border-b-2 border-primary rounded-full"></span>
+                Auto-saving...
+              </div>
+            ) : storyData.lastSaved ? (
+              <div className="text-sm text-muted-foreground flex items-center gap-1">
+                <Clock size={14} />
+                Auto-saved: {storyData.lastSaved.toLocaleString()}
+              </div>
+            ) : hasChanges ? (
+              <div className="text-sm text-muted-foreground">
+                Unsaved changes
+              </div>
+            ) : null}
+
+            {/* Story status badge */}
             {storyData.id && storyData.status !== "draft" && (
               <div className="px-3 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100 text-xs rounded-full">
-                {storyData.status === "completed" ? "Completed" : "Published"}
+                {storyData.status === "completed" ? "Completed" : "Ongoing"}
               </div>
             )}
-            {/* Save Draft and Publish buttons removed */}
           </div>
-        </div>
-
-        {/* Last saved indicator */}
-        <div className="mb-4 flex justify-end items-center gap-2">
-          {isSaving ? (
-            <div className="text-sm text-muted-foreground flex items-center gap-1">
-              <span className="animate-spin h-3 w-3 border-t-2 border-b-2 border-primary rounded-full"></span>
-              Auto-saving...
-            </div>
-          ) : storyData.lastSaved ? (
-            <div className="text-sm text-muted-foreground flex items-center gap-1">
-              <Clock size={14} />
-              Auto-saved: {storyData.lastSaved.toLocaleString()}
-            </div>
-          ) : hasChanges ? (
-            <div className="text-sm text-muted-foreground">
-              Unsaved changes
-            </div>
-          ) : null}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
@@ -911,7 +949,9 @@ export default function StoryInfoPage() {
                 <Button
                   variant="outline"
                   onClick={handleRemoveCoverImage}
-                  disabled={storyData.coverImage === "/placeholder.svg?height=1600&width=900" || isUploading}
+                  disabled={storyData.coverImage === "/placeholder.svg?height=1600&width=900" ||
+                           storyData.coverImage === "/placeholder.svg" ||
+                           isUploading}
                 >
                   <Trash2 size={16} />
                 </Button>
@@ -962,24 +1002,17 @@ export default function StoryInfoPage() {
                 <Label htmlFor="description">
                   Description <span className="text-destructive">*</span>
                 </Label>
-                <div className="relative">
-                  <Textarea
-                    id="description"
-                    name="description"
-                    value={storyData.description}
-                    onChange={handleInputChange}
-                    placeholder="Write a compelling description for your story"
-                    className="min-h-[150px]"
-                    maxLength={1000}
-                    // Disable the textarea during saving to prevent race conditions
-                    disabled={isSaving && !hasChanges}
-                  />
-                  {isSaving && !hasChanges && (
-                    <div className="absolute inset-0 bg-background/50 flex items-center justify-center">
-                      <div className="animate-spin h-6 w-6 border-t-2 border-b-2 border-primary rounded-full"></div>
-                    </div>
-                  )}
-                </div>
+                <Textarea
+                  id="description"
+                  name="description"
+                  value={storyData.description}
+                  onChange={handleInputChange}
+                  placeholder="Write a compelling description for your story"
+                  className="min-h-[150px]"
+                  maxLength={1000}
+                  // Disable the textarea during saving to prevent race conditions
+                  disabled={isSaving && !hasChanges}
+                />
                 <div className="flex justify-between">
                   <div className="flex items-center gap-2">
                     {errors.description ? (
@@ -987,11 +1020,6 @@ export default function StoryInfoPage() {
                         <AlertCircle size={14} />
                         {errors.description}
                       </p>
-                    ) : isSaving ? (
-                      <span className="text-sm text-muted-foreground flex items-center gap-1">
-                        <div className="animate-spin h-3 w-3 border-t-2 border-b-2 border-primary rounded-full"></div>
-                        {hasChanges ? "Saving changes..." : "Saving..."}
-                      </span>
                     ) : (
                       <span className="text-sm text-muted-foreground">
                         Hook your readers with an engaging description
@@ -1008,12 +1036,6 @@ export default function StoryInfoPage() {
                   <Label htmlFor="genre">
                     Genre <span className="text-destructive">*</span>
                   </Label>
-                  {isSaving && (
-                    <span className="text-xs text-muted-foreground flex items-center gap-1">
-                      <div className="animate-spin h-3 w-3 border-t-2 border-b-2 border-primary rounded-full"></div>
-                      Saving...
-                    </span>
-                  )}
                 </div>
                 <div className="relative">
                   <Select
@@ -1045,12 +1067,6 @@ export default function StoryInfoPage() {
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <Label htmlFor="language">Language</Label>
-                  {isSaving && (
-                    <span className="text-xs text-muted-foreground flex items-center gap-1">
-                      <div className="animate-spin h-3 w-3 border-t-2 border-b-2 border-primary rounded-full"></div>
-                      Saving...
-                    </span>
-                  )}
                 </div>
                 <div className="relative">
                   <Select
@@ -1079,12 +1095,6 @@ export default function StoryInfoPage() {
                     <Label htmlFor="mature-content">
                       Mature Content
                     </Label>
-                    {isSaving && (
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <div className="animate-spin h-3 w-3 border-t-2 border-b-2 border-primary rounded-full"></div>
-                        Saving...
-                      </span>
-                    )}
                   </div>
                   <p className="text-sm text-muted-foreground">Contains adult themes, violence, or explicit content</p>
                 </div>
@@ -1105,12 +1115,6 @@ export default function StoryInfoPage() {
                     <Label htmlFor="story-status">
                       Story Completed
                     </Label>
-                    {isSaving && (
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <div className="animate-spin h-3 w-3 border-t-2 border-b-2 border-primary rounded-full"></div>
-                        Saving...
-                      </span>
-                    )}
                   </div>
                   <p className="text-sm text-muted-foreground">
                     {storyData.status === "completed"
@@ -1122,8 +1126,8 @@ export default function StoryInfoPage() {
                   <Switch
                     id="story-status"
                     checked={storyData.status === "completed"}
-                    onCheckedChange={(checked) => handleSwitchChange("status", checked ? "completed" : "ongoing")}
-                    disabled={isSaving && !hasChanges}
+                    onCheckedChange={(checked) => handleSwitchChange("status", checked)}
+                    disabled={isSaving} // Always disable during saving to prevent toggle flicker
                   />
                 </div>
               </div>

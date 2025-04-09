@@ -258,7 +258,7 @@ export function Editor({ content, onChange, readOnly = false }: EditorProps) {
         </div>
       )}
 
-      <div className="p-4 min-h-[500px] prose prose-sm max-w-none editor-content">
+      <div className="p-4 min-h-[570px] prose prose-sm max-w-none editor-content">
         <EditorContent editor={editor} />
       </div>
     </div>

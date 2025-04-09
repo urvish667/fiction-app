@@ -8,7 +8,7 @@ import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/components/ui/use-toast"
-import { ArrowLeft, Save, Eye, Clock, Check, Calendar, Bell, Globe, Lock, FileText, BookOpen } from "lucide-react"
+import { ArrowLeft, Save, Eye, Clock, Check, Calendar, Bell, Globe, Lock, FileText, BookOpen, Menu } from "lucide-react"
 import { useDebounce } from "@/hooks/use-debounce"
 import { Editor } from "@/components/editor"
 import {
@@ -28,6 +28,8 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar"
 import { cn } from "@/lib/utils"
 import { StoryService } from "@/services/story-service"
 import { Chapter } from "@/types/story"
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+
 
 // Types for chapter data
 interface ChapterData {
@@ -297,10 +299,8 @@ export default function ChapterEditorPage() {
         savedChapter = await StoryService.updateChapter(storyId, chapter.id, chapterData)
       }
 
-      // Ensure the story stays in draft mode
-      await StoryService.updateStory(storyId, {
-        status: "draft"
-      })
+      // We don't need to update the story status here
+      // The backend will automatically calculate the correct status based on the chapters
 
       // Update local state with saved data
       setChapter(prev => ({
@@ -448,91 +448,169 @@ export default function ChapterEditorPage() {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Editor Navbar */}
-      <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
+      <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 px-4 sm:px-8">
         <div className="container flex h-14 items-center justify-between">
-          <div className="flex items-center gap-4">
+          {/* Back button - always visible */}
+          <div className="flex items-center">
             <Button
               variant="ghost"
               onClick={() => router.push(`/write/story-info?id=${storyId}`)}
-              className="flex items-center gap-2"
+              className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3"
+              size="sm"
             >
               <ArrowLeft size={16} />
-              Back to Story
+              <span className="hidden sm:inline">Back to Story</span>
             </Button>
           </div>
 
-          <div className="flex-1 max-w-md mx-4">
+          {/* Chapter title - centered */}
+          <div className="flex-1 max-w-[180px] sm:max-w-md mx-2 sm:mx-4">
             <Input
               value={chapter.title}
               onChange={handleTitleChange}
               placeholder="Chapter Title"
-              className="border-none text-center font-medium focus-visible:ring-0"
+              className="border-none text-center font-medium focus-visible:ring-0 text-sm sm:text-base"
             />
           </div>
 
-          <div className="flex items-center gap-2">
-            {/* Status indicator */}
-            <span className={`text-sm flex items-center gap-1 ${chapter.status === "draft" ? "text-yellow-500" : "text-green-500"}`}>
+          {/* Status and save indicators - visible on all screens */}
+          <div className="flex items-center gap-1 sm:gap-2">
+            {/* Status indicator - always visible */}
+            <span className={`text-xs sm:text-sm flex items-center gap-1 ${chapter.status === "draft" ? "text-yellow-500" : "text-green-500"}`}>
               {chapter.status === "draft" ? (
                 <>
                   <FileText size={14} />
-                  <span>Draft</span>
+                  <span className="hidden sm:inline">Draft</span>
                 </>
               ) : (
                 <>
                   <BookOpen size={14} />
-                  <span>Published</span>
+                  <span className="hidden sm:inline">Published</span>
                 </>
               )}
             </span>
 
-            {/* Auto-save indicator */}
-            {isSaving ? (
-              <span className="text-sm text-muted-foreground animate-pulse">Saving...</span>
-            ) : chapter.lastSaved ? (
-              <span className="text-sm text-muted-foreground flex items-center gap-1">
-                <Clock size={14} />
-                Saved {new Date(chapter.lastSaved).toLocaleTimeString()}
-              </span>
-            ) : (
-              <span className="text-sm text-muted-foreground">Unsaved changes</span>
-            )}
+            {/* Auto-save indicator - visible on larger screens */}
+            <div className="hidden sm:block">
+              {isSaving ? (
+                <span className="text-sm text-muted-foreground animate-pulse">Saving...</span>
+              ) : chapter.lastSaved ? (
+                <span className="text-sm text-muted-foreground flex items-center gap-1">
+                  <Clock size={14} />
+                  Saved {new Date(chapter.lastSaved).toLocaleTimeString()}
+                </span>
+              ) : (
+                <span className="text-sm text-muted-foreground">Unsaved changes</span>
+              )}
+            </div>
 
-            <Button
-              variant="outline"
-              onClick={() => saveChapter(true)}
-              disabled={isSaving}
-              className="flex items-center gap-2"
-              title="Save as draft (only visible to you)"
-            >
-              <Save size={16} />
-              Save Draft
-            </Button>
+            {/* Desktop buttons */}
+            <div className="hidden sm:flex items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={() => saveChapter(true)}
+                disabled={isSaving}
+                className="flex items-center gap-2"
+                title="Save as draft (only visible to you)"
+              >
+                <Save size={16} />
+                Save Draft
+              </Button>
 
-            <Button
-              variant="outline"
-              onClick={() => setShowPreview(!showPreview)}
-              className="flex items-center gap-2"
-            >
-              <Eye size={16} />
-              {showPreview ? "Edit" : "Preview"}
-            </Button>
+              <Button
+                variant="outline"
+                onClick={() => setShowPreview(!showPreview)}
+                className="flex items-center gap-2"
+              >
+                <Eye size={16} />
+                {showPreview ? "Edit" : "Preview"}
+              </Button>
 
-            <Button
-              onClick={() => setIsPublishDialogOpen(true)}
-              className="flex items-center gap-2"
-              disabled={!chapter.id}
-              title="Publish chapter (visible to all readers)"
-            >
-              <Check size={16} />
-              Publish
-            </Button>
+              <Button
+                onClick={() => setIsPublishDialogOpen(true)}
+                className="flex items-center gap-2"
+                disabled={!chapter.id}
+                title="Publish chapter (visible to all readers)"
+              >
+                <Check size={16} />
+                Publish
+              </Button>
+            </div>
+
+            {/* Mobile action menu */}
+            <div className="sm:hidden">
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Menu className="h-5 w-5" />
+                    <span className="sr-only">Open menu</span>
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-[250px] sm:w-[300px]">
+                  <div className="flex flex-col gap-4 py-4">
+                    <h3 className="text-lg font-medium">Chapter Actions</h3>
+
+                    {/* Save status in mobile menu */}
+                    <div className="text-sm text-muted-foreground">
+                      {isSaving ? (
+                        <span className="flex items-center gap-2">
+                          <Clock className="h-4 w-4 animate-spin" />
+                          Saving...
+                        </span>
+                      ) : chapter.lastSaved ? (
+                        <span className="flex items-center gap-2">
+                          <Clock className="h-4 w-4" />
+                          Saved at {new Date(chapter.lastSaved).toLocaleTimeString()}
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-2">
+                          <Clock className="h-4 w-4" />
+                          Unsaved changes
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <Button
+                        onClick={() => saveChapter(true)}
+                        disabled={isSaving}
+                        className="flex items-center justify-start gap-2 w-full"
+                      >
+                        <Save size={16} />
+                        Save Draft
+                      </Button>
+
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowPreview(!showPreview)}
+                        className="flex items-center justify-start gap-2 w-full"
+                      >
+                        <Eye size={16} />
+                        {showPreview ? "Edit" : "Preview"}
+                      </Button>
+
+                      <Button
+                        variant="default"
+                        onClick={() => {
+                          setIsPublishDialogOpen(true);
+                        }}
+                        disabled={!chapter.id}
+                        className="flex items-center justify-start gap-2 w-full"
+                      >
+                        <Check size={16} />
+                        Publish Chapter
+                      </Button>
+                    </div>
+                  </div>
+                </SheetContent>
+              </Sheet>
+            </div>
           </div>
         </div>
       </header>
 
       {/* Main Editor Area */}
-      <main className="flex-1 container mx-auto px-4 py-8 max-w-4xl">
+      <main className="flex-1 container mx-auto px-4 py-6 max-w-6xl">
         <Editor content={chapter.content} onChange={handleEditorChange} readOnly={showPreview} />
       </main>
 
