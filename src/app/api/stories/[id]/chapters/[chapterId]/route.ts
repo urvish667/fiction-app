@@ -284,6 +284,26 @@ export async function PUT(
       });
     }
 
+    // If the chapter's draft status has changed, recalculate and update the story status
+    if (validatedData.isDraft !== undefined) {
+      // Get all chapters for this story
+      const storyChapters = await prisma.chapter.findMany({
+        where: { storyId },
+        select: { isDraft: true }
+      });
+
+      // Calculate the new story status
+      const newStoryStatus = calculateStoryStatus(storyChapters as any);
+
+      // Update the story status if it's different from the current status
+      if (newStoryStatus !== story.status) {
+        await prisma.story.update({
+          where: { id: storyId },
+          data: { status: newStoryStatus }
+        });
+      }
+    }
+
     return NextResponse.json(chapterWithContent);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -377,6 +397,23 @@ export async function DELETE(
         },
       },
     });
+
+    // Recalculate and update the story status after chapter deletion
+    const remainingChapters = await prisma.chapter.findMany({
+      where: { storyId },
+      select: { isDraft: true }
+    });
+
+    // Calculate the new story status
+    const newStoryStatus = calculateStoryStatus(remainingChapters as any);
+
+    // Update the story status if it's different from the current status
+    if (newStoryStatus !== story.status) {
+      await prisma.story.update({
+        where: { id: storyId },
+        data: { status: newStoryStatus }
+      });
+    }
 
     return NextResponse.json(
       { message: "Chapter deleted successfully" },

@@ -11,11 +11,12 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { PenSquare, Eye, BarChart3, MoreVertical, Trash2, Copy, Archive, X, Heart, MessageSquare, BookOpen } from "lucide-react"
+import { PenSquare, Eye, BarChart3, MoreVertical, Trash2, Copy, X, Heart, MessageSquare, BookOpen, Loader2 } from "lucide-react"
 import Navbar from "@/components/navbar"
 import { useToast } from "@/components/ui/use-toast"
 import { StoryService } from "@/services/story-service"
 import { useSession } from "next-auth/react"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import type { Story } from "@/types/story"
 
 // Extended story type with UI-specific properties
@@ -31,6 +32,9 @@ export default function MyWorksPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [isLoading, setIsLoading] = useState(true)
   const [myWorks, setMyWorks] = useState<WorkStory[]>([])
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [storyToDelete, setStoryToDelete] = useState<{id: string, title: string} | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // Fetch user's stories from the database
   useEffect(() => {
@@ -78,6 +82,43 @@ export default function MyWorksPage() {
 
     fetchStories()
   }, [session, toast])
+
+  // Open delete confirmation dialog
+  const openDeleteDialog = (story: {id: string, title: string}) => {
+    setStoryToDelete(story)
+    setDeleteDialogOpen(true)
+  }
+
+  // Handle story deletion
+  const handleDeleteStory = async () => {
+    if (!storyToDelete) return
+
+    setIsDeleting(true)
+    try {
+      await StoryService.deleteStory(storyToDelete.id)
+
+      // Update the local state by removing the deleted story
+      setMyWorks(prevWorks => prevWorks.filter(work => work.id !== storyToDelete.id))
+
+      toast({
+        title: "Story deleted",
+        description: `"${storyToDelete.title}" has been deleted successfully.`,
+      })
+
+      // Close the dialog
+      setDeleteDialogOpen(false)
+      setStoryToDelete(null)
+    } catch (error) {
+      console.error("Failed to delete story:", error)
+      toast({
+        title: "Delete failed",
+        description: error instanceof Error ? error.message : "Failed to delete the story. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsDeleting(false)
+    }
+  }
 
   // Filter stories based on active tab and search query
   const filteredWorks = myWorks.filter((work) => {
@@ -147,22 +188,75 @@ export default function MyWorksPage() {
           </TabsList>
 
           <TabsContent value="all">
-            <WorksContent works={filteredWorks} searchQuery={searchQuery} isLoading={isLoading} />
+            <WorksContent
+              works={filteredWorks}
+              searchQuery={searchQuery}
+              isLoading={isLoading}
+              onDeleteStory={openDeleteDialog}
+            />
           </TabsContent>
 
           <TabsContent value="draft">
-            <WorksContent works={filteredWorks} searchQuery={searchQuery} isLoading={isLoading} />
+            <WorksContent
+              works={filteredWorks}
+              searchQuery={searchQuery}
+              isLoading={isLoading}
+              onDeleteStory={openDeleteDialog}
+            />
           </TabsContent>
 
           <TabsContent value="ongoing">
-            <WorksContent works={filteredWorks} searchQuery={searchQuery} isLoading={isLoading} />
+            <WorksContent
+              works={filteredWorks}
+              searchQuery={searchQuery}
+              isLoading={isLoading}
+              onDeleteStory={openDeleteDialog}
+            />
           </TabsContent>
 
           <TabsContent value="completed">
-            <WorksContent works={filteredWorks} searchQuery={searchQuery} isLoading={isLoading} />
+            <WorksContent
+              works={filteredWorks}
+              searchQuery={searchQuery}
+              isLoading={isLoading}
+              onDeleteStory={openDeleteDialog}
+            />
           </TabsContent>
         </Tabs>
       </main>
+
+      {/* Delete Story Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to delete this story?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the story
+              "{storyToDelete?.title}" and all its chapters.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleDeleteStory();
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete Story"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
@@ -171,9 +265,10 @@ interface WorksContentProps {
   works: WorkStory[]
   searchQuery: string
   isLoading: boolean
+  onDeleteStory: (story: {id: string, title: string}) => void
 }
 
-function WorksContent({ works, searchQuery, isLoading }: WorksContentProps) {
+function WorksContent({ works, searchQuery, isLoading, onDeleteStory }: WorksContentProps) {
   const router = useRouter()
 
   const handleContinueEditing = (storyId: string) => {
@@ -282,13 +377,13 @@ function WorksContent({ works, searchQuery, isLoading }: WorksContentProps) {
                       <PenSquare className="h-4 w-4 mr-2" />
                       Edit Story
                     </DropdownMenuItem>
-                    {work.status === "published" && (
+                    {work.status !== "draft" && (
                       <DropdownMenuItem onClick={() => handleViewStory(work.id, work.slug)}>
                         <Eye className="h-4 w-4 mr-2" />
                         View Story
                       </DropdownMenuItem>
                     )}
-                    {work.status === "published" && (
+                    {work.status !== "draft" && (
                       <DropdownMenuItem onClick={() => handleViewAnalytics(work.id)}>
                         <BarChart3 className="h-4 w-4 mr-2" />
                         Analytics
@@ -298,11 +393,10 @@ function WorksContent({ works, searchQuery, isLoading }: WorksContentProps) {
                       <Copy className="h-4 w-4 mr-2" />
                       Duplicate
                     </DropdownMenuItem>
-                    <DropdownMenuItem>
-                      <Archive className="h-4 w-4 mr-2" />
-                      Archive
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="text-destructive">
+                    <DropdownMenuItem
+                      className="text-destructive"
+                      onClick={() => onDeleteStory({id: work.id, title: work.title})}
+                    >
                       <Trash2 className="h-4 w-4 mr-2" />
                       Delete
                     </DropdownMenuItem>
@@ -314,7 +408,7 @@ function WorksContent({ works, searchQuery, isLoading }: WorksContentProps) {
                 Last edited: {work.lastEdited.toLocaleDateString()}
               </div>
 
-              {work.status === "published" && (
+              {work.status !== "draft" && (
                 <div className="flex gap-4 mt-3 text-sm">
                   <div className="flex items-center gap-1">
                     <Eye className="h-3.5 w-3.5 text-muted-foreground" />

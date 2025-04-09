@@ -270,6 +270,24 @@ export async function POST(
       },
     });
 
+    // Recalculate and update the story status if needed
+    // Get all chapters for this story
+    const storyChapters = await prisma.chapter.findMany({
+      where: { storyId },
+      select: { isDraft: true }
+    });
+
+    // Calculate the new story status
+    const newStoryStatus = calculateStoryStatus(storyChapters as any);
+
+    // Update the story status if it's different from the current status
+    if (newStoryStatus !== story.status) {
+      await prisma.story.update({
+        where: { id: storyId },
+        data: { status: newStoryStatus }
+      });
+    }
+
     return NextResponse.json(chapterWithContent, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {

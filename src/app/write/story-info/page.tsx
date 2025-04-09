@@ -16,7 +16,17 @@ import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
-import { ArrowLeft, Upload, Save, Trash2, AlertCircle, Eye, BookOpen, Plus, FileText, Clock, CheckCircle2, Edit } from "lucide-react"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { ArrowLeft, Upload, Save, Trash2, AlertCircle, Eye, BookOpen, Plus, FileText, Clock, CheckCircle2, Edit, PenSquare, X, ChevronDown, Loader2 } from "lucide-react"
 import Navbar from "@/components/navbar"
 import { SiteFooter } from "@/components/site-footer"
 import { useDebounce } from "@/hooks/use-debounce"
@@ -85,6 +95,11 @@ export default function StoryInfoPage() {
   const [isUploading, setIsUploading] = useState(false)
   const [isPublishing, setIsPublishing] = useState(false)
   const [isLoadingChapters, setIsLoadingChapters] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  // Delete confirmation dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [chapterToDelete, setChapterToDelete] = useState<{id: string, title: string} | null>(null)
 
   // Track if story data has changed since last save
   const [hasChanges, setHasChanges] = useState(false);
@@ -102,27 +117,51 @@ export default function StoryInfoPage() {
   // Create debounced version of storyData for auto-save
   const debouncedStoryData = useDebounce(storyData, 3000);
 
+  // Track if we've just created a story to prevent duplicate creation
+  const [justCreatedStory, setJustCreatedStory] = useState(false);
+
   // Auto-save effect
   useEffect(() => {
     // Auto-save if we have a title and there are changes
-    if (debouncedStoryData.title.trim() && hasChanges && !isSaving) {
+    if (debouncedStoryData.title.trim() && hasChanges && !isSaving && !justCreatedStory) {
       console.log('Auto-save triggered, current storyData:', debouncedStoryData);
-      const autoSave = async () => {
+
+      // Set a flag to prevent multiple auto-saves in quick succession
+      const autoSaveTimeout = setTimeout(async () => {
         try {
-          // Save the current state of the story data
-          const currentData = { ...debouncedStoryData };
-          console.log('Auto-saving with data:', currentData);
-          await saveStoryData(false, currentData);
-          console.log('Auto-save completed');
+          // Check if the story already has an ID (existing story)
+          if (debouncedStoryData.id) {
+            // Only update existing stories via auto-save
+            const currentData = { ...debouncedStoryData };
+            console.log('Auto-saving existing story with data:', currentData);
+            await saveStoryData(false, currentData);
+            console.log('Auto-save completed');
+          } else {
+            // For new stories, only auto-save if we have all required fields
+            if (debouncedStoryData.title && debouncedStoryData.description && debouncedStoryData.genre) {
+              console.log('Auto-saving new story with data:', debouncedStoryData);
+              const savedStory = await saveStoryData(false, debouncedStoryData);
+              if (savedStory) {
+                // Set the flag to prevent duplicate creation
+                setJustCreatedStory(true);
+                // Reset the flag after a delay
+                setTimeout(() => setJustCreatedStory(false), 5000);
+              }
+              console.log('Auto-save completed for new story');
+            } else {
+              console.log('Skipping auto-save for new story with incomplete data');
+            }
+          }
           // Don't set hasChanges to false here - we'll do it in saveStoryData
         } catch (error) {
           console.error("Auto-save failed:", error);
           // Keep hasChanges true if save failed
         }
-      };
-      autoSave();
+      }, 500); // Small delay to prevent race conditions
+
+      return () => clearTimeout(autoSaveTimeout);
     }
-  }, [debouncedStoryData, hasChanges, isSaving])
+  }, [debouncedStoryData, hasChanges, isSaving, justCreatedStory])
 
   // Get the session for authentication
   const { data: session } = useSession();
@@ -260,12 +299,34 @@ export default function StoryInfoPage() {
       if (storyData.id) {
         try {
           const chapters = await StoryService.getChapters(storyData.id);
-          const draftChapters = chapters.filter(chapter => chapter.isDraft);
 
+          // Check if there are any chapters at all
+          if (chapters.length === 0) {
+            toast({
+              title: "Cannot mark as completed",
+              description: "This story has no chapters. Please add at least one published chapter before marking the story as completed.",
+              variant: "destructive",
+            });
+            return; // Don't update the status
+          }
+
+          // Check for draft chapters
+          const draftChapters = chapters.filter(chapter => chapter.isDraft);
           if (draftChapters.length > 0) {
             toast({
               title: "Cannot mark as completed",
               description: `This story has ${draftChapters.length} draft ${draftChapters.length === 1 ? "chapter" : "chapters"}. Please publish all draft chapters before marking the story as completed.`,
+              variant: "destructive",
+            });
+            return; // Don't update the status
+          }
+
+          // Check if there are any published chapters
+          const publishedChapters = chapters.filter(chapter => !chapter.isDraft);
+          if (publishedChapters.length === 0) {
+            toast({
+              title: "Cannot mark as completed",
+              description: "This story has no published chapters. Please publish at least one chapter before marking the story as completed.",
               variant: "destructive",
             });
             return; // Don't update the status
@@ -476,9 +537,18 @@ export default function StoryInfoPage() {
       if (dataToSave.id) {
         // Update existing story
         savedStory = await StoryService.updateStory(dataToSave.id, storyRequest);
+        console.log('Updated existing story with ID:', dataToSave.id);
       } else {
+        // Check if we're already in the process of creating this story
+        if (isSaving) {
+          console.log('Skipping duplicate story creation - already saving');
+          return null;
+        }
+
         // Create new story
+        console.log('Creating new story with title:', dataToSave.title);
         savedStory = await StoryService.createStory(storyRequest as CreateStoryRequest);
+        console.log('Created new story with ID:', savedStory.id);
       }
 
       console.log('Story saved successfully, server response:', savedStory);
@@ -681,10 +751,18 @@ export default function StoryInfoPage() {
         return
       }
 
-      const savedStory = await saveStoryData(false)
-      if (savedStory) {
-        // Navigate to editor with new chapter using new URL pattern
-        router.push(`/write/editor/${savedStory.id}/new-chapter`)
+      // Set the flag to prevent duplicate creation
+      setJustCreatedStory(true);
+
+      try {
+        const savedStory = await saveStoryData(false)
+        if (savedStory) {
+          // Navigate to editor with new chapter using new URL pattern
+          router.push(`/write/editor/${savedStory.id}/new-chapter`)
+        }
+      } finally {
+        // Reset the flag after a delay
+        setTimeout(() => setJustCreatedStory(false), 5000);
       }
     } else {
       // Navigate to editor with new chapter using new URL pattern
@@ -696,6 +774,45 @@ export default function StoryInfoPage() {
   const handleEditChapter = (chapterId: string) => {
     // Use the new URL pattern
     router.push(`/write/editor/${storyData.id}/${chapterId}`)
+  }
+
+  // Handle chapter deletion
+  const handleDeleteChapter = async () => {
+    if (!chapterToDelete || !storyData.id) return;
+
+    setIsDeleting(true);
+    try {
+      await StoryService.deleteChapter(storyData.id, chapterToDelete.id);
+
+      // Update the chapters list
+      setChapters(prevChapters =>
+        prevChapters.filter(chapter => chapter.id !== chapterToDelete.id)
+      );
+
+      toast({
+        title: "Chapter deleted",
+        description: `"${chapterToDelete.title}" has been deleted successfully.`,
+      });
+
+      // Close the dialog
+      setDeleteDialogOpen(false);
+      setChapterToDelete(null);
+    } catch (error) {
+      console.error("Failed to delete chapter:", error);
+      toast({
+        title: "Delete failed",
+        description: error instanceof Error ? error.message : "Failed to delete the chapter. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
+  // Open delete confirmation dialog
+  const openDeleteDialog = (chapter: {id: string, title: string}) => {
+    setChapterToDelete(chapter);
+    setDeleteDialogOpen(true);
   }
 
   // Check authentication
@@ -719,9 +836,9 @@ export default function StoryInfoPage() {
           </Button>
 
           <div className="flex items-center gap-2">
-            {storyData.id && !storyData.isDraft && (
+            {storyData.id && storyData.status !== "draft" && (
               <div className="px-3 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100 text-xs rounded-full">
-                Published
+                {storyData.status === "completed" ? "Completed" : "Published"}
               </div>
             )}
             {/* Save Draft and Publish buttons removed */}
@@ -1013,7 +1130,7 @@ export default function StoryInfoPage() {
 
               {/* Action Buttons - Removed */}
               <div className="pt-6 flex flex-wrap gap-4">
-                {storyData.id && !storyData.isDraft && (
+                {storyData.id && storyData.status !== "draft" && (
                   <Button
                     onClick={() => router.push(`/story/${storyData.slug}`)}
                     size="lg"
@@ -1098,6 +1215,15 @@ export default function StoryInfoPage() {
                           <Eye size={14} />
                           Preview
                         </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex items-center gap-1 text-destructive hover:text-destructive"
+                          onClick={() => openDeleteDialog({id: chapter.id, title: chapter.title})}
+                        >
+                          <Trash2 size={14} />
+                          Delete
+                        </Button>
                       </div>
                     </div>
                   </CardContent>
@@ -1173,6 +1299,39 @@ export default function StoryInfoPage() {
 
       {/* Footer */}
       <SiteFooter />
+
+      {/* Delete Chapter Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to delete this chapter?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the chapter
+              "{chapterToDelete?.title}" and remove it from your story.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleDeleteChapter();
+              }}
+              className="bg-destructive hover:bg-destructive/90"
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <span className="animate-spin mr-2">⏳</span>
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
