@@ -58,6 +58,11 @@ export default function ReadingPage() {
     const fetchData = async () => {
       if (!slug || !chapterNumber) return
 
+      // If we already have the chapter data and it matches the current URL, don't refetch
+      if (chapter && chapter.number === chapterNumber && story && story.slug === slug) {
+        return
+      }
+
       setIsLoading(true)
       setError(null)
 
@@ -115,7 +120,7 @@ export default function ReadingPage() {
     }
 
     fetchData()
-  }, [slug, chapterNumber])
+  }, [slug, chapterNumber, chapter, story])
 
   // Track reading progress
   useEffect(() => {
@@ -253,7 +258,7 @@ export default function ReadingPage() {
                       variant="outline"
                       size="icon"
                       onClick={() => navigateToChapter("prev")}
-                      disabled={chapter.number <= 1}
+                      disabled={chapters.findIndex((c) => c.number === chapter.number) <= 0}
                     >
                       <ChevronLeft size={16} />
                       <span className="sr-only">Previous Chapter</span>
@@ -267,7 +272,7 @@ export default function ReadingPage() {
               <Sheet>
                 <SheetTrigger asChild>
                   <Button variant="outline" className="mx-2 text-sm">
-                    Chapter {chapter.number} of {chapters.length}
+                    Chapter {chapters.findIndex((c) => c.number === chapter.number) + 1} of {chapters.length}
                     <List size={16} className="ml-2" />
                   </Button>
                 </SheetTrigger>
@@ -288,7 +293,7 @@ export default function ReadingPage() {
                       variant="outline"
                       size="icon"
                       onClick={() => navigateToChapter("next")}
-                      disabled={chapter.number >= chapters.length}
+                      disabled={chapters.findIndex((c) => c.number === chapter.number) >= chapters.length - 1}
                     >
                       <ChevronRight size={16} />
                       <span className="sr-only">Next Chapter</span>
@@ -379,7 +384,7 @@ export default function ReadingPage() {
             <Button
               variant="outline"
               onClick={() => navigateToChapter("prev")}
-              disabled={chapter.number <= 1}
+              disabled={chapters.findIndex((c) => c.number === chapter.number) <= 0}
               className="flex items-center gap-2"
             >
               <ChevronLeft size={16} />
@@ -389,7 +394,7 @@ export default function ReadingPage() {
             <Button
               variant="outline"
               onClick={() => navigateToChapter("next")}
-              disabled={chapter.number >= chapters.length}
+              disabled={chapters.findIndex((c) => c.number === chapter.number) >= chapters.length - 1}
               className="flex items-center gap-2"
             >
               Next Chapter
