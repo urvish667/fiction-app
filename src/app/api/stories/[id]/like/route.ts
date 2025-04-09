@@ -72,7 +72,7 @@ export async function POST(
     const like = await prisma.like.create({
       data: {
         userId: session.user.id,
-        storyId,
+        storyId: storyId,
       },
     });
 

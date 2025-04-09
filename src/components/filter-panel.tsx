@@ -1,14 +1,15 @@
 "use client"
+import { useState, useEffect } from "react"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { X } from "lucide-react"
+import { X, Loader2 } from "lucide-react"
 
-// Sample genres - in a real app, these would come from an API
-const genres = [
+// Default genres to use while loading or if API fails
+const defaultGenres = [
   "Fantasy",
   "Science Fiction",
   "Mystery",
@@ -31,6 +32,34 @@ interface FilterPanelProps {
 }
 
 export default function FilterPanel({ selectedGenres, onGenreChange, sortBy, onSortChange }: FilterPanelProps) {
+  const [genres, setGenres] = useState<string[]>(defaultGenres)
+  const [loadingGenres, setLoadingGenres] = useState(false)
+
+  // Fetch genres from the API
+  useEffect(() => {
+    const fetchGenres = async () => {
+      setLoadingGenres(true)
+      try {
+        // In a real implementation, this would be an API call
+        // For now, we'll just use the default genres
+        // This is where you would add the API call to get genres
+
+        // Simulate API delay
+        await new Promise(resolve => setTimeout(resolve, 500))
+
+        // Use default genres for now
+        setGenres(defaultGenres)
+      } catch (error) {
+        console.error("Error fetching genres:", error)
+        // Fall back to default genres if API fails
+        setGenres(defaultGenres)
+      } finally {
+        setLoadingGenres(false)
+      }
+    }
+
+    fetchGenres()
+  }, [])
   const handleGenreToggle = (genre: string) => {
     if (selectedGenres.includes(genre)) {
       onGenreChange(selectedGenres.filter((g) => g !== genre))
@@ -94,20 +123,27 @@ export default function FilterPanel({ selectedGenres, onGenreChange, sortBy, onS
         <AccordionItem value="genres">
           <AccordionTrigger>Genres</AccordionTrigger>
           <AccordionContent>
-            <div className="grid grid-cols-2 gap-2">
-              {genres.map((genre) => (
-                <div key={genre} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`genre-${genre}`}
-                    checked={selectedGenres.includes(genre)}
-                    onCheckedChange={() => handleGenreToggle(genre)}
-                  />
-                  <Label htmlFor={`genre-${genre}`} className="text-sm">
-                    {genre}
-                  </Label>
-                </div>
-              ))}
-            </div>
+            {loadingGenres ? (
+              <div className="flex justify-center items-center py-4">
+                <Loader2 className="h-4 w-4 animate-spin text-primary mr-2" />
+                <span className="text-sm">Loading genres...</span>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                {genres.map((genre) => (
+                  <div key={genre} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`genre-${genre}`}
+                      checked={selectedGenres.includes(genre)}
+                      onCheckedChange={() => handleGenreToggle(genre)}
+                    />
+                    <Label htmlFor={`genre-${genre}`} className="text-sm">
+                      {genre}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            )}
           </AccordionContent>
         </AccordionItem>
       </Accordion>

@@ -8,7 +8,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, BookOpen, Heart, Bookmark } from "lucide-react"
+import { ArrowLeft, BookOpen, Heart, Bookmark, CheckCircle } from "lucide-react"
 import Navbar from "@/components/navbar"
 import ChapterList from "@/components/chapter-list"
 import StoryMetadata from "@/components/story-metadata"
@@ -28,6 +28,7 @@ export default function StoryInfoPage() {
   const [chapters, setChapters] = useState<ChapterType[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [imageFallback, setImageFallback] = useState(false)
 
   // Fetch story data based on slug
   useEffect(() => {
@@ -48,17 +49,16 @@ export default function StoryInfoPage() {
         }
 
         // Set the story details
+        console.log('Story data from API:', storyBySlug)
+        console.log('Cover image URL:', storyBySlug.coverImage)
         setStory(storyBySlug)
 
         // Fetch chapters for this story
         const chaptersData = await StoryService.getChapters(storyBySlug.id)
 
-        // Filter out draft chapters for non-author users
-        const visibleChapters = session?.user?.id === storyBySlug.authorId
-          ? chaptersData
-          : chaptersData.filter(chapter => !chapter.isDraft)
-
-        setChapters(visibleChapters)
+        // Always filter out draft chapters for the public story page
+        const publishedChapters = chaptersData.filter(chapter => !chapter.isDraft)
+        setChapters(publishedChapters)
       } catch (err) {
         console.error("Error fetching story:", err)
         setError("Failed to load story. Please try again.")
@@ -167,11 +167,20 @@ export default function StoryInfoPage() {
       <Navbar />
 
       <main className="container mx-auto px-8 py-8">
-        {/* Back Button */}
-        <Button variant="ghost" onClick={handleBack} className="mb-6 pl-0 flex items-center gap-2">
-          <ArrowLeft size={16} />
-          Back to Browse
-        </Button>
+        {/* Back Button and Story Status */}
+        <div className="flex justify-between items-center mb-6">
+          <Button variant="ghost" onClick={handleBack} className="pl-0 flex items-center gap-2">
+            <ArrowLeft size={16} />
+            Back to Browse
+          </Button>
+
+          {story.status && (
+            <Badge variant="outline" className="text-sm px-3 py-1 capitalize flex items-center gap-1">
+              {story.status === "completed" ? <CheckCircle size={14} className="text-green-500" /> : null}
+              {story.status}
+            </Badge>
+          )}
+        </div>
 
         {/* Story Overview Section */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
@@ -184,11 +193,18 @@ export default function StoryInfoPage() {
               className="relative aspect-[16/9] rounded-lg overflow-hidden shadow-lg"
             >
               <Image
-                src={story.coverImage || "/placeholder.svg?height=1600&width=900"}
+                src={imageFallback || !story.coverImage || story.coverImage.trim() === ""
+                  ? "/placeholder.svg?height=1600&width=900"
+                  : story.coverImage}
                 alt={story.title}
                 fill
                 className="object-cover"
                 priority
+                unoptimized={true} // Always use unoptimized for external images
+                onError={() => {
+                  console.error('Image failed to load:', story.coverImage);
+                  setImageFallback(true);
+                }}
               />
             </motion.div>
 

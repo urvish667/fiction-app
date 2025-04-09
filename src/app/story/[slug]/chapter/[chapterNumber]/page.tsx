@@ -79,26 +79,23 @@ export default function ReadingPage() {
         // Fetch chapters for this story
         const chaptersData = await StoryService.getChapters(storyDetails.id)
 
-        // Filter out draft chapters for non-author users
-        const visibleChapters = session?.user?.id === storyDetails.authorId
-          ? chaptersData
-          : chaptersData.filter(chapter => !chapter.isDraft)
-
-        setChapters(visibleChapters)
+        // Always filter out draft chapters for the public chapter page
+        const publishedChapters = chaptersData.filter(chapter => !chapter.isDraft)
+        setChapters(publishedChapters)
 
         // Find the current chapter by number
-        const currentChapter = visibleChapters.find(c => c.number === chapterNumber)
+        const currentChapter = publishedChapters.find((c) => c.number === chapterNumber)
 
         if (currentChapter) {
           // Fetch the full chapter details
           const chapterDetails = await StoryService.getChapter(storyDetails.id, currentChapter.id)
 
-          // Check if chapter is a draft and if the current user is the author
-          if (chapterDetails.isDraft && (!session?.user?.id || session.user.id !== storyDetails.authorId)) {
-            // If chapter is a draft and user is not the author, show error
+          // Check if chapter is a draft
+          if (chapterDetails.isDraft) {
+            // If chapter is a draft, show error
             setError("This chapter is not yet published")
           } else {
-            // Set chapter data if published or if user is the author
+            // Set chapter data if published
             setChapter(chapterDetails)
 
             // Update reading progress if available

@@ -10,82 +10,153 @@ import AdBanner from "@/components/ad-banner"
 import Pagination from "@/components/pagination"
 import { SiteFooter } from "@/components/site-footer"
 import { Button } from "@/components/ui/button"
-import { Filter, Grid, List } from "lucide-react"
+import { Filter, Grid, List, Loader2 } from "lucide-react"
 import { useMediaQuery } from "@/hooks/use-media-query"
-import type { Story } from "@/lib/types"
+import { StoryService } from "@/services/story-service"
+import { useToast } from "@/components/ui/use-toast"
 
-// Sample data - in a real app, this would come from an API
-import { sampleStories } from "@/lib/sample-data"
+// Define a type that combines the fields from both Story types
+type BrowseStory = {
+  id: string | number
+  title: string
+  author: string | { name?: string; username?: string }
+  genre?: string
+  thumbnail?: string
+  coverImage?: string
+  excerpt?: string
+  description?: string
+  likes?: number
+  likeCount?: number
+  comments?: number
+  commentCount?: number
+  reads?: number
+  readCount?: number
+  readTime?: number
+  date?: Date
+  createdAt?: Date
+  updatedAt?: Date
+  slug?: string
+}
 
 export default function BrowsePage() {
-  const [stories, setStories] = useState<Story[]>(sampleStories)
-  const [filteredStories, setFilteredStories] = useState<Story[]>(sampleStories)
+  const { toast } = useToast()
+  const [stories, setStories] = useState<BrowseStory[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedGenres, setSelectedGenres] = useState<string[]>([])
   const [sortBy, setSortBy] = useState("newest")
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [showFilters, setShowFilters] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
-  const storiesPerPage = 12
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalStories, setTotalStories] = useState(0)
+  const storiesPerPage = 16 // Show max 16 stories per page
 
   const isMobile = useMediaQuery("(max-width: 768px)")
 
-  // Filter stories based on search query, genres, and sort option
+  // Fetch stories from the API
   useEffect(() => {
-    let results = [...stories]
+    const fetchStories = async () => {
+      setLoading(true)
+      setError(null)
 
-    // Apply search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase()
-      results = results.filter(
-        (story) =>
-          story.title.toLowerCase().includes(query) ||
-          story.author.toLowerCase().includes(query) ||
-          story.excerpt.toLowerCase().includes(query),
-      )
+      try {
+        // Prepare API parameters
+        const params: {
+          page: number;
+          limit: number;
+          genre?: string;
+          search?: string;
+          status?: string;
+        } = {
+          page: currentPage,
+          limit: storiesPerPage,
+          status: "ongoing" // Only show published stories
+        }
+
+        // Add search query if provided
+        if (searchQuery) {
+          params.search = searchQuery
+        }
+
+        // Add genre filter if selected
+        if (selectedGenres.length === 1) {
+          params.genre = selectedGenres[0]
+        }
+
+        // Fetch stories from the API
+        const response = await StoryService.getStories(params)
+
+        // Log the raw story data to debug image issues
+        console.log('Raw story data from API:', response.stories);
+
+        // Map API response to BrowseStory type
+        const formattedStories = response.stories.map((story) => ({
+          id: story.id,
+          title: story.title,
+          author: story.author || "Unknown Author",
+          genre: story.genre || "General",
+          thumbnail: (story.coverImage && story.coverImage.trim() !== "") ? story.coverImage : "/placeholder.svg",
+          coverImage: (story.coverImage && story.coverImage.trim() !== "") ? story.coverImage : "/placeholder.svg",
+          excerpt: story.description,
+          description: story.description,
+          likes: story.likeCount,
+          likeCount: story.likeCount,
+          comments: story.commentCount,
+          commentCount: story.commentCount,
+          reads: story.readCount,
+          readCount: story.readCount,
+          readTime: Math.ceil(story.wordCount / 200), // Estimate read time based on word count
+          date: story.createdAt ? new Date(story.createdAt) : new Date(),
+          createdAt: story.createdAt ? new Date(story.createdAt) : new Date(),
+          updatedAt: story.updatedAt ? new Date(story.updatedAt) : new Date(),
+          slug: story.slug
+        }));
+
+        // Log the formatted stories to debug image issues
+        console.log('Formatted stories with image data:', formattedStories.map(s => ({
+          id: s.id,
+          title: s.title,
+          thumbnail: s.thumbnail,
+          coverImage: s.coverImage
+        })))
+
+        setStories(formattedStories)
+        setTotalPages(response.pagination.totalPages)
+        setTotalStories(response.pagination.total)
+      } catch (err) {
+        console.error("Error fetching stories:", err)
+        setError("Failed to load stories. Please try again later.")
+        toast({
+          title: "Error",
+          description: "Failed to load stories. Please try again later.",
+          variant: "destructive"
+        })
+      } finally {
+        setLoading(false)
+      }
     }
 
-    // Apply genre filter
-    if (selectedGenres.length > 0) {
-      results = results.filter((story) => selectedGenres.includes(story.genre))
-    }
-
-    // Apply sorting
-    switch (sortBy) {
-      case "newest":
-        results.sort((a, b) => b.date.getTime() - a.date.getTime())
-        break
-      case "popular":
-        results.sort((a, b) => b.likes - a.likes)
-        break
-      case "mostRead":
-        results.sort((a, b) => b.reads - a.reads)
-        break
-    }
-
-    setFilteredStories(results)
-    setCurrentPage(1) // Reset to first page when filters change
-  }, [searchQuery, selectedGenres, sortBy, stories])
-
-  // Calculate pagination
-  const indexOfLastStory = currentPage * storiesPerPage
-  const indexOfFirstStory = indexOfLastStory - storiesPerPage
-  const currentStories = filteredStories.slice(indexOfFirstStory, indexOfLastStory)
-  const totalPages = Math.ceil(filteredStories.length / storiesPerPage)
+    fetchStories()
+  }, [currentPage, searchQuery, selectedGenres, sortBy, toast])
 
   // Handle search input
   const handleSearch = (query: string) => {
     setSearchQuery(query)
+    setCurrentPage(1) // Reset to first page when search changes
   }
 
   // Handle genre selection
   const handleGenreChange = (genres: string[]) => {
     setSelectedGenres(genres)
+    setCurrentPage(1) // Reset to first page when filters change
   }
 
   // Handle sort selection
   const handleSortChange = (sort: string) => {
     setSortBy(sort)
+    setCurrentPage(1) // Reset to first page when sort changes
   }
 
   // Handle page change
@@ -161,17 +232,40 @@ export default function BrowsePage() {
 
               {/* Main Content */}
               <div className="flex-1">
-                {/* Results count and info */}
-                <div className="mb-4 text-sm text-muted-foreground">
-                  {filteredStories.length} {filteredStories.length === 1 ? "story" : "stories"} found
-                  {searchQuery && <span> for &quot;{searchQuery}&quot;</span>}
-                  {selectedGenres.length > 0 && <span> in {selectedGenres.join(", ")}</span>}
-                </div>
 
-                {/* Story Grid with Ads */}
-                {filteredStories.length > 0 ? (
+
+                {/* Loading state */}
+                {loading ? (
+                  <div className="flex justify-center items-center py-16">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <span className="ml-2">Loading stories...</span>
+                  </div>
+                ) : error ? (
+                  <div className="text-center py-16">
+                    <h3 className="text-xl font-semibold mb-2">Error loading stories</h3>
+                    <p className="text-muted-foreground mb-6">{error}</p>
+                    <Button
+                      onClick={() => {
+                        setSearchQuery("")
+                        setSelectedGenres([])
+                        setSortBy("newest")
+                        setCurrentPage(1)
+                      }}
+                    >
+                      Try again
+                    </Button>
+                  </div>
+                ) : stories.length > 0 ? (
                   <>
-                    <StoryGrid stories={currentStories} viewMode={viewMode} showAds={true} />
+                    {/* Results count and info */}
+                    <div className="mb-4 text-sm text-muted-foreground">
+                      {totalStories} {totalStories === 1 ? "story" : "stories"} found
+                      {searchQuery && <span> for &quot;{searchQuery}&quot;</span>}
+                      {selectedGenres.length > 0 && <span> in {selectedGenres.join(", ")}</span>}
+                    </div>
+
+                    {/* Story Grid with Ads */}
+                    <StoryGrid stories={stories} viewMode={viewMode} showAds={true} />
 
                     {/* Pagination */}
                     {totalPages > 1 && (

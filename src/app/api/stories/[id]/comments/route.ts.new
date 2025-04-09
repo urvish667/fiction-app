@@ -15,25 +15,27 @@ export async function GET(
   request: NextRequest,
   context: { params: { id: string } }
 ) {
+  // Always await params first
+  const params = await context.params;
+  const storyId = params.id;
+  
   try {
-    const params = await context.params;
-    const storyId = params.id;
     const { searchParams } = new URL(request.url);
-
+    
     // Parse query parameters
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "20");
     const parentId = searchParams.get("parentId") || null;
-
+    
     // Calculate pagination
     const skip = (page - 1) * limit;
-
+    
     // Build filter conditions
     const where: any = {
       storyId,
       parentId: parentId === "null" ? null : parentId,
     };
-
+    
     // Execute query with count
     const [comments, total] = await Promise.all([
       prisma.comment.findMany({
@@ -59,18 +61,18 @@ export async function GET(
       }),
       prisma.comment.count({ where }),
     ]);
-
+    
     // Transform comments to include counts
     const formattedComments = comments.map((comment) => ({
       ...comment,
       replyCount: comment._count.replies,
       _count: undefined,
     }));
-
+    
     // Add pagination metadata
     const totalPages = Math.ceil(total / limit);
     const hasMore = page < totalPages;
-
+    
     return NextResponse.json({
       comments: formattedComments,
       pagination: {
@@ -95,11 +97,11 @@ export async function POST(
   request: NextRequest,
   context: { params: { id: string } }
 ) {
+  // Always await params first
   const params = await context.params;
   const storyId = params.id;
-
+  
   try {
-
     // Check authentication
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -108,36 +110,36 @@ export async function POST(
         { status: 401 }
       );
     }
-
+    
     // Find the story
     const story = await prisma.story.findUnique({
       where: { id: storyId },
     });
-
+    
     if (!story) {
       return NextResponse.json(
         { error: "Story not found" },
         { status: 404 }
       );
     }
-
+    
     // Parse and validate request body
     const body = await request.json();
     const validatedData = createCommentSchema.parse(body);
-
+    
     // If this is a reply, check if parent comment exists
     if (validatedData.parentId) {
       const parentComment = await prisma.comment.findUnique({
         where: { id: validatedData.parentId },
       });
-
+      
       if (!parentComment) {
         return NextResponse.json(
           { error: "Parent comment not found" },
           { status: 404 }
         );
       }
-
+      
       // Ensure parent comment belongs to the same story
       if (parentComment.storyId !== storyId) {
         return NextResponse.json(
@@ -145,7 +147,7 @@ export async function POST(
           { status: 400 }
         );
       }
-
+      
       // Ensure we're not replying to a reply (only one level of nesting)
       if (parentComment.parentId) {
         return NextResponse.json(
@@ -154,7 +156,7 @@ export async function POST(
         );
       }
     }
-
+    
     // Create the comment
     const comment = await prisma.comment.create({
       data: {
@@ -174,7 +176,7 @@ export async function POST(
         },
       },
     });
-
+    
     // Create notification for the story author (if not self-comment)
     if (story.authorId !== session.user.id) {
       await prisma.notification.create({
@@ -185,7 +187,7 @@ export async function POST(
           message: `${session.user.name || session.user.username} commented on your story "${story.title}"`,
         },
       });
-
+      
       // Increment unread notifications count
       await prisma.user.update({
         where: { id: story.authorId },
@@ -196,14 +198,14 @@ export async function POST(
         },
       });
     }
-
+    
     // If this is a reply, also notify the parent comment author
     if (validatedData.parentId) {
       const parentComment = await prisma.comment.findUnique({
         where: { id: validatedData.parentId },
         select: { userId: true },
       });
-
+      
       if (parentComment && parentComment.userId !== session.user.id) {
         await prisma.notification.create({
           data: {
@@ -213,7 +215,7 @@ export async function POST(
             message: `${session.user.name || session.user.username} replied to your comment`,
           },
         });
-
+        
         // Increment unread notifications count
         await prisma.user.update({
           where: { id: parentComment.userId },
@@ -225,7 +227,7 @@ export async function POST(
         });
       }
     }
-
+    
     return NextResponse.json(comment, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -234,7 +236,7 @@ export async function POST(
         { status: 400 }
       );
     }
-
+    
     console.error("Error creating comment:", error);
     return NextResponse.json(
       { error: "Failed to create comment" },
