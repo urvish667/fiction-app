@@ -56,13 +56,28 @@ export default function StoryCard({ story, viewMode = "grid" }: StoryCardProps) 
   // Log image URL for debugging
   console.log(`Story card image for "${story.title}": ${imageUrl}`)
 
-  const formatDate = (date?: Date) => {
+  const formatDate = (date?: Date | string) => {
     if (!date) return "";
-    return new Intl.DateTimeFormat("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    }).format(date)
+
+    try {
+      // Convert string dates to Date objects
+      const dateObj = typeof date === 'string' ? new Date(date) : date;
+
+      // Check if date is valid
+      if (isNaN(dateObj.getTime())) {
+        console.warn(`Invalid date value: ${date}`);
+        return "";
+      }
+
+      return new Intl.DateTimeFormat("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }).format(dateObj);
+    } catch (error) {
+      console.error(`Error formatting date: ${date}`, error);
+      return "";
+    }
   }
 
   // Navigate to story page when card is clicked
@@ -83,7 +98,7 @@ export default function StoryCard({ story, viewMode = "grid" }: StoryCardProps) 
       onClick={handleCardClick}
       className="cursor-pointer"
     >
-      <Card className={`h-full overflow-hidden flex ${isGrid ? "flex-col" : "flex-row"}`} style={{ height: isGrid ? '380px' : 'auto' }}>
+      <Card className={`overflow-hidden flex ${isGrid ? "flex-col" : "flex-row"}`} style={{ height: isGrid ? '420px' : 'auto' }}>
         <div className={`${isGrid ? "w-full" : "w-1/3"} relative`}>
           <div className={`relative ${isGrid ? "aspect-[3/2]" : "h-full min-h-[180px]"} overflow-hidden`}>
             <Image
@@ -115,8 +130,8 @@ export default function StoryCard({ story, viewMode = "grid" }: StoryCardProps) 
             </div>
           </CardHeader>
 
-          <CardContent className="pb-2 flex-grow h-[60px] flex items-start">
-            <p className="text-sm text-muted-foreground line-clamp-2 w-full">{story.excerpt || story.description || "No description available."}</p>
+          <CardContent className="pb-2 flex-grow flex items-start">
+            <p className="text-sm text-muted-foreground line-clamp-3 w-full">{story.excerpt || story.description || "No description available."}</p>
           </CardContent>
 
           <CardFooter className="pt-0 flex justify-between mt-auto">

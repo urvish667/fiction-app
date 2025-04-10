@@ -38,7 +38,19 @@ export async function GET(request: NextRequest) {
 
     if (genre) where.genre = genre;
     if (authorId) where.authorId = authorId;
-    if (status) where.status = status;
+
+    // Handle status parameter - can be a comma-separated list
+    if (status) {
+      if (status.includes(',')) {
+        // If comma-separated, use 'in' operator
+        const statusValues = status.split(',').map(s => s.trim());
+        where.status = { in: statusValues };
+      } else {
+        // Single status value
+        where.status = status;
+      }
+    }
+
     if (search) {
       where.OR = [
         { title: { contains: search, mode: 'insensitive' } },

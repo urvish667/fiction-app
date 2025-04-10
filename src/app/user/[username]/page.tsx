@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
-import Image from "next/image"
+// import Image from "next/image" - not needed
 import Link from "next/link"
 import { motion } from "framer-motion"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -22,6 +22,7 @@ import Navbar from "@/components/navbar"
 import StoryCard from "@/components/story-card"
 import { SiteFooter } from "@/components/site-footer"
 import { sampleStories } from "@/lib/sample-data"
+// import { StoryService } from "@/services/story-service" - not needed
 
 // Define user profile type
 type UserProfile = {
@@ -58,7 +59,7 @@ export default function UserProfilePage() {
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState("stories")
 
-  // Fetch user data
+  // Fetch user data and stories
   useEffect(() => {
     const fetchUserData = async () => {
       try {
@@ -88,11 +89,61 @@ export default function UserProfilePage() {
     }
   }, [username])
 
-  // Use sample stories for demo
-  const userStories = sampleStories.slice(0, 6)
+  // Fetch user's published stories
+  useEffect(() => {
+    const fetchUserStories = async () => {
+      if (!user?.id) return
 
-  // Mock saved stories
-  const savedStories = sampleStories.slice(6, 12) // Use next 6 stories for demo
+      try {
+        setStoriesLoading(true)
+        // Fetch stories with status 'ongoing' or 'completed' by this author
+        const response = await fetch(`/api/stories?authorId=${user.id}&status=ongoing,completed`)
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch user stories")
+        }
+
+        const data = await response.json()
+        console.log('User stories from API:', data)
+
+        // Format the stories to ensure they have all required fields
+        const formattedStories = data.stories.map((story: any) => {
+          // Convert date strings to Date objects if they exist
+          const createdAt = story.createdAt ? new Date(story.createdAt) : undefined;
+          const updatedAt = story.updatedAt ? new Date(story.updatedAt) : undefined;
+
+          return {
+            ...story,
+            // Ensure these fields exist for StoryCard component
+            author: story.author || user.name || user.username,
+            excerpt: story.description,
+            likes: story.likeCount,
+            comments: story.commentCount,
+            reads: story.readCount,
+            createdAt,
+            updatedAt
+          };
+        })
+
+        setUserStories(formattedStories || [])
+
+        // For now, we'll use sample data for the library tab
+        // In a real implementation, we would fetch the user's bookmarked stories
+        setLibraryStories(sampleStories.slice(6, 12))
+      } catch (err) {
+        console.error("Error fetching user stories:", err)
+      } finally {
+        setStoriesLoading(false)
+      }
+    }
+
+    fetchUserStories()
+  }, [user?.id])
+
+  // State for user's published stories and library
+  const [userStories, setUserStories] = useState<any[]>([])
+  const [savedStories, setLibraryStories] = useState<any[]>([])
+  const [storiesLoading, setStoriesLoading] = useState(false)
 
   // For now, we'll still use mock data for the followers/following lists
   // In a real implementation, we would fetch this data from an API
@@ -150,16 +201,6 @@ export default function UserProfilePage() {
                   className="w-full h-full object-cover"
                 />
               )}
-
-              {/* Avatar - positioned to overlap the banner */}
-              {/* <div className="absolute -bottom-16 left-4 md:left-8">
-                <div className="relative">
-                  <Avatar className="h-32 w-32 border-4 border-background">
-                    <AvatarImage src={user.image || "/placeholder-user.jpg"} alt={user.name || user.username} />
-                    <AvatarFallback>{(user.name || user.username).charAt(0)}</AvatarFallback>
-                  </Avatar>
-                </div>
-              </div> */}
             </div>
 
             {/* Avatar positioned to overlap the banner */}
@@ -303,7 +344,11 @@ export default function UserProfilePage() {
 
             <TabsContent value="stories">
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-                {userStories.length > 0 ? (
+                {storiesLoading ? (
+                  <div className="flex justify-center items-center h-64">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+                ) : userStories.length > 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {userStories.map((story) => (
                       <StoryCard key={story.id} story={story} />
@@ -320,7 +365,11 @@ export default function UserProfilePage() {
 
             <TabsContent value="library">
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-                {savedStories.length > 0 ? (
+                {storiesLoading ? (
+                  <div className="flex justify-center items-center h-64">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+                ) : savedStories.length > 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {savedStories.map((story) => (
                       <StoryCard key={story.id} story={story} />
