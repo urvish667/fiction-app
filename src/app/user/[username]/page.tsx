@@ -21,7 +21,7 @@ import {
 import Navbar from "@/components/navbar"
 import StoryCard from "@/components/story-card"
 import { SiteFooter } from "@/components/site-footer"
-import { sampleStories } from "@/lib/sample-data"
+// import { sampleStories } from "@/lib/sample-data" - not needed
 // import { StoryService } from "@/services/story-service" - not needed
 
 // Define user profile type
@@ -89,25 +89,31 @@ export default function UserProfilePage() {
     }
   }, [username])
 
-  // Fetch user's published stories
+  // Fetch user's published stories and bookmarked stories
   useEffect(() => {
-    const fetchUserStories = async () => {
+    const fetchUserData = async () => {
       if (!user?.id) return
 
       try {
         setStoriesLoading(true)
-        // Fetch stories with status 'ongoing' or 'completed' by this author
-        const response = await fetch(`/api/stories?authorId=${user.id}&status=ongoing,completed`)
 
-        if (!response.ok) {
+        // Fetch stories with status 'ongoing' or 'completed' by this author
+        const [storiesResponse, bookmarksResponse] = await Promise.all([
+          // Fetch published stories
+          fetch(`/api/stories?authorId=${user.id}&status=ongoing,completed`),
+          // Fetch bookmarked stories
+          fetch(`/api/user/bookmarks?userId=${user.id}`)
+        ])
+
+        if (!storiesResponse.ok) {
           throw new Error("Failed to fetch user stories")
         }
 
-        const data = await response.json()
-        console.log('User stories from API:', data)
+        const storiesData = await storiesResponse.json()
+        console.log('User stories from API:', storiesData)
 
         // Format the stories to ensure they have all required fields
-        const formattedStories = data.stories.map((story: any) => {
+        const formattedStories = storiesData.stories.map((story: any) => {
           // Convert date strings to Date objects if they exist
           const createdAt = story.createdAt ? new Date(story.createdAt) : undefined;
           const updatedAt = story.updatedAt ? new Date(story.updatedAt) : undefined;
@@ -127,17 +133,42 @@ export default function UserProfilePage() {
 
         setUserStories(formattedStories || [])
 
-        // For now, we'll use sample data for the library tab
-        // In a real implementation, we would fetch the user's bookmarked stories
-        setLibraryStories(sampleStories.slice(6, 12))
+        // Process bookmarked stories if the request was successful
+        if (bookmarksResponse.ok) {
+          const bookmarksData = await bookmarksResponse.json()
+          console.log('User bookmarks from API:', bookmarksData)
+
+          // Format the bookmarked stories
+          const formattedBookmarks = bookmarksData.stories.map((story: any) => {
+            // Convert date strings to Date objects if they exist
+            const createdAt = story.createdAt ? new Date(story.createdAt) : undefined;
+            const updatedAt = story.updatedAt ? new Date(story.updatedAt) : undefined;
+
+            return {
+              ...story,
+              // Ensure these fields exist for StoryCard component
+              excerpt: story.description,
+              likes: story.likeCount,
+              comments: story.commentCount,
+              reads: story.readCount,
+              createdAt,
+              updatedAt
+            };
+          })
+
+          setLibraryStories(formattedBookmarks || [])
+        } else {
+          console.error("Failed to fetch bookmarked stories")
+          setLibraryStories([])
+        }
       } catch (err) {
-        console.error("Error fetching user stories:", err)
+        console.error("Error fetching user data:", err)
       } finally {
         setStoriesLoading(false)
       }
     }
 
-    fetchUserStories()
+    fetchUserData()
   }, [user?.id])
 
   // State for user's published stories and library

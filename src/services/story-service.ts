@@ -313,4 +313,32 @@ export const StoryService = {
       throw new Error(error.error || "Failed to remove bookmark");
     }
   },
+
+  /**
+   * Get bookmarked stories for a user
+   */
+  async getBookmarkedStories(params?: {
+    page?: number;
+    limit?: number;
+    userId?: string;
+  }): Promise<{ stories: StoryResponse[]; pagination: any }> {
+    // Build query string from params
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) {
+          queryParams.append(key, String(value));
+        }
+      });
+    }
+
+    const response = await fetch(`/api/user/bookmarks?${queryParams.toString()}`);
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to fetch bookmarked stories");
+    }
+
+    return response.json();
+  },
 };
