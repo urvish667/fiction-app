@@ -33,14 +33,15 @@ type StoryCardProps = {
   }
   viewMode?: "grid" | "list"
 }
-import { useState } from "react"
+// Import useState if needed in the future
+// import { useState } from "react"
 import { useRouter } from "next/navigation"
 
 
 
 export default function StoryCard({ story, viewMode = "grid" }: StoryCardProps) {
   // Use story's like status for display only
-  const liked = story.isLiked || false
+  const liked = (story as any).isLiked || false
   const likeCount = story.likes || story.likeCount || 0
   const router = useRouter()
 
@@ -96,9 +97,9 @@ export default function StoryCard({ story, viewMode = "grid" }: StoryCardProps) 
       whileHover={{ y: -5 }}
       transition={{ duration: 0.2 }}
       onClick={handleCardClick}
-      className="cursor-pointer"
+      className="cursor-pointer h-full"
     >
-      <Card className={`overflow-hidden flex ${isGrid ? "flex-col" : "flex-row"}`} style={{ height: isGrid ? '420px' : 'auto' }}>
+      <Card className={`overflow-hidden flex ${isGrid ? "flex-col" : "flex-row"} h-full`}>
         <div className={`${isGrid ? "w-full" : "w-1/3"} relative`}>
           <div className={`relative ${isGrid ? "aspect-[3/2]" : "h-full min-h-[180px]"} overflow-hidden`}>
             <Image
@@ -117,8 +118,8 @@ export default function StoryCard({ story, viewMode = "grid" }: StoryCardProps) 
           </div>
         </div>
 
-        <div className={`${isGrid ? "w-full" : "w-2/3"} flex flex-col ${isGrid ? "justify-between" : ""}`}>
-          <CardHeader className="pb-2">
+        <div className={`${isGrid ? "w-full" : "w-2/3"} flex flex-col h-full`}>
+          <CardHeader className="pb-2 px-4 pt-4">
             <div className="flex justify-between items-start">
               <div>
                 <h3 className="font-bold text-lg line-clamp-1">{story.title}</h3>
@@ -130,11 +131,11 @@ export default function StoryCard({ story, viewMode = "grid" }: StoryCardProps) 
             </div>
           </CardHeader>
 
-          <CardContent className="pb-2 flex-grow flex items-start">
+          <CardContent className="pb-1 pt-0 px-4 flex-grow">
             <p className="text-sm text-muted-foreground line-clamp-3 w-full">{story.excerpt || story.description || "No description available."}</p>
           </CardContent>
 
-          <CardFooter className="pt-0 flex justify-between mt-auto">
+          <CardFooter className="pt-0 pb-2 px-4 flex justify-between mt-auto">
             <div className="flex items-center gap-4">
               {/* Views/Reads Stats */}
               <div className="flex items-center gap-1">
