@@ -295,7 +295,8 @@ export const authOptions: NextAuthOptions = {
         id: (token.id as string) || token.sub!,
         name: token.name,
         email: token.email,
-        image: token.picture,
+        image: token.image || token.picture,
+        bannerImage: token.bannerImage,
         username: token.username,
         isProfileComplete: token.isProfileComplete,
         unreadNotifications: 0, // Default value for now
@@ -341,6 +342,8 @@ export const authOptions: NextAuthOptions = {
         token.username = user.username;
         token.provider = user.provider || account?.provider;
         token.isProfileComplete = user.isProfileComplete;
+        token.image = user.image;
+        token.bannerImage = user.bannerImage;
         token.lastUpdated = Date.now();
 
         // If user has preferences, store them in the token
@@ -368,6 +371,8 @@ export const authOptions: NextAuthOptions = {
               isProfileComplete: true,
               preferences: true, // Always include preferences
               marketingOptIn: true,
+              image: true,
+              bannerImage: true,
               // Include other fields that might change frequently
             }
           });
@@ -376,6 +381,8 @@ export const authOptions: NextAuthOptions = {
             token.username = dbUser.username;
             token.isProfileComplete = dbUser.isProfileComplete;
             token.marketingOptIn = dbUser.marketingOptIn;
+            token.image = dbUser.image;
+            token.bannerImage = dbUser.bannerImage;
             token.lastUpdated = Date.now();
 
             // Process preferences if they exist

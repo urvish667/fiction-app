@@ -11,6 +11,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import Navbar from "@/components/navbar"
 import { UserPreferences, defaultPreferences } from "@/types/user"
+// Router no longer needed with window.location.reload()
 
 // Import the new settings components
 import ProfileSettings from "@/components/settings/ProfileSettings"
@@ -43,6 +44,7 @@ type SettingsFormValues = z.infer<typeof settingsFormSchema>
 export default function SettingsPage() {
   const { toast } = useToast()
   const { data: session, update } = useSession()
+  // Router no longer needed with window.location.reload()
   const [activeTab, setActiveTab] = useState("profile")
   const [isUpdating, setIsUpdating] = useState(false) // Shared state for profile/social save buttons
   const [isChangingPassword, setIsChangingPassword] = useState(false)
@@ -196,6 +198,80 @@ export default function SettingsPage() {
       })
     } finally {
       setIsUpdating(false)
+    }
+  }
+
+  // Update profile image
+  const updateProfileImage = async (imageUrl: string) => {
+    if (!session?.user?.id) return
+
+    try {
+      const response = await fetch("/api/user/profile", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          image: imageUrl,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to update profile image")
+      }
+
+      // Update the session with new image
+      await update()
+
+      // Force a hard refresh to update all components
+      window.location.reload()
+    } catch (error) {
+      console.error("Error updating profile image:", error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to update profile image",
+        variant: "destructive",
+      })
+      throw error
+    }
+  }
+
+  // Update banner image
+  const updateBannerImage = async (imageUrl: string) => {
+    if (!session?.user?.id) return
+
+    try {
+      const response = await fetch("/api/user/profile", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          bannerImage: imageUrl,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to update banner image")
+      }
+
+      // Update the session with new banner image
+      await update()
+
+      // Force a hard refresh to update all components
+      window.location.reload()
+    } catch (error) {
+      console.error("Error updating banner image:", error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to update banner image",
+        variant: "destructive",
+      })
+      throw error
     }
   }
 
@@ -477,6 +553,8 @@ export default function SettingsPage() {
                 isUpdating={isUpdating}
                 saveProfileInfo={saveProfileInfo}
                 saveSocialLinks={saveSocialLinks}
+                updateProfileImage={updateProfileImage}
+                updateBannerImage={updateBannerImage}
               />
             </motion.div>
           </TabsContent>

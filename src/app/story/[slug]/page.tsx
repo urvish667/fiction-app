@@ -72,7 +72,7 @@ export default function StoryInfoPage() {
 
   // Handle back button
   const handleBack = () => {
-    router.back()
+    router.push(`/browse`)
   }
 
   // Handle start reading

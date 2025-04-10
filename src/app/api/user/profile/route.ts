@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { z } from "zod"
 import { prisma } from "@/lib/auth/db-adapter"
-import { authOptions } from "@/app/api/auth/[...nextauth]/route"
+import { authOptions } from "@/lib/auth"
 
 // Validation schema for social links
 const socialLinksSchema = z.object({
@@ -17,7 +17,8 @@ const profileUpdateSchema = z.object({
   username: z.string()
     .min(3, "Username must be at least 3 characters")
     .max(30, "Username must be less than 30 characters")
-    .regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, underscores, and hyphens"),
+    .regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, underscores, and hyphens")
+    .optional(), // Make username optional for image updates
   bio: z.string().max(500, "Bio must be less than 500 characters").optional().nullable(),
   location: z.string().max(100, "Location must be less than 100 characters").optional().nullable(),
   website: z.string().url("Please enter a valid URL").optional().nullable(),
@@ -25,6 +26,8 @@ const profileUpdateSchema = z.object({
   language: z.enum(["en", "es", "fr", "de", "it", "pt", "ru", "zh", "ja", "ko"]).optional().default("en"),
   theme: z.enum(["light", "dark", "system"]).optional().default("system"),
   marketingOptIn: z.boolean().optional(),
+  image: z.string().optional().nullable(),
+  bannerImage: z.string().optional().nullable(),
 })
 
 // GET method to retrieve user profile
@@ -53,6 +56,7 @@ export async function GET() {
         marketingOptIn: true,
         email: true,
         image: true,
+        bannerImage: true,
       }
     })
 
@@ -102,6 +106,18 @@ export async function PATCH(request: NextRequest) {
       }
     }
 
+    // If only updating image or bannerImage, get the current user data
+    if ((validatedData.image !== undefined || validatedData.bannerImage !== undefined) && !validatedData.username) {
+      const currentUser = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { username: true }
+      })
+
+      if (currentUser) {
+        validatedData.username = currentUser.username
+      }
+    }
+
     // Update user profile
     const updatedUser = await prisma.user.update({
       where: { id: session.user.id },
@@ -111,10 +127,12 @@ export async function PATCH(request: NextRequest) {
         bio: validatedData.bio,
         location: validatedData.location,
         website: validatedData.website,
-        socialLinks: validatedData.socialLinks ? { set: validatedData.socialLinks } : { set: null },
+        socialLinks: validatedData.socialLinks ? { set: validatedData.socialLinks } : undefined,
         language: validatedData.language,
         theme: validatedData.theme,
         marketingOptIn: validatedData.marketingOptIn !== undefined ? validatedData.marketingOptIn : undefined,
+        image: validatedData.image !== undefined ? validatedData.image : undefined,
+        bannerImage: validatedData.bannerImage !== undefined ? validatedData.bannerImage : undefined,
         updatedAt: new Date(),
       },
       select: {
@@ -128,6 +146,8 @@ export async function PATCH(request: NextRequest) {
         language: true,
         theme: true,
         marketingOptIn: true,
+        image: true,
+        bannerImage: true,
       }
     })
 

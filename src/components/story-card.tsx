@@ -6,7 +6,7 @@ import { motion } from "framer-motion"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Heart, MessageSquare, Bookmark, Share2 } from "lucide-react"
+import { Heart, MessageSquare, Share2, Eye } from "lucide-react"
 import Image from "next/image"
 // Using a more flexible type to handle both mock and API data
 type StoryCardProps = {
@@ -35,24 +35,14 @@ type StoryCardProps = {
 }
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { useToast } from "@/components/ui/use-toast"
-import { StoryService } from "@/services/story-service"
 
 
 
 export default function StoryCard({ story, viewMode = "grid" }: StoryCardProps) {
-  // Track like and bookmark states with initial values from story props
-  const [liked, setLiked] = useState(story.isLiked || false)
-  const [bookmarked, setBookmarked] = useState(story.isBookmarked || false)
-
-  // Animation states for like and bookmark actions
-  const [likeAnimation, setLikeAnimation] = useState(false)
-  const [bookmarkAnimation, setBookmarkAnimation] = useState(false)
-  const [likeCount, setLikeCount] = useState(story.likes || story.likeCount || 0)
-  const [isLiking, setIsLiking] = useState(false)
-  const [isBookmarking, setIsBookmarking] = useState(false)
+  // Use story's like status for display only
+  const liked = story.isLiked || false
+  const likeCount = story.likes || story.likeCount || 0
   const router = useRouter()
-  const { toast } = useToast()
 
   const isGrid = viewMode === "grid"
 
@@ -130,136 +120,34 @@ export default function StoryCard({ story, viewMode = "grid" }: StoryCardProps) 
           </CardContent>
 
           <CardFooter className="pt-0 flex justify-between mt-auto">
-            <div className="flex items-center gap-3">
-              <Button
-                variant="ghost"
-                size="icon"
-                className={`h-8 w-8 relative group ${liked ? 'bg-red-50 dark:bg-red-950/20' : ''}`}
-                disabled={isLiking}
-                onClick={async (e) => {
-                  handleActionClick(e)
-                  if (!story.id) return
+            <div className="flex items-center gap-4">
+              {/* Views/Reads Stats */}
+              <div className="flex items-center gap-1">
+                <Eye size={16} className="text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">{story.reads || story.readCount || 0}</span>
+              </div>
 
-                  try {
-                    setIsLiking(true)
-                    if (liked) {
-                      try {
-                        await StoryService.unlikeStory(String(story.id))
-                        setLikeCount(prev => Math.max(0, prev - 1))
-                        setLiked(false)
-                      } catch (unlikeError: any) {
-                        // If there's an error unliking, just revert the UI state
-                        console.log('Error unliking story, reverting UI state:', unlikeError.message)
-                        // No UI update needed - will stay in liked state
-                      }
-                    } else {
-                      // Trigger animation when liking
-                      setLikeAnimation(true)
-                      setTimeout(() => setLikeAnimation(false), 500)
-
-                      try {
-                        await StoryService.likeStory(String(story.id))
-                        setLikeCount(prev => prev + 1)
-                        setLiked(true)
-                      } catch (likeError: any) {
-                        // If there's an error (including "already liked"), just revert the UI state
-                        console.log('Error liking story, reverting UI state:', likeError.message)
-                        // No UI update needed - animation will revert naturally
-                      }
-                    }
-                  } catch (error: any) {
-                    console.error('Unexpected error toggling like:', error)
-                    // Only show toast for unexpected errors
-                    toast({
-                      title: "Error",
-                      description: "Something went wrong. Please try again later.",
-                      variant: "destructive"
-                    })
-                  } finally {
-                    setIsLiking(false)
-                  }
-                }}
-              >
+              {/* Likes Stats */}
+              <div className="flex items-center gap-1">
                 <Heart
                   size={16}
-                  className={`transition-colors duration-300 ${liked ? "fill-red-500 text-red-500" : "text-muted-foreground hover:text-red-400"} ${likeAnimation ? "scale-125" : ""}`}
-                  style={{ transition: "transform 0.3s ease" }}
+                  className={`${liked ? "fill-red-500 text-red-500" : "text-muted-foreground"}`}
                 />
-                {isLiking && <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-primary animate-ping"></span>}
-                <span className="sr-only">{liked ? 'Unlike' : 'Like'}</span>
-                <span className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-black/80 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">{liked ? 'Unlike' : 'Like'}</span>
-              </Button>
-              <span className="text-sm text-muted-foreground">{likeCount}</span>
+                <span className="text-sm text-muted-foreground">{likeCount}</span>
+              </div>
 
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleActionClick}>
+              {/* Comments Stats */}
+              <div className="flex items-center gap-1">
                 <MessageSquare size={16} className="text-muted-foreground" />
-                <span className="sr-only">Comments</span>
-              </Button>
-              <span className="text-sm text-muted-foreground">{story.comments || story.commentCount || 0}</span>
+                <span className="text-sm text-muted-foreground">{story.comments || story.commentCount || 0}</span>
+              </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                className={`h-8 w-8 relative group ${bookmarked ? 'bg-primary-50 dark:bg-primary-950/20' : ''}`}
-                disabled={isBookmarking}
-                onClick={async (e) => {
-                  handleActionClick(e)
-                  if (!story.id) return
-
-                  try {
-                    setIsBookmarking(true)
-                    if (bookmarked) {
-                      try {
-                        await StoryService.removeBookmark(String(story.id))
-                        setBookmarked(false)
-                      } catch (unbookmarkError: any) {
-                        // If there's an error removing bookmark, just revert the UI state
-                        console.log('Error removing bookmark, reverting UI state:', unbookmarkError.message)
-                        // No UI update needed - will stay in bookmarked state
-                      }
-                    } else {
-                      // Trigger animation when bookmarking
-                      setBookmarkAnimation(true)
-                      setTimeout(() => setBookmarkAnimation(false), 500)
-
-                      try {
-                        await StoryService.bookmarkStory(String(story.id))
-                        setBookmarked(true)
-                      } catch (bookmarkError: any) {
-                        // If there's an error (including "already bookmarked"), just revert the UI state
-                        console.log('Error bookmarking story, reverting UI state:', bookmarkError.message)
-                        // No UI update needed - animation will revert naturally
-                      }
-                    }
-                  } catch (error) {
-                    console.error('Unexpected error toggling bookmark:', error)
-                    toast({
-                      title: "Error",
-                      description: "Something went wrong. Please try again later.",
-                      variant: "destructive"
-                    })
-                  } finally {
-                    setIsBookmarking(false)
-                  }
-                }}
-              >
-                <Bookmark
-                  size={16}
-                  className={`transition-colors duration-300 ${bookmarked ? "fill-primary text-primary" : "text-muted-foreground hover:text-primary/70"} ${bookmarkAnimation ? "scale-125" : ""}`}
-                  style={{ transition: "transform 0.3s ease" }}
-                />
-                {isBookmarking && <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-primary animate-ping"></span>}
-                <span className="sr-only">{bookmarked ? 'Remove bookmark' : 'Bookmark'}</span>
-                <span className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-black/80 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">{bookmarked ? 'Remove bookmark' : 'Bookmark'}</span>
-              </Button>
-
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleActionClick}>
-                <Share2 size={16} className="text-muted-foreground" />
-                <span className="sr-only">Share</span>
-              </Button>
-            </div>
+            {/* Share Button */}
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleActionClick}>
+              <Share2 size={16} className="text-muted-foreground" />
+              <span className="sr-only">Share</span>
+            </Button>
           </CardFooter>
         </div>
       </Card>

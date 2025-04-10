@@ -13,6 +13,7 @@ declare module "next-auth" {
       name?: string | null
       email?: string | null
       image?: string | null
+      bannerImage?: string | null
       username?: string | null
       isProfileComplete?: boolean
       unreadNotifications: number
@@ -33,5 +34,6 @@ declare module "next-auth/jwt" {
     preferences?: UserPreferences
     marketingOptIn?: boolean
     provider?: string
+    bannerImage?: string | null
   }
 }

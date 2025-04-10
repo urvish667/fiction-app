@@ -1,15 +1,35 @@
 import type React from "react"
+import { useState, useRef } from "react"
 import type { UseFormReturn } from "react-hook-form"
 import type { Session } from "next-auth"
-import Image from "next/image"
+import { UserPreferences } from "@/types/user"
+
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+
+// Define a custom type for the session user that includes bannerImage
+type ExtendedUser = {
+  id: string;
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+  bannerImage?: string | null;
+  username?: string | null;
+  isProfileComplete?: boolean;
+  unreadNotifications: number;
+  preferences?: UserPreferences;
+  marketingOptIn?: boolean;
+  provider?: string;
+}
+
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { AlertCircle, Check, Upload, Trash2, Loader2, AtSign, Link, MessageSquare } from "lucide-react"
+import { AlertCircle, Check, Upload, Trash2, Loader2, AtSign, Link, MessageSquare, ImageIcon } from "lucide-react"
 import { z } from "zod"
+import { useToast } from "@/components/ui/use-toast"
+import { ImageUpload } from "@/lib/image-upload"
 
 // Define the schema subset needed for profile validation within this component
 const profileUpdateSchemaSubset = z.object({
@@ -30,12 +50,19 @@ const profileUpdateSchemaSubset = z.object({
 
 type ProfileFormValuesSubset = z.infer<typeof profileUpdateSchemaSubset>
 
+// Extend the Session type to include our ExtendedUser
+interface ExtendedSession extends Omit<Session, 'user'> {
+  user: ExtendedUser;
+}
+
 interface ProfileSettingsProps {
-  session: Session | null
+  session: ExtendedSession | null
   form: UseFormReturn<ProfileFormValuesSubset>
   isUpdating: boolean
   saveProfileInfo: (data: any) => Promise<void>
   saveSocialLinks: (data: any) => Promise<void>
+  updateProfileImage?: (imageUrl: string) => Promise<void>
+  updateBannerImage?: (imageUrl: string) => Promise<void>
 }
 
 const ProfileSettings: React.FC<ProfileSettingsProps> = ({
@@ -44,7 +71,156 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
   isUpdating,
   saveProfileInfo,
   saveSocialLinks,
+  updateProfileImage,
+  updateBannerImage,
 }) => {
+  const { toast } = useToast()
+  const [isUploadingProfile, setIsUploadingProfile] = useState(false)
+  const [isUploadingBanner, setIsUploadingBanner] = useState(false)
+  const profileInputRef = useRef<HTMLInputElement>(null)
+  const bannerInputRef = useRef<HTMLInputElement>(null)
+
+  // Handle profile image upload
+  const handleProfileImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !session?.user?.id) return
+
+    // Check if file is an image
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Invalid file type",
+        description: "Please select an image file",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      setIsUploadingProfile(true)
+
+      // Process the image (resize, compress)
+      const processedFile = await ImageUpload.processImage(file, 400, 400)
+
+      // Upload the image
+      const imageUrl = await ImageUpload.uploadProfileImage(session.user.id, processedFile)
+
+      // Update the user's profile image
+      if (updateProfileImage) {
+        await updateProfileImage(imageUrl)
+        toast({
+          title: "Profile picture updated",
+          description: "Your profile picture has been updated successfully",
+        })
+      }
+    } catch (error) {
+      console.error("Error uploading profile image:", error)
+      toast({
+        title: "Upload failed",
+        description: "Failed to upload profile picture. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsUploadingProfile(false)
+      // Reset the input
+      if (profileInputRef.current) {
+        profileInputRef.current.value = ""
+      }
+    }
+  }
+
+  // Handle banner image upload
+  const handleBannerImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !session?.user?.id) return
+
+    // Check if file is an image
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Invalid file type",
+        description: "Please select an image file",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      setIsUploadingBanner(true)
+
+      // Process the image (resize, compress)
+      const processedFile = await ImageUpload.processImage(file, 1200, 300)
+
+      // Upload the image
+      const imageUrl = await ImageUpload.uploadBannerImage(session.user.id, processedFile)
+
+      // Update the user's banner image
+      if (updateBannerImage) {
+        await updateBannerImage(imageUrl)
+        toast({
+          title: "Banner updated",
+          description: "Your profile banner has been updated successfully",
+        })
+      }
+    } catch (error) {
+      console.error("Error uploading banner image:", error)
+      toast({
+        title: "Upload failed",
+        description: "Failed to upload banner image. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsUploadingBanner(false)
+      // Reset the input
+      if (bannerInputRef.current) {
+        bannerInputRef.current.value = ""
+      }
+    }
+  }
+
+  // Handle profile image removal
+  const handleRemoveProfileImage = async () => {
+    if (!session?.user?.id || !updateProfileImage) return
+
+    try {
+      setIsUploadingProfile(true)
+      await updateProfileImage("")
+      toast({
+        title: "Profile picture removed",
+        description: "Your profile picture has been removed",
+      })
+    } catch (error) {
+      console.error("Error removing profile image:", error)
+      toast({
+        title: "Error",
+        description: "Failed to remove profile picture. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsUploadingProfile(false)
+    }
+  }
+
+  // Handle banner image removal
+  const handleRemoveBannerImage = async () => {
+    if (!session?.user?.id || !updateBannerImage) return
+
+    try {
+      setIsUploadingBanner(true)
+      await updateBannerImage("")
+      toast({
+        title: "Banner removed",
+        description: "Your profile banner has been removed",
+      })
+    } catch (error) {
+      console.error("Error removing banner image:", error)
+      toast({
+        title: "Error",
+        description: "Failed to remove banner image. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsUploadingBanner(false)
+    }
+  }
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
       {/* Profile Information */}
@@ -256,14 +432,42 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
             </Avatar>
 
             <div className="flex gap-2 mt-2">
-              <Button variant="outline" className="flex items-center gap-2">
-                <Upload className="h-4 w-4" />
-                Upload
+              <Button
+                variant="outline"
+                className="flex items-center gap-2"
+                onClick={() => profileInputRef.current?.click()}
+                disabled={isUploadingProfile}
+              >
+                {isUploadingProfile ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4" />
+                    Upload
+                  </>
+                )}
               </Button>
-              <Button variant="outline" className="flex items-center gap-2">
-                <Trash2 className="h-4 w-4" />
-                Remove
-              </Button>
+              {session?.user?.image && (
+                <Button
+                  variant="outline"
+                  className="flex items-center gap-2"
+                  onClick={handleRemoveProfileImage}
+                  disabled={isUploadingProfile}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Remove
+                </Button>
+              )}
+              <input
+                type="file"
+                ref={profileInputRef}
+                onChange={handleProfileImageUpload}
+                accept="image/*"
+                className="hidden"
+              />
             </div>
 
             <p className="text-xs text-muted-foreground mt-4 text-center">
@@ -279,23 +483,56 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
           </CardHeader>
           <CardContent className="flex flex-col items-center">
             <div className="relative w-full h-32 rounded-md overflow-hidden mb-4">
-              <Image
-                src="/placeholder.svg" // Placeholder for banner - replace if dynamic banner exists
-                alt="Profile banner"
-                fill
-                className="object-cover"
-              />
+              {session?.user?.bannerImage ? (
+                <img
+                  src={session.user.bannerImage}
+                  alt="Profile banner"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="flex items-center justify-center h-full w-full bg-gray-100">
+                  <ImageIcon className="h-12 w-12 text-gray-300" />
+                </div>
+              )}
             </div>
 
             <div className="flex gap-2 mt-2">
-              <Button variant="outline" className="flex items-center gap-2">
-                <Upload className="h-4 w-4" />
-                Upload
+              <Button
+                variant="outline"
+                className="flex items-center gap-2"
+                onClick={() => bannerInputRef.current?.click()}
+                disabled={isUploadingBanner}
+              >
+                {isUploadingBanner ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4" />
+                    Upload
+                  </>
+                )}
               </Button>
-              <Button variant="outline" className="flex items-center gap-2">
-                <Trash2 className="h-4 w-4" />
-                Remove
-              </Button>
+              {session?.user?.bannerImage && (
+                <Button
+                  variant="outline"
+                  className="flex items-center gap-2"
+                  onClick={handleRemoveBannerImage}
+                  disabled={isUploadingBanner}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Remove
+                </Button>
+              )}
+              <input
+                type="file"
+                ref={bannerInputRef}
+                onChange={handleBannerImageUpload}
+                accept="image/*"
+                className="hidden"
+              />
             </div>
 
             <p className="text-xs text-muted-foreground mt-4 text-center">Recommended: 1200x300 pixels.</p>
@@ -306,4 +543,4 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
   )
 }
 
-export default ProfileSettings 
+export default ProfileSettings
