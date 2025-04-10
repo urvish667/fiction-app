@@ -341,4 +341,107 @@ export const StoryService = {
 
     return response.json();
   },
+
+  /**
+   * Follow a user
+   */
+  async followUser(username: string): Promise<any> {
+    const response = await fetch(`/api/user/${username}/follow`, {
+      method: "POST",
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to follow user");
+    }
+
+    return response.json();
+  },
+
+  /**
+   * Unfollow a user
+   */
+  async unfollowUser(username: string): Promise<void> {
+    const response = await fetch(`/api/user/${username}/follow`, {
+      method: "DELETE",
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to unfollow user");
+    }
+  },
+
+  /**
+   * Check if the current user is following another user
+   */
+  async isFollowingUser(username: string): Promise<boolean> {
+    try {
+      const response = await fetch(`/api/user/${username}/follow/status`);
+
+      if (!response.ok) {
+        return false;
+      }
+
+      const data = await response.json();
+      return data.isFollowing;
+    } catch (error) {
+      console.error("Error checking follow status:", error);
+      return false;
+    }
+  },
+
+  /**
+   * Get followers for a user
+   */
+  async getFollowers(username: string, params?: {
+    page?: number;
+    limit?: number;
+  }): Promise<{ followers: any[]; pagination: any }> {
+    // Build query string from params
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) {
+          queryParams.append(key, String(value));
+        }
+      });
+    }
+
+    const response = await fetch(`/api/user/${username}/followers?${queryParams.toString()}`);
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to fetch followers");
+    }
+
+    return response.json();
+  },
+
+  /**
+   * Get users that a user is following
+   */
+  async getFollowing(username: string, params?: {
+    page?: number;
+    limit?: number;
+  }): Promise<{ following: any[]; pagination: any }> {
+    // Build query string from params
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) {
+          queryParams.append(key, String(value));
+        }
+      });
+    }
+
+    const response = await fetch(`/api/user/${username}/following?${queryParams.toString()}`);
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to fetch following");
+    }
+
+    return response.json();
+  },
 };

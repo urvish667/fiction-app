@@ -22,7 +22,7 @@ import Navbar from "@/components/navbar"
 import StoryCard from "@/components/story-card"
 import { SiteFooter } from "@/components/site-footer"
 // import { sampleStories } from "@/lib/sample-data" - not needed
-// import { StoryService } from "@/services/story-service" - not needed
+import { StoryService } from "@/services/story-service"
 
 // Define user profile type
 type UserProfile = {
@@ -176,25 +176,38 @@ export default function UserProfilePage() {
   const [savedStories, setLibraryStories] = useState<any[]>([])
   const [storiesLoading, setStoriesLoading] = useState(false)
 
-  // For now, we'll still use mock data for the followers/following lists
-  // In a real implementation, we would fetch this data from an API
-  const followers = Array(8)
-    .fill(null)
-    .map((_, i) => ({
-      id: `follower_${i}`,
-      name: `Follower ${i + 1}`,
-      username: `follower${i + 1}`,
-      avatar: "/placeholder-user.jpg",
-    }))
+  // State for followers and following
+  const [followers, setFollowers] = useState<any[]>([])
+  const [following, setFollowing] = useState<any[]>([])
+  const [followersLoading, setFollowersLoading] = useState(false)
+  const [followingLoading, setFollowingLoading] = useState(false)
 
-  const following = Array(8)
-    .fill(null)
-    .map((_, i) => ({
-      id: `following_${i}`,
-      name: `Following ${i + 1}`,
-      username: `following${i + 1}`,
-      avatar: "/placeholder-user.jpg",
-    }))
+  // Fetch followers and following when the tab is selected
+  useEffect(() => {
+    const fetchFollowData = async () => {
+      if (!user?.username || activeTab !== "followers") return
+
+      try {
+        setFollowersLoading(true)
+        setFollowingLoading(true)
+
+        // Fetch followers
+        const followersData = await StoryService.getFollowers(user.username)
+        setFollowers(followersData.followers || [])
+
+        // Fetch following
+        const followingData = await StoryService.getFollowing(user.username)
+        setFollowing(followingData.following || [])
+      } catch (err) {
+        console.error("Error fetching follow data:", err)
+      } finally {
+        setFollowersLoading(false)
+        setFollowingLoading(false)
+      }
+    }
+
+    fetchFollowData()
+  }, [user?.username, activeTab])
 
   return (
     <div className="min-h-screen">
@@ -418,50 +431,80 @@ export default function UserProfilePage() {
             <TabsContent value="followers" id="followers">
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
                 <div className="grid grid-cols-1 gap-8">
+                  {/* Followers Section */}
                   <div>
                     <h3 className="text-xl font-semibold mb-4">Followers</h3>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                      {followers.map((follower) => (
-                        <Card key={follower.id}>
-                          <CardContent className="p-4 flex flex-col items-center text-center">
-                            <Avatar className="h-16 w-16 mb-2">
-                              <AvatarImage src={follower.avatar} alt={follower.name} />
-                              <AvatarFallback>{follower.name.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <Link href={`/user/${follower.username}`} className="font-medium hover:text-primary">
-                              {follower.name}
-                            </Link>
-                            <p className="text-xs text-muted-foreground">@{follower.username}</p>
-                            <Button size="sm" variant="outline" className="mt-2 w-full">
-                              View Profile
-                            </Button>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
+                    {followersLoading ? (
+                      <div className="flex justify-center items-center h-40">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                      </div>
+                    ) : followers.length > 0 ? (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                        {followers.map((follower) => (
+                          <Card key={follower.id}>
+                            <CardContent className="p-4 flex flex-col items-center text-center">
+                              <Avatar className="h-16 w-16 mb-2">
+                                <AvatarImage src={follower.image || "/placeholder-user.jpg"} alt={follower.name || follower.username} />
+                                <AvatarFallback>{(follower.name || follower.username || "U").charAt(0)}</AvatarFallback>
+                              </Avatar>
+                              <Link href={`/user/${follower.username}`} className="font-medium hover:text-primary">
+                                {follower.name || follower.username}
+                              </Link>
+                              <p className="text-xs text-muted-foreground">@{follower.username}</p>
+                              {follower.bio && (
+                                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{follower.bio}</p>
+                              )}
+                              <Button size="sm" variant="outline" className="mt-2 w-full" asChild>
+                                <Link href={`/user/${follower.username}`}>View Profile</Link>
+                              </Button>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-12 bg-muted/30 rounded-lg">
+                        <h3 className="text-xl font-semibold mb-2">No followers yet</h3>
+                        <p className="text-muted-foreground">This user doesn't have any followers yet.</p>
+                      </div>
+                    )}
                   </div>
 
+                  {/* Following Section */}
                   <div id="following">
                     <h3 className="text-xl font-semibold mb-4">Following</h3>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                      {following.map((follow) => (
-                        <Card key={follow.id}>
-                          <CardContent className="p-4 flex flex-col items-center text-center">
-                            <Avatar className="h-16 w-16 mb-2">
-                              <AvatarImage src={follow.avatar} alt={follow.name} />
-                              <AvatarFallback>{follow.name.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <Link href={`/user/${follow.username}`} className="font-medium hover:text-primary">
-                              {follow.name}
-                            </Link>
-                            <p className="text-xs text-muted-foreground">@{follow.username}</p>
-                            <Button size="sm" variant="outline" className="mt-2 w-full">
-                              View Profile
-                            </Button>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
+                    {followingLoading ? (
+                      <div className="flex justify-center items-center h-40">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                      </div>
+                    ) : following.length > 0 ? (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                        {following.map((follow) => (
+                          <Card key={follow.id}>
+                            <CardContent className="p-4 flex flex-col items-center text-center">
+                              <Avatar className="h-16 w-16 mb-2">
+                                <AvatarImage src={follow.image || "/placeholder-user.jpg"} alt={follow.name || follow.username} />
+                                <AvatarFallback>{(follow.name || follow.username || "U").charAt(0)}</AvatarFallback>
+                              </Avatar>
+                              <Link href={`/user/${follow.username}`} className="font-medium hover:text-primary">
+                                {follow.name || follow.username}
+                              </Link>
+                              <p className="text-xs text-muted-foreground">@{follow.username}</p>
+                              {follow.bio && (
+                                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{follow.bio}</p>
+                              )}
+                              <Button size="sm" variant="outline" className="mt-2 w-full" asChild>
+                                <Link href={`/user/${follow.username}`}>View Profile</Link>
+                              </Button>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-12 bg-muted/30 rounded-lg">
+                        <h3 className="text-xl font-semibold mb-2">Not following anyone</h3>
+                        <p className="text-muted-foreground">This user isn't following anyone yet.</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </motion.div>

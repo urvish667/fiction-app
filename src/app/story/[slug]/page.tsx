@@ -8,7 +8,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, BookOpen, Heart, Bookmark, CheckCircle } from "lucide-react"
+import { ArrowLeft, BookOpen, Heart, Bookmark, CheckCircle, UserPlus, UserCheck } from "lucide-react"
 import Navbar from "@/components/navbar"
 import ChapterList from "@/components/chapter-list"
 import StoryMetadata from "@/components/story-metadata"
@@ -29,6 +29,8 @@ export default function StoryInfoPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [imageFallback, setImageFallback] = useState(false)
+  const [isFollowing, setIsFollowing] = useState(false)
+  const [followLoading, setFollowLoading] = useState(false)
 
   // Fetch story data based on slug
   useEffect(() => {
@@ -69,6 +71,28 @@ export default function StoryInfoPage() {
 
     fetchStory()
   }, [slug])
+
+  // Check if the user is following the author
+  useEffect(() => {
+    const checkFollowStatus = async () => {
+      if (!session || !story || !story.author || typeof story.author !== 'object') return
+
+      try {
+        // Don't check follow status if the author is the current user
+        if (story.author.id === session.user.id) return
+
+        // Use username for follow status check
+        if (story.author.username) {
+          const isFollowing = await StoryService.isFollowingUser(story.author.username)
+          setIsFollowing(isFollowing)
+        }
+      } catch (err) {
+        console.error("Error checking follow status:", err)
+      }
+    }
+
+    checkFollowStatus()
+  }, [session, story])
 
   // Handle back button
   const handleBack = () => {
@@ -129,6 +153,38 @@ export default function StoryInfoPage() {
       setStory(updatedStory)
     } catch (err) {
       console.error("Error updating bookmark status:", err)
+    }
+  }
+
+  // Handle follow/unfollow author
+  const handleFollow = async () => {
+    if (!session) {
+      router.push(`/login?callbackUrl=/story/${slug}`)
+      return
+    }
+
+    if (!story || !story.author || typeof story.author !== 'object') return;
+
+    // Don't allow following yourself
+    if (story.author.id === session.user.id) return;
+
+    // Need username to follow/unfollow
+    if (!story.author.username) return;
+
+    setFollowLoading(true)
+
+    try {
+      if (isFollowing) {
+        await StoryService.unfollowUser(story.author.username)
+        setIsFollowing(false)
+      } else {
+        await StoryService.followUser(story.author.username)
+        setIsFollowing(true)
+      }
+    } catch (err) {
+      console.error("Error updating follow status:", err)
+    } finally {
+      setFollowLoading(false)
     }
   }
 
@@ -283,6 +339,27 @@ export default function StoryInfoPage() {
                   <Bookmark size={16} className={story.isBookmarked ? "fill-current" : ""} />
                   Bookmark
                 </Button>
+
+                {/* Follow button - only show if author is not the current user */}
+                {session && story.author && typeof story.author === 'object' &&
+                 story.author.id !== session.user.id && (
+                  <Button
+                    variant={isFollowing ? "default" : "outline"}
+                    size="sm"
+                    onClick={handleFollow}
+                    disabled={followLoading}
+                    className="flex items-center gap-2"
+                  >
+                    {followLoading ? (
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    ) : isFollowing ? (
+                      <UserCheck size={16} />
+                    ) : (
+                      <UserPlus size={16} />
+                    )}
+                    {isFollowing ? "Following" : "Follow Author"}
+                  </Button>
+                )}
               </div>
             </motion.div>
           </div>
