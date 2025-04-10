@@ -1,36 +1,71 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Grid, List, X } from "lucide-react"
+import { Grid, List, X, Loader2 } from "lucide-react"
 import Navbar from "@/components/navbar"
 import StoryCard from "@/components/story-card"
-import { sampleStories } from "@/lib/sample-data"
+import { StoryService } from "@/services/story-service"
+import { useToast } from "@/components/ui/use-toast"
 
 export default function LibraryPage() {
+  const { toast } = useToast()
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [searchQuery, setSearchQuery] = useState("")
   const [sortBy, setSortBy] = useState("recent")
   const [filterGenre, setFilterGenre] = useState("all")
-  const [activeTab, setActiveTab] = useState("all")
+  const [bookmarkedStories, setBookmarkedStories] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [genres, setGenres] = useState<string[]>(["all"])
 
-  // Mock saved stories - in a real app, this would come from an API
-  const savedStories = sampleStories.slice(0, 10)
+  // Fetch bookmarked stories from API
+  useEffect(() => {
+    const fetchBookmarkedStories = async () => {
+      try {
+        setLoading(true)
+        const response = await StoryService.getBookmarkedStories()
 
-  // Mock currently reading stories
-  const currentlyReadingStories = sampleStories.slice(0, 3)
+        // Format stories to ensure they have all required fields
+        const formattedStories = response.stories.map((story: any) => ({
+          ...story,
+          author: story.author?.name || story.author?.username || "Unknown",
+          excerpt: story.description || "",
+          likes: story.likeCount || 0,
+          comments: story.commentCount || 0,
+          reads: story.readCount || 0,
+          date: new Date(story.createdAt)
+        }))
 
-  // Mock completed stories
-  const completedStories = sampleStories.slice(3, 6)
+        setBookmarkedStories(formattedStories)
+
+        // Extract unique genres for filter
+        const uniqueGenres = ["all", ...new Set(formattedStories
+          .filter((story: any) => story.genre)
+          .map((story: any) => story.genre))]
+        setGenres(uniqueGenres)
+      } catch (error) {
+        console.error("Error fetching bookmarked stories:", error)
+        toast({
+          title: "Error",
+          description: "Failed to load your library. Please try again.",
+          variant: "destructive"
+        })
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchBookmarkedStories()
+
+  }, [toast])
 
   // Filter and sort stories based on user selections
-  const filterStories = (stories: typeof sampleStories) => {
-    let filtered = [...stories]
+  const filterStories = () => {
+    let filtered = [...bookmarkedStories]
 
     // Apply search filter
     if (searchQuery) {
@@ -38,8 +73,9 @@ export default function LibraryPage() {
       filtered = filtered.filter(
         (story) =>
           story.title.toLowerCase().includes(query) ||
-          story.author.toLowerCase().includes(query) ||
-          story.genre.toLowerCase().includes(query),
+          (typeof story.author === 'string' ? story.author.toLowerCase().includes(query) :
+           (story.author?.name?.toLowerCase().includes(query) || story.author?.username?.toLowerCase().includes(query))) ||
+          (story.genre?.toLowerCase().includes(query) || false),
       )
     }
 
@@ -51,41 +87,30 @@ export default function LibraryPage() {
     // Apply sorting
     switch (sortBy) {
       case "recent":
-        filtered.sort((a, b) => b.date.getTime() - a.date.getTime())
+        filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
         break
       case "oldest":
-        filtered.sort((a, b) => a.date.getTime() - b.date.getTime())
+        filtered.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
         break
       case "title":
         filtered.sort((a, b) => a.title.localeCompare(b.title))
         break
       case "author":
-        filtered.sort((a, b) => a.author.localeCompare(b.author))
+        const getAuthorName = (story: any) => {
+          if (typeof story.author === 'string') return story.author
+          return story.author?.name || story.author?.username || ''
+        }
+        filtered.sort((a, b) => getAuthorName(a).localeCompare(getAuthorName(b)))
         break
       case "mostRead":
-        filtered.sort((a, b) => b.reads - a.reads)
+        filtered.sort((a, b) => (b.readCount || b.reads || 0) - (a.readCount || a.reads || 0))
         break
     }
 
     return filtered
   }
 
-  // Get filtered stories based on active tab
-  const getActiveStories = () => {
-    switch (activeTab) {
-      case "reading":
-        return filterStories(currentlyReadingStories)
-      case "completed":
-        return filterStories(completedStories)
-      default:
-        return filterStories(savedStories)
-    }
-  }
-
-  const filteredStories = getActiveStories()
-
-  // Get unique genres for filter dropdown
-  const genres = ["all", ...new Set(savedStories.map((story) => story.genre))]
+  const filteredStories = filterStories()
 
   return (
     <div className="min-h-screen">
@@ -167,32 +192,23 @@ export default function LibraryPage() {
           </div>
         </div>
 
-        <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="mt-6">
-          <TabsList className="mb-8">
-            <TabsTrigger value="all">All Saved</TabsTrigger>
-            <TabsTrigger value="reading">Currently Reading</TabsTrigger>
-            <TabsTrigger value="completed">Completed</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="all">
+        <div className="mt-6">
+          {loading ? (
+            <div className="flex flex-col justify-center items-center py-20">
+              <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
+              <span className="text-lg">Loading your library...</span>
+            </div>
+          ) : (
             <LibraryContent stories={filteredStories} viewMode={viewMode} searchQuery={searchQuery} />
-          </TabsContent>
-
-          <TabsContent value="reading">
-            <LibraryContent stories={filteredStories} viewMode={viewMode} searchQuery={searchQuery} />
-          </TabsContent>
-
-          <TabsContent value="completed">
-            <LibraryContent stories={filteredStories} viewMode={viewMode} searchQuery={searchQuery} />
-          </TabsContent>
-        </Tabs>
+          )}
+        </div>
       </main>
     </div>
   )
 }
 
 interface LibraryContentProps {
-  stories: typeof sampleStories
+  stories: any[]
   viewMode: "grid" | "list"
   searchQuery: string
 }

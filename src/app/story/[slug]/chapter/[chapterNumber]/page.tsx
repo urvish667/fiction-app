@@ -32,6 +32,7 @@ import { SiteFooter } from "@/components/site-footer"
 import { useSession } from "next-auth/react"
 import { StoryService } from "@/services/story-service"
 import { Story as StoryType, Chapter as ChapterType } from "@/types/story"
+import { useToast } from "@/components/ui/use-toast"
 
 export default function ReadingPage() {
   const params = useParams()
@@ -42,6 +43,7 @@ export default function ReadingPage() {
   const chapterNumber = Number.parseInt(params?.chapterNumber as string, 10)
 
   const { data: session } = useSession()
+  const { toast } = useToast()
   const [story, setStory] = useState<StoryType | null>(null)
   const [chapter, setChapter] = useState<ChapterType | null>(null)
   const [chapters, setChapters] = useState<ChapterType[]>([])
@@ -409,8 +411,24 @@ export default function ReadingPage() {
                 <Button
                   variant={liked ? "default" : "outline"}
                   size="sm"
-                  onClick={() => setLiked(!liked)}
+                  onClick={() => {
+                    if (!session) {
+                      toast({
+                        title: "Sign in required",
+                        description: "Please sign in to like this story",
+                        variant: "default",
+                        action: (
+                          <Button variant="default" size="sm" onClick={() => router.push(`/login?callbackUrl=/story/${slug}/chapter/${chapterNumber}`)}>
+                            Sign in
+                          </Button>
+                        ),
+                      })
+                      return
+                    }
+                    setLiked(!liked)
+                  }}
                   className="flex items-center gap-2"
+                  title={!session ? "Sign in to like this story" : undefined}
                 >
                   <Heart size={16} className={liked ? "fill-white" : ""} />
                   {liked ? "Liked" : "Like"}
@@ -441,15 +459,38 @@ export default function ReadingPage() {
                 </DropdownMenu>
               </div>
 
-              <Button
-                variant={following ? "default" : "outline"}
-                size="sm"
-                onClick={() => setFollowing(!following)}
-                className="flex items-center gap-2"
-              >
-                <Bell size={16} />
-                {following ? "Following Author" : "Follow Author"}
-              </Button>
+              {session ? (
+                <Button
+                  variant={following ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setFollowing(!following)}
+                  className="flex items-center gap-2"
+                >
+                  <Bell size={16} />
+                  {following ? "Following Author" : "Follow Author"}
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    toast({
+                      title: "Sign in required",
+                      description: "Please sign in to follow this author",
+                      variant: "default",
+                      action: (
+                        <Button variant="default" size="sm" onClick={() => router.push(`/login?callbackUrl=/story/${slug}/chapter/${chapterNumber}`)}>
+                          Sign in
+                        </Button>
+                      ),
+                    })
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <Bell size={16} />
+                  Follow Author
+                </Button>
+              )}
             </div>
 
             {/* Comments Section (Conditionally Rendered) */}

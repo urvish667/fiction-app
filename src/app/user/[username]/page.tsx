@@ -14,10 +14,9 @@ import {
   MapPin,
   LinkIcon,
   Loader2,
-  Twitter,
-  Facebook,
-  Instagram,
 } from "lucide-react"
+import { TwitterIcon, FacebookIcon, InstagramIcon } from "@/components/social-icons"
+import ProfileActionButtons from "@/components/profile-action-buttons"
 import Navbar from "@/components/navbar"
 import StoryCard from "@/components/story-card"
 import { SiteFooter } from "@/components/site-footer"
@@ -258,7 +257,10 @@ export default function UserProfilePage() {
             {/* Profile Info */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end pl-4 md:pl-40">
               <div className="mb-4 md:mb-0">
-                <h1 className="text-3xl font-bold">{user.name || user.username}</h1>
+                <div className="flex items-center gap-3 mb-1">
+                  <h1 className="text-3xl font-bold">{user.name || user.username}</h1>
+                  <ProfileActionButtons username={user.username} isCurrentUser={user.isCurrentUser} />
+                </div>
                 <p className="text-muted-foreground">@{user.username}</p>
 
                 <div className="flex flex-wrap gap-4 mt-4 text-sm text-muted-foreground">
@@ -303,7 +305,7 @@ export default function UserProfilePage() {
                         return twitterLink ? (
                           <a href={twitterLink} target="_blank" rel="noopener noreferrer">
                             <Button size="icon" variant="ghost">
-                              <Twitter className="h-4 w-4" />
+                              <TwitterIcon className="h-4 w-4" />
                               <span className="sr-only">Twitter</span>
                             </Button>
                           </a>
@@ -323,7 +325,7 @@ export default function UserProfilePage() {
                         return facebookLink ? (
                           <a href={facebookLink} target="_blank" rel="noopener noreferrer">
                             <Button size="icon" variant="ghost">
-                              <Facebook className="h-4 w-4" />
+                              <FacebookIcon className="h-4 w-4" />
                               <span className="sr-only">Facebook</span>
                             </Button>
                           </a>
@@ -343,7 +345,7 @@ export default function UserProfilePage() {
                         return instagramLink ? (
                           <a href={instagramLink} target="_blank" rel="noopener noreferrer">
                             <Button size="icon" variant="ghost">
-                              <Instagram className="h-4 w-4" />
+                              <InstagramIcon className="h-4 w-4" />
                               <span className="sr-only">Instagram</span>
                             </Button>
                           </a>
@@ -357,7 +359,7 @@ export default function UserProfilePage() {
 
             {/* Bio */}
             {user.bio && (
-              <div className="mt-6 pl-4 md:pl-40">
+              <div className="mt-4 pl-4 md:pl-40">
                 <p className="text-sm md:text-base max-w-2xl">{user.bio}</p>
               </div>
             )}

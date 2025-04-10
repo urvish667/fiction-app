@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { motion } from "framer-motion"
+import { useToast } from "@/components/ui/use-toast"
 import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -24,6 +25,7 @@ export default function StoryInfoPage() {
   const slug = params?.slug as string
 
   const { data: session } = useSession()
+  const { toast } = useToast()
   const [story, setStory] = useState<StoryType | null>(null)
   const [chapters, setChapters] = useState<ChapterType[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -111,7 +113,16 @@ export default function StoryInfoPage() {
   // Handle like/unlike
   const handleLike = async () => {
     if (!session) {
-      router.push(`/login?callbackUrl=/story/${slug}`)
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to like this story",
+        variant: "default",
+        action: (
+          <Button variant="default" size="sm" onClick={() => router.push(`/login?callbackUrl=/story/${slug}`)}>
+            Sign in
+          </Button>
+        ),
+      })
       return
     }
 
@@ -135,7 +146,16 @@ export default function StoryInfoPage() {
   // Handle bookmark/unbookmark
   const handleBookmark = async () => {
     if (!session) {
-      router.push(`/login?callbackUrl=/story/${slug}`)
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to bookmark this story",
+        variant: "default",
+        action: (
+          <Button variant="default" size="sm" onClick={() => router.push(`/login?callbackUrl=/story/${slug}`)}>
+            Sign in
+          </Button>
+        ),
+      })
       return
     }
 
@@ -325,6 +345,7 @@ export default function StoryInfoPage() {
                   size="sm"
                   onClick={handleLike}
                   className="flex items-center gap-2"
+                  title={!session ? "Sign in to like this story" : undefined}
                 >
                   <Heart size={16} className={story.isLiked ? "fill-current" : ""} />
                   {story.likeCount || 0} Likes
@@ -335,6 +356,7 @@ export default function StoryInfoPage() {
                   size="sm"
                   onClick={handleBookmark}
                   className="flex items-center gap-2"
+                  title={!session ? "Sign in to bookmark this story" : undefined}
                 >
                   <Bookmark size={16} className={story.isBookmarked ? "fill-current" : ""} />
                   Bookmark
