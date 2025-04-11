@@ -63,6 +63,11 @@ export default function ChapterEditorPage() {
     isPremium: false
   })
 
+  // Track original content, title, and draft status to determine if changes were made
+  const [initialContent, setInitialContent] = useState<string>("")
+  const [initialTitle, setInitialTitle] = useState<string>("")
+  const [initialIsDraft, setInitialIsDraft] = useState<boolean>(true)
+
   // Track if content has actually changed to avoid unnecessary saves
   const [hasChanges, setHasChanges] = useState(false)
 
@@ -146,9 +151,14 @@ export default function ChapterEditorPage() {
           number: chapterData.number,
           wordCount: chapterData.wordCount,
           lastSaved: new Date(chapterData.updatedAt),
-          status: "published", // Default status, will be overridden below
+          status: chapterData.isDraft ? "draft" : "published", // Set status based on isDraft property
           isPremium: chapterData.isPremium
         })
+
+        // Store initial content, title, and draft status to track changes
+        setInitialContent(chapterData.content || "")
+        setInitialTitle(chapterData.title)
+        setInitialIsDraft(chapterData.isDraft)
 
         // Set premium status in publish settings
         setPublishSettings(prev => ({
@@ -236,7 +246,8 @@ export default function ChapterEditorPage() {
         wordCount,
         lastSaved: null, // Mark as unsaved
       }))
-      setHasChanges(true)
+      // Only set hasChanges to true if content differs from initial content
+      setHasChanges(content !== initialContent || chapter.title !== initialTitle)
     }
   }
 
@@ -249,12 +260,13 @@ export default function ChapterEditorPage() {
         title: e.target.value,
         lastSaved: null, // Mark as unsaved
       }))
-      setHasChanges(true)
+      // Only set hasChanges to true if title differs from initial title
+      setHasChanges(e.target.value !== initialTitle || chapter.content !== initialContent)
     }
   }
 
-  // Save chapter as draft
-  const saveChapter = async (showToast = true) => {
+  // Save chapter as draft or update existing chapter
+  const saveChapter = async (showToast = true, forceDraft = false) => {
     if (isSaving) return
 
     // Validate input
@@ -272,13 +284,26 @@ export default function ChapterEditorPage() {
     setIsSaving(true)
 
     try {
+      // Determine if we should change the draft status
+      // For auto-saves (showToast=false), preserve the original draft status
+      // For manual saves (showToast=true), set isDraft based on forceDraft parameter
+      // If forceDraft is true, always save as draft
+      // If forceDraft is false and no changes, preserve original status
+      const shouldBeDraft = forceDraft || (hasChanges && initialIsDraft)
+
+      // Only include isDraft in the API request if we're explicitly changing it
+      // or if this is a new chapter (which should default to draft)
+      const isDraftField = showToast || isNewChapter || !chapter.id
+        ? { isDraft: shouldBeDraft }
+        : {}
+
       // Prepare chapter data for API
       const chapterData = {
         title: chapter.title,
         content: chapter.content,
         number: chapter.number,
         isPremium: chapter.isPremium,
-        isDraft: true // Explicitly set as draft
+        ...isDraftField
       }
 
       let savedChapter: Chapter
@@ -308,11 +333,16 @@ export default function ChapterEditorPage() {
         id: savedChapter.id,
         lastSaved: new Date(savedChapter.updatedAt),
         wordCount: savedChapter.wordCount,
-        status: "draft" // Explicitly set status to draft
+        status: savedChapter.isDraft ? "draft" : "published"
       }))
 
       // Reset changes flag after successful save
       setHasChanges(false)
+
+      // Update initial content, title, and isDraft status to match current values after saving
+      setInitialContent(chapter.content)
+      setInitialTitle(chapter.title)
+      setInitialIsDraft(savedChapter.isDraft)
 
       if (isNewChapter && savedChapter.id) {
         // If we just created a new chapter, update the URL to include the proper ID
@@ -322,7 +352,9 @@ export default function ChapterEditorPage() {
       if (showToast) {
         toast({
           title: "Chapter saved",
-          description: "Your chapter has been saved as a draft and is only visible to you.",
+          description: savedChapter.isDraft
+            ? "Your chapter has been saved as a draft and is only visible to you."
+            : "Your chapter has been saved and remains published.",
         })
       }
     } catch (error) {
@@ -508,7 +540,7 @@ export default function ChapterEditorPage() {
             <div className="hidden sm:flex items-center gap-2">
               <Button
                 variant="outline"
-                onClick={() => saveChapter(true)}
+                onClick={() => saveChapter(true, true)}
                 disabled={isSaving}
                 className="flex items-center gap-2"
                 title="Save as draft (only visible to you)"
@@ -572,7 +604,7 @@ export default function ChapterEditorPage() {
 
                     <div className="flex flex-col gap-2">
                       <Button
-                        onClick={() => saveChapter(true)}
+                        onClick={() => saveChapter(true, true)}
                         disabled={isSaving}
                         className="flex items-center justify-start gap-2 w-full"
                       >
