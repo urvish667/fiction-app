@@ -227,12 +227,15 @@ export default function StoryInfoPage() {
 
       // Convert to our local format
       const formattedChapters = chaptersData.map(chapter => {
-        // Debug: Log each chapter's draft status
-        console.log(`Chapter ${chapter.id} isDraft:`, chapter.isDraft);
+        // Debug: Log each chapter's status
+        console.log(`Chapter ${chapter.id} status:`, chapter.status);
 
         // Ensure status is one of the allowed values
-        const status: "draft" | "published" | "scheduled" | "premium" =
-          chapter.isDraft ? "draft" : (chapter.isPremium ? "premium" : "published");
+        let status: "draft" | "published" | "scheduled" | "premium";
+
+        // Determine status based on chapter status and isPremium flag
+        status = chapter.status === 'scheduled' ? 'scheduled' :
+                (chapter.status === 'published' ? (chapter.isPremium ? 'premium' : 'published') : 'draft');
 
         return {
           id: chapter.id,
@@ -332,7 +335,7 @@ export default function StoryInfoPage() {
             }
 
             // Check for draft chapters
-            const draftChapters = chapters.filter(chapter => chapter.isDraft);
+            const draftChapters = chapters.filter(chapter => chapter.status === 'draft' || chapter.status === 'scheduled');
             if (draftChapters.length > 0) {
               toast({
                 title: "Cannot mark as completed",
@@ -343,7 +346,7 @@ export default function StoryInfoPage() {
             }
 
             // Check if there are any published chapters
-            const publishedChapters = chapters.filter(chapter => !chapter.isDraft);
+            const publishedChapters = chapters.filter(chapter => chapter.status === 'published');
             if (publishedChapters.length === 0) {
               toast({
                 title: "Cannot mark as completed",

@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/components/ui/use-toast"
 import { ArrowLeft, Save, Eye, Clock, Check, Calendar, Bell, Globe, Lock, FileText, BookOpen, Menu } from "lucide-react"
-import { useDebounce } from "@/hooks/use-debounce"
 import { Editor } from "@/components/editor"
 import {
   Dialog,
@@ -27,21 +26,10 @@ import { format } from "date-fns"
 import { Calendar as CalendarComponent } from "@/components/ui/calendar"
 import { cn } from "@/lib/utils"
 import { StoryService } from "@/services/story-service"
-import { Chapter } from "@/types/story"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { useChapterEditor } from "@/hooks/use-chapter-editor"
+import { logError } from "@/lib/error-logger"
 
-
-// Types for chapter data
-interface ChapterData {
-  id: string
-  title: string
-  content: string
-  number: number
-  wordCount: number
-  lastSaved: Date | null
-  status: "draft" | "published" | "scheduled"
-  isPremium: boolean
-}
 
 export default function ChapterEditorPage() {
   const params = useParams()
@@ -49,47 +37,48 @@ export default function ChapterEditorPage() {
   const { toast } = useToast()
   const storyId = params?.storyId as string
   const chapterId = params?.chapterId as string
-  const isNewChapter = chapterId === "new-chapter"
-
-  // State for chapter data
-  const [chapter, setChapter] = useState<ChapterData>({
-    id: isNewChapter ? "" : chapterId,
-    title: "",
-    content: "",
-    number: 1,
-    wordCount: 0,
-    lastSaved: null,
-    status: "draft",
-    isPremium: false
-  })
-
-  // Track original content, title, and draft status to determine if changes were made
-  const [initialContent, setInitialContent] = useState<string>("")
-  const [initialTitle, setInitialTitle] = useState<string>("")
-  const [initialIsDraft, setInitialIsDraft] = useState<boolean>(true)
-
-  // Track if content has actually changed to avoid unnecessary saves
-  const [hasChanges, setHasChanges] = useState(false)
-
-  const [isSaving, setIsSaving] = useState(false)
-  const [showPreview, setShowPreview] = useState(false)
-  const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false)
-  const [publishSettings, setPublishSettings] = useState({
-    visibility: "public",
-    schedulePublish: false,
-    publishDate: new Date(),
-    notifyFollowers: true,
-    isPremium: false,
-    markStoryCompleted: false
-  })
-
-  // State for story metadata (needed for navigation and publishing)
-
-  // Create debounced version of chapter for auto-save
-  const debouncedChapter = useDebounce(chapter, 1500)
 
   // Get the session for authentication
   const { data: session } = useSession()
+
+  // State for UI elements
+  const [showPreview, setShowPreview] = useState(false)
+  const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false)
+
+  // Use our custom hook for chapter editing functionality
+  const {
+    chapter,
+    hasChanges,
+    isSaving,
+    publishSettings,
+    setPublishSettings,
+    handleEditorChange,
+    handleTitleChange,
+    saveChapter,
+    publishChapter,
+    isNewChapter
+  } = useChapterEditor({
+    storyId,
+    chapterId,
+    onSaveSuccess: (savedChapter) => {
+      // If we just created a new chapter, update the URL to include the proper ID
+      if (isNewChapter && savedChapter.id) {
+        router.replace(`/write/editor/${storyId}/${savedChapter.id}`)
+      }
+    },
+    onPublishSuccess: () => {
+      // Redirect back to story info after a short delay
+      setTimeout(() => {
+        router.push(`/write/story-info?id=${storyId}`)
+      }, 1500)
+    }
+  })
+
+  // Extended publish settings for UI only
+  const [extendedSettings, setExtendedSettings] = useState({
+    visibility: "public",
+    notifyFollowers: true
+  })
 
   // Check authentication
   useEffect(() => {
@@ -98,6 +87,31 @@ export default function ChapterEditorPage() {
       router.push(`/login?callbackUrl=/write/editor/${storyId}/${chapterId}`)
     }
   }, [session, router, storyId, chapterId])
+
+  // Add keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl/Cmd + S to save
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault()
+        saveChapter(true, true)
+      }
+
+      // Ctrl/Cmd + P to preview
+      if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+        e.preventDefault()
+        setShowPreview(!showPreview)
+      }
+
+      // Escape to exit preview mode
+      if (e.key === 'Escape' && showPreview) {
+        setShowPreview(false)
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [saveChapter, showPreview])
 
   // Load story metadata
   useEffect(() => {
@@ -121,7 +135,7 @@ export default function ChapterEditorPage() {
         // Store story slug if needed in the future
         // const storySlug = story.slug
       } catch (error) {
-        console.error("Failed to fetch story", error)
+        logError(error, { context: 'fetchStory', storyId })
         toast({
           title: "Error loading story",
           description: "Failed to load story data. Please try again.",
@@ -134,250 +148,19 @@ export default function ChapterEditorPage() {
     fetchStory()
   }, [storyId, session, router, toast])
 
-  // Load chapter data if editing an existing chapter
-  useEffect(() => {
-    if (isNewChapter || !storyId || !session) return
-
-    // Fetch chapter from API
-    const fetchChapter = async () => {
-      try {
-        const chapterData = await StoryService.getChapter(storyId, chapterId)
-
-        // Convert to our local state format
-        setChapter({
-          id: chapterData.id,
-          title: chapterData.title,
-          content: chapterData.content || "",
-          number: chapterData.number,
-          wordCount: chapterData.wordCount,
-          lastSaved: new Date(chapterData.updatedAt),
-          status: chapterData.isDraft ? "draft" : "published", // Set status based on isDraft property
-          isPremium: chapterData.isPremium
-        })
-
-        // Store initial content, title, and draft status to track changes
-        setInitialContent(chapterData.content || "")
-        setInitialTitle(chapterData.title)
-        setInitialIsDraft(chapterData.isDraft)
-
-        // Set premium status in publish settings
-        setPublishSettings(prev => ({
-          ...prev,
-          isPremium: chapterData.isPremium
-        }))
-
-      } catch (error) {
-        console.error("Failed to load chapter", error)
-        toast({
-          title: "Error loading chapter",
-          description: "Failed to load chapter data. Please try again.",
-          variant: "destructive",
-        })
-      }
-    }
-
-    fetchChapter()
-  }, [isNewChapter, storyId, chapterId, session, toast])
-
-  // Get the next chapter number if creating a new chapter
-  useEffect(() => {
-    if (!isNewChapter || !storyId || !session) return
-
-    const getNextChapterNumber = async () => {
-      try {
-        const chapters = await StoryService.getChapters(storyId)
-
-        if (chapters.length > 0) {
-          // Find the highest chapter number and add 1
-          const highestNumber = Math.max(...chapters.map(c => c.number))
-          setChapter(prev => ({
-            ...prev,
-            number: highestNumber + 1,
-            title: `Chapter ${highestNumber + 1}`
-          }))
-        } else {
-          // If no chapters, start with chapter 1
-          setChapter(prev => ({
-            ...prev,
-            number: 1,
-            title: "Chapter 1"
-          }))
-        }
-      } catch (error) {
-        console.error("Failed to determine chapter number", error)
-        // Default to chapter 1 if we can't determine
-        setChapter(prev => ({
-          ...prev,
-          number: 1,
-          title: "Chapter 1"
-        }))
-      }
-    }
-
-    getNextChapterNumber()
-  }, [isNewChapter, storyId, session])
-
-  // Auto-save effect
-  useEffect(() => {
-    // Only auto-save if:
-    // 1. We have a title and content
-    // 2. We're not currently saving
-    // 3. There are changes to save
-    // 4. This is NOT a new chapter OR it's a new chapter that has been saved at least once (has an ID)
-    if (debouncedChapter.title &&
-        debouncedChapter.content &&
-        !isSaving &&
-        hasChanges &&
-        (!isNewChapter || (isNewChapter && chapter.id))) {
-      saveChapter(false)
-    }
-  }, [debouncedChapter, hasChanges, isNewChapter, chapter.id])
-
-  // Handle editor content change
-  const handleEditorChange = (content: string) => {
-    // Calculate word count
-    const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0
-
-    // Only update if content has actually changed
-    if (content !== chapter.content) {
-      setChapter((prev) => ({
-        ...prev,
-        content,
-        wordCount,
-        lastSaved: null, // Mark as unsaved
-      }))
-      // Only set hasChanges to true if content differs from initial content
-      setHasChanges(content !== initialContent || chapter.title !== initialTitle)
-    }
-  }
-
-  // Handle title change
-  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Only update if title has actually changed
-    if (e.target.value !== chapter.title) {
-      setChapter((prev) => ({
-        ...prev,
-        title: e.target.value,
-        lastSaved: null, // Mark as unsaved
-      }))
-      // Only set hasChanges to true if title differs from initial title
-      setHasChanges(e.target.value !== initialTitle || chapter.content !== initialContent)
-    }
-  }
-
-  // Save chapter as draft or update existing chapter
-  const saveChapter = async (showToast = true, forceDraft = false) => {
-    if (isSaving) return
-
-    // Validate input
-    if (!chapter.title.trim()) {
-      if (showToast) {
-        toast({
-          title: "Title required",
-          description: "Please enter a title for your chapter.",
-          variant: "destructive",
-        })
-      }
-      return
-    }
-
-    setIsSaving(true)
-
-    try {
-      // Determine if we should change the draft status
-      // For auto-saves (showToast=false), preserve the original draft status
-      // For manual saves (showToast=true), set isDraft based on forceDraft parameter
-      // If forceDraft is true, always save as draft
-      // If forceDraft is false and no changes, preserve original status
-      const shouldBeDraft = forceDraft || (hasChanges && initialIsDraft)
-
-      // Only include isDraft in the API request if we're explicitly changing it
-      // or if this is a new chapter (which should default to draft)
-      const isDraftField = showToast || isNewChapter || !chapter.id
-        ? { isDraft: shouldBeDraft }
-        : {}
-
-      // Prepare chapter data for API
-      const chapterData = {
-        title: chapter.title,
-        content: chapter.content,
-        number: chapter.number,
-        isPremium: chapter.isPremium,
-        ...isDraftField
-      }
-
-      let savedChapter: Chapter
-
-      if (isNewChapter || !chapter.id) {
-        // For new chapters, only create if this is a manual save (showToast is true)
-        // This prevents auto-save from creating multiple chapters
-        if (showToast) {
-          // Create new chapter
-          savedChapter = await StoryService.createChapter(storyId, chapterData)
-        } else {
-          // Skip auto-save for new chapters that haven't been manually saved yet
-          setIsSaving(false)
-          return
-        }
-      } else {
-        // Update existing chapter
-        savedChapter = await StoryService.updateChapter(storyId, chapter.id, chapterData)
-      }
-
-      // We don't need to update the story status here
-      // The backend will automatically calculate the correct status based on the chapters
-
-      // Update local state with saved data
-      setChapter(prev => ({
-        ...prev,
-        id: savedChapter.id,
-        lastSaved: new Date(savedChapter.updatedAt),
-        wordCount: savedChapter.wordCount,
-        status: savedChapter.isDraft ? "draft" : "published"
-      }))
-
-      // Reset changes flag after successful save
-      setHasChanges(false)
-
-      // Update initial content, title, and isDraft status to match current values after saving
-      setInitialContent(chapter.content)
-      setInitialTitle(chapter.title)
-      setInitialIsDraft(savedChapter.isDraft)
-
-      if (isNewChapter && savedChapter.id) {
-        // If we just created a new chapter, update the URL to include the proper ID
-        router.replace(`/write/editor/${storyId}/${savedChapter.id}`)
-      }
-
-      if (showToast) {
-        toast({
-          title: "Chapter saved",
-          description: savedChapter.isDraft
-            ? "Your chapter has been saved as a draft and is only visible to you."
-            : "Your chapter has been saved and remains published.",
-        })
-      }
-    } catch (error) {
-      console.error("Failed to save chapter", error)
-      if (showToast) {
-        toast({
-          title: "Save failed",
-          description: error instanceof Error ? error.message : "Failed to save your chapter. Please try again.",
-          variant: "destructive",
-        })
-      }
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
   // Handle publish settings change
   const handlePublishSettingsChange = (field: string, value: any) => {
-    setPublishSettings((prev) => ({ ...prev, [field]: value }))
+    if (field === 'isPremium' || field === 'schedulePublish' || field === 'publishDate' || field === 'markStoryCompleted') {
+      // These fields are in the core publishSettings
+      setPublishSettings(prev => ({ ...prev, [field]: value }))
+    } else {
+      // These fields are in the extended settings
+      setExtendedSettings(prev => ({ ...prev, [field]: value }))
+    }
   }
 
-  // Publish chapter
-  const publishChapter = async () => {
+  // Validate chapter before publishing
+  const validateBeforePublish = async (): Promise<boolean> => {
     // Validate chapter
     if (!chapter.title.trim()) {
       toast({
@@ -385,7 +168,7 @@ export default function ChapterEditorPage() {
         description: "Please enter a title for your chapter.",
         variant: "destructive",
       })
-      return
+      return false
     }
 
     if (!chapter.content.trim()) {
@@ -394,7 +177,7 @@ export default function ChapterEditorPage() {
         description: "Your chapter cannot be empty.",
         variant: "destructive",
       })
-      return
+      return false
     }
 
     // If marking the story as completed, check for draft chapters
@@ -402,7 +185,7 @@ export default function ChapterEditorPage() {
       try {
         const chapters = await StoryService.getChapters(storyId);
         // Filter out the current chapter since it's being published
-        const draftChapters = chapters.filter(ch => ch.isDraft && ch.id !== chapter.id);
+        const draftChapters = chapters.filter(ch => (ch.status === 'draft' || ch.status === 'scheduled') && ch.id !== chapter.id);
 
         if (draftChapters.length > 0) {
           toast({
@@ -410,70 +193,27 @@ export default function ChapterEditorPage() {
             description: `This story has ${draftChapters.length} other draft ${draftChapters.length === 1 ? "chapter" : "chapters"}. Please publish all draft chapters before marking the story as completed.`,
             variant: "destructive",
           });
-          return; // Don't publish with completed status
+          return false; // Don't publish with completed status
         }
       } catch (error) {
-        console.error("Failed to check draft chapters:", error);
+        logError(error, { context: 'validateBeforePublish', storyId })
         toast({
           title: "Error",
           description: "Failed to check draft chapters. Please try again.",
           variant: "destructive",
         });
-        return; // Don't publish with completed status
+        return false; // Don't publish with completed status
       }
     }
 
-    setIsSaving(true)
+    return true
+  }
 
-    try {
-      // Save chapter first with any premium status changes
-      const chapterData = {
-        title: chapter.title,
-        content: chapter.content,
-        number: chapter.number,
-        isPremium: publishSettings.isPremium,
-        isDraft: false, // Mark as published
-        publishDate: publishSettings.schedulePublish ? publishSettings.publishDate : undefined
-      }
-
-      const savedChapter = await StoryService.updateChapter(storyId, chapter.id, chapterData)
-
-      // Update the story status based on settings
-      await StoryService.updateStory(storyId, {
-        status: publishSettings.markStoryCompleted ? "completed" : "ongoing"
-      })
-
-      // Update local state
-      setChapter(prev => ({
-        ...prev,
-        lastSaved: new Date(savedChapter.updatedAt),
-        status: publishSettings.schedulePublish ? "scheduled" : "published",
-        isPremium: publishSettings.isPremium
-      }))
-
-      toast({
-        title: publishSettings.schedulePublish ? "Chapter scheduled" : "Chapter published",
-        description: publishSettings.schedulePublish
-          ? `Your chapter will be published on ${format(publishSettings.publishDate, "PPP")}.`
-          : "Your chapter has been published successfully!",
-      })
-
-      // Close dialog
+  // Handle publish button click
+  const handlePublish = async () => {
+    if (await validateBeforePublish()) {
+      await publishChapter()
       setIsPublishDialogOpen(false)
-
-      // Redirect back to story info after a short delay
-      setTimeout(() => {
-        router.push(`/write/story-info?id=${storyId}`)
-      }, 1500)
-    } catch (error) {
-      console.error("Failed to publish chapter", error)
-      toast({
-        title: "Publish failed",
-        description: error instanceof Error ? error.message : "Failed to publish your chapter. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsSaving(false)
     }
   }
 
@@ -486,7 +226,16 @@ export default function ChapterEditorPage() {
           <div className="flex items-center">
             <Button
               variant="ghost"
-              onClick={() => router.push(`/write/story-info?id=${storyId}`)}
+              onClick={() => {
+                if (hasChanges) {
+                  // Confirm before navigating away with unsaved changes
+                  if (window.confirm('You have unsaved changes. Are you sure you want to leave?')) {
+                    router.push(`/write/story-info?id=${storyId}`)
+                  }
+                } else {
+                  router.push(`/write/story-info?id=${storyId}`)
+                }
+              }}
               className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3"
               size="sm"
             >
@@ -544,6 +293,8 @@ export default function ChapterEditorPage() {
                 disabled={isSaving}
                 className="flex items-center gap-2"
                 title="Save as draft (only visible to you)"
+                aria-label="Save as draft"
+                aria-busy={isSaving}
               >
                 <Save size={16} />
                 Save Draft
@@ -553,6 +304,7 @@ export default function ChapterEditorPage() {
                 variant="outline"
                 onClick={() => setShowPreview(!showPreview)}
                 className="flex items-center gap-2"
+                aria-label={showPreview ? "Switch to edit mode" : "Preview chapter"}
               >
                 <Eye size={16} />
                 {showPreview ? "Edit" : "Preview"}
@@ -563,6 +315,8 @@ export default function ChapterEditorPage() {
                 className="flex items-center gap-2"
                 disabled={!chapter.id}
                 title="Publish chapter (visible to all readers)"
+                aria-label="Publish chapter"
+                aria-disabled={!chapter.id}
               >
                 <Check size={16} />
                 Publish
@@ -661,7 +415,7 @@ export default function ChapterEditorPage() {
             <div className="space-y-2">
               <Label htmlFor="visibility">Visibility</Label>
               <Select
-                value={publishSettings.visibility}
+                value={extendedSettings.visibility}
                 onValueChange={(value) => handlePublishSettingsChange("visibility", value)}
               >
                 <SelectTrigger id="visibility" className="flex items-center gap-2">
@@ -752,7 +506,7 @@ export default function ChapterEditorPage() {
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="notifyFollowers"
-                checked={publishSettings.notifyFollowers}
+                checked={extendedSettings.notifyFollowers}
                 onCheckedChange={(checked) => handlePublishSettingsChange("notifyFollowers", checked === true)}
               />
               <Label htmlFor="notifyFollowers" className="text-sm flex items-center gap-2">
@@ -779,7 +533,7 @@ export default function ChapterEditorPage() {
             <Button variant="outline" onClick={() => setIsPublishDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={publishChapter} disabled={isSaving}>
+            <Button onClick={handlePublish} disabled={isSaving}>
               {publishSettings.schedulePublish ? "Schedule" : "Publish Now"}
             </Button>
           </DialogFooter>

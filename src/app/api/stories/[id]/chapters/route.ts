@@ -13,7 +13,7 @@ const createChapterSchema = z.object({
   content: z.string().default(""), // Allow empty content for new chapters
   number: z.number().int().positive("Chapter number must be positive"),
   isPremium: z.boolean().default(false),
-  isDraft: z.boolean().default(true),
+  status: z.enum(['draft', 'scheduled', 'published']).default('draft'),
   publishDate: z.date().optional(),
 });
 
@@ -42,7 +42,9 @@ export async function GET(
     // Get chapters to determine story status
     const storyChapters = await prisma.chapter.findMany({
       where: { storyId: story.id },
-      select: { isDraft: true }
+      select: {
+        status: true
+      }
     });
 
     // Calculate story status
@@ -66,7 +68,8 @@ export async function GET(
         number: true,
         wordCount: true,
         isPremium: true,
-        isDraft: true, // Add isDraft field
+        status: true,
+        publishDate: true,
         readCount: true,
         createdAt: true,
         updatedAt: true,
@@ -205,7 +208,7 @@ export async function POST(
           title: validatedData.title,
           number: validatedData.number,
           isPremium: validatedData.isPremium || false,
-          isDraft: validatedData.isDraft || true,
+          status: validatedData.status || 'draft',
           publishDate: validatedData.publishDate,
           wordCount,
           storyId,
@@ -238,7 +241,7 @@ export async function POST(
             title,
             number: nextNumber,
             isPremium: validatedData.isPremium || false,
-            isDraft: validatedData.isDraft || true,
+            status: validatedData.status || 'draft',
             publishDate: validatedData.publishDate,
             wordCount,
             storyId,
@@ -274,7 +277,7 @@ export async function POST(
     // Get all chapters for this story
     const storyChapters = await prisma.chapter.findMany({
       where: { storyId },
-      select: { isDraft: true }
+      select: { status: true }
     });
 
     // Calculate the new story status

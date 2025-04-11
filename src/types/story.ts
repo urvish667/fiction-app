@@ -34,7 +34,7 @@ export type Chapter = {
   number: number;
   wordCount: number;
   isPremium: boolean;
-  isDraft: boolean; // Individual chapter draft status
+  status: 'draft' | 'scheduled' | 'published'; // Current status field
   publishDate?: Date; // For scheduled publishing
   readCount: number;
   storyId: string;
@@ -104,7 +104,7 @@ export type CreateChapterRequest = {
   content: string;
   number: number;
   isPremium?: boolean;
-  isDraft?: boolean;
+  status?: 'draft' | 'scheduled' | 'published';
   publishDate?: Date;
 };
 

@@ -52,7 +52,9 @@ export default function MyWorksPage() {
           let draftChapters = 0;
           try {
             const chapters = await StoryService.getChapters(story.id);
-            draftChapters = chapters.filter(chapter => chapter.isDraft).length;
+            draftChapters = chapters.filter(chapter =>
+              chapter.status === 'draft' || chapter.status === 'scheduled'
+            ).length;
           } catch (error) {
             console.error(`Failed to fetch chapters for story ${story.id}:`, error);
           }
@@ -349,7 +351,7 @@ function WorksContent({ works, searchQuery, isLoading, onDeleteStory }: WorksCon
                     <BookOpen className="h-3.5 w-3.5" />
                     <span>Chapters: {work.chapterCount || 0}</span>
                   </span>
-                  {work.status !== "draft" && work.draftChapters > 0 && (
+                  {work.draftChapters > 0 && (
                     <span className="flex items-center gap-1">
                       <PenSquare className="h-3.5 w-3.5" />
                       <span>Drafts: {work.draftChapters}</span>

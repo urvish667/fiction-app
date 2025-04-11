@@ -86,8 +86,10 @@ export default function ReadingPage() {
         // Fetch chapters for this story
         const chaptersData = await StoryService.getChapters(storyDetails.id)
 
-        // Always filter out draft chapters for the public chapter page
-        const publishedChapters = chaptersData.filter(chapter => !chapter.isDraft)
+        // Always filter out draft and scheduled chapters for the public chapter page
+        const publishedChapters = chaptersData.filter(chapter =>
+          chapter.status === 'published'
+        );
         setChapters(publishedChapters)
 
         // Find the current chapter by number
@@ -97,9 +99,9 @@ export default function ReadingPage() {
           // Fetch the full chapter details
           const chapterDetails = await StoryService.getChapter(storyDetails.id, currentChapter.id)
 
-          // Check if chapter is a draft
-          if (chapterDetails.isDraft) {
-            // If chapter is a draft, show error
+          // Check if chapter is a draft or scheduled
+          if (chapterDetails.status === 'draft' || chapterDetails.status === 'scheduled') {
+            // If chapter is a draft or scheduled, show error
             setError("This chapter is not yet published")
           } else {
             // Set chapter data if published

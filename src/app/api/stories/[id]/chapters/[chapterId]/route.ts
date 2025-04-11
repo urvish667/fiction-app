@@ -13,7 +13,7 @@ const updateChapterSchema = z.object({
   content: z.string().min(1, "Content is required").optional(),
   number: z.number().int().positive("Chapter number must be positive").optional(),
   isPremium: z.boolean().optional(),
-  isDraft: z.boolean().optional(),
+  status: z.enum(['draft', 'scheduled', 'published']).optional(),
   publishDate: z.date().optional().nullable(),
 });
 
@@ -53,7 +53,7 @@ export async function GET(
     // Get chapters to determine story status
     const storyChapters = await prisma.chapter.findMany({
       where: { storyId: story.id },
-      select: { isDraft: true }
+      select: { status: true }
     });
 
     // Calculate story status
@@ -284,12 +284,14 @@ export async function PUT(
       });
     }
 
-    // If the chapter's draft status has changed, recalculate and update the story status
-    if (validatedData.isDraft !== undefined) {
+    // If the chapter's status has changed, recalculate and update the story status
+    if (validatedData.status !== undefined) {
       // Get all chapters for this story
       const storyChapters = await prisma.chapter.findMany({
         where: { storyId },
-        select: { isDraft: true }
+        select: {
+          status: true
+        }
       });
 
       // Calculate the new story status
@@ -401,7 +403,7 @@ export async function DELETE(
     // Recalculate and update the story status after chapter deletion
     const remainingChapters = await prisma.chapter.findMany({
       where: { storyId },
-      select: { isDraft: true }
+      select: { status: true }
     });
 
     // Calculate the new story status

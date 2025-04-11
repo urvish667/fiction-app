@@ -47,7 +47,7 @@ export async function GET(
     // Get chapters to determine story status
     const chapters = await prisma.chapter.findMany({
       where: { storyId: story.id },
-      select: { isDraft: true }
+      select: { status: true }
     });
 
     // Calculate story status

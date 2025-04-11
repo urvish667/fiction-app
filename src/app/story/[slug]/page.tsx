@@ -60,8 +60,10 @@ export default function StoryInfoPage() {
         // Fetch chapters for this story
         const chaptersData = await StoryService.getChapters(storyBySlug.id)
 
-        // Always filter out draft chapters for the public story page
-        const publishedChapters = chaptersData.filter(chapter => !chapter.isDraft)
+        // Always filter out draft and scheduled chapters for the public story page
+        const publishedChapters = chaptersData.filter(chapter =>
+          chapter.status === 'published'
+        );
         setChapters(publishedChapters)
       } catch (err) {
         console.error("Error fetching story:", err)
