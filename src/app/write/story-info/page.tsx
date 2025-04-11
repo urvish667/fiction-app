@@ -872,7 +872,7 @@ export default function StoryInfoPage() {
         {/* Header with Back button and Auto-save status on the same line */}
         <div className="flex justify-between items-center mb-8">
           <div className="flex items-center gap-2">
-            <Button variant="ghost" onClick={() => router.back()} className="pl-0 flex items-center gap-2">
+            <Button variant="ghost" onClick={() => router.push('/works')} className="pl-0 flex items-center gap-2">
               <ArrowLeft size={16} />
               Back
             </Button>

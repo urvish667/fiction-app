@@ -14,7 +14,11 @@ const updateChapterSchema = z.object({
   number: z.number().int().positive("Chapter number must be positive").optional(),
   isPremium: z.boolean().optional(),
   status: z.enum(['draft', 'scheduled', 'published']).optional(),
-  publishDate: z.date().optional().nullable(),
+  publishDate: z.union([
+    z.string().transform((str) => new Date(str)),
+    z.date(),
+    z.null()
+  ]).optional(),
 });
 
 // GET endpoint to retrieve a specific chapter

@@ -200,8 +200,8 @@ export const authOptions: NextAuthOptions = {
 
   // Custom pages
   pages: {
-    signIn: "/", // We'll handle sign-in in our modal
-    error: "/", // Will handle errors in the modal
+    signIn: "/login", // Use our dedicated login page
+    error: "/login", // Handle errors in the login page
   },
 
   // Events to handle special auth cases

@@ -14,7 +14,11 @@ const createChapterSchema = z.object({
   number: z.number().int().positive("Chapter number must be positive"),
   isPremium: z.boolean().default(false),
   status: z.enum(['draft', 'scheduled', 'published']).default('draft'),
-  publishDate: z.date().optional(),
+  publishDate: z.union([
+    z.string().transform((str) => new Date(str)),
+    z.date(),
+    z.null()
+  ]).optional(),
 });
 
 // GET endpoint to retrieve all chapters for a story

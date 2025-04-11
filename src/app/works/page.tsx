@@ -11,7 +11,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { PenSquare, Eye, BarChart3, MoreVertical, Trash2, Copy, X, Heart, MessageSquare, BookOpen, Loader2 } from "lucide-react"
+import { PenSquare, Eye, BarChart3, MoreVertical, Trash2, Copy, X, Heart, MessageSquare, BookOpen, Loader2, Clock } from "lucide-react"
 import Navbar from "@/components/navbar"
 import { useToast } from "@/components/ui/use-toast"
 import { StoryService } from "@/services/story-service"
@@ -23,6 +23,8 @@ import type { Story } from "@/types/story"
 interface WorkStory extends Story {
   lastEdited: Date;
   draftChapters: number;
+  scheduledChapters: number;
+  publishedChapters: number;
 }
 
 export default function MyWorksPage() {
@@ -47,14 +49,19 @@ export default function MyWorksPage() {
           authorId: session.user.id
         })
 
-        // Get chapters for each story to count draft chapters
+        // Get chapters for each story to count chapters by status
         const worksWithChapters = await Promise.all(response.stories.map(async (story) => {
           let draftChapters = 0;
+          let scheduledChapters = 0;
+          let publishedChapters = 0;
+
           try {
             const chapters = await StoryService.getChapters(story.id);
-            draftChapters = chapters.filter(chapter =>
-              chapter.status === 'draft' || chapter.status === 'scheduled'
-            ).length;
+
+            // Count chapters by status
+            draftChapters = chapters.filter(chapter => chapter.status === 'draft').length;
+            scheduledChapters = chapters.filter(chapter => chapter.status === 'scheduled').length;
+            publishedChapters = chapters.filter(chapter => chapter.status === 'published').length;
           } catch (error) {
             console.error(`Failed to fetch chapters for story ${story.id}:`, error);
           }
@@ -62,7 +69,9 @@ export default function MyWorksPage() {
           return {
             ...story,
             lastEdited: new Date(story.updatedAt),
-            draftChapters
+            draftChapters,
+            scheduledChapters,
+            publishedChapters
           };
         }));
 
@@ -349,14 +358,22 @@ function WorksContent({ works, searchQuery, isLoading, onDeleteStory }: WorksCon
                 <div className="flex justify-between items-center">
                   <span className="flex items-center gap-1">
                     <BookOpen className="h-3.5 w-3.5" />
-                    <span>Chapters: {work.chapterCount || 0}</span>
+                    <span>Published: {work.publishedChapters || 0}</span>
                   </span>
-                  {work.draftChapters > 0 && (
-                    <span className="flex items-center gap-1">
-                      <PenSquare className="h-3.5 w-3.5" />
-                      <span>Drafts: {work.draftChapters}</span>
-                    </span>
-                  )}
+                  <div className="flex gap-2">
+                    {work.scheduledChapters > 0 && (
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-3.5 w-3.5" />
+                        <span>Scheduled: {work.scheduledChapters}</span>
+                      </span>
+                    )}
+                    {work.draftChapters > 0 && (
+                      <span className="flex items-center gap-1">
+                        <PenSquare className="h-3.5 w-3.5" />
+                        <span>Drafts: {work.draftChapters}</span>
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -426,7 +443,7 @@ function WorksContent({ works, searchQuery, isLoading, onDeleteStory }: WorksCon
                   </div>
                   <div className="flex items-center gap-1">
                     <BookOpen className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span>{work.chapterCount?.toLocaleString() || 0} chapters</span>
+                    <span>{work.publishedChapters?.toLocaleString() || 0} published</span>
                   </div>
                 </div>
               )}

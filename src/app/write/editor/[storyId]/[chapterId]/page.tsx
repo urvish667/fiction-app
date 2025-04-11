@@ -8,7 +8,7 @@ import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/components/ui/use-toast"
-import { ArrowLeft, Save, Eye, Clock, Check, Calendar, Bell, Globe, Lock, FileText, BookOpen, Menu } from "lucide-react"
+import { ArrowLeft, Save, Eye, Clock, Check, Bell, Globe, Lock, FileText, BookOpen, Menu } from "lucide-react"
 import { Editor } from "@/components/editor"
 import {
   Dialog,
@@ -21,10 +21,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { format } from "date-fns"
-import { Calendar as CalendarComponent } from "@/components/ui/calendar"
-import { cn } from "@/lib/utils"
 import { StoryService } from "@/services/story-service"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { useChapterEditor } from "@/hooks/use-chapter-editor"
@@ -150,7 +147,7 @@ export default function ChapterEditorPage() {
 
   // Handle publish settings change
   const handlePublishSettingsChange = (field: string, value: any) => {
-    if (field === 'isPremium' || field === 'schedulePublish' || field === 'publishDate' || field === 'markStoryCompleted') {
+    if (field === 'schedulePublish' || field === 'publishDate') {
       // These fields are in the core publishSettings
       setPublishSettings(prev => ({ ...prev, [field]: value }))
     } else {
@@ -180,29 +177,16 @@ export default function ChapterEditorPage() {
       return false
     }
 
-    // If marking the story as completed, check for draft chapters
-    if (publishSettings.markStoryCompleted) {
-      try {
-        const chapters = await StoryService.getChapters(storyId);
-        // Filter out the current chapter since it's being published
-        const draftChapters = chapters.filter(ch => (ch.status === 'draft' || ch.status === 'scheduled') && ch.id !== chapter.id);
-
-        if (draftChapters.length > 0) {
-          toast({
-            title: "Cannot mark as completed",
-            description: `This story has ${draftChapters.length} other draft ${draftChapters.length === 1 ? "chapter" : "chapters"}. Please publish all draft chapters before marking the story as completed.`,
-            variant: "destructive",
-          });
-          return false; // Don't publish with completed status
-        }
-      } catch (error) {
-        logError(error, { context: 'validateBeforePublish', storyId })
+    // Validate scheduled date and time if scheduling is enabled
+    if (publishSettings.schedulePublish) {
+      const now = new Date();
+      if (publishSettings.publishDate <= now) {
         toast({
-          title: "Error",
-          description: "Failed to check draft chapters. Please try again.",
+          title: "Invalid schedule",
+          description: "Publication date and time must be in the future.",
           variant: "destructive",
-        });
-        return false; // Don't publish with completed status
+        })
+        return false
       }
     }
 
@@ -438,35 +422,7 @@ export default function ChapterEditorPage() {
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="isPremium"
-                  checked={publishSettings.isPremium}
-                  onCheckedChange={(checked) => handlePublishSettingsChange("isPremium", checked === true)}
-                />
-                <Label htmlFor="isPremium" className="text-sm">
-                  Premium Content (only for subscribers)
-                </Label>
-              </div>
-            </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="markStoryCompleted"
-                  checked={publishSettings.markStoryCompleted}
-                  onCheckedChange={(checked) => handlePublishSettingsChange("markStoryCompleted", checked === true)}
-                />
-                <Label htmlFor="markStoryCompleted" className="text-sm">
-                  Mark story as completed
-                </Label>
-              </div>
-              <p className="text-xs text-muted-foreground pl-6">
-                This will mark the entire story as completed. All chapters must be published (no drafts allowed).
-                Readers will know the story is finished.
-              </p>
-            </div>
 
             <div className="space-y-2">
               <div className="flex items-center space-x-2">
@@ -482,24 +438,74 @@ export default function ChapterEditorPage() {
             </div>
 
             {publishSettings.schedulePublish && (
-              <div className="space-y-2 pl-6 border-l-2 border-muted">
-                <Label htmlFor="publishDate">Publication Date</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal")}>
-                      <Calendar size={16} className="mr-2" />
-                      {format(publishSettings.publishDate, "PPP")}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <CalendarComponent
-                      mode="single"
-                      selected={publishSettings.publishDate}
-                      onSelect={(date) => handlePublishSettingsChange("publishDate", date || new Date())}
-                      disabled={(date) => date < new Date()}
-                    />
-                  </PopoverContent>
-                </Popover>
+              <div className="space-y-4 pl-6 border-l-2 border-muted">
+                <div className="space-y-2">
+                  <Label htmlFor="publishDate">Publication Date</Label>
+                  <Input
+                    id="publishDate"
+                    type="date"
+                    value={format(publishSettings.publishDate, "yyyy-MM-dd")}
+                    onChange={(e) => {
+                      // Create a new date with the selected date but keep the current time
+                      if (e.target.value) {
+                        const currentDate = new Date(publishSettings.publishDate);
+                        const newDate = new Date(e.target.value);
+                        newDate.setHours(currentDate.getHours(), currentDate.getMinutes(), 0, 0);
+
+                        // Only allow future dates
+                        const now = new Date();
+                        now.setHours(0, 0, 0, 0); // Set to start of day for date comparison
+
+                        if (newDate >= now) {
+                          handlePublishSettingsChange("publishDate", newDate);
+                        } else {
+                          toast({
+                            title: "Invalid date",
+                            description: "Publication date cannot be in the past.",
+                            variant: "destructive",
+                          });
+                        }
+                      }
+                    }}
+                    min={format(new Date(), "yyyy-MM-dd")}
+                    className="w-full"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="publishTime">Publication Time</Label>
+                  <Input
+                    id="publishTime"
+                    type="time"
+                    value={format(publishSettings.publishDate, "HH:mm")}
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        const [hours, minutes] = e.target.value.split(':').map(Number);
+                        const newDate = new Date(publishSettings.publishDate);
+                        newDate.setHours(hours, minutes, 0, 0);
+
+                        // Check if the combined date and time is in the future
+                        const now = new Date();
+                        const selectedDate = new Date(publishSettings.publishDate);
+                        selectedDate.setHours(0, 0, 0, 0); // Start of the selected day
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0); // Start of today
+
+                        // If the selected date is today, ensure the time is in the future
+                        if (selectedDate.getTime() === today.getTime() && newDate <= now) {
+                          toast({
+                            title: "Invalid time",
+                            description: "Publication time must be in the future.",
+                            variant: "destructive",
+                          });
+                        } else {
+                          handlePublishSettingsChange("publishDate", newDate);
+                        }
+                      }
+                    }}
+                    className="w-full"
+                  />
+                </div>
               </div>
             )}
 

@@ -16,15 +16,13 @@ export interface ChapterData {
   wordCount: number
   lastSaved: Date | null
   status: "draft" | "published" | "scheduled"
-  isPremium: boolean
+  isPremium: boolean // Keeping this for compatibility with API
 }
 
 // Types for publish settings
 export interface PublishSettings {
-  isPremium: boolean
   schedulePublish: boolean
   publishDate: Date
-  markStoryCompleted: boolean
 }
 
 export interface UseChapterEditorProps {
@@ -71,7 +69,7 @@ export function useChapterEditor({
     wordCount: 0,
     lastSaved: null,
     status: "draft",
-    isPremium: false
+    isPremium: false // Keeping this for compatibility with API
   })
 
   // Track original content, title, and draft status
@@ -92,10 +90,8 @@ export function useChapterEditor({
 
   // Publishing settings
   const [publishSettings, setPublishSettings] = useState<PublishSettings>({
-    isPremium: false,
     schedulePublish: false,
-    publishDate: new Date(),
-    markStoryCompleted: false
+    publishDate: new Date()
   })
 
   // Create debounced version of chapter for auto-save with cancellation
@@ -156,10 +152,9 @@ export function useChapterEditor({
         setInitialTitle(chapterData.title)
         setInitialIsDraft(chapterData.status === 'draft')
 
-        // Set premium status in publish settings
+        // Initialize publish settings
         setPublishSettings(prev => ({
-          ...prev,
-          isPremium: chapterData.isPremium
+          ...prev
         }))
 
       } catch (error) {
@@ -422,30 +417,35 @@ export function useChapterEditor({
     setIsSaving(true)
 
     try {
-      // Save chapter first with any premium status changes
+      // Format the date for API consumption
+      let formattedDate = undefined;
+      if (publishSettings.schedulePublish) {
+        // Create a string in ISO format but without milliseconds and timezone
+        // This format is more compatible with database datetime fields
+        const date = publishSettings.publishDate;
+        formattedDate = date.toISOString().split('.')[0] + 'Z';
+      }
+
+      // Save chapter with publishing status
       const chapterData = {
         title: chapter.title,
         content: chapter.content,
         number: chapter.number,
-        isPremium: publishSettings.isPremium,
         status: publishSettings.schedulePublish ? 'scheduled' : 'published', // Set appropriate status
-        publishDate: publishSettings.schedulePublish ? publishSettings.publishDate : undefined
+        publishDate: formattedDate
       }
 
       logInfo('Publishing chapter', {
         storyId,
         chapterId: chapter.id,
-        isPremium: publishSettings.isPremium,
         schedulePublish: publishSettings.schedulePublish,
-        markStoryCompleted: publishSettings.markStoryCompleted
+        publishDate: formattedDate
       })
+
+      // Log the data being sent to the API for debugging
+      console.log('Publishing chapter with data:', chapterData)
 
       const savedChapter = await StoryService.updateChapter(storyId, chapter.id, chapterData)
-
-      // Update the story status based on settings
-      await StoryService.updateStory(storyId, {
-        status: publishSettings.markStoryCompleted ? "completed" : "ongoing"
-      })
 
       // Update local state
       syncStateWithBackend(savedChapter)
