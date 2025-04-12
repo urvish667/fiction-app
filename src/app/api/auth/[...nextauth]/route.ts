@@ -30,6 +30,10 @@ export const authOptions: NextAuthOptions = {
         return {
           id: profile.sub,
           name: profile.name,
+          bannerImage: null,
+          donationLink: null, 
+          donationMethod: null,
+          donationsEnabled: false,
           email: profile.email,
           image: profile.picture,
           emailVerified: profile.email_verified,
@@ -79,6 +83,10 @@ export const authOptions: NextAuthOptions = {
         return {
           id: profile.id,
           name: profile.name,
+          bannerImage: null,
+          donationLink: null,
+          donationMethod: null, 
+          donationsEnabled: false,
           email: profile.email,
           image: profile.picture?.data?.url,
           provider: "facebook",
@@ -173,6 +181,10 @@ export const authOptions: NextAuthOptions = {
           name: user.name,
           username: user.username,
           image: user.image,
+          bannerImage: user.bannerImage || null,
+          donationLink: user.donationLink || null,
+          donationMethod: user.donationMethod || null,
+          donationsEnabled: user.donationsEnabled || false,
           isProfileComplete: user.isProfileComplete,
           preferences: preferences,
           provider: "credentials",
@@ -292,7 +304,7 @@ export const authOptions: NextAuthOptions = {
     async session({ session, token }) {
       // Create a new session object with only the standard fields
       const userSession: any = {
-        id: (token.id as string) || token.sub!,
+        id: token.id as string,
         name: token.name,
         email: token.email,
         image: token.image || token.picture,
@@ -337,43 +349,76 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user, account, trigger }) {
       // If this is a sign-in event, set the initial token data
       if (user) {
-        // On sign-in, store all user data in the token to avoid future DB lookups
-        token.id = user.id;
-        token.username = user.username;
-        token.provider = user.provider || account?.provider;
-        token.isProfileComplete = user.isProfileComplete;
-        token.image = user.image;
-        token.bannerImage = user.bannerImage;
-        token.lastUpdated = Date.now();
+        // Fetch the user from DB to ensure we have the database ID
+        const dbUser = await prisma.user.findUnique({
+          where: { email: user.email! },
+          select: { 
+            id: true, 
+            username: true, 
+            provider: true, 
+            isProfileComplete: true, 
+            image: true, 
+            bannerImage: true, 
+            preferences: true, 
+            marketingOptIn: true 
+          }
+        });
 
-        // If user has preferences, store them in the token
-        if ((user as any).preferences) {
-          token.preferences = (user as any).preferences;
+        if (!dbUser) {
+          // Should not happen if adapter/signIn works correctly, but handle defensively
+          console.error(`JWT Callback: Could not find user in DB during initial sign-in: ${user.email}`);
+          // Return the token as-is or throw an error depending on desired behavior
+          return token; 
         }
 
-        return token; // Return early to avoid DB query
-      }
+        // Store data from the DB user in the token
+        token.id = dbUser.id; // Use the actual database ID
+        token.username = dbUser.username;
+        token.provider = dbUser.provider || account?.provider; // Keep provider logic
+        token.isProfileComplete = dbUser.isProfileComplete;
+        token.image = dbUser.image;
+        token.bannerImage = dbUser.bannerImage;
+        token.marketingOptIn = dbUser.marketingOptIn;
+        token.lastUpdated = Date.now();
 
-      // Always fetch from DB on update or if preferences are missing
+        // Process preferences if they exist
+        if (dbUser.preferences) {
+          try {
+            token.preferences = typeof dbUser.preferences === 'string'
+              ? JSON.parse(dbUser.preferences)
+              : dbUser.preferences;
+          } catch (error) {
+            console.error('Error parsing preferences in JWT (initial sign-in):', error);
+            token.preferences = defaultPreferences; // Fallback to defaults
+          }
+        } else {
+          token.preferences = defaultPreferences;
+        }
+
+        console.log(`JWT Callback: Initial token created for user ID: ${token.id}`);
+        return token; // Return the populated token
+      }
+      
+      // If it's not the initial sign-in, check if user data needs refreshing
       const shouldFetchUser =
         trigger === 'update' ||
-        !token.preferences ||
-        !token.lastUpdated ||
-        Date.now() > (token.lastUpdated as number) + (60 * 60 * 1000); // 1 hour
+        !token.preferences || // Fetch if preferences are missing
+        !token.lastUpdated || // Fetch if lastUpdated is missing
+        Date.now() > (token.lastUpdated as number) + (60 * 60 * 1000); // Re-fetch every 1 hour
 
-      if (shouldFetchUser) {
+      if (shouldFetchUser && token.id) { // Only fetch if we have a valid token.id (DB ID)
+        console.log(`JWT Callback: Refreshing token data for user ID: ${token.id}`);
         try {
-          // Fetch user data including preferences
+          // Fetch user data using the reliable database ID from the token
           const dbUser = await prisma.user.findUnique({
-            where: { id: (token.id as string) || token.sub! },
+            where: { id: token.id as string }, // Use ONLY token.id
             select: {
               username: true,
               isProfileComplete: true,
-              preferences: true, // Always include preferences
+              preferences: true,
               marketingOptIn: true,
               image: true,
               bannerImage: true,
-              // Include other fields that might change frequently
             }
           });
 
