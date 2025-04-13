@@ -1,4 +1,4 @@
-import { User } from "./user";
+import { UserSummary } from "./user";
 
 export type Story = {
   id: string;
@@ -13,7 +13,7 @@ export type Story = {
   wordCount: number;
   readCount: number;
   authorId: string;
-  author?: User;
+  author?: UserSummary;
   chapters?: Chapter[];
   createdAt: Date;
   updatedAt: Date;
@@ -47,7 +47,7 @@ export type Comment = {
   id: string;
   content: string;
   userId: string;
-  user?: User;
+  user?: UserSummary;
   storyId: string;
   story?: Story;
   parentId?: string;
@@ -60,7 +60,7 @@ export type Comment = {
 export type Like = {
   id: string;
   userId: string;
-  user?: User;
+  user?: UserSummary;
   storyId: string;
   story?: Story;
   createdAt: Date;
@@ -69,7 +69,7 @@ export type Like = {
 export type Bookmark = {
   id: string;
   userId: string;
-  user?: User;
+  user?: UserSummary;
   storyId: string;
   story?: Story;
   createdAt: Date;
@@ -79,7 +79,7 @@ export type ReadingProgress = {
   id: string;
   progress: number; // 0-100 percentage
   userId: string;
-  user?: User;
+  user?: UserSummary;
   chapterId: string;
   chapter?: Chapter;
   lastRead: Date;

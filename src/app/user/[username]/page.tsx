@@ -22,6 +22,7 @@ import StoryCard from "@/components/story-card"
 import { SiteFooter } from "@/components/site-footer"
 // import { sampleStories } from "@/lib/sample-data" - not needed
 import { StoryService } from "@/services/story-service"
+import { SupportButton } from "@/components/SupportButton"
 
 // Define user profile type
 type UserProfile = {
@@ -35,11 +36,6 @@ type UserProfile = {
     twitter?: string | null
     facebook?: string | null
     instagram?: string | null
-    set?: {
-      twitter?: string | null
-      facebook?: string | null
-      instagram?: string | null
-    }
   } | null
   image: string | null
   bannerImage: string | null
@@ -48,6 +44,9 @@ type UserProfile = {
   isCurrentUser: boolean
   followers?: number
   following?: number
+  donationsEnabled?: boolean | null;
+  donationMethod?: 'paypal' | 'stripe' | null;
+  donationLink?: string | null;
 }
 
 export default function UserProfilePage() {
@@ -247,11 +246,25 @@ export default function UserProfilePage() {
             </div>
 
             {/* Avatar positioned to overlap the banner */}
-            <div className="relative -mt-36 ml-4 md:ml-8">
-              <Avatar className="h-40 w-40 border-4 border-background">
+            <div className="relative -mt-36 ml-4 md:ml-8 flex items-end justify-between">
+              <Avatar className="w-32 h-32 md:w-40 md:h-40 border-4 border-background shadow-lg">
                 <AvatarImage src={user.image || "/placeholder-user.jpg"} alt={user.name || user.username} />
                 <AvatarFallback>{(user.name || user.username).charAt(0)}</AvatarFallback>
               </Avatar>
+              <div className="flex items-center space-x-2 pb-4 pr-4">
+                {user.donationsEnabled && (
+                  <SupportButton 
+                    authorId={user.id}
+                    donationMethod={user.donationMethod ?? null}
+                    donationLink={user.donationLink ?? null}
+                    authorName={user.name || user.username} 
+                  />
+                )}
+                <ProfileActionButtons 
+                  username={user.username}
+                  isCurrentUser={user.isCurrentUser} 
+                />
+              </div>
             </div>
 
             {/* Profile Info */}
@@ -259,7 +272,6 @@ export default function UserProfilePage() {
               <div className="mb-4 md:mb-0">
                 <div className="flex items-center gap-3 mb-1">
                   <h1 className="text-3xl font-bold">{user.name || user.username}</h1>
-                  <ProfileActionButtons username={user.username} isCurrentUser={user.isCurrentUser} />
                 </div>
                 <p className="text-muted-foreground">@{user.username}</p>
 
@@ -298,8 +310,6 @@ export default function UserProfilePage() {
                         const twitterLink =
                           typeof user.socialLinks === 'object' && user.socialLinks.twitter ?
                             user.socialLinks.twitter :
-                          typeof user.socialLinks === 'object' && user.socialLinks.set && user.socialLinks.set.twitter ?
-                            user.socialLinks.set.twitter :
                             null;
 
                         return twitterLink ? (
@@ -318,8 +328,6 @@ export default function UserProfilePage() {
                         const facebookLink =
                           typeof user.socialLinks === 'object' && user.socialLinks.facebook ?
                             user.socialLinks.facebook :
-                          typeof user.socialLinks === 'object' && user.socialLinks.set && user.socialLinks.set.facebook ?
-                            user.socialLinks.set.facebook :
                             null;
 
                         return facebookLink ? (
@@ -338,8 +346,6 @@ export default function UserProfilePage() {
                         const instagramLink =
                           typeof user.socialLinks === 'object' && user.socialLinks.instagram ?
                             user.socialLinks.instagram :
-                          typeof user.socialLinks === 'object' && user.socialLinks.set && user.socialLinks.set.instagram ?
-                            user.socialLinks.set.instagram :
                             null;
 
                         return instagramLink ? (

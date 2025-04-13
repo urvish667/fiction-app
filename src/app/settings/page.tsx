@@ -11,7 +11,16 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import Navbar from "@/components/navbar"
 import { UserPreferences, defaultPreferences } from "@/types/user"
-// Router no longer needed with window.location.reload()
+import { useRouter, useSearchParams } from 'next/navigation';
+
+// UI Imports (ensure all needed are here)
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Switch } from '@/components/ui/switch';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card"
+import { Check } from "lucide-react"
 
 // Import the new settings components
 import ProfileSettings from "@/components/settings/ProfileSettings"
@@ -41,31 +50,51 @@ const settingsFormSchema = z.object({
 
 type SettingsFormValues = z.infer<typeof settingsFormSchema>
 
+// --- Donation Settings Types (Copied from donations/page.tsx) ---
+interface DonationSettingsData {
+  donationsEnabled: boolean;
+  donationMethod: 'paypal' | 'stripe' | null;
+  donationLink: string | null;
+}
+// --- End Donation Settings Types ---
+
 export default function SettingsPage() {
   const { toast } = useToast()
-  const { data: session, update } = useSession()
-  // Router no longer needed with window.location.reload()
-  const [activeTab, setActiveTab] = useState("profile")
-  const [isUpdating, setIsUpdating] = useState(false) // Shared state for profile/social save buttons
+  const { data: session, update, status: sessionStatus } = useSession()
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Initialize activeTab correctly
+  const initialTab = typeof window !== 'undefined' ? (new URLSearchParams(window.location.search).get('tab') || 'profile') : 'profile';
+  const [activeTab, setActiveTab] = useState(initialTab);
+
+  const [isUpdating, setIsUpdating] = useState(false)
   const [isChangingPassword, setIsChangingPassword] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isDeletingAccount, setIsDeletingAccount] = useState(false)
   const [deletePassword, setDeletePassword] = useState("")
-  const [savingPreferences, setSavingPreferences] = useState<string | null>(null) // For notification/privacy toggles
-
-  // Password form state (remains here for AccountSettings)
+  const [savingPreferences, setSavingPreferences] = useState<string | null>(null)
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
   })
 
-  // Initialize the main form (remains here)
+  // --- Donation Settings State (Copied & Renamed) ---
+  const [donationSettings, setDonationSettings] = useState<DonationSettingsData | null>(null);
+  const [isLoadingDonations, setIsLoadingDonations] = useState(true);
+  const [isSavingDonations, setIsSavingDonations] = useState(false);
+  const [donationError, setDonationError] = useState<string | null>(null);
+  const [enableDonations, setEnableDonations] = useState(false);
+  const [donationMethod, setDonationMethod] = useState<'paypal' | 'stripe' | null>(null);
+  const [paypalLink, setPaypalLink] = useState('');
+  // --- End Donation Settings State ---
+
   const form = useForm<SettingsFormValues>({
     resolver: zodResolver(settingsFormSchema),
     defaultValues: {
-      name: "", // Initialized empty, loaded via useEffect
-      username: "", // Initialized empty, loaded via useEffect
+      name: "",
+      username: "",
       bio: "",
       location: "",
       website: "",
@@ -74,12 +103,9 @@ export default function SettingsPage() {
         instagram: "",
         facebook: "",
       },
-      // language: "en",
-      // theme: "system",
     },
   })
 
-  // Load user data (remains here)
   useEffect(() => {
     const loadUserData = async () => {
       if (session?.user?.id) {
@@ -90,7 +116,6 @@ export default function SettingsPage() {
           }
           const userData = await response.json()
 
-          // Reset form with fetched data
           form.reset({
             name: userData.name || "",
             username: userData.username || "",
@@ -102,11 +127,8 @@ export default function SettingsPage() {
               instagram: "",
               facebook: "",
             },
-            // language: userData.language || "en",
-            // theme: userData.theme || "system",
           })
 
-          // Update session preferences if not already loaded correctly (optional but good practice)
           if (!session.user.preferences && userData.preferences) {
             await update({
               ...session,
@@ -129,34 +151,92 @@ export default function SettingsPage() {
     }
 
     loadUserData()
-  }, [session?.user?.id, form, toast, update, session]) // Added update and session to dependency array
+  }, [session?.user?.id, form, toast, update, session])
 
-  // Handle password form change (remains here)
+  // --- Donation Settings Effects (Copied & Adapted) ---
+  // Fetch initial donation settings
+  useEffect(() => {
+    if (sessionStatus === 'authenticated') {
+      const fetchDonationSettings = async () => {
+        setIsLoadingDonations(true);
+        setDonationError(null);
+        try {
+          const response = await fetch('/api/user/donation-settings');
+          if (!response.ok) {
+            throw new Error('Failed to fetch donation settings.');
+          }
+          const data: DonationSettingsData = await response.json();
+          setDonationSettings(data);
+          // Initialize donation form state
+          setEnableDonations(data.donationsEnabled);
+          setDonationMethod(data.donationMethod);
+          setPaypalLink(data.donationMethod === 'paypal' && data.donationLink ? data.donationLink : '');
+
+        } catch (err) {
+          const errorMsg = err instanceof Error ? err.message : 'An unknown error occurred';
+          setDonationError(errorMsg);
+          toast({
+            title: 'Error Loading Donation Settings',
+            description: errorMsg,
+            variant: 'destructive',
+          });
+        } finally {
+          setIsLoadingDonations(false);
+        }
+      };
+      fetchDonationSettings();
+    }
+    // No redirect needed here as main settings page handles auth
+  }, [sessionStatus, toast]); // Depend on sessionStatus
+
+  // Handle messages from Stripe callback (for donations)
+  useEffect(() => {
+    if (!searchParams) return; 
+
+    const stripeSuccess = searchParams.get('success');
+    const stripeError = searchParams.get('error');
+    const currentTab = searchParams.get('tab'); // Check if we landed on the right tab
+
+    if (stripeSuccess === 'stripe_connected' && currentTab === 'monetization') {
+      toast({
+        title: 'Success!',
+        description: 'Your Stripe account has been connected successfully.',
+      });
+      // Update state and clear query params
+      setEnableDonations(true);
+      setDonationMethod('stripe');
+      // TODO: Optionally re-fetch donation settings to get the Stripe ID for display
+      router.replace('/settings?tab=monetization', { scroll: false }); 
+    }
+
+    if (stripeError && currentTab === 'monetization') {
+      toast({
+        title: 'Stripe Connection Failed',
+        description: `Could not connect Stripe account: ${stripeError}. Please try again.` ,
+        variant: 'destructive',
+      });
+      router.replace('/settings?tab=monetization', { scroll: false }); 
+    }
+  }, [searchParams, router, toast]);
+  // --- End Donation Settings Effects ---
+
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
     setPasswordForm((prev) => ({ ...prev, [name]: value }))
   }
 
-  // Save profile information (remains here, passed to ProfileSettings)
   const saveProfileInfo = async (data: Partial<SettingsFormValues>) => {
     setIsUpdating(true)
     try {
-      // Prepare data, ensuring username is always included if present in form data
       const profileData: Record<string, any> = {}
       if (data.username) profileData.username = data.username;
       if (data.name !== undefined) profileData.name = data.name
       if (data.bio !== undefined) profileData.bio = data.bio
       if (data.location !== undefined) profileData.location = data.location
       if (data.website !== undefined) profileData.website = data.website
-      // if (data.language !== undefined) profileData.language = data.language
-      // if (data.theme !== undefined) profileData.theme = data.theme
 
-      // If no specific fields to update other than username (which might not change), return early?
-      // Or ensure the API handles this gracefully.
       if (Object.keys(profileData).length === 0 || (Object.keys(profileData).length === 1 && profileData.username === session?.user?.username)) {
          console.log("No profile info changes detected.")
-         // Optionally show a toast message?
-         // toast({ title: "No changes", description: "No profile information was changed." });
          setIsUpdating(false);
          return;
       }
@@ -183,7 +263,7 @@ export default function SettingsPage() {
         throw new Error(result.error || "Failed to update profile information")
       }
 
-      await update() // Update session
+      await update()
       toast({
         title: "Success",
         description: "Your profile information has been updated",
@@ -201,7 +281,6 @@ export default function SettingsPage() {
     }
   }
 
-  // Update profile image
   const updateProfileImage = async (imageUrl: string) => {
     if (!session?.user?.id) return
 
@@ -222,10 +301,8 @@ export default function SettingsPage() {
         throw new Error(result.error || "Failed to update profile image")
       }
 
-      // Update the session with new image
       await update()
 
-      // Force a hard refresh to update all components
       window.location.reload()
     } catch (error) {
       console.error("Error updating profile image:", error)
@@ -238,7 +315,6 @@ export default function SettingsPage() {
     }
   }
 
-  // Update banner image
   const updateBannerImage = async (imageUrl: string) => {
     if (!session?.user?.id) return
 
@@ -259,10 +335,8 @@ export default function SettingsPage() {
         throw new Error(result.error || "Failed to update banner image")
       }
 
-      // Update the session with new banner image
       await update()
 
-      // Force a hard refresh to update all components
       window.location.reload()
     } catch (error) {
       console.error("Error updating banner image:", error)
@@ -275,13 +349,11 @@ export default function SettingsPage() {
     }
   }
 
-  // Save social links (remains here, passed to ProfileSettings)
   const saveSocialLinks = async (data: Pick<SettingsFormValues, 'username' | 'socialLinks'>) => {
     setIsUpdating(true)
     try {
-      // Ensure username is included for the API endpoint
       const linksData = {
-        username: data.username || session?.user?.username, // Fallback to session username
+        username: data.username || session?.user?.username,
         socialLinks: data.socialLinks || {},
       }
 
@@ -301,12 +373,11 @@ export default function SettingsPage() {
 
       if (!response.ok) {
         if (result.fields) {
-          // Adjust error setting for nested structure
           Object.entries(result.fields).forEach(([key, value]) => {
              if (key.startsWith('socialLinks.')) {
                 const fieldName = key.split('.')[1] as keyof SettingsFormValues['socialLinks'];
                 if (fieldName) {
-                    form.setError(`socialLinks.${fieldName}` as any, { // Use template literal and 'any' if needed
+                    form.setError(`socialLinks.${fieldName}` as any, {
                         type: "manual",
                         message: value as string,
                     });
@@ -322,7 +393,7 @@ export default function SettingsPage() {
         throw new Error(result.error || "Failed to update social links")
       }
 
-      await update() // Update session
+      await update()
       toast({
         title: "Success",
         description: "Your social links have been updated",
@@ -340,10 +411,8 @@ export default function SettingsPage() {
     }
   }
 
-  // Change password (remains here, passed to AccountSettings)
   const changePassword = async () => {
     console.log('changePassword function called in SettingsPage');
-    // Basic client-side validation (can be enhanced)
     if (passwordForm.newPassword.length < 8) {
       toast({ title: "Password too short", description: "New password must be at least 8 characters long.", variant: "destructive" })
       return
@@ -392,7 +461,6 @@ export default function SettingsPage() {
     }
   }
 
-  // Delete account (remains here, passed to AccountSettings)
   const deleteAccount = async () => {
     setIsDeletingAccount(true)
     try {
@@ -425,13 +493,12 @@ export default function SettingsPage() {
         description: error instanceof Error ? error.message : "Failed to delete account",
         variant: "destructive",
       })
-      setIsDeleteDialogOpen(false) // Close dialog on error
+      setIsDeleteDialogOpen(false)
     } finally {
       setIsDeletingAccount(false)
     }
   }
 
-  // Save preferences (centralized function)
   const savePreferences = async (preferences: UserPreferences) => {
      console.log("Saving preferences:", preferences);
     try {
@@ -446,7 +513,6 @@ export default function SettingsPage() {
         throw new Error(errorResult.error || 'Failed to save preferences')
       }
 
-      // First, directly update the session with the new preferences
       if (session) {
         await update({
           ...session,
@@ -457,14 +523,12 @@ export default function SettingsPage() {
         });
       }
 
-      // Then force a complete refresh to ensure everything is in sync
       await update({ force: true });
 
-      // Wait a moment to ensure the session is fully updated
       await new Promise(resolve => setTimeout(resolve, 100));
 
       console.log("Preferences saved and session updated.");
-      return true // Indicate success
+      return true
 
     } catch (error) {
       console.error('Error saving preferences:', error)
@@ -473,11 +537,10 @@ export default function SettingsPage() {
         description: "Failed to save preferences. Please try again.",
         variant: "destructive",
       })
-      throw error // Rethrow to be caught by toggle handlers
+      throw error
     }
   }
 
-  // Notification toggle handler (remains here, passed to NotificationSettings)
   const handleNotificationToggle = async (key: keyof UserPreferences['emailNotifications']) => {
     if (!session?.user?.preferences) return;
     setSavingPreferences(`notification-${key}`);
@@ -495,13 +558,11 @@ export default function SettingsPage() {
       toast({ title: "Preference Updated", description: `Email notification for ${key} updated.` });
     } catch (error) {
        console.error(`Error updating notification preference ${key}:`, error);
-       // Toast is handled in savePreferences
     } finally {
       setSavingPreferences(null);
     }
   }
 
-  // Privacy toggle handler (remains here, passed to PrivacySettings)
   const handlePrivacyToggle = async (key: keyof UserPreferences['privacySettings']) => {
     if (!session?.user?.preferences) return;
     setSavingPreferences(`privacy-${key}`);
@@ -519,91 +580,284 @@ export default function SettingsPage() {
       toast({ title: "Preference Updated", description: `Privacy setting for ${key} updated.` });
     } catch (error) {
        console.error(`Error updating privacy preference ${key}:`, error);
-       // Toast is handled in savePreferences
     } finally {
       setSavingPreferences(null);
     }
   }
 
+  // --- Donation Settings Handlers (Copied & Renamed) ---
+  const handleEnableDonationToggle = (checked: boolean) => {
+    setEnableDonations(checked);
+    if (!checked) {
+      setDonationMethod(null);
+      setPaypalLink('');
+    } else {
+      if (!donationMethod) setDonationMethod('paypal'); // Default to paypal if enabling
+    }
+  };
+
+  const handleDonationMethodChange = (value: string) => {
+    setDonationMethod(value as 'paypal' | 'stripe');
+  };
+
+  const handleConnectStripe = () => {
+    setIsSavingDonations(true); 
+    const clientId = process.env.NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID;
+    const redirectUri = `${window.location.origin}/api/stripe/oauth/callback`;
+    const state = 'random_state_value_TODO'; // Replace with actual state generation
+
+    if (!clientId) {
+        setDonationError('Stripe Client ID is not configured.');
+        toast({ title: 'Configuration Error', description: 'Stripe is not configured.', variant: 'destructive' });
+        setIsSavingDonations(false);
+        return;
+    }
+    const stripeConnectUrl = `https://connect.stripe.com/express/oauth/authorize?client_id=${clientId}&state=${state}&redirect_uri=${encodeURIComponent(redirectUri)}&stripe_user[email]=${session?.user?.email || ''}`;
+    window.location.href = stripeConnectUrl;
+  };
+
+  const handleSaveDonationChanges = async () => {
+    setIsSavingDonations(true);
+    setDonationError(null);
+    try {
+      let response: Response | undefined;
+      if (!enableDonations) {
+        response = await fetch('/api/user/disable-donations', { method: 'POST' });
+      } else {
+        if (donationMethod === 'paypal') {
+          response = await fetch('/api/user/enable-donations', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ method: 'paypal', link: paypalLink }),
+          });
+        } else if (donationMethod === 'stripe') {
+          console.log('Stripe selected. Connection is managed via the OAuth flow.');
+          toast({ title: 'Settings Updated', description: 'Stripe selected. Connection status reflects the last update from Stripe.' });
+          // Optimistically update UI state - fetch might refresh this later?
+          setDonationSettings({
+            donationsEnabled: true,
+            donationMethod: 'stripe',
+            donationLink: donationSettings?.donationLink ?? null
+          });
+          setIsSavingDonations(false);
+          return; // Exit early
+        } else {
+          throw new Error('Please select a valid donation method.');
+        }
+      }
+
+      if (!response) {
+        throw new Error('An unexpected error occurred during saving.');
+      }
+
+      if (!response.ok) {
+        let message = 'Failed to update donation settings.';
+        try {
+          const errorData = await response.json();
+          message = errorData?.errors?.[0]?.message || errorData?.message || message;
+        } catch (e) { /* Ignore */ }
+        throw new Error(message);
+      }
+
+      const result = await response.json();
+      toast({ title: 'Success', description: result.message || 'Settings updated.' });
+
+      // Update local state to match saved state
+      let finalDonationLink: string | null = null;
+      if (enableDonations) {
+        if (donationMethod === 'paypal') {
+          finalDonationLink = paypalLink;
+        } else if (donationMethod === 'stripe') {
+          // Keep existing Stripe link if available, otherwise null
+          finalDonationLink = donationSettings?.donationLink ?? null;
+        }
+        // If method is null (shouldn't happen if enabled), link remains null
+      }
+      // If !enableDonations, link remains null
+
+      setDonationSettings({
+        donationsEnabled: enableDonations,
+        donationMethod: enableDonations ? donationMethod : null,
+        donationLink: finalDonationLink 
+      });
+
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
+      setDonationError(errorMessage);
+      toast({ title: 'Error Saving Settings', description: errorMessage, variant: 'destructive' });
+    } finally {
+      setIsSavingDonations(false);
+    }
+  };
+  // --- End Donation Settings Handlers ---
+
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen flex flex-col">
       <Navbar />
+      <div className="container mx-auto p-4 py-8 flex-grow">
+        <h1 className="text-3xl font-bold mb-8">Settings</h1>
 
-      <main className="container mx-auto px-8 py-8">
-        <h1 className="text-3xl font-bold mb-8">Account Settings</h1>
-
-        <Tabs defaultValue="profile" value={activeTab} onValueChange={setActiveTab} className="mt-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
           <TabsList className="mb-8">
             <TabsTrigger value="profile">Profile</TabsTrigger>
             <TabsTrigger value="account">Account</TabsTrigger>
             <TabsTrigger value="notifications">Notifications</TabsTrigger>
             <TabsTrigger value="privacy">Privacy</TabsTrigger>
+            <TabsTrigger value="monetization">Monetization</TabsTrigger>
           </TabsList>
 
-          {/* Profile Tab Content */}
-          <TabsContent value="profile">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-            >
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <TabsContent value="profile">
               <ProfileSettings
-                session={session}
-                form={form}
+                session={session as any}
+                form={form as any}
                 isUpdating={isUpdating}
                 saveProfileInfo={saveProfileInfo}
                 saveSocialLinks={saveSocialLinks}
                 updateProfileImage={updateProfileImage}
                 updateBannerImage={updateBannerImage}
               />
-            </motion.div>
-          </TabsContent>
+            </TabsContent>
+            <TabsContent value="account">
+              <AccountSettings
+                session={session}
+                passwordForm={passwordForm}
+                handlePasswordChange={handlePasswordChange}
+                changePassword={changePassword}
+                isChangingPassword={isChangingPassword}
+                isDeleteDialogOpen={isDeleteDialogOpen}
+                setIsDeleteDialogOpen={setIsDeleteDialogOpen}
+                deletePassword={deletePassword}
+                setDeletePassword={setDeletePassword}
+                deleteAccount={deleteAccount}
+                isDeletingAccount={isDeletingAccount}
+              />
+            </TabsContent>
+            <TabsContent value="notifications">
+              <NotificationSettings
+                session={session}
+                handleNotificationToggle={handleNotificationToggle}
+                savingPreferences={savingPreferences}
+                update={update}
+                toast={toast}
+              />
+            </TabsContent>
+            <TabsContent value="privacy">
+              <PrivacySettings
+                session={session}
+                handlePrivacyToggle={handlePrivacyToggle}
+                savingPreferences={savingPreferences}
+              />
+            </TabsContent>
+            <TabsContent value="monetization">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Monetization / Donations</CardTitle>
+                  <CardDescription>Manage how others can support your work.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {isLoadingDonations ? (
+                    <div className="flex items-center justify-center p-8"><p>Loading donation settings...</p></div>
+                  ) : (
+                    <div className="space-y-6">
+                      {donationError && <p className="text-red-500 mb-4">Error: {donationError}</p>}
 
-          {/* Account Tab Content */}
-          <TabsContent value="account">
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-               <AccountSettings
-                  session={session}
-                  passwordForm={passwordForm}
-                  handlePasswordChange={handlePasswordChange}
-                  changePassword={changePassword}
-                  isChangingPassword={isChangingPassword}
-                  isDeleteDialogOpen={isDeleteDialogOpen}
-                  setIsDeleteDialogOpen={setIsDeleteDialogOpen}
-                  deletePassword={deletePassword}
-                  setDeletePassword={setDeletePassword}
-                  deleteAccount={deleteAccount}
-                  isDeletingAccount={isDeletingAccount}
-               />
-            </motion.div>
-          </TabsContent>
+                      <div className="flex items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="enable-donations" className="text-base font-medium">
+                            Enable Donations
+                          </Label>
+                          <p className="text-sm text-muted-foreground">Allow readers to support you directly.</p>
+                        </div>
+                        <Switch
+                          id="enable-donations"
+                          checked={enableDonations}
+                          onCheckedChange={handleEnableDonationToggle} 
+                          aria-label="Enable or disable donations"
+                        />
+                      </div>
 
-          {/* Notifications Tab Content */}
-          <TabsContent value="notifications">
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-               <NotificationSettings
-                  session={session}
-                  handleNotificationToggle={handleNotificationToggle}
-                  savingPreferences={savingPreferences}
-                  update={update} // Pass update function
-                  toast={toast} // Pass toast function
-               />
-            </motion.div>
-          </TabsContent>
+                      {enableDonations && (
+                        <div className="space-y-4 pt-6 border-t">
+                          <Label className="block text-base font-medium mb-3">Donation Method</Label>
+                          <RadioGroup
+                            value={donationMethod || ''}
+                            onValueChange={handleDonationMethodChange}
+                            className="space-y-3"
+                          >
+                            <Label htmlFor="paypal" className="flex items-center space-x-3 p-4 border rounded-md cursor-pointer hover:bg-muted/50 transition-colors">
+                              <RadioGroupItem value="paypal" id="paypal" />
+                              <span className="font-medium">PayPal</span>
+                            </Label>
+                            <Label htmlFor="stripe" className={`flex items-center space-x-3 p-4 border rounded-md transition-colors ${!process.env.NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-muted/50'}`}>
+                              <RadioGroupItem value="stripe" id="stripe" disabled={!process.env.NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID} />
+                              <span className="font-medium">Stripe Connect</span>
+                              {!process.env.NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID && <span className="text-xs ml-auto text-muted-foreground">(Admin setup required)</span>}
+                            </Label>
+                          </RadioGroup>
 
-          {/* Privacy Tab Content */}
-          <TabsContent value="privacy">
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-                <PrivacySettings
-                   session={session}
-                   handlePrivacyToggle={handlePrivacyToggle}
-                   savingPreferences={savingPreferences}
-                />
-            </motion.div>
-          </TabsContent>
+                          {donationMethod === 'paypal' && (
+                            <div className="space-y-2 pt-4 pl-2">
+                              <Label htmlFor="paypal-link" className="text-sm font-medium">PayPal.me Link or Email</Label>
+                              <Input
+                                id="paypal-link"
+                                type="text"
+                                value={paypalLink}
+                                onChange={(e) => setPaypalLink(e.target.value)}
+                                placeholder="e.g., paypal.me/yourname or your@email.com"
+                                disabled={isSavingDonations}
+                                className="max-w-md"
+                              />
+                              {donationSettings?.donationMethod === 'paypal' && (
+                                  <p className="text-xs text-muted-foreground pt-1">(Current: {donationSettings.donationLink ?? 'N/A'})</p>
+                              )}
+                            </div>
+                          )}
 
+                          {donationMethod === 'stripe' && (
+                            <div className="space-y-2 pt-4 pl-2">
+                              {donationSettings?.donationMethod === 'stripe' && donationSettings?.donationLink ? (
+                                <div className="flex items-center gap-2">
+                                  <Check className="h-5 w-5 text-green-600" />
+                                  <p className="text-sm text-green-600">Stripe account connected</p>
+                                  <p className="text-xs text-muted-foreground">(ID: {donationSettings.donationLink ?? 'N/A'})</p>
+                                </div>
+                              ) : (
+                                <div>
+                                  <Button onClick={handleConnectStripe} disabled={isSavingDonations || !process.env.NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID} >
+                                      {isSavingDonations ? 'Redirecting...' : 'Connect Stripe Account'}
+                                  </Button>
+                                  {!process.env.NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID && <p className="text-xs text-muted-foreground mt-1">Stripe integration is not configured.</p>}
+                               </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+                {!isLoadingDonations && (
+                  <CardFooter className="border-t px-6 py-4">
+                    <Button 
+                      onClick={handleSaveDonationChanges}
+                      disabled={isSavingDonations || isLoadingDonations}
+                      className="ml-auto"
+                    >
+                      {isSavingDonations ? 'Saving...' : 'Save Changes'}
+                    </Button>
+                  </CardFooter>
+                )}
+              </Card>
+            </TabsContent>
+          </motion.div>
         </Tabs>
-      </main>
+      </div>
     </div>
   )
 }

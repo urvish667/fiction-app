@@ -9,7 +9,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, BookOpen, Heart, Bookmark, CheckCircle, UserPlus, UserCheck } from "lucide-react"
+import { ArrowLeft, BookOpen, Heart, Bookmark, CheckCircle, UserPlus, UserCheck, Loader2 } from "lucide-react"
 import Navbar from "@/components/navbar"
 import ChapterList from "@/components/chapter-list"
 import StoryMetadata from "@/components/story-metadata"
@@ -18,6 +18,8 @@ import AdBanner from "@/components/ad-banner"
 import { SiteFooter } from "@/components/site-footer"
 import { StoryService } from "@/services/story-service"
 import { Story as StoryType, Chapter as ChapterType } from "@/types/story"
+import { SupportButton } from "@/components/SupportButton"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 
 export default function StoryInfoPage() {
   const params = useParams()
@@ -240,6 +242,12 @@ export default function StoryInfoPage() {
     )
   }
 
+  // Extract author details safely
+  const author = story.author;
+
+  // *** Add console log to check the cover image URL ***
+  console.log('[Story Page Render] story.coverImage:', story?.coverImage);
+
   return (
     <div className="min-h-screen">
       <Navbar />
@@ -262,86 +270,76 @@ export default function StoryInfoPage() {
 
         {/* Story Overview Section */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-          {/* Story Thumbnail */}
+          {/* Left Column (Cover, Actions) */}
           <div className="md:col-span-1">
+            {/* Cover Image - Change aspect ratio */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
-              className="relative aspect-[16/9] rounded-lg overflow-hidden shadow-lg"
+              className="relative aspect-video rounded-lg overflow-hidden shadow-lg mb-6"
             >
               <Image
-                src={imageFallback || !story.coverImage || story.coverImage.trim() === ""
-                  ? "/placeholder.svg?height=1600&width=900"
-                  : story.coverImage}
-                alt={story.title}
+                src={imageFallback ? "/placeholder.svg" : story.coverImage || "/placeholder.svg"}
+                alt={`${story.title} cover`}
                 fill
+                sizes="(max-width: 768px) 100vw, 33vw"
                 className="object-cover"
-                priority
-                unoptimized={true} // Always use unoptimized for external images
                 onError={() => {
-                  console.error('Image failed to load:', story.coverImage);
-                  setImageFallback(true);
+                    console.error('Image onError triggered for:', story.coverImage);
+                    setImageFallback(true);
                 }}
+                unoptimized={true}
               />
             </motion.div>
 
             {/* Start Reading Button (Mobile) */}
             <div className="mt-6 md:hidden">
-              <Button onClick={handleStartReading} className="w-full flex items-center gap-2" size="lg">
+              <Button onClick={handleStartReading} disabled={chapters.length === 0} className="w-full flex items-center gap-2" size="lg">
                 <BookOpen size={18} />
                 Start Reading
               </Button>
             </div>
           </div>
 
-          {/* Story Details */}
+          {/* Story Details (Right Column) */}
           <div className="md:col-span-2">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
+              transition={{ duration: 0.5 }}
             >
-              <h1 className="text-3xl md:text-4xl font-bold mb-3">{story.title}</h1>
+              <h1 className="text-3xl md:text-4xl font-bold mb-2">{story.title}</h1>
+              
+              {/* Author Info Section (Original Structure) */}
+              {author && (
+                  <div className="flex items-center gap-3 mb-4 text-lg">
+                    <Link href={`/user/${author.username || ''}`}>
+                       <Avatar className="h-8 w-8">
+                          <AvatarImage src={author.image || "/placeholder-user.jpg"} alt={author.name || author.username || 'Author'} />
+                          <AvatarFallback>{(author.name || author.username || "A").charAt(0)}</AvatarFallback>
+                        </Avatar>
+                    </Link>
+                    <span>by</span>
+                    <Link href={`/user/${author.username || ''}`} className="font-semibold hover:text-primary">
+                        {author.name || author.username || 'Unknown Author'}
+                    </Link>
+                  </div>
+              )}
 
-              {/* Author and Genre */}
-              <div className="flex flex-wrap items-center gap-2 mb-4">
-                <span className="text-lg">
-                  By{" "}
-                  <Link
-                    href={`/user/${story.author?.username || "unknown"}`}
-                    className="font-medium hover:underline"
-                  >
-                    {typeof story.author === 'object' ?
-                      (story.author?.name || story.author?.username || "Unknown Author") :
-                      "Unknown Author"}
-                  </Link>
-                </span>
-                <span className="text-muted-foreground">•</span>
-                <Badge variant="secondary">{story.genre || "General"}</Badge>
-              </div>
-
-              {/* Story Metadata */}
+              {/* Metadata (Genre, Language, Status, Counts) */}
               <StoryMetadata story={story} className="mb-6" />
-
-              {/* Story Description */}
-              <div className="mb-6">
-                <h2 className="text-xl font-semibold mb-2">Description</h2>
-                <p className="text-muted-foreground">
-                  {story.description || "No description available for this story."}
-                </p>
-              </div>
-
+              
               {/* Start Reading Button (Desktop) */}
               <div className="hidden md:block mb-8">
-                <Button onClick={handleStartReading} className="flex items-center gap-2" size="lg">
-                  <BookOpen size={18} />
-                  Start Reading
-                </Button>
-              </div>
+                 <Button onClick={handleStartReading} disabled={chapters.length === 0} className="flex items-center gap-2" size="lg">
+                   <BookOpen size={18} />
+                   Start Reading
+                 </Button>
+               </div>
 
-              {/* Like, Share, Follow */}
-              <div className="flex items-center gap-4 mb-6">
+              {/* Like, Bookmark, Follow Buttons (Original Structure) */}
+              <div className="flex items-center flex-wrap gap-3 mb-6">
                 <Button
                   variant={story.isLiked ? "default" : "outline"}
                   size="sm"
@@ -349,7 +347,7 @@ export default function StoryInfoPage() {
                   className="flex items-center gap-2"
                   title={!session ? "Sign in to like this story" : undefined}
                 >
-                  <Heart size={16} className={story.isLiked ? "fill-current" : ""} />
+                  <Heart size={16} className={story.isLiked ? "fill-current text-red-500" : ""} />
                   {story.likeCount || 0} Likes
                 </Button>
 
@@ -360,32 +358,71 @@ export default function StoryInfoPage() {
                   className="flex items-center gap-2"
                   title={!session ? "Sign in to bookmark this story" : undefined}
                 >
-                  <Bookmark size={16} className={story.isBookmarked ? "fill-current" : ""} />
-                  Bookmark
+                  <Bookmark size={16} className={story.isBookmarked ? "fill-current text-primary" : ""} />
+                  {story.isBookmarked ? 'Saved' : 'Save'}
                 </Button>
 
-                {/* Follow button - only show if author is not the current user */}
-                {session && story.author && typeof story.author === 'object' &&
-                 story.author.id !== session.user.id && (
-                  <Button
-                    variant={isFollowing ? "default" : "outline"}
-                    size="sm"
-                    onClick={handleFollow}
-                    disabled={followLoading}
-                    className="flex items-center gap-2"
-                  >
-                    {followLoading ? (
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                    ) : isFollowing ? (
-                      <UserCheck size={16} />
-                    ) : (
-                      <UserPlus size={16} />
-                    )}
-                    {isFollowing ? "Following" : "Follow Author"}
-                  </Button>
-                )}
+                {/* Follow button - only show if author exists and is not the current user */}
+                {author && session?.user?.id !== author.id && (
+                   <Button
+                     variant={isFollowing ? "default" : "outline"}
+                     size="sm"
+                     onClick={handleFollow}
+                     disabled={followLoading}
+                     className="flex items-center gap-2"
+                   >
+                     {followLoading ? (
+                       <Loader2 className="h-4 w-4 animate-spin" />
+                     ) : isFollowing ? (
+                       <UserCheck size={16} />
+                     ) : (
+                       <UserPlus size={16} />
+                     )}
+                     {isFollowing ? "Following" : "Follow Author"}
+                   </Button>
+                 )}
+                 
+                 {/* *** Add Support Button Here *** */}
+                 {author?.donationsEnabled && (
+                    <SupportButton 
+                        authorId={author.id}
+                        donationMethod={author.donationMethod ?? null}
+                        donationLink={author.donationLink ?? null}
+                        authorName={author.name || author.username || 'Author'}
+                    />
+                 )}
               </div>
-            </motion.div>
+              
+              {/* Description */}
+              <div className="mb-6">
+                <h2 className="text-xl font-semibold mb-2">Description</h2>
+                <p className="text-muted-foreground">
+                  {story.description || "No description available for this story."}
+                </p>
+              </div>
+
+              {/* Chapters */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.4 }}
+                className="mb-12"
+              >
+                <h2 className="text-2xl font-bold mb-6">Table of Contents</h2>
+                <ChapterList chapters={chapters} storySlug={slug} currentChapter={null} />
+              </motion.div>
+
+              {/* Comments */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.6 }}
+                className="mb-12"
+              >
+                <h2 className="text-2xl font-bold mb-6">Comments</h2>
+                <CommentSection storyId={story.id} />
+              </motion.div>
+            </motion.div> 
           </div>
         </div>
 
@@ -393,28 +430,6 @@ export default function StoryInfoPage() {
         <div className="mb-12">
           <AdBanner type="interstitial" className="w-full h-32" />
         </div>
-
-        {/* Chapter List Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-          className="mb-12"
-        >
-          <h2 className="text-2xl font-bold mb-6">Table of Contents</h2>
-          <ChapterList chapters={chapters} storySlug={slug} currentChapter={null} />
-        </motion.div>
-
-        {/* Comment Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.6 }}
-          className="mb-12"
-        >
-          <h2 className="text-2xl font-bold mb-6">Comments</h2>
-          <CommentSection storyId={story.id} />
-        </motion.div>
 
         {/* Support the Author Section */}
         <motion.div

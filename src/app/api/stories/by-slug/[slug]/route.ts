@@ -24,6 +24,9 @@ export async function GET(
             name: true,
             username: true,
             image: true,
+            donationsEnabled: true,
+            donationMethod: true,
+            donationLink: true,
           },
         },
         _count: {
@@ -92,6 +95,7 @@ export async function GET(
     // Format the response
     const formattedStory = {
       ...story,
+      author: story.author,
       likeCount: story._count.likes,
       commentCount: story._count.comments,
       bookmarkCount: story._count.bookmarks,

@@ -9,68 +9,53 @@ const prismaClientSingleton = () => {
     log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
   })
 
-  // Add middleware to update story status when chapters are modified
+  // Add middleware
   client.$use(async (params, next) => {
-    // Only run this middleware for Chapter model operations
-    if (params.model === 'Chapter') {
-      // Process the action
-      const result = await next(params)
+    
+    // *** Execute the actual operation FIRST ***
+    const result = await next(params);
 
-      // After a chapter is created, updated, or deleted, update the story status
+    /*
+    // Temporarily comment out chapter-specific logic to isolate the error
+    if (params.model === 'Chapter') {
       if (['create', 'update', 'delete'].includes(params.action)) {
         try {
-          // Get the storyId
-          let storyId: string | undefined
-
+          let storyId: string | undefined;
           if (params.action === 'create' || params.action === 'update') {
-            // For create/update, get storyId from the data
-            storyId = params.args.data?.storyId || (result?.storyId as string)
+            storyId = (result as any)?.storyId ?? params.args.data?.storyId;
           } else if (params.action === 'delete') {
-            // For delete, get storyId from the result
-            storyId = result?.storyId as string
+            storyId = (result as any)?.storyId;
           }
-
           if (storyId) {
-            // Get the story
             const story = await client.story.findUnique({
               where: { id: storyId },
-            })
-
-            if (!story) {
-              console.error(`Story with ID ${storyId} not found`)
-              return
-            }
-
-            // Get all chapters for this story
-            const chapters = await client.chapter.findMany({
-              where: { storyId },
-              select: {
-                status: true,
-              },
-            })
-
-            // Check if the story is manually marked as completed
-            const isMarkedCompleted = story.status === 'completed'
-
-            // Calculate the new story status
-            const newStatus = calculateStoryStatus(chapters as any, isMarkedCompleted)
-
-            // Update the story status if it's different
-            if (newStatus !== story.status) {
-              await client.story.update({
-                where: { id: storyId },
-                data: { status: newStatus },
-              })
+            });
+            if (story) {
+              const chapters = await client.chapter.findMany({
+                where: { storyId },
+                select: { status: true },
+              });
+              const isMarkedCompleted = story.status === 'completed';
+              const newStatus = calculateStoryStatus(chapters as any, isMarkedCompleted);
+              if (newStatus !== story.status) {
+                await client.story.update({
+                  where: { id: storyId },
+                  data: { status: newStatus },
+                });
+              }
+            } else {
+               console.warn(`[Prisma Middleware] Story with ID ${storyId} not found after chapter operation.`);
             }
           }
         } catch (error) {
-          console.error('Error in Prisma middleware updating story status:', error)
-          // Don't throw the error to avoid breaking the original operation
+          console.error('[Prisma Middleware] Error updating story status:', error);
         }
       }
-    }
+    } 
+    */
 
-    return result
+    // *** Return the result of the original operation ***
+    return result;
   })
 
   return client
