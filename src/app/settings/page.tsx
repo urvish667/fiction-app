@@ -4,7 +4,7 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/hooks/use-toast"
 import { signOut, useSession } from "next-auth/react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -115,20 +115,24 @@ export default function SettingsPage() {
             throw new Error('Failed to fetch profile data')
           }
           const userData = await response.json()
+          console.log("Fetched User Data for Reset:", userData); // Keep console log for checking
 
+          // Reset main fields
           form.reset({
             name: userData.name || "",
             username: userData.username || "",
             bio: userData.bio || "",
             location: userData.location || "",
             website: userData.website || "",
-            socialLinks: userData.socialLinks || {
-              twitter: "",
-              instagram: "",
-              facebook: "",
-            },
           })
 
+          // Explicitly set social link values - access the nested 'set' property
+          const links = userData.socialLinks?.set || {}; // Use optional chaining and access .set
+          form.setValue('socialLinks.twitter', links.twitter || "");
+          form.setValue('socialLinks.instagram', links.instagram || "");
+          form.setValue('socialLinks.facebook', links.facebook || "");
+
+          // Update session preferences if needed
           if (!session.user.preferences && userData.preferences) {
             await update({
               ...session,

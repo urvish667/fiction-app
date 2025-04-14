@@ -47,6 +47,11 @@ type UserProfile = {
   donationsEnabled?: boolean | null;
   donationMethod?: 'paypal' | 'stripe' | null;
   donationLink?: string | null;
+  preferences?: {
+    privacySettings?: {
+      showLocation?: boolean
+    }
+  }
 }
 
 export default function UserProfilePage() {
@@ -276,7 +281,7 @@ export default function UserProfilePage() {
                 <p className="text-muted-foreground">@{user.username}</p>
 
                 <div className="flex flex-wrap gap-4 mt-4 text-sm text-muted-foreground">
-                  {user.location && (
+                  {user.location && user.preferences?.privacySettings?.showLocation && (
                     <div className="flex items-center gap-1">
                       <MapPin className="h-4 w-4" />
                       <span>{user.location}</span>

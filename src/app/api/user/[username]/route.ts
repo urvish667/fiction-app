@@ -123,6 +123,7 @@ export async function GET(
       donationsEnabled: user.donationsEnabled,
       donationMethod: user.donationMethod,
       donationLink: user.donationLink,
+      preferences: preferences, // Add preferences to the response
     };
 
     return NextResponse.json(formattedUser);
