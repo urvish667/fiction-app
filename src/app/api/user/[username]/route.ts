@@ -3,15 +3,13 @@ import { getServerSession } from "next-auth"
 import { prisma } from "@/lib/auth/db-adapter"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 import { formatDistanceToNow } from "date-fns"
-import { Prisma } from "@prisma/client" // Import Prisma types if needed for JSON
+import { Prisma } from "@prisma/client"
 
 // Define a basic type for expected social links structure
-// Adjust this based on the actual expected structure
 type ExpectedSocialLinks = {
   twitter?: string | null;
   facebook?: string | null;
   instagram?: string | null;
-  // Add other potential keys if necessary
 };
 
 // GET method to retrieve user profile by username
@@ -31,17 +29,18 @@ export async function GET(
         id: true,
         name: true,
         username: true,
+        email: true,
         bio: true,
         location: true,
         website: true,
-        socialLinks: true, // Fetch the JSON field
+        socialLinks: true,
         image: true,
         bannerImage: true,
         createdAt: true,
         preferences: true,
-        donationsEnabled: true, // Select donation field
-        donationMethod: true,   // Select donation field
-        donationLink: true,     // Select donation field
+        donationsEnabled: true,
+        donationMethod: true,
+        donationLink: true,
         stories: {
           where: {
             status: { not: "draft" }
@@ -62,15 +61,22 @@ export async function GET(
     }
 
     // Parse preferences safely
-    let preferences = { privacySettings: { showLocation: false } };
+    let preferences = {
+      privacySettings: {
+        publicProfile: false,
+        showEmail: false,
+        showLocation: false,
+        allowMessages: false
+      }
+    };
+    
     if (user.preferences) {
       try {
         preferences = typeof user.preferences === 'string'
           ? JSON.parse(user.preferences)
-          : user.preferences as any; // Cast or validate properly
+          : user.preferences;
       } catch (error) {
         console.error("Error parsing preferences:", error);
-        // Use defaults if parsing fails
       }
     }
 
@@ -84,46 +90,44 @@ export async function GET(
     // Safely parse and normalize socialLinks
     let parsedSocialLinks: ExpectedSocialLinks | null = null;
     if (user.socialLinks) {
-        try {
-            let tempLinks = typeof user.socialLinks === 'string' 
-                ? JSON.parse(user.socialLinks) 
-                : user.socialLinks;
-            
-            // Basic check if it looks like our expected structure
-            if (tempLinks && typeof tempLinks === 'object' && !Array.isArray(tempLinks)) {
-                 // If there was a nested 'set' structure previously, handle it:
-                 if ('set' in tempLinks && typeof tempLinks.set === 'object' && tempLinks.set !== null) {
-                     parsedSocialLinks = tempLinks.set as ExpectedSocialLinks;
-                 } else {
-                     parsedSocialLinks = tempLinks as ExpectedSocialLinks;
-                 }
-            }
-        } catch (error) {
-            console.error("Error parsing socialLinks:", error);
-        }    
+      try {
+        let tempLinks = typeof user.socialLinks === 'string' 
+          ? JSON.parse(user.socialLinks) 
+          : user.socialLinks;
+        
+        if (tempLinks && typeof tempLinks === 'object' && !Array.isArray(tempLinks)) {
+          if ('set' in tempLinks && typeof tempLinks.set === 'object' && tempLinks.set !== null) {
+            parsedSocialLinks = tempLinks.set as ExpectedSocialLinks;
+          } else {
+            parsedSocialLinks = tempLinks as ExpectedSocialLinks;
+          }
+        }
+      } catch (error) {
+        console.error("Error parsing socialLinks:", error);
+      }    
     }
 
-    // Format the response
+    // Format the response with privacy checks
     const formattedUser = {
       id: user.id,
-      name: user.name,
       username: user.username,
+      name: user.name,
       bio: user.bio,
-      location: isCurrentUser || preferences.privacySettings?.showLocation ? user.location : null,
+      location: preferences.privacySettings?.showLocation ? user.location : null,
+      email: preferences.privacySettings?.showEmail ? user.email : null,
       website: user.website,
-      socialLinks: parsedSocialLinks, // Use the safely parsed links
+      socialLinks: parsedSocialLinks,
       image: user.image,
       bannerImage: user.bannerImage,
       joinedDate: user.createdAt ? formatDistanceToNow(new Date(user.createdAt), { addSuffix: true }) : null,
       storyCount: user.stories.length,
       followers: followerCount,
       following: followingCount,
-      isCurrentUser,
-      // Include donation fields
       donationsEnabled: user.donationsEnabled,
       donationMethod: user.donationMethod,
       donationLink: user.donationLink,
-      preferences: preferences, // Add preferences to the response
+      isCurrentUser,
+      preferences: preferences
     };
 
     return NextResponse.json(formattedUser);

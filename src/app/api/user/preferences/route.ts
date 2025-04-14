@@ -21,11 +21,7 @@ const preferencesSchema = z.object({
   }),
 })
 
-// Simple in-memory cache for preferences
-const preferencesCache = new Map<string, { data: UserPreferences, timestamp: number }>();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-
-// GET endpoint to retrieve user preferences with caching
+// GET endpoint to retrieve user preferences
 export async function GET() {
   try {
     const session = await getServerSession(authOptions)
@@ -37,16 +33,8 @@ export async function GET() {
     }
 
     const userId = session.user.id;
-    const now = Date.now();
 
-    // Check cache first
-    const cachedPrefs = preferencesCache.get(userId);
-    if (cachedPrefs && (now - cachedPrefs.timestamp < CACHE_TTL)) {
-      // Return cached preferences if still valid
-      return NextResponse.json({ preferences: cachedPrefs.data });
-    }
-
-    // Cache miss or expired, fetch from database
+    // Fetch from database
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { preferences: true }
@@ -71,9 +59,6 @@ export async function GET() {
           ...defaultPreferences,
           ...prefsData
         };
-
-        // Update cache
-        preferencesCache.set(userId, { data: preferences, timestamp: now });
       } catch (error) {
         console.error('Error parsing preferences:', error);
       }
@@ -89,7 +74,7 @@ export async function GET() {
   }
 }
 
-// PUT endpoint to update user preferences with cache invalidation
+// PUT endpoint to update user preferences
 export async function PUT(request: Request) {
   try {
     const session = await getServerSession(authOptions)
@@ -110,19 +95,13 @@ export async function PUT(request: Request) {
       ...validatedData,
     };
 
-    // Update database using Prisma's update method instead of raw SQL
+    // Update database
     await prisma.user.update({
       where: { id: userId },
       data: {
         preferences: newPreferences,
         updatedAt: new Date() // Update the timestamp
       }
-    });
-
-    // Update cache
-    preferencesCache.set(userId, {
-      data: newPreferences,
-      timestamp: Date.now()
     });
 
     return NextResponse.json({ success: true, preferences: newPreferences })

@@ -14,6 +14,8 @@ import {
   MapPin,
   LinkIcon,
   Loader2,
+  Mail,
+  Lock,
 } from "lucide-react"
 import { TwitterIcon, FacebookIcon, InstagramIcon } from "@/components/social-icons"
 import ProfileActionButtons from "@/components/profile-action-buttons"
@@ -50,8 +52,11 @@ type UserProfile = {
   preferences?: {
     privacySettings?: {
       showLocation?: boolean
+      showEmail?: boolean
     }
   }
+  isPublic: boolean
+  email: string | null
 }
 
 export default function UserProfilePage() {
@@ -281,6 +286,13 @@ export default function UserProfilePage() {
                 <p className="text-muted-foreground">@{user.username}</p>
 
                 <div className="flex flex-wrap gap-4 mt-4 text-sm text-muted-foreground">
+                  {user.email && user.preferences?.privacySettings?.showEmail && (
+                    <div className="flex items-center gap-1">
+                      <Mail className="h-4 w-4" />
+                      <span>{user.email}</span>
+                    </div>
+                  )}
+
                   {user.location && user.preferences?.privacySettings?.showLocation && (
                     <div className="flex items-center gap-1">
                       <MapPin className="h-4 w-4" />
@@ -311,11 +323,8 @@ export default function UserProfilePage() {
                     <>
                       {/* Check for Twitter link */}
                       {(() => {
-                        // Get the Twitter link from the appropriate location
-                        const twitterLink =
-                          typeof user.socialLinks === 'object' && user.socialLinks.twitter ?
-                            user.socialLinks.twitter :
-                            null;
+                        const twitterLink = typeof user.socialLinks === 'object' && user.socialLinks.twitter ?
+                          user.socialLinks.twitter : null;
 
                         return twitterLink ? (
                           <a href={twitterLink} target="_blank" rel="noopener noreferrer">
@@ -329,11 +338,8 @@ export default function UserProfilePage() {
 
                       {/* Check for Facebook link */}
                       {(() => {
-                        // Get the Facebook link from the appropriate location
-                        const facebookLink =
-                          typeof user.socialLinks === 'object' && user.socialLinks.facebook ?
-                            user.socialLinks.facebook :
-                            null;
+                        const facebookLink = typeof user.socialLinks === 'object' && user.socialLinks.facebook ?
+                          user.socialLinks.facebook : null;
 
                         return facebookLink ? (
                           <a href={facebookLink} target="_blank" rel="noopener noreferrer">
@@ -347,11 +353,8 @@ export default function UserProfilePage() {
 
                       {/* Check for Instagram link */}
                       {(() => {
-                        // Get the Instagram link from the appropriate location
-                        const instagramLink =
-                          typeof user.socialLinks === 'object' && user.socialLinks.instagram ?
-                            user.socialLinks.instagram :
-                            null;
+                        const instagramLink = typeof user.socialLinks === 'object' && user.socialLinks.instagram ?
+                          user.socialLinks.instagram : null;
 
                         return instagramLink ? (
                           <a href={instagramLink} target="_blank" rel="noopener noreferrer">
