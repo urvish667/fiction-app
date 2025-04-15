@@ -65,8 +65,7 @@ export default function SettingsPage() {
   const searchParams = useSearchParams();
 
   // Initialize activeTab correctly
-  const initialTab = typeof window !== 'undefined' ? (new URLSearchParams(window.location.search).get('tab') || 'profile') : 'profile';
-  const [activeTab, setActiveTab] = useState(initialTab);
+  const [activeTab, setActiveTab] = useState('profile');
 
   const [isUpdating, setIsUpdating] = useState(false)
   const [isChangingPassword, setIsChangingPassword] = useState(false)
@@ -223,6 +222,23 @@ export default function SettingsPage() {
     }
   }, [searchParams, router, toast]);
   // --- End Donation Settings Effects ---
+
+  useEffect(() => {
+    // Set the active tab from URL params only on client side
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab') || 'profile';
+      setActiveTab(tab);
+    }
+  }, []);
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    // Update URL without page reload
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', value);
+    window.history.pushState({}, '', url);
+  };
 
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -616,7 +632,8 @@ export default function SettingsPage() {
         setIsSavingDonations(false);
         return;
     }
-    const stripeConnectUrl = `https://connect.stripe.com/express/oauth/authorize?client_id=${clientId}&state=${state}&redirect_uri=${encodeURIComponent(redirectUri)}&stripe_user[email]=${session?.user?.email || ''}`;
+    // Use standard OAuth flow instead of Express
+    const stripeConnectUrl = `https://connect.stripe.com/oauth/authorize?response_type=code&client_id=${clientId}&scope=read_write&state=${state}&redirect_uri=${encodeURIComponent(redirectUri)}&stripe_user[email]=${session?.user?.email || ''}`;
     window.location.href = stripeConnectUrl;
   };
 
@@ -701,7 +718,7 @@ export default function SettingsPage() {
       <div className="container mx-auto p-4 py-8 flex-grow">
         <h1 className="text-3xl font-bold mb-8">Settings</h1>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="mt-6">
           <TabsList className="mb-8">
             <TabsTrigger value="profile">Profile</TabsTrigger>
             <TabsTrigger value="account">Account</TabsTrigger>
@@ -762,7 +779,7 @@ export default function SettingsPage() {
               <Card>
                 <CardHeader>
                   <CardTitle>Monetization / Donations</CardTitle>
-                  <CardDescription>Manage how others can support your work.</CardDescription>
+                  <CardDescription>Choose how you want to receive payments from your supporters. You can use either PayPal or Stripe - your supporters won't need to know which one you're using.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {isLoadingDonations ? (
@@ -776,7 +793,7 @@ export default function SettingsPage() {
                           <Label htmlFor="enable-donations" className="text-base font-medium">
                             Enable Donations
                           </Label>
-                          <p className="text-sm text-muted-foreground">Allow readers to support you directly.</p>
+                          <p className="text-sm text-muted-foreground">Allow your readers to support your work directly.</p>
                         </div>
                         <Switch
                           id="enable-donations"
@@ -788,7 +805,8 @@ export default function SettingsPage() {
 
                       {enableDonations && (
                         <div className="space-y-4 pt-6 border-t">
-                          <Label className="block text-base font-medium mb-3">Donation Method</Label>
+                          <Label className="block text-base font-medium mb-3">Payment Method</Label>
+                          <p className="text-sm text-muted-foreground mb-4">Choose how you want to receive payments. Your supporters will be able to pay using their preferred method, regardless of which one you choose.</p>
                           <RadioGroup
                             value={donationMethod || ''}
                             onValueChange={handleDonationMethodChange}
@@ -796,12 +814,18 @@ export default function SettingsPage() {
                           >
                             <Label htmlFor="paypal" className="flex items-center space-x-3 p-4 border rounded-md cursor-pointer hover:bg-muted/50 transition-colors">
                               <RadioGroupItem value="paypal" id="paypal" />
-                              <span className="font-medium">PayPal</span>
+                              <div className="space-y-1">
+                                <span className="font-medium">PayPal</span>
+                                <p className="text-sm text-muted-foreground">Receive payments directly to your PayPal account</p>
+                              </div>
                             </Label>
                             <Label htmlFor="stripe" className={`flex items-center space-x-3 p-4 border rounded-md transition-colors ${!process.env.NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-muted/50'}`}>
                               <RadioGroupItem value="stripe" id="stripe" disabled={!process.env.NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID} />
-                              <span className="font-medium">Stripe Connect</span>
-                              {!process.env.NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID && <span className="text-xs ml-auto text-muted-foreground">(Admin setup required)</span>}
+                              <div className="space-y-1">
+                                <span className="font-medium">Stripe</span>
+                                <p className="text-sm text-muted-foreground">Receive payments directly to your bank account</p>
+                                {!process.env.NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID && <span className="text-xs text-muted-foreground">(Admin setup required)</span>}
+                              </div>
                             </Label>
                           </RadioGroup>
 

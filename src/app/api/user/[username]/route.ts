@@ -18,13 +18,18 @@ export async function GET(
   context: { params: { username: string } }
 ) {
   try {
-    const params = context.params;
-    const username = params.username;
+    const params = await context.params;
+    const identifier = params.username;
     const session = await getServerSession(authOptions);
 
-    // Fetch user profile by username
-    const user = await prisma.user.findUnique({
-      where: { username },
+    // Try to find user by username or ID
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { username: identifier },
+          { id: identifier }
+        ]
+      },
       select: {
         id: true,
         name: true,

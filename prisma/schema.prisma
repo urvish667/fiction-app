@@ -70,6 +70,7 @@ model User {
   donationLink        String?
   donationMethod      String?
   donationsEnabled    Boolean   @default(false)
+  country             String?   @default("US")
 
   // Story management relations
   stories             Story[]
@@ -81,6 +82,10 @@ model User {
   // Social relations
   followers           Follow[] @relation("Followers")
   following           Follow[] @relation("Following")
+
+  // Donation relations
+  donationsMade       Donation[] @relation("DonationsMade")
+  donationsReceived   Donation[] @relation("DonationsReceived")
 
   @@index([email])
   @@index([username])
@@ -247,4 +252,24 @@ model Follow {
   @@unique([followerId, followingId])
   @@index([followerId])
   @@index([followingId])
+}
+
+model Donation {
+  id                   String   @id @default(cuid())
+  amount               Int      // Amount in cents
+  message              String?
+  status               String   @default("pending") // pending, succeeded, failed
+  stripePaymentIntentId String? @unique
+  paymentMethod        String?  // stripe, paypal
+  donorId              String
+  donor                User     @relation("DonationsMade", fields: [donorId], references: [id])
+  recipientId          String
+  recipient            User     @relation("DonationsReceived", fields: [recipientId], references: [id])
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([donorId])
+  @@index([recipientId])
+  @@index([status])
+  @@index([createdAt])
 }
