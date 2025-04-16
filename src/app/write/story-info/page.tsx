@@ -33,38 +33,82 @@ import { useDebounce } from "@/hooks/use-debounce"
 import { StoryService } from "@/services/story-service"
 import { CreateStoryRequest, UpdateStoryRequest } from "@/types/story"
 
-// Sample genres for the dropdown
-const genres = [
-  "Fantasy",
-  "Science Fiction",
-  "Mystery",
-  "Romance",
-  "Horror",
-  "Adventure",
-  "Historical Fiction",
-  "Young Adult",
-  "Thriller",
-  "Poetry",
-  "Drama",
-  "Comedy",
-]
 
-// Sample languages for the dropdown
-const languages = [
-  "English",
-  "Spanish",
-  "French",
-  "German",
-  "Chinese",
-  "Japanese",
-  "Korean",
-  "Russian",
-  "Arabic",
-  "Portuguese",
-  "Italian",
-]
+import { X } from "lucide-react";
 
 export default function StoryInfoPage() {
+  // ...existing hooks
+  // New state for genres, languages, tags, and suggestions
+  const [genres, setGenres] = useState<{ id: string; name: string }[]>([]);
+  const [languages, setLanguages] = useState<{ id: string; name: string }[]>([]);
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
+  const [tagSuggestions, setTagSuggestions] = useState<{ name: string }[]>([]);
+  const [popularTags, setPopularTags] = useState<{ name: string }[]>([]);
+  const [tagError, setTagError] = useState<string>("");
+
+  // Fetch genres/languages/tags on mount
+  useEffect(() => {
+    fetch("/api/genres").then(r => r.json()).then(setGenres);
+    fetch("/api/languages").then(r => r.json()).then(setLanguages);
+    fetch("/api/tags").then(r => r.json()).then(data => {
+      setPopularTags(data);
+      setTagSuggestions(data);
+    });
+  }, []);
+
+  // Tag input normalization & validation
+  const addTag = (raw: string) => {
+    const tag = raw.trim().toLowerCase();
+    if (!tag || tags.includes(tag)) return;
+    if (tags.length >= 10) {
+      setTagError("You can add up to 10 tags.");
+      return;
+    }
+    setTags([...tags, tag]);
+    setTagInput("");
+    setTagError("");
+  };
+  const removeTag = (idx: number) => {
+    setTags(tags.filter((_, i) => i !== idx));
+    setTagError("");
+  };
+  const handleTagInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setTagInput(e.target.value);
+    // Filter suggestions
+    setTagSuggestions(
+      popularTags.filter(t => t.name.includes(e.target.value.trim().toLowerCase()) && !tags.includes(t.name))
+    );
+  };
+  const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (["Enter", ",", " "].includes(e.key)) {
+      e.preventDefault();
+      addTag(tagInput);
+    }
+    if (e.key === "Backspace" && !tagInput && tags.length) {
+      removeTag(tags.length - 1);
+    }
+  };
+
+  // Tag validation before save
+  const validateTags = () => {
+    if (tags.length < 3) {
+      setTagError("Add at least 3 tags.");
+      return false;
+    }
+    if (tags.length > 10) {
+      setTagError("You can add up to 10 tags.");
+      return false;
+    }
+    setTagError("");
+    return true;
+  };
+
+  // --- In saveStoryData, after saving story fields ---
+  // await fetch("/api/tags/upsert", { method: "POST", body: JSON.stringify({ storyId: id, tags }) })
+
+  // ...rest of existing logic
+
   const router = useRouter()
   const { toast } = useToast()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -1051,8 +1095,8 @@ export default function StoryInfoPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {genres.map((genre) => (
-                        <SelectItem key={genre} value={genre}>
-                          {genre}
+                        <SelectItem key={genre.id} value={genre.id}>
+                          {genre.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -1082,8 +1126,8 @@ export default function StoryInfoPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {languages.map((language) => (
-                        <SelectItem key={language} value={language}>
-                          {language}
+                        <SelectItem key={language.id} value={language.id}>
+                          {language.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -1256,7 +1300,69 @@ export default function StoryInfoPage() {
           )}
         </motion.div>
 
-        {/* Publishing Tips */}
+        {/* Tags Input */}
+<div className="mb-6">
+  <Label htmlFor="tags">Tags</Label>
+  <div className="flex flex-wrap gap-2 mt-2">
+    {tags.map((tag, idx) => (
+      <motion.span
+        key={tag}
+        className="flex items-center bg-muted px-3 py-1 rounded-full text-sm shadow-sm"
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0, opacity: 0 }}
+        transition={{ type: "spring", stiffness: 400, damping: 20 }}
+      >
+        {tag}
+        <button type="button" onClick={() => removeTag(idx)} aria-label="Remove tag" className="ml-2 text-muted-foreground hover:text-destructive focus:outline-none">
+          <X size={16} />
+        </button>
+      </motion.span>
+    ))}
+    <input
+      id="tags"
+      type="text"
+      value={tagInput}
+      onChange={handleTagInput}
+      onKeyDown={handleTagKeyDown}
+      className="bg-transparent outline-none min-w-[100px] px-2 py-1"
+      placeholder={tags.length >= 10 ? "Max 10 tags" : "Add tag..."}
+      disabled={tags.length >= 10}
+      aria-label="Add tag"
+    />
+  </div>
+  {tagSuggestions.length > 0 && tagInput && (
+    <div className="flex gap-2 flex-wrap mt-2">
+      {tagSuggestions.slice(0, 6).map((t) => (
+        <button
+          key={t.name}
+          type="button"
+          className="px-2 py-1 rounded-full border border-muted-foreground text-xs hover:bg-muted"
+          onClick={() => addTag(t.name)}
+        >
+          {t.name}
+        </button>
+      ))}
+    </div>
+  )}
+  <div className="flex gap-2 flex-wrap mt-2">
+    {popularTags.slice(0, 8).map((t) => (
+      <button
+        key={t.name}
+        type="button"
+        className="px-2 py-1 rounded-full border border-muted-foreground text-xs hover:bg-muted"
+        onClick={() => addTag(t.name)}
+        disabled={tags.includes(t.name)}
+      >
+        + {t.name}
+      </button>
+    ))}
+  </div>
+  {tagError && <div className="text-destructive text-xs mt-1">{tagError}</div>}
+  <div className="text-xs text-muted-foreground mt-1">3–10 tags, lowercase, no duplicates</div>
+</div>
+
+{/* Publishing Tips */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

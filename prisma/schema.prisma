@@ -121,13 +121,17 @@ model Notification {
 // Story Management Models
 
 model Story {
+  // ... existing fields
+  genreId    String?
+  genre      Genre?    @relation(fields: [genreId], references: [id])
+  languageId String?
+  language   Language? @relation(fields: [languageId], references: [id])
+  tags       StoryTag[]
   id          String    @id @default(cuid())
   title       String
   slug        String    @unique
   description String?   @db.Text
   coverImage  String?
-  genre       String?
-  language    String    @default("en")
   isMature    Boolean   @default(false)
   status      String    @default("ongoing") // "ongoing", "completed", or "draft"
   wordCount   Int       @default(0)
@@ -145,7 +149,6 @@ model Story {
   updatedAt   DateTime  @updatedAt
 
   @@index([authorId])
-  @@index([genre])
 
   @@index([status])
   @@index([createdAt])
@@ -252,6 +255,35 @@ model Follow {
   @@unique([followerId, followingId])
   @@index([followerId])
   @@index([followingId])
+}
+
+model Tag {
+  id      String   @id @default(cuid())
+  name    String   @unique
+  stories StoryTag[]
+}
+
+model StoryTag {
+  id      String   @id @default(cuid())
+  story   Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  storyId String
+  tag     Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  tagId   String
+
+  @@unique([storyId, tagId])
+  @@index([tagId])
+}
+
+model Genre {
+  id      String   @id @default(cuid())
+  name    String   @unique
+  stories Story[]
+}
+
+model Language {
+  id      String   @id @default(cuid())
+  name    String   @unique
+  stories Story[]
 }
 
 model Donation {
