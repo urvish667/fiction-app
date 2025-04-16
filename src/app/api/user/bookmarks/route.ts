@@ -7,7 +7,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    
+
     // Get the session
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
 
     // Check if the requested user is the current user or if we're viewing someone else's profile
     const isCurrentUser = userId === session.user.id;
-    
+
     // Find bookmarked stories
     const [bookmarks, total] = await Promise.all([
       prisma.bookmark.findMany({
@@ -45,6 +45,8 @@ export async function GET(request: NextRequest) {
                   image: true,
                 },
               },
+              genre: true,
+              language: true,
               _count: {
                 select: {
                   likes: true,

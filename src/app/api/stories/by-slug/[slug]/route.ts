@@ -29,6 +29,8 @@ export async function GET(
             donationLink: true,
           },
         },
+        genre: true,
+        language: true,
         _count: {
           select: {
             likes: true,

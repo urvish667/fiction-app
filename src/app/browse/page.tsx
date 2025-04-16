@@ -91,28 +91,46 @@ export default function BrowsePage() {
         // Log the raw story data to debug image issues
         console.log('Raw story data from API:', response.stories);
 
+        // Log the genre data to debug
+        console.log('Genre data from API:', response.stories.map(s => ({
+          id: s.id,
+          title: s.title,
+          genre: s.genre,
+          genreId: s.genreId
+        })));
+
         // Map API response to BrowseStory type
-        const formattedStories = response.stories.map((story) => ({
-          id: story.id,
-          title: story.title,
-          author: story.author || "Unknown Author",
-          genre: story.genre || "General",
-          thumbnail: (story.coverImage && story.coverImage.trim() !== "") ? story.coverImage : "/placeholder.svg",
-          coverImage: (story.coverImage && story.coverImage.trim() !== "") ? story.coverImage : "/placeholder.svg",
-          excerpt: story.description,
-          description: story.description,
-          likes: story.likeCount,
-          likeCount: story.likeCount,
-          comments: story.commentCount,
-          commentCount: story.commentCount,
-          reads: story.readCount,
-          readCount: story.readCount,
-          readTime: Math.ceil(story.wordCount / 200), // Estimate read time based on word count
-          date: story.createdAt ? new Date(story.createdAt) : new Date(),
-          createdAt: story.createdAt ? new Date(story.createdAt) : new Date(),
-          updatedAt: story.updatedAt ? new Date(story.updatedAt) : new Date(),
-          slug: story.slug
-        }));
+        const formattedStories = response.stories.map((story) => {
+          // Extract genre name from genre object if it exists
+          let genreName = "General";
+          if (story.genre && typeof story.genre === 'object' && story.genre.name) {
+            genreName = story.genre.name;
+          } else if (typeof story.genre === 'string') {
+            genreName = story.genre;
+          }
+
+          return {
+            id: story.id,
+            title: story.title,
+            author: story.author || "Unknown Author",
+            genre: genreName,
+            thumbnail: (story.coverImage && story.coverImage.trim() !== "") ? story.coverImage : "/placeholder.svg",
+            coverImage: (story.coverImage && story.coverImage.trim() !== "") ? story.coverImage : "/placeholder.svg",
+            excerpt: story.description,
+            description: story.description,
+            likes: story.likeCount,
+            likeCount: story.likeCount,
+            comments: story.commentCount,
+            commentCount: story.commentCount,
+            reads: story.readCount,
+            readCount: story.readCount,
+            readTime: Math.ceil(story.wordCount / 200), // Estimate read time based on word count
+            date: story.createdAt ? new Date(story.createdAt) : new Date(),
+            createdAt: story.createdAt ? new Date(story.createdAt) : new Date(),
+            updatedAt: story.updatedAt ? new Date(story.updatedAt) : new Date(),
+            slug: story.slug
+          };
+        });
 
         // Log the formatted stories to debug image issues
         console.log('Formatted stories with image data:', formattedStories.map(s => ({

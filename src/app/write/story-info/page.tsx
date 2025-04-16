@@ -37,8 +37,7 @@ import { CreateStoryRequest, UpdateStoryRequest } from "@/types/story"
 import { X } from "lucide-react";
 
 export default function StoryInfoPage() {
-  // ...existing hooks
-  // New state for genres, languages, tags, and suggestions
+  // --- All useState hooks at the top ---
   const [genres, setGenres] = useState<{ id: string; name: string }[]>([]);
   const [languages, setLanguages] = useState<{ id: string; name: string }[]>([]);
   const [tags, setTags] = useState<string[]>([]);
@@ -46,6 +45,46 @@ export default function StoryInfoPage() {
   const [tagSuggestions, setTagSuggestions] = useState<{ name: string }[]>([]);
   const [popularTags, setPopularTags] = useState<{ name: string }[]>([]);
   const [tagError, setTagError] = useState<string>("");
+
+  const [storyData, setStoryData] = useState({
+    id: "",
+    title: "",
+    description: "",
+    genre: "",
+    language: "English",
+    isMature: false,
+    coverImage: "/placeholder.svg?height=1600&width=900",
+    status: "draft",
+    lastSaved: null as Date | null,
+    slug: "",
+  });
+
+  const [errors, setErrors] = useState({
+    title: "",
+    description: "",
+    genre: "",
+  });
+
+  const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isLoadingChapters, setIsLoadingChapters] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [chapterToDelete, setChapterToDelete] = useState<{id: string, title: string} | null>(null);
+  const [hasChanges, setHasChanges] = useState(false);
+  // Use full chapter object type, not just { id: string }
+const [chapters, setChapters] = useState<Array<{
+  id: string;
+  title: string;
+  status: "published" | "draft" | "scheduled" | "premium";
+  wordCount: number;
+  lastUpdated: Date;
+  number: number;
+}>>([]);
+
+  // --- End useState hooks ---
+
+  // ...rest of hooks and logic follow
 
   // Fetch genres/languages/tags on mount
   useEffect(() => {
@@ -57,6 +96,15 @@ export default function StoryInfoPage() {
     });
   }, []);
 
+  // Fetch story tags when editing an existing story
+  useEffect(() => {
+    if (storyData.id) {
+      fetch(`/api/stories/${storyData.id}/tags`).then(r => r.json()).then(data => {
+        if (Array.isArray(data)) setTags(data.map((t: any) => t.name));
+      });
+    }
+  }, [storyData.id]);
+
   // Tag input normalization & validation
   const addTag = (raw: string) => {
     const tag = raw.trim().toLowerCase();
@@ -65,13 +113,72 @@ export default function StoryInfoPage() {
       setTagError("You can add up to 10 tags.");
       return;
     }
-    setTags([...tags, tag]);
+
+    // Update tags state
+    const newTags = [...tags, tag];
+    setTags(newTags);
     setTagInput("");
     setTagError("");
+
+    // Mark that we have unsaved changes when adding a tag
+    setHasChanges(true);
+    console.log('Tag added, hasChanges set to true');
+
+    // If we have a valid number of tags and a story ID, trigger an immediate save
+    if (storyData.id && newTags.length >= 3 && newTags.length <= 10) {
+      // Use setTimeout to ensure state is updated before saving
+      setTimeout(() => {
+        console.log('Saving tags immediately after adding tag');
+        // Save the story data first
+        saveStoryData(false).then(savedStory => {
+          if (savedStory) {
+            // Then explicitly save the tags
+            fetch('/api/tags/upsert', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ storyId: savedStory.id, tags: newTags }),
+            }).then(() => {
+              console.log('Tags saved successfully');
+            }).catch(err => {
+              console.error('Failed to save tags:', err);
+            });
+          }
+        });
+      }, 100);
+    }
   };
   const removeTag = (idx: number) => {
-    setTags(tags.filter((_, i) => i !== idx));
+    // Update tags state
+    const newTags = tags.filter((_, i) => i !== idx);
+    setTags(newTags);
     setTagError("");
+
+    // Mark that we have unsaved changes when removing a tag
+    setHasChanges(true);
+    console.log('Tag removed, hasChanges set to true');
+
+    // If we have a story ID, trigger an immediate save
+    if (storyData.id) {
+      // Use setTimeout to ensure state is updated before saving
+      setTimeout(() => {
+        console.log('Saving tags immediately after removing tag');
+        // Save the story data first
+        saveStoryData(false).then(savedStory => {
+          if (savedStory) {
+            // Then explicitly save the tags
+            fetch('/api/tags/upsert', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ storyId: savedStory.id, tags: newTags }),
+            }).then(() => {
+              console.log('Tags saved successfully');
+            }).catch(err => {
+              console.error('Failed to save tags:', err);
+            });
+          }
+        });
+      }, 100);
+    }
   };
   const handleTagInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     setTagInput(e.target.value);
@@ -90,7 +197,7 @@ export default function StoryInfoPage() {
     }
   };
 
-  // Tag validation before save
+  // Tag validation helper
   const validateTags = () => {
     if (tags.length < 3) {
       setTagError("Add at least 3 tags.");
@@ -104,6 +211,12 @@ export default function StoryInfoPage() {
     return true;
   };
 
+  // Use validateTags in the auto-save effect to ensure it's used
+  useEffect(() => {
+    // Validate tags whenever they change
+    validateTags();
+  }, [tags]);
+
   // --- In saveStoryData, after saving story fields ---
   // await fetch("/api/tags/upsert", { method: "POST", body: JSON.stringify({ storyId: id, tags }) })
 
@@ -113,49 +226,6 @@ export default function StoryInfoPage() {
   const { toast } = useToast()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Story metadata state
-  const [storyData, setStoryData] = useState({
-    id: "", // Will be generated when first saved
-    title: "",
-    description: "",
-    genre: "",
-    language: "English",
-    isMature: false,
-    coverImage: "/placeholder.svg?height=1600&width=900",
-    status: "draft", // "draft", "ongoing", or "completed"
-    lastSaved: null as Date | null,
-    slug: "", // For URL routing
-  })
-
-  // Form validation state
-  const [errors, setErrors] = useState({
-    title: "",
-    description: "",
-    genre: "",
-  })
-
-  // Loading states
-  const [isSaving, setIsSaving] = useState(false)
-  const [isUploading, setIsUploading] = useState(false)
-  const [isLoadingChapters, setIsLoadingChapters] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
-
-  // Delete confirmation dialog state
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [chapterToDelete, setChapterToDelete] = useState<{id: string, title: string} | null>(null)
-
-  // Track if story data has changed since last save
-  const [hasChanges, setHasChanges] = useState(false);
-
-  // Chapters state
-  const [chapters, setChapters] = useState<Array<{
-    id: string;
-    title: string;
-    status: "published" | "draft" | "scheduled" | "premium";
-    wordCount: number;
-    lastUpdated: Date;
-    number: number;
-  }>>([]);
 
   // Create debounced version of storyData for auto-save
   const debouncedStoryData = useDebounce(storyData, 3000);
@@ -165,50 +235,28 @@ export default function StoryInfoPage() {
 
   // Auto-save effect
   useEffect(() => {
-    // Auto-save if we have a title and there are changes
-    if (debouncedStoryData.title.trim() && hasChanges && !isSaving && !justCreatedStory) {
-      console.log('Auto-save triggered, current storyData:', debouncedStoryData);
-
-      // Set a flag to prevent multiple auto-saves in quick succession
+    // Only auto-save if all required fields and tags are valid
+    const valid = debouncedStoryData.title.trim() && debouncedStoryData.description.trim() && debouncedStoryData.genre && tags.length >= 3 && tags.length <= 10;
+    if (valid && hasChanges && !isSaving && !justCreatedStory) {
       const autoSaveTimeout = setTimeout(async () => {
         try {
-          // Get the current state directly to ensure we're saving the most up-to-date data
-          // This prevents the debounced (outdated) data from overwriting current edits
-          const currentStoryData = storyData;
-          console.log('Using current story data for save:', currentStoryData);
-
-          // Check if the story already has an ID (existing story)
-          if (currentStoryData.id) {
-            // Only update existing stories via auto-save
-            console.log('Auto-saving existing story with current data');
-            await saveStoryData(false, currentStoryData);
-            console.log('Auto-save completed');
-          } else {
-            // For new stories, only auto-save if we have all required fields
-            if (currentStoryData.title && currentStoryData.description && currentStoryData.genre) {
-              console.log('Auto-saving new story with current data');
-              const savedStory = await saveStoryData(false, currentStoryData);
-              if (savedStory) {
-                // Set the flag to prevent duplicate creation
-                setJustCreatedStory(true);
-                // Reset the flag after a delay
-                setTimeout(() => setJustCreatedStory(false), 5000);
-              }
-              console.log('Auto-save completed for new story');
-            } else {
-              console.log('Skipping auto-save for new story with incomplete data');
-            }
+          const currentStoryData = { ...storyData };
+          const savedStory = await saveStoryData(false, currentStoryData);
+          if (savedStory) {
+            // Upsert tags after save
+            await fetch('/api/tags/upsert', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ storyId: savedStory.id, tags }),
+            });
           }
-          // Don't set hasChanges to false here - we'll do it in saveStoryData
         } catch (error) {
           console.error("Auto-save failed:", error);
-          // Keep hasChanges true if save failed
         }
-      }, 500); // Small delay to prevent race conditions
-
+      }, 500);
       return () => clearTimeout(autoSaveTimeout);
     }
-  }, [debouncedStoryData, hasChanges, isSaving, justCreatedStory, storyData])
+  }, [debouncedStoryData, hasChanges, isSaving, justCreatedStory, storyData, tags]);
 
   // Get the session for authentication
   const { data: session } = useSession();
@@ -223,12 +271,46 @@ export default function StoryInfoPage() {
           const story = await StoryService.getStory(storyId);
 
           // Convert to our local state format
+          // Log the story data to debug genre and language
+          console.log('Story data from API:', story);
+          console.log('Genre data:', story.genre);
+          console.log('Language data:', story.language);
+
+          // Extract genre and language IDs from the response
+          let genreId = "";
+          let languageId = "";
+
+          // Handle genre - it might be an object with id property or a string ID
+          if (story.genre && typeof story.genre === 'object') {
+            // Use type assertion to tell TypeScript this is an object with an id
+            const genreObj = story.genre as { id: string, name: string };
+            if (genreObj.id) {
+              genreId = genreObj.id;
+            }
+          } else if (typeof story.genre === 'string') {
+            genreId = story.genre;
+          }
+
+          // Handle language - it might be an object with id property or a string ID
+          if (story.language && typeof story.language === 'object') {
+            // Use type assertion to tell TypeScript this is an object with an id
+            const languageObj = story.language as { id: string, name: string };
+            if (languageObj.id) {
+              languageId = languageObj.id;
+            }
+          } else if (typeof story.language === 'string') {
+            languageId = story.language;
+          }
+
+          console.log('Extracted genreId:', genreId);
+          console.log('Extracted languageId:', languageId);
+
           setStoryData({
             id: story.id,
             title: story.title,
             description: story.description || "",
-            genre: story.genre || "",
-            language: story.language || "English",
+            genre: genreId,
+            language: languageId || "English",
             isMature: story.isMature,
             // Only use the actual coverImage if it exists and is not null/empty
             coverImage: story.coverImage && story.coverImage.trim() !== ""
@@ -340,11 +422,17 @@ export default function StoryInfoPage() {
 
   // Handle select changes
   const handleSelectChange = (name: string, value: string) => {
-    setStoryData((prev) => ({
-      ...prev,
-      [name]: value,
-      lastSaved: null, // Mark as unsaved
-    }))
+    console.log(`Select change: ${name} = ${value}`);
+
+    setStoryData((prev) => {
+      const newData = {
+        ...prev,
+        [name]: value,
+        lastSaved: null, // Mark as unsaved
+      };
+      console.log(`Updated story data for ${name}:`, newData);
+      return newData;
+    });
 
     // Mark that we have unsaved changes
     setHasChanges(true);
@@ -355,6 +443,18 @@ export default function StoryInfoPage() {
         ...prev,
         [name]: "",
       }))
+    }
+
+    // For genre and language changes, save immediately to avoid auto-save issues
+    if (name === 'genre' || name === 'language') {
+      // Use setTimeout to ensure state is updated before saving
+      setTimeout(() => {
+        console.log(`Saving ${name} change immediately with value: ${value}`);
+        // Force a save with the current state including the new genre/language value
+        const currentState = { ...storyData, [name]: value };
+        console.log('Current state for immediate save:', currentState);
+        saveStoryData(true, currentState); // Show toast to confirm save
+      }, 100);
     }
   }
 
@@ -690,15 +790,23 @@ export default function StoryInfoPage() {
       console.log('- Is existing story:', !!dataToSave.id);
       console.log('- Final coverImage value for API:', coverImageValue);
 
+      // Log genre information before creating the request
+      console.log('Genre information:');
+      console.log('- Genre value:', dataToSave.genre);
+      console.log('- Genre type:', typeof dataToSave.genre);
+
       const storyRequest: CreateStoryRequest | UpdateStoryRequest = {
         title: dataToSave.title,
         description: dataToSave.description,
-        genre: dataToSave.genre,
-        language: dataToSave.language,
-        isMature: dataToSave.isMature,
         coverImage: coverImageValue,
+        genre: dataToSave.genre || undefined,
+        language: dataToSave.language || undefined,
+        isMature: dataToSave.isMature,
         status: dataToSave.status || "draft", // Include the story status
       };
+
+      // Log the final request object
+      console.log('Story request object:', JSON.stringify(storyRequest, null, 2));
 
       console.log('Final storyRequest:', storyRequest);
 
@@ -787,6 +895,19 @@ export default function StoryInfoPage() {
       });
 
       setHasChanges(false); // Reset changes flag
+
+      // Upsert tags after save (if not handled by autosave)
+      if (updatedStoryData.id && tags.length >= 3 && tags.length <= 10) {
+        try {
+          await fetch('/api/tags/upsert', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ storyId: updatedStoryData.id, tags }),
+          });
+        } catch (err) {
+          console.error('Failed to upsert tags:', err);
+        }
+      }
 
       if (showToast) {
         toast({
@@ -1135,6 +1256,68 @@ export default function StoryInfoPage() {
                 </div>
               </div>
 
+              {/* Tags Input - moved here */}
+              <div className="mb-6">
+                <Label htmlFor="tags">Tags</Label>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {tags.map((tag, idx) => (
+                    <motion.span
+                      key={tag}
+                      className="flex items-center bg-muted px-3 py-1 rounded-full text-sm shadow-sm"
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0, opacity: 0 }}
+                      transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                    >
+                      {tag}
+                      <button type="button" onClick={() => removeTag(idx)} aria-label="Remove tag" className="ml-2 text-muted-foreground hover:text-destructive focus:outline-none">
+                        <X size={16} />
+                      </button>
+                    </motion.span>
+                  ))}
+                  <input
+                    id="tags"
+                    type="text"
+                    value={tagInput}
+                    onChange={handleTagInput}
+                    onKeyDown={handleTagKeyDown}
+                    className="bg-transparent outline-none min-w-[100px] px-2 py-1"
+                    placeholder={tags.length >= 10 ? "Max 10 tags" : "Add tag..."}
+                    disabled={tags.length >= 10}
+                    aria-label="Add tag"
+                  />
+                </div>
+                {tagSuggestions.length > 0 && tagInput && (
+                  <div className="flex gap-2 flex-wrap mt-2">
+                    {tagSuggestions.slice(0, 6).map((t) => (
+                      <button
+                        key={t.name}
+                        type="button"
+                        className="px-2 py-1 rounded-full border border-muted-foreground text-xs hover:bg-muted"
+                        onClick={() => addTag(t.name)}
+                      >
+                        {t.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div className="flex gap-2 flex-wrap mt-2">
+                  {popularTags.slice(0, 8).map((t) => (
+                    <button
+                      key={t.name}
+                      type="button"
+                      className="px-2 py-1 rounded-full border border-muted-foreground text-xs hover:bg-muted"
+                      onClick={() => addTag(t.name)}
+                      disabled={tags.includes(t.name)}
+                    >
+                      + {t.name}
+                    </button>
+                  ))}
+                </div>
+                {tagError && <div className="text-destructive text-xs mt-1">{tagError}</div>}
+                <div className="text-xs text-muted-foreground mt-1">3–10 tags, lowercase, no duplicates</div>
+              </div>
+
               {/* Mature Content Toggle */}
               <div className="flex items-center justify-between space-x-2">
                 <div className="flex-1">
@@ -1300,69 +1483,7 @@ export default function StoryInfoPage() {
           )}
         </motion.div>
 
-        {/* Tags Input */}
-<div className="mb-6">
-  <Label htmlFor="tags">Tags</Label>
-  <div className="flex flex-wrap gap-2 mt-2">
-    {tags.map((tag, idx) => (
-      <motion.span
-        key={tag}
-        className="flex items-center bg-muted px-3 py-1 rounded-full text-sm shadow-sm"
-        initial={{ scale: 0.8, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0, opacity: 0 }}
-        transition={{ type: "spring", stiffness: 400, damping: 20 }}
-      >
-        {tag}
-        <button type="button" onClick={() => removeTag(idx)} aria-label="Remove tag" className="ml-2 text-muted-foreground hover:text-destructive focus:outline-none">
-          <X size={16} />
-        </button>
-      </motion.span>
-    ))}
-    <input
-      id="tags"
-      type="text"
-      value={tagInput}
-      onChange={handleTagInput}
-      onKeyDown={handleTagKeyDown}
-      className="bg-transparent outline-none min-w-[100px] px-2 py-1"
-      placeholder={tags.length >= 10 ? "Max 10 tags" : "Add tag..."}
-      disabled={tags.length >= 10}
-      aria-label="Add tag"
-    />
-  </div>
-  {tagSuggestions.length > 0 && tagInput && (
-    <div className="flex gap-2 flex-wrap mt-2">
-      {tagSuggestions.slice(0, 6).map((t) => (
-        <button
-          key={t.name}
-          type="button"
-          className="px-2 py-1 rounded-full border border-muted-foreground text-xs hover:bg-muted"
-          onClick={() => addTag(t.name)}
-        >
-          {t.name}
-        </button>
-      ))}
-    </div>
-  )}
-  <div className="flex gap-2 flex-wrap mt-2">
-    {popularTags.slice(0, 8).map((t) => (
-      <button
-        key={t.name}
-        type="button"
-        className="px-2 py-1 rounded-full border border-muted-foreground text-xs hover:bg-muted"
-        onClick={() => addTag(t.name)}
-        disabled={tags.includes(t.name)}
-      >
-        + {t.name}
-      </button>
-    ))}
-  </div>
-  {tagError && <div className="text-destructive text-xs mt-1">{tagError}</div>}
-  <div className="text-xs text-muted-foreground mt-1">3–10 tags, lowercase, no duplicates</div>
-</div>
-
-{/* Publishing Tips */}
+        {/* Publishing Tips */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

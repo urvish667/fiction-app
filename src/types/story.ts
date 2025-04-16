@@ -91,8 +91,8 @@ export type CreateStoryRequest = {
   title: string;
   description?: string;
   coverImage?: string;
-  genre?: string;
-  language?: string;
+  genre?: string | { connect: { id: string } };
+  language?: string | { connect: { id: string } };
   isMature?: boolean;
   status?: string; // "draft", "ongoing", or "completed"
 };

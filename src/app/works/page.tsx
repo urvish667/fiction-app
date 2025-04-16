@@ -141,10 +141,15 @@ export default function MyWorksPage() {
                       (activeTab === "draft" && work.status === "draft") ||
                       (activeTab === "ongoing" && work.status === "ongoing") ||
                       (activeTab === "completed" && work.status === "completed")
+    // Extract genre name for search
+    const genreName = typeof work.genre === 'object' && work.genre !== null
+      ? work.genre.name
+      : (typeof work.genre === 'string' ? work.genre : 'General');
+
     const matchesSearch =
       !searchQuery ||
       work.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (work.genre && work.genre.toLowerCase().includes(searchQuery.toLowerCase()))
+      (genreName && genreName.toLowerCase().includes(searchQuery.toLowerCase()))
 
     return matchesTab && matchesSearch
   })
@@ -382,7 +387,11 @@ function WorksContent({ works, searchQuery, isLoading, onDeleteStory }: WorksCon
               <div className="flex justify-between items-start">
                 <div>
                   <h3 className="font-bold text-lg line-clamp-1">{work.title}</h3>
-                  <p className="text-sm text-muted-foreground">{work.genre}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {typeof work.genre === 'object' && work.genre !== null
+                      ? work.genre.name
+                      : (typeof work.genre === 'string' ? work.genre : 'General')}
+                  </p>
                 </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>

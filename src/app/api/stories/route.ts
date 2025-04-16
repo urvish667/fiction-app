@@ -79,6 +79,8 @@ export async function GET(request: NextRequest) {
               image: true,
             },
           },
+          genre: true,
+          language: true,
           _count: {
             select: {
               likes: true,

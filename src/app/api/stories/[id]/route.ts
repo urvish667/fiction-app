@@ -17,6 +17,14 @@ const updateStorySchema = z.object({
   status: z.enum(["draft", "ongoing", "completed"]).optional(),
 });
 
+// Log the request body for debugging
+const logRequestBody = (body: any) => {
+  console.log('Update story request body:', body);
+  console.log('Genre type:', typeof body.genre);
+  console.log('Genre value:', body.genre);
+  return body;
+};
+
 // GET endpoint to retrieve a specific story
 export async function GET(
   request: NextRequest,
@@ -42,6 +50,8 @@ export async function GET(
             donationLink: true,
           },
         },
+        genre: true,
+        language: true,
         _count: {
           select: {
             likes: true,
@@ -178,15 +188,24 @@ export async function PUT(
 
     // Parse and validate request body
     const body = await request.json();
-    console.log('Update story request body:', body);
+    logRequestBody(body);
 
     let validatedData;
     try {
+      // If the genre is an object, extract the ID before validation
+      if (body.genre && typeof body.genre === 'object' && body.genre.id) {
+        console.log('Converting genre object to ID string:', body.genre);
+        body.genre = body.genre.id;
+      }
+
       validatedData = updateStorySchema.parse(body);
       console.log('Validated data:', validatedData);
     } catch (validationError) {
       console.error('Validation error:', validationError);
-      throw validationError;
+      return NextResponse.json(
+        { error: "Validation error", details: (validationError as z.ZodError).errors },
+        { status: 400 }
+      );
     }
 
     // Update slug if title is changed
@@ -224,13 +243,61 @@ export async function PUT(
       }
     }
 
+    // Prepare data for update
+    // Handle genre and language as relations if they are provided as IDs
+    const { genre, language, ...otherData } = validatedData;
+
+    // Prepare the data object for Prisma
+    const updateData: any = {
+      ...otherData,
+      slug,
+    };
+
+    // Handle genre relation if provided
+    if (genre !== undefined) {
+      console.log('Processing genre update:', { genre, type: typeof genre });
+
+      if (genre === null) {
+        // If genre is null, disconnect the relation
+        console.log('Disconnecting genre relation');
+        updateData.genre = { disconnect: true };
+      } else {
+        // If genre is a string ID, connect to that genre
+        console.log('Connecting to genre with ID:', genre);
+        updateData.genre = { connect: { id: genre } };
+
+        // Verify the genre exists
+        try {
+          const genreExists = await prisma.genre.findUnique({
+            where: { id: genre }
+          });
+
+          if (!genreExists) {
+            console.error('Genre not found with ID:', genre);
+          } else {
+            console.log('Genre found:', genreExists);
+          }
+        } catch (error) {
+          console.error('Error checking genre existence:', error);
+        }
+      }
+    }
+
+    // Handle language relation if provided
+    if (language !== undefined) {
+      if (language === null) {
+        // If language is null, disconnect the relation
+        updateData.language = { disconnect: true };
+      } else {
+        // If language is a string ID, connect to that language
+        updateData.language = { connect: { id: language } };
+      }
+    }
+
     // Update the story
     const updatedStory = await prisma.story.update({
       where: { id: storyId },
-      data: {
-        ...validatedData,
-        slug,
-      },
+      data: updateData,
       include: {
         author: {
           select: {
@@ -240,6 +307,8 @@ export async function PUT(
             image: true,
           },
         },
+        genre: true,
+        language: true,
       },
     });
 

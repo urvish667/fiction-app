@@ -29,16 +29,30 @@ export default function LibraryPage() {
         setLoading(true)
         const response = await StoryService.getBookmarkedStories()
 
+        // Log the raw story data to debug genre information
+        console.log('Raw bookmarked stories data:', response.stories);
+
         // Format stories to ensure they have all required fields
-        const formattedStories = response.stories.map((story: any) => ({
-          ...story,
-          author: story.author?.name || story.author?.username || "Unknown",
-          excerpt: story.description || "",
-          likes: story.likeCount || 0,
-          comments: story.commentCount || 0,
-          reads: story.readCount || 0,
-          date: new Date(story.createdAt)
-        }))
+        const formattedStories = response.stories.map((story: any) => {
+          // Extract genre name from genre object if it exists
+          let genreName = "General";
+          if (story.genre && typeof story.genre === 'object' && story.genre.name) {
+            genreName = story.genre.name;
+          } else if (typeof story.genre === 'string') {
+            genreName = story.genre;
+          }
+
+          return {
+            ...story,
+            author: story.author?.name || story.author?.username || "Unknown",
+            excerpt: story.description || "",
+            likes: story.likeCount || 0,
+            comments: story.commentCount || 0,
+            reads: story.readCount || 0,
+            date: new Date(story.createdAt),
+            genre: genreName
+          };
+        });
 
         setBookmarkedStories(formattedStories)
 
