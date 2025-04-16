@@ -1,5 +1,6 @@
 "use client"
 
+import "@/styles/reading.css"
 import { useState, useEffect, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
@@ -362,7 +363,11 @@ export default function ReadingPage() {
                   "Unknown Author"}
               </Link>
               <span>•</span>
-              <Badge variant="outline">{story.genre}</Badge>
+              <Badge variant="outline">
+                {typeof story.genre === 'object' && story.genre !== null
+                  ? (story.genre as {name: string}).name
+                  : (typeof story.genre === 'string' ? story.genre : 'General')}
+              </Badge>
               <span>•</span>
               <span>Updated {formatDate(chapter.updatedAt)}</span>
             </div>

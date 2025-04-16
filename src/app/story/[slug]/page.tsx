@@ -30,6 +30,7 @@ export default function StoryInfoPage() {
   const { toast } = useToast()
   const [story, setStory] = useState<StoryType | null>(null)
   const [chapters, setChapters] = useState<ChapterType[]>([])
+  const [storyTags, setStoryTags] = useState<{id: string, name: string}[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [imageFallback, setImageFallback] = useState(false)
@@ -58,6 +59,16 @@ export default function StoryInfoPage() {
         console.log('Story data from API:', storyBySlug)
         console.log('Cover image URL:', storyBySlug.coverImage)
         setStory(storyBySlug)
+
+        // Fetch tags for this story
+        try {
+          const tagsData = await fetch(`/api/stories/${storyBySlug.id}/tags`).then(r => r.json())
+          if (Array.isArray(tagsData)) {
+            setStoryTags(tagsData)
+          }
+        } catch (err) {
+          console.error("Error fetching story tags:", err)
+        }
 
         // Fetch chapters for this story
         const chaptersData = await StoryService.getChapters(storyBySlug.id)
@@ -310,7 +321,7 @@ export default function StoryInfoPage() {
               transition={{ duration: 0.5 }}
             >
               <h1 className="text-3xl md:text-4xl font-bold mb-2">{story.title}</h1>
-              
+
               {/* Author Info Section (Original Structure) */}
               {author && (
                   <div className="flex items-center gap-3 mb-4 text-lg">
@@ -329,7 +340,7 @@ export default function StoryInfoPage() {
 
               {/* Metadata (Genre, Language, Status, Counts) */}
               <StoryMetadata story={story} className="mb-6" />
-              
+
               {/* Start Reading Button (Desktop) */}
               <div className="hidden md:block mb-8">
                  <Button onClick={handleStartReading} disabled={chapters.length === 0} className="flex items-center gap-2" size="lg">
@@ -381,10 +392,10 @@ export default function StoryInfoPage() {
                      {isFollowing ? "Following" : "Follow Author"}
                    </Button>
                  )}
-                 
+
                  {/* *** Add Support Button Here *** */}
                  {author?.donationsEnabled && (
-                    <SupportButton 
+                    <SupportButton
                         authorId={author.id}
                         donationMethod={author.donationMethod ?? null}
                         donationLink={author.donationLink ?? null}
@@ -392,7 +403,20 @@ export default function StoryInfoPage() {
                     />
                  )}
               </div>
-              
+
+              {/* Tags */}
+              {storyTags.length > 0 && (
+                <div className="mb-4">
+                  <div className="flex flex-wrap gap-2">
+                    {storyTags.map((tag) => (
+                      <Badge key={tag.id} variant="secondary" className="px-3 py-1">
+                        {tag.name}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Description */}
               <div className="mb-6">
                 <h2 className="text-xl font-semibold mb-2">Description</h2>
@@ -422,7 +446,7 @@ export default function StoryInfoPage() {
                 <h2 className="text-2xl font-bold mb-6">Comments</h2>
                 <CommentSection storyId={story.id} />
               </motion.div>
-            </motion.div> 
+            </motion.div>
           </div>
         </div>
 

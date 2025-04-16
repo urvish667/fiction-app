@@ -1,13 +1,15 @@
 "use client"
 
 import type React from "react"
+import "@/styles/editor.css"
 
 import { useEffect, useRef, useState } from "react"
 import { useEditor, EditorContent } from "@tiptap/react"
 import StarterKit from "@tiptap/starter-kit"
 import Placeholder from "@tiptap/extension-placeholder"
-import Image from "@tiptap/extension-image"
+import { Image } from "@tiptap/extension-image"
 import Link from "@tiptap/extension-link"
+import TextAlign from "@tiptap/extension-text-align"
 import { Button } from "@/components/ui/button"
 import {
   Bold,
@@ -22,6 +24,9 @@ import {
   LinkIcon,
   Undo,
   Redo,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
 } from "lucide-react"
 
 interface EditorProps {
@@ -44,10 +49,36 @@ export function Editor({ content, onChange, readOnly = false }: EditorProps) {
       }),
       Image.configure({
         allowBase64: true,
-        inline: true,
+        inline: false, // Block mode for better alignment
+        HTMLAttributes: {
+          class: 'editor-image editor-image-centered',
+        },
+        // Handle image resizing and default alignment
+        handleDOMAttributes: (node) => {
+          const attrs = {}
+
+          // Only add width attribute if it's specified in the node
+          if (node.attrs.width) {
+            attrs['width'] = node.attrs.width
+          }
+
+          // Add default center alignment class
+          attrs['class'] = 'editor-image editor-image-centered'
+
+          return attrs
+        },
       }),
       Link.configure({
         openOnClick: false,
+      }),
+      TextAlign.configure({
+        types: ['heading', 'paragraph', 'image'],
+        alignments: ['left', 'center', 'right'],
+        defaultAlignment: 'left',
+        // Set default alignment for specific node types
+        defaultAlignments: {
+          image: 'center',
+        },
       }),
     ],
     content,
@@ -107,12 +138,38 @@ export function Editor({ content, onChange, readOnly = false }: EditorProps) {
     const reader = new FileReader()
     reader.onload = (event) => {
       if (event.target?.result && editor) {
-        // Insert the image at the current cursor position
-        editor
-          .chain()
-          .focus()
-          .setImage({ src: event.target.result as string })
-          .run()
+        // Create a temporary HTML image to get the original dimensions
+        const tempImg = new window.Image()
+        tempImg.src = event.target.result as string
+
+        tempImg.onload = () => {
+          // Calculate dimensions while maintaining aspect ratio and limiting size
+          const maxWidth = 600 // Maximum width in pixels
+          let width = tempImg.width
+
+          // Only set width if the image is larger than maxWidth
+          const widthAttr = width > maxWidth ? { width: maxWidth } : {}
+
+          // Insert the image at the current cursor position
+          editor
+            .chain()
+            .focus()
+            .insertContent({
+              type: 'image',
+              attrs: {
+                src: event.target.result as string,
+                ...widthAttr
+              }
+            })
+            .run()
+
+          // Always set center alignment for images
+          editor
+            .chain()
+            .focus()
+            .setTextAlign('center')
+            .run()
+        }
       }
     }
     reader.readAsDataURL(file)
@@ -232,6 +289,42 @@ export function Editor({ content, onChange, readOnly = false }: EditorProps) {
           <Button variant="ghost" size="icon" onClick={setLink}>
             <LinkIcon size={16} />
             <span className="sr-only">Link</span>
+          </Button>
+
+          <div className="border-l mx-1 h-6"></div>
+
+          {/* Text alignment buttons */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => editor.chain().focus().setTextAlign('left').run()}
+            className={editor.isActive({ textAlign: 'left' }) ? "bg-muted" : ""}
+            title="Align Left"
+          >
+            <AlignLeft size={16} />
+            <span className="sr-only">Align Left</span>
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => editor.chain().focus().setTextAlign('center').run()}
+            className={editor.isActive({ textAlign: 'center' }) ? "bg-muted" : ""}
+            title="Align Center"
+          >
+            <AlignCenter size={16} />
+            <span className="sr-only">Align Center</span>
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => editor.chain().focus().setTextAlign('right').run()}
+            className={editor.isActive({ textAlign: 'right' }) ? "bg-muted" : ""}
+            title="Align Right"
+          >
+            <AlignRight size={16} />
+            <span className="sr-only">Align Right</span>
           </Button>
 
           <div className="border-l mx-1 h-6"></div>

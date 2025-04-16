@@ -222,47 +222,7 @@ export function useChapterEditor({
     fetchNextChapterNumber()
   }, [isNewChapter, storyId])
 
-  // Auto-save effect
-  useEffect(() => {
-    // Only auto-save if:
-    // 1. We have a title and content
-    // 2. We're not currently saving
-    // 3. There are changes to save
-    // 4. This is NOT a new chapter OR it's a new chapter that has been saved at least once (has an ID)
-    if (debouncedChapter.title &&
-        debouncedChapter.content &&
-        !isSaving &&
-        hasChanges &&
-        (!isNewChapter || (isNewChapter && chapter.id))) {
 
-      logInfo('Auto-save triggered', {
-        storyId,
-        chapterId: chapter.id,
-        wordCount: chapter.wordCount,
-        backoff: autoSaveBackoff
-      })
-
-      const autoSaveWithBackoff = async () => {
-        try {
-          await saveChapter(false)
-
-          // Reset backoff on success (handled in syncStateWithBackend)
-        } catch (error) {
-          // Increase backoff on failure (max 30 seconds)
-          setAutoSaveFailures(prev => prev + 1)
-          setAutoSaveBackoff(prev => Math.min(prev * 2, 30000))
-
-          logError(error, {
-            context: 'auto-save',
-            attempt: autoSaveFailures + 1,
-            backoff: autoSaveBackoff
-          })
-        }
-      }
-
-      autoSaveWithBackoff()
-    }
-  }, [debouncedChapter, hasChanges, isNewChapter, chapter.id])
 
   // Handle editor content change
   const handleEditorChange = (content: string) => {
@@ -280,8 +240,15 @@ export function useChapterEditor({
         lastSaved: null, // Mark as unsaved
       }))
 
-      // Only set hasChanges to true if content differs from initial content
-      setHasChanges(content !== initialContent || chapter.title !== initialTitle)
+      // Always set hasChanges to true when content changes
+      // This ensures auto-save will trigger
+      const contentChanged = content !== initialContent
+      const titleChanged = chapter.title !== initialTitle
+
+      if (contentChanged || titleChanged) {
+        logInfo('Content or title changed, setting hasChanges', { contentChanged, titleChanged })
+        setHasChanges(true)
+      }
     }
   }
 
@@ -297,8 +264,15 @@ export function useChapterEditor({
         lastSaved: null, // Mark as unsaved
       }))
 
-      // Only set hasChanges to true if title differs from initial title
-      setHasChanges(e.target.value !== initialTitle || chapter.content !== initialContent)
+      // Always set hasChanges to true when title changes
+      // This ensures auto-save will trigger
+      const titleChanged = e.target.value !== initialTitle
+      const contentChanged = chapter.content !== initialContent
+
+      if (titleChanged || contentChanged) {
+        logInfo('Title or content changed, setting hasChanges', { titleChanged, contentChanged })
+        setHasChanges(true)
+      }
     }
   }
 
@@ -476,6 +450,58 @@ export function useChapterEditor({
       setIsSaving(false)
     }
   }
+
+  // Auto-save effect
+  useEffect(() => {
+    // Only auto-save if:
+    // 1. We have a title and content
+    // 2. We're not currently saving
+    // 3. There are changes to save
+    // 4. This is NOT a new chapter OR it's a new chapter that has been saved at least once (has an ID)
+    if (debouncedChapter.title &&
+        debouncedChapter.content &&
+        !isSaving &&
+        hasChanges &&
+        (!isNewChapter || (isNewChapter && chapter.id))) {
+
+      logInfo('Auto-save triggered', {
+        storyId,
+        chapterId: chapter.id,
+        wordCount: chapter.wordCount,
+        backoff: autoSaveBackoff
+      })
+
+      const autoSaveWithBackoff = async () => {
+        try {
+          await saveChapter(false)
+
+          // Reset backoff on success (handled in syncStateWithBackend)
+        } catch (error) {
+          // Increase backoff on failure (max 30 seconds)
+          setAutoSaveFailures(prev => prev + 1)
+          setAutoSaveBackoff(prev => Math.min(prev * 2, 30000))
+
+          logError(error, {
+            context: 'auto-save',
+            attempt: autoSaveFailures + 1,
+            backoff: autoSaveBackoff
+          })
+        }
+      }
+
+      autoSaveWithBackoff()
+    } else {
+      // Debug why auto-save isn't triggering
+      logInfo('Auto-save conditions not met', {
+        hasTitle: Boolean(debouncedChapter.title),
+        hasContent: Boolean(debouncedChapter.content),
+        isSaving,
+        hasChanges,
+        isNewChapter,
+        hasId: Boolean(chapter.id)
+      })
+    }
+  }, [debouncedChapter, hasChanges, isSaving, isNewChapter, chapter.id, storyId, autoSaveBackoff, autoSaveFailures])
 
   // Log component lifecycle for debugging
   useEffect(() => {

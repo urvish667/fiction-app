@@ -1,0 +1,51 @@
+/* Reading view styles */
+
+/* Image alignment styles for reading view */
+.prose img, .prose img.editor-image {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.375rem;
+  display: block;
+}
+
+/* Default center alignment for images in reading view */
+.prose img, .prose img.editor-image, .prose img.editor-image-centered {
+  margin-left: auto !important;
+  margin-right: auto !important;
+  text-align: center;
+}
+
+/* Text alignment classes for reading view */
+.text-align-left {
+  text-align: left;
+}
+
+.text-align-center {
+  text-align: center;
+}
+
+.text-align-right {
+  text-align: right;
+}
+
+/* Image alignment styles for reading view */
+.prose .text-align-left img, .prose .text-align-left img.editor-image {
+  margin-left: 0 !important;
+  margin-right: auto !important;
+}
+
+.prose .text-align-center img, .prose .text-align-center img.editor-image {
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+.prose .text-align-right img, .prose .text-align-right img.editor-image {
+  margin-left: auto !important;
+  margin-right: 0 !important;
+}
+
+/* Additional specific selectors for editor images */
+.prose img.editor-image-centered {
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
