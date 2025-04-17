@@ -21,15 +21,23 @@ export const StoryService = {
     limit?: number;
     genre?: string;
     authorId?: string;
-    status?: string;
+    status?: string | string[];
     search?: string;
+    tags?: string | string[];
+    language?: string;
+    sortBy?: string;
   }): Promise<{ stories: StoryResponse[]; pagination: any }> {
     // Build query string from params
     const queryParams = new URLSearchParams();
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined) {
-          queryParams.append(key, String(value));
+          // Handle tags array by converting to comma-separated string
+          if (key === 'tags' && Array.isArray(value) && value.length > 0) {
+            queryParams.append(key, value.join(','));
+          } else {
+            queryParams.append(key, String(value));
+          }
         }
       });
     }

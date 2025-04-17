@@ -17,6 +17,20 @@ const createStorySchema = z.object({
   status: z.enum(["draft", "ongoing", "completed"]).default("draft"),
 });
 
+// Helper function to determine the order by clause based on sort option
+function getOrderByFromSortOption(sortBy: string) {
+  switch (sortBy) {
+    case 'newest':
+      return { createdAt: 'desc' };
+    case 'popular':
+      return { likes: { _count: 'desc' } };
+    case 'mostRead':
+      return { readCount: 'desc' };
+    default:
+      return { createdAt: 'desc' };
+  }
+}
+
 // GET endpoint to retrieve all stories (with filtering and pagination)
 export async function GET(request: NextRequest) {
   try {
@@ -29,6 +43,9 @@ export async function GET(request: NextRequest) {
     const authorId = searchParams.get("authorId");
     const status = searchParams.get("status");
     const search = searchParams.get("search");
+    const tags = searchParams.get("tags");
+    const language = searchParams.get("language");
+    const sortBy = searchParams.get("sortBy") || "newest";
 
     // Calculate pagination
     const skip = (page - 1) * limit;
@@ -36,8 +53,31 @@ export async function GET(request: NextRequest) {
     // Build filter conditions
     const where: any = {};
 
-    if (genre) where.genre = genre;
+    if (genre) {
+      where.genre = {
+        name: genre
+      };
+    }
+    if (language) {
+      where.language = {
+        name: language
+      };
+    }
     if (authorId) where.authorId = authorId;
+
+    // Handle tags parameter - can be a comma-separated list
+    if (tags) {
+      const tagValues = tags.split(',').map(t => t.trim().toLowerCase());
+      where.tags = {
+        some: {
+          tag: {
+            name: {
+              in: tagValues
+            }
+          }
+        }
+      };
+    }
 
     // Handle status parameter - can be a comma-separated list
     if (status) {
@@ -45,6 +85,9 @@ export async function GET(request: NextRequest) {
         // If comma-separated, use 'in' operator
         const statusValues = status.split(',').map(s => s.trim());
         where.status = { in: statusValues };
+      } else if (status === "all") {
+        // If 'all', include both 'ongoing' and 'completed'
+        where.status = { in: ["ongoing", "completed"] };
       } else {
         // Single status value
         where.status = status;
@@ -53,8 +96,23 @@ export async function GET(request: NextRequest) {
 
     if (search) {
       where.OR = [
+        // Search in story title and description
         { title: { contains: search, mode: 'insensitive' } },
         { description: { contains: search, mode: 'insensitive' } },
+
+        // Search by author name or username
+        { author: {
+          OR: [
+            { name: { contains: search, mode: 'insensitive' } },
+            { username: { contains: search, mode: 'insensitive' } }
+          ]
+        }},
+
+        // Search by genre name
+        { genre: { name: { contains: search, mode: 'insensitive' } } },
+
+        // Search by tag name
+        { tags: { some: { tag: { name: { contains: search, mode: 'insensitive' } } } } }
       ];
     }
 
@@ -81,6 +139,11 @@ export async function GET(request: NextRequest) {
           },
           genre: true,
           language: true,
+          tags: {
+            include: {
+              tag: true
+            }
+          },
           _count: {
             select: {
               likes: true,
@@ -90,26 +153,38 @@ export async function GET(request: NextRequest) {
             },
           },
         },
-        orderBy: { createdAt: "desc" },
+        orderBy: getOrderByFromSortOption(sortBy),
         skip,
         take: limit,
       }),
       prisma.story.count({ where }),
     ]);
 
-    // Transform stories to include counts
-    const formattedStories = stories.map((story) => ({
-      ...story,
-      likeCount: story._count.likes,
-      commentCount: story._count.comments,
-      bookmarkCount: story._count.bookmarks,
-      chapterCount: story._count.chapters,
-      _count: undefined,
-    }));
+
+
+    // Transform stories to include counts and format tags
+    const formattedStories = stories.map((story) => {
+      // Extract tags safely
+      const tags = Array.isArray(story.tags)
+        ? story.tags.map(storyTag => storyTag.tag?.name || '').filter(Boolean)
+        : [];
+
+      return {
+        ...story,
+        tags,
+        likeCount: story._count.likes,
+        commentCount: story._count.comments,
+        bookmarkCount: story._count.bookmarks,
+        chapterCount: story._count.chapters,
+        _count: undefined,
+      };
+    });
 
     // Add pagination metadata
     const totalPages = Math.ceil(total / limit);
     const hasMore = page < totalPages;
+
+
 
     return NextResponse.json({
       stories: formattedStories,

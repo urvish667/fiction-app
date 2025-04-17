@@ -15,12 +15,17 @@ import { useMediaQuery } from "@/hooks/use-media-query"
 import { StoryService } from "@/services/story-service"
 import { useToast } from "@/components/ui/use-toast"
 
+// Import UserSummary type
+import { UserSummary } from "@/types/user"
+
 // Define a type that combines the fields from both Story types
 type BrowseStory = {
   id: string | number
   title: string
-  author: string | { name?: string; username?: string }
+  author: string | UserSummary
   genre?: string
+  language?: string
+  status?: string
   thumbnail?: string
   coverImage?: string
   excerpt?: string
@@ -36,6 +41,7 @@ type BrowseStory = {
   createdAt?: Date
   updatedAt?: Date
   slug?: string
+  tags?: string[] // Array of tag names
 }
 
 export default function BrowsePage() {
@@ -45,6 +51,9 @@ export default function BrowsePage() {
   const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedGenres, setSelectedGenres] = useState<string[]>([])
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
+  const [selectedLanguage, setSelectedLanguage] = useState<string>("") // Default to no language filter
+  const [storyStatus, setStoryStatus] = useState<"all" | "ongoing" | "completed">("all") // Default to show all stories
   const [sortBy, setSortBy] = useState("newest")
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [showFilters, setShowFilters] = useState(false)
@@ -55,6 +64,223 @@ export default function BrowsePage() {
 
   const isMobile = useMediaQuery("(max-width: 768px)")
 
+  // Helper function to format API parameters
+  const formatApiParams = () => {
+    const params: {
+      page: number;
+      limit: number;
+      genre?: string;
+      search?: string;
+      status?: string;
+      tags?: string[];
+      sortBy?: string;
+      language?: string;
+    } = {
+      page: currentPage,
+      limit: storiesPerPage,
+      status: storyStatus, // Always send status parameter, API will handle 'all' correctly
+      sortBy: sortBy // Include sort parameter
+    }
+
+    // Add search query if provided
+    if (searchQuery) {
+      params.search = searchQuery
+    }
+
+    // Add genre filter if selected
+    // The API expects the genre name, not the ID
+    if (selectedGenres.length === 1) {
+      params.genre = selectedGenres[0]
+    }
+
+    // Add tags filter if selected
+    if (selectedTags.length > 0) {
+      params.tags = selectedTags
+    }
+
+    // Add language filter if selected
+    if (selectedLanguage) {
+      params.language = selectedLanguage
+    }
+
+    return params
+  }
+
+  // Helper function to map API story to BrowseStory type
+  const formatStory = (story: any): BrowseStory => {
+    // Extract genre name from genre object if it exists
+    let genreName = "General";
+    if (story.genre) {
+      if (typeof story.genre === 'object') {
+        // Handle genre as an object with a name property
+        if (story.genre.name) {
+          genreName = story.genre.name;
+        }
+      } else if (typeof story.genre === 'string') {
+        // Handle genre as a string directly
+        genreName = story.genre;
+      }
+    }
+
+    // Extract language name from language object if it exists
+    let languageName = "";
+    if (story.language) {
+      if (typeof story.language === 'object') {
+        // Handle language as an object with a name property
+        if (story.language.name) {
+          languageName = story.language.name;
+        }
+      } else if (typeof story.language === 'string') {
+        // Handle language as a string directly
+        languageName = story.language;
+      }
+    }
+
+    // Extract tags if they exist
+    let tags: string[] = [];
+    if (story.tags) {
+      // If tags is already an array of strings, use it directly
+      if (Array.isArray(story.tags) && typeof story.tags[0] === 'string') {
+        tags = story.tags;
+      }
+      // If tags is an array of objects with a tag property (from the API)
+      else if (Array.isArray(story.tags) && story.tags.length > 0) {
+        tags = story.tags.map((storyTag: any) => {
+          // Handle different possible structures
+          if (typeof storyTag === 'string') return storyTag;
+          if (storyTag.tag && storyTag.tag.name) return storyTag.tag.name;
+          if (storyTag.name) return storyTag.name;
+          return '';
+        }).filter(Boolean); // Remove empty strings
+      }
+    }
+
+    return {
+      id: story.id,
+      title: story.title,
+      author: story.author || "Unknown Author",
+      genre: genreName,
+      language: languageName,
+      status: story.status || "ongoing",
+      thumbnail: (story.coverImage && story.coverImage.trim() !== "") ? story.coverImage : "/placeholder.svg",
+      coverImage: (story.coverImage && story.coverImage.trim() !== "") ? story.coverImage : "/placeholder.svg",
+      excerpt: story.description,
+      description: story.description,
+      likes: story.likeCount,
+      likeCount: story.likeCount,
+      comments: story.commentCount,
+      commentCount: story.commentCount,
+      reads: story.readCount,
+      readCount: story.readCount,
+      readTime: Math.ceil(story.wordCount / 200), // Estimate read time based on word count
+      date: story.createdAt ? new Date(story.createdAt) : new Date(),
+      createdAt: story.createdAt ? new Date(story.createdAt) : new Date(),
+      updatedAt: story.updatedAt ? new Date(story.updatedAt) : new Date(),
+      slug: story.slug,
+      tags: tags
+    };
+  }
+
+  // Helper function to apply client-side filtering and sorting
+  const applyClientFilters = (stories: BrowseStory[]): BrowseStory[] => {
+    // If no client-side filters are needed, return the original stories (but still apply sorting)
+    let filteredStories = stories;
+
+    // Apply filters if needed
+    if (selectedGenres.length > 1 || selectedTags.length > 0 || searchQuery || selectedLanguage || storyStatus !== "all") {
+      filteredStories = stories.filter(story => {
+      // Apply genre filter if multiple genres are selected
+      const matchesGenre = selectedGenres.length > 1
+        ? selectedGenres.includes(story.genre || 'General')
+        : true;
+
+      // Apply tag filter if tags are selected
+      let matchesTags = true;
+      if (selectedTags.length > 0) {
+        // Make sure story.tags exists and is an array
+        if (!Array.isArray(story.tags) || story.tags.length === 0) {
+          matchesTags = false;
+        } else {
+          // Check if any of the story's tags match any of the selected tags
+          matchesTags = story.tags.some(tag =>
+            selectedTags.some(selectedTag =>
+              selectedTag.toLowerCase() === tag.toLowerCase()
+            )
+          );
+        }
+      }
+
+      // Apply language filter if selected
+      const matchesLanguage = !selectedLanguage ||
+        (story.language &&
+         (typeof story.language === 'string'
+          ? story.language === selectedLanguage
+          : (story.language as any).name === selectedLanguage));
+
+      // Apply status filter if selected
+      const matchesStatus = storyStatus === "all" ||
+        (story.status === storyStatus);
+
+
+      // Apply search filter if search query is provided
+      // This is a fallback for client-side search if the API doesn't handle it
+      let matchesSearch = true;
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const title = (story.title || '').toLowerCase();
+        const description = (story.description || '').toLowerCase();
+        const authorName = typeof story.author === 'object'
+          ? ((story.author?.name || story.author?.username || '').toLowerCase())
+          : (story.author || '').toLowerCase();
+        const genre = (story.genre || '').toLowerCase();
+        const tags = Array.isArray(story.tags)
+          ? story.tags.map(tag => tag.toLowerCase())
+          : [];
+
+        matchesSearch =
+          title.includes(query) ||
+          description.includes(query) ||
+          authorName.includes(query) ||
+          genre.includes(query) ||
+          tags.some(tag => tag.includes(query));
+      }
+
+      return matchesGenre && matchesTags && matchesLanguage && matchesStatus && matchesSearch;
+    });
+    }
+
+    // Apply client-side sorting
+    return sortStories(filteredStories, sortBy);
+  }
+
+  // Helper function to sort stories
+  const sortStories = (stories: BrowseStory[], sortOption: string): BrowseStory[] => {
+    const storiesCopy = [...stories]; // Create a copy to avoid mutating the original array
+
+    switch (sortOption) {
+      case 'newest':
+        return storiesCopy.sort((a, b) => {
+          const dateA = a.createdAt || new Date();
+          const dateB = b.createdAt || new Date();
+          return dateB.getTime() - dateA.getTime();
+        });
+      case 'popular':
+        return storiesCopy.sort((a, b) => {
+          const likesA = a.likeCount || a.likes || 0;
+          const likesB = b.likeCount || b.likes || 0;
+          return likesB - likesA;
+        });
+      case 'mostRead':
+        return storiesCopy.sort((a, b) => {
+          const readsA = a.readCount || a.reads || 0;
+          const readsB = b.readCount || b.reads || 0;
+          return readsB - readsA;
+        });
+      default:
+        return storiesCopy;
+    }
+  }
+
   // Fetch stories from the API
   useEffect(() => {
     const fetchStories = async () => {
@@ -63,88 +289,30 @@ export default function BrowsePage() {
 
       try {
         // Prepare API parameters
-        const params: {
-          page: number;
-          limit: number;
-          genre?: string;
-          search?: string;
-          status?: string;
-        } = {
-          page: currentPage,
-          limit: storiesPerPage,
-          status: "ongoing" // Only show published stories
-        }
-
-        // Add search query if provided
-        if (searchQuery) {
-          params.search = searchQuery
-        }
-
-        // Add genre filter if selected
-        if (selectedGenres.length === 1) {
-          params.genre = selectedGenres[0]
-        }
+        const params = formatApiParams()
 
         // Fetch stories from the API
         const response = await StoryService.getStories(params)
 
-        // Log the raw story data to debug image issues
-        console.log('Raw story data from API:', response.stories);
-
-        // Log the genre data to debug
-        console.log('Genre data from API:', response.stories.map(s => ({
-          id: s.id,
-          title: s.title,
-          genre: s.genre,
-          genreId: s.genreId
-        })));
-
         // Map API response to BrowseStory type
-        const formattedStories = response.stories.map((story) => {
-          // Extract genre name from genre object if it exists
-          let genreName = "General";
-          if (story.genre && typeof story.genre === 'object' && story.genre.name) {
-            genreName = story.genre.name;
-          } else if (typeof story.genre === 'string') {
-            genreName = story.genre;
-          }
+        const formattedStories = response.stories.map(formatStory);
 
-          return {
-            id: story.id,
-            title: story.title,
-            author: story.author || "Unknown Author",
-            genre: genreName,
-            thumbnail: (story.coverImage && story.coverImage.trim() !== "") ? story.coverImage : "/placeholder.svg",
-            coverImage: (story.coverImage && story.coverImage.trim() !== "") ? story.coverImage : "/placeholder.svg",
-            excerpt: story.description,
-            description: story.description,
-            likes: story.likeCount,
-            likeCount: story.likeCount,
-            comments: story.commentCount,
-            commentCount: story.commentCount,
-            reads: story.readCount,
-            readCount: story.readCount,
-            readTime: Math.ceil(story.wordCount / 200), // Estimate read time based on word count
-            date: story.createdAt ? new Date(story.createdAt) : new Date(),
-            createdAt: story.createdAt ? new Date(story.createdAt) : new Date(),
-            updatedAt: story.updatedAt ? new Date(story.updatedAt) : new Date(),
-            slug: story.slug
-          };
-        });
+        // Apply any client-side filtering if needed
+        const filteredStories = applyClientFilters(formattedStories);
 
-        // Log the formatted stories to debug image issues
-        console.log('Formatted stories with image data:', formattedStories.map(s => ({
-          id: s.id,
-          title: s.title,
-          thumbnail: s.thumbnail,
-          coverImage: s.coverImage
-        })))
 
-        setStories(formattedStories)
-        setTotalPages(response.pagination.totalPages)
-        setTotalStories(response.pagination.total)
+
+        setStories(filteredStories)
+
+        // If we're doing client-side filtering, adjust the total counts
+        if (selectedGenres.length > 1 || selectedTags.length > 0) {
+          setTotalStories(filteredStories.length)
+          setTotalPages(Math.ceil(filteredStories.length / storiesPerPage))
+        } else {
+          setTotalPages(response.pagination.totalPages)
+          setTotalStories(response.pagination.total)
+        }
       } catch (err) {
-        console.error("Error fetching stories:", err)
         setError("Failed to load stories. Please try again later.")
         toast({
           title: "Error",
@@ -157,7 +325,7 @@ export default function BrowsePage() {
     }
 
     fetchStories()
-  }, [currentPage, searchQuery, selectedGenres, sortBy, toast])
+  }, [currentPage, searchQuery, selectedGenres, selectedTags, selectedLanguage, storyStatus, sortBy, toast])
 
   // Handle search input
   const handleSearch = (query: string) => {
@@ -168,6 +336,24 @@ export default function BrowsePage() {
   // Handle genre selection
   const handleGenreChange = (genres: string[]) => {
     setSelectedGenres(genres)
+    setCurrentPage(1) // Reset to first page when filters change
+  }
+
+  // Handle tag selection
+  const handleTagChange = (tags: string[]) => {
+    setSelectedTags(tags)
+    setCurrentPage(1) // Reset to first page when filters change
+  }
+
+  // Handle language selection
+  const handleLanguageChange = (language: string) => {
+    setSelectedLanguage(language)
+    setCurrentPage(1) // Reset to first page when filters change
+  }
+
+  // Handle status selection
+  const handleStatusChange = (status: "all" | "ongoing" | "completed") => {
+    setStoryStatus(status)
     setCurrentPage(1) // Reset to first page when filters change
   }
 
@@ -241,6 +427,12 @@ export default function BrowsePage() {
                     <FilterPanel
                       selectedGenres={selectedGenres}
                       onGenreChange={handleGenreChange}
+                      selectedTags={selectedTags}
+                      onTagChange={handleTagChange}
+                      selectedLanguage={selectedLanguage}
+                      onLanguageChange={handleLanguageChange}
+                      storyStatus={storyStatus}
+                      onStatusChange={handleStatusChange}
                       sortBy={sortBy}
                       onSortChange={handleSortChange}
                     />
@@ -266,6 +458,9 @@ export default function BrowsePage() {
                       onClick={() => {
                         setSearchQuery("")
                         setSelectedGenres([])
+                        setSelectedTags([])
+                        setSelectedLanguage("")
+                        setStoryStatus("all")
                         setSortBy("newest")
                         setCurrentPage(1)
                       }}
@@ -278,8 +473,29 @@ export default function BrowsePage() {
                     {/* Results count and info */}
                     <div className="mb-4 text-sm text-muted-foreground">
                       {totalStories} {totalStories === 1 ? "story" : "stories"} found
-                      {searchQuery && <span> for &quot;{searchQuery}&quot;</span>}
-                      {selectedGenres.length > 0 && <span> in {selectedGenres.join(", ")}</span>}
+                      {searchQuery && (
+                        <span> matching &quot;{searchQuery}&quot;</span>
+                      )}
+                      {selectedGenres.length > 0 && (
+                        <span> in {selectedGenres.join(", ")}</span>
+                      )}
+                      {selectedTags.length > 0 && (
+                        <span> with tags {selectedTags.join(", ")}</span>
+                      )}
+                      {selectedLanguage && (
+                        <span> in {selectedLanguage}</span>
+                      )}
+                      {storyStatus !== "all" && (
+                        <span> with status {storyStatus}</span>
+                      )}
+                      {sortBy !== "newest" && (
+                        <span> sorted by {sortBy === "popular" ? "most liked" : sortBy === "mostRead" ? "most read" : sortBy}</span>
+                      )}
+                      {searchQuery && (
+                        <div className="mt-1 text-xs">
+                          <em>Search includes story titles, descriptions, author names, genres, and tags</em>
+                        </div>
+                      )}
                     </div>
 
                     {/* Story Grid with Ads */}
@@ -302,6 +518,9 @@ export default function BrowsePage() {
                       onClick={() => {
                         setSearchQuery("")
                         setSelectedGenres([])
+                        setSelectedTags([])
+                        setSelectedLanguage("")
+                        setStoryStatus("all")
                         setSortBy("newest")
                       }}
                     >

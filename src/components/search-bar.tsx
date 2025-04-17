@@ -16,7 +16,7 @@ interface SearchBarProps {
 export default function SearchBar({
   onSearch,
   className = "",
-  placeholder = "Search stories, authors, or tags...",
+  placeholder = "Search stories, authors, genres, or tags...",
 }: SearchBarProps) {
   const [query, setQuery] = useState("")
 
@@ -38,6 +38,8 @@ export default function SearchBar({
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         className="pr-16"
+        aria-label="Search for stories, authors, genres, or tags"
+        title="Try searching for story titles, author names, genres like 'Fantasy', or tags like 'magic'"
       />
       {query && (
         <Button

@@ -31,6 +31,11 @@ export async function GET(
         },
         genre: true,
         language: true,
+        tags: {
+          include: {
+            tag: true
+          }
+        },
         _count: {
           select: {
             likes: true,
@@ -98,6 +103,10 @@ export async function GET(
     const formattedStory = {
       ...story,
       author: story.author,
+      // Extract tags safely
+      tags: Array.isArray(story.tags)
+        ? story.tags.map(storyTag => storyTag.tag?.name || '').filter(Boolean)
+        : [],
       likeCount: story._count.likes,
       commentCount: story._count.comments,
       bookmarkCount: story._count.bookmarks,

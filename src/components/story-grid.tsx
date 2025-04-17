@@ -1,11 +1,34 @@
 "use client"
 import { motion } from "framer-motion"
-import type { Story } from "@/lib/types"
 import StoryCard from "@/components/story-card"
 import AdBanner from "@/components/ad-banner"
 
+// Define a generic type for stories that matches what StoryCard expects
+type StoryItem = {
+  id: string | number
+  title: string
+  author: any
+  genre?: string | any
+  thumbnail?: string
+  coverImage?: string
+  excerpt?: string
+  description?: string
+  likes?: number
+  likeCount?: number
+  comments?: number
+  commentCount?: number
+  reads?: number
+  readCount?: number
+  readTime?: number
+  date?: Date
+  createdAt?: Date
+  updatedAt?: Date
+  slug?: string
+  [key: string]: any
+}
+
 interface StoryGridProps {
-  stories: Story[]
+  stories: StoryItem[]
   viewMode: "grid" | "list"
   showAds?: boolean
 }
@@ -13,7 +36,7 @@ interface StoryGridProps {
 export default function StoryGrid({ stories, viewMode, showAds = false }: StoryGridProps) {
   // Insert ads after every 6 stories
   const storiesWithAds = showAds
-    ? stories.reduce((acc: (Story | { isAd: true })[], story, index) => {
+    ? stories.reduce((acc: (StoryItem | { isAd: true })[], story, index) => {
         acc.push(story)
         if ((index + 1) % 6 === 0 && index !== stories.length - 1) {
           acc.push({ isAd: true })
