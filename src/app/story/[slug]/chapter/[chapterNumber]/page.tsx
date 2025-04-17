@@ -15,7 +15,6 @@ import {
   MessageSquare,
   Share2,
   Bell,
-  BookOpen,
   AlignJustify,
   Minus,
   Plus,
@@ -35,6 +34,7 @@ import { StoryService } from "@/services/story-service"
 import { Story as StoryType, Chapter as ChapterType } from "@/types/story"
 import { useToast } from "@/components/ui/use-toast"
 import { SupportButton } from "@/components/SupportButton"
+import StoryRecommendations from "@/components/StoryRecommendations"
 
 export default function ReadingPage() {
   const params = useParams()
@@ -842,26 +842,13 @@ export default function ReadingPage() {
               </div>
             )}
 
-            {/* More from this Author */}
-            <div className="mb-12">
-              <h2 className="text-2xl font-bold mb-6">More from {typeof story.author === 'object' ?
-                (story.author?.name || story.author?.username || "this author") :
-                "this author"}</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                {/* Sample stories will be loaded dynamically */}
-                <div className="border rounded-lg overflow-hidden transition-all hover:border-primary">
-                  <div className="aspect-[3/2] relative bg-muted">
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <BookOpen className="text-muted-foreground" />
-                    </div>
-                  </div>
-                  <div className="p-4">
-                    <h3 className="font-medium line-clamp-1 hover:text-primary transition-colors">Coming soon</h3>
-                    <p className="text-sm text-muted-foreground line-clamp-2 mt-1">More stories from this author will appear here</p>
-                  </div>
-                </div>
-              </div>
-            </div>
+            {/* Story Recommendations */}
+            <StoryRecommendations
+              storyId={story.id}
+              excludeSameAuthor={true}
+              limit={6}
+              className="mb-12"
+            />
           </div>
         </div>
       </main>

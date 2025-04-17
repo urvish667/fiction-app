@@ -145,6 +145,10 @@ model Story {
   likes       Like[]
   bookmarks   Bookmark[]
 
+  // Recommendation relations
+  recommendations      StoryRecommendation[] @relation("StoryRecommendations")
+  recommendedIn        StoryRecommendation[] @relation("RecommendedTo")
+
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -304,4 +308,21 @@ model Donation {
   @@index([recipientId])
   @@index([status])
   @@index([createdAt])
+}
+
+model StoryRecommendation {
+  id                 String   @id @default(cuid())
+  storyId            String
+  recommendedStoryId String
+  score              Float
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  story              Story    @relation("StoryRecommendations", fields: [storyId], references: [id], onDelete: Cascade)
+  recommendedStory   Story    @relation("RecommendedTo", fields: [recommendedStoryId], references: [id], onDelete: Cascade)
+
+  @@unique([storyId, recommendedStoryId])
+  @@index([storyId])
+  @@index([recommendedStoryId])
+  @@index([score])
 }

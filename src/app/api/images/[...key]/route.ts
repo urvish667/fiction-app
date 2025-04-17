@@ -4,7 +4,7 @@ import { S3Service } from "@/lib/s3-service";
 // GET endpoint to serve images from S3
 export async function GET(
   request: NextRequest,
-  context: { params: { key: string[] } }
+  context: { params: { key: string[] } | Promise<{ key: string[] }> }
 ) {
   try {
     // Get the key from the URL - await the params in Next.js 14
