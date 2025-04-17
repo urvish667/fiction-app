@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
+import { useSearchParams } from "next/navigation"
 import Navbar from "@/components/navbar"
 import SearchBar from "@/components/search-bar"
 import FilterPanel from "@/components/filter-panel"
@@ -54,6 +55,34 @@ export default function BrowsePage() {
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [selectedLanguage, setSelectedLanguage] = useState<string>("") // Default to no language filter
   const [storyStatus, setStoryStatus] = useState<"all" | "ongoing" | "completed">("all") // Default to show all stories
+
+  // Get URL parameters
+  const searchParams = useSearchParams()
+  const genreParam = searchParams ? searchParams.get("genre") : null
+
+  // Set initial genre filter from URL parameter and trigger data fetch
+  useEffect(() => {
+    const initializeFilters = async () => {
+      if (genreParam) {
+        // Decode the genre parameter (it might be URL-encoded)
+        const decodedGenre = decodeURIComponent(genreParam)
+
+        // Update the selected genres state
+        setSelectedGenres([decodedGenre])
+      }
+    }
+
+    initializeFilters()
+  }, [genreParam])
+
+  // Force a fetch when the component mounts with a genre parameter
+  useEffect(() => {
+    // Only run this effect once on mount if we have a genre parameter
+    if (genreParam && selectedGenres.length > 0) {
+      // The main fetch effect will handle the actual API call
+    }
+  }, [genreParam, selectedGenres])
+
   const [sortBy, setSortBy] = useState("newest")
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [showFilters, setShowFilters] = useState(false)
@@ -89,8 +118,13 @@ export default function BrowsePage() {
 
     // Add genre filter if selected
     // The API expects the genre name, not the ID
-    if (selectedGenres.length === 1) {
-      params.genre = selectedGenres[0]
+    if (selectedGenres.length > 0) {
+      // If there's only one genre, use it directly
+      if (selectedGenres.length === 1) {
+        params.genre = selectedGenres[0]
+      }
+      // If there are multiple genres, we'll handle it client-side
+      // (API currently doesn't support multiple genre filtering)
     }
 
     // Add tags filter if selected
@@ -187,10 +221,10 @@ export default function BrowsePage() {
     let filteredStories = stories;
 
     // Apply filters if needed
-    if (selectedGenres.length > 1 || selectedTags.length > 0 || searchQuery || selectedLanguage || storyStatus !== "all") {
+    if (selectedGenres.length > 0 || selectedTags.length > 0 || searchQuery || selectedLanguage || storyStatus !== "all") {
       filteredStories = stories.filter(story => {
-      // Apply genre filter if multiple genres are selected
-      const matchesGenre = selectedGenres.length > 1
+      // Apply genre filter if any genres are selected
+      const matchesGenre = selectedGenres.length > 0
         ? selectedGenres.includes(story.genre || 'General')
         : true;
 
@@ -283,6 +317,12 @@ export default function BrowsePage() {
 
   // Fetch stories from the API
   useEffect(() => {
+    // Skip the initial fetch if we have a genre parameter from the URL
+    // We'll fetch after setting the selectedGenres state
+    if (genreParam && selectedGenres.length === 0) {
+      return;
+    }
+
     const fetchStories = async () => {
       setLoading(true)
       setError(null)
@@ -305,7 +345,7 @@ export default function BrowsePage() {
         setStories(filteredStories)
 
         // If we're doing client-side filtering, adjust the total counts
-        if (selectedGenres.length > 1 || selectedTags.length > 0) {
+        if (selectedGenres.length > 0 || selectedTags.length > 0) {
           setTotalStories(filteredStories.length)
           setTotalPages(Math.ceil(filteredStories.length / storiesPerPage))
         } else {

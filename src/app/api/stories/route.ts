@@ -54,43 +54,65 @@ export async function GET(request: NextRequest) {
     const where: any = {};
 
     if (genre) {
-      where.genre = {
-        name: genre
-      };
+      // Use case-insensitive matching for genre name
+      where.AND = where.AND || [];
+      where.AND.push({
+        genre: {
+          name: {
+            equals: genre,
+            mode: 'insensitive'
+          }
+        }
+      });
     }
     if (language) {
-      where.language = {
-        name: language
-      };
+      // Use case-insensitive matching for language name
+      where.AND = where.AND || [];
+      where.AND.push({
+        language: {
+          name: {
+            equals: language,
+            mode: 'insensitive'
+          }
+        }
+      });
     }
-    if (authorId) where.authorId = authorId;
+    if (authorId) {
+      where.AND = where.AND || [];
+      where.AND.push({ authorId });
+    }
 
     // Handle tags parameter - can be a comma-separated list
     if (tags) {
       const tagValues = tags.split(',').map(t => t.trim().toLowerCase());
-      where.tags = {
-        some: {
-          tag: {
-            name: {
-              in: tagValues
+      where.AND = where.AND || [];
+      where.AND.push({
+        tags: {
+          some: {
+            tag: {
+              name: {
+                in: tagValues
+              }
             }
           }
         }
-      };
+      });
     }
 
     // Handle status parameter - can be a comma-separated list
     if (status) {
+      where.AND = where.AND || [];
+
       if (status.includes(',')) {
         // If comma-separated, use 'in' operator
         const statusValues = status.split(',').map(s => s.trim());
-        where.status = { in: statusValues };
+        where.AND.push({ status: { in: statusValues } });
       } else if (status === "all") {
         // If 'all', include both 'ongoing' and 'completed'
-        where.status = { in: ["ongoing", "completed"] };
+        where.AND.push({ status: { in: ["ongoing", "completed"] } });
       } else {
         // Single status value
-        where.status = status;
+        where.AND.push({ status });
       }
     }
 
@@ -121,7 +143,27 @@ export async function GET(request: NextRequest) {
 
     // Only show non-draft stories unless user is requesting their own
     if (!session?.user?.id || (authorId !== session.user.id)) {
-      where.status = { not: "draft" };
+      // Use AND condition to combine with existing status filter if it exists
+      if (where.status) {
+        // If status is already an object with 'in' property, modify it to exclude 'draft'
+        if (where.status.in) {
+          where.status = {
+            in: where.status.in.filter((s: string) => s !== 'draft')
+          };
+        }
+        // If status is a simple string, convert to an object
+        else if (typeof where.status === 'string') {
+          const currentStatus = where.status;
+          where.status = {
+            equals: currentStatus,
+            not: 'draft'
+          };
+        }
+      } else {
+        // If no status filter yet, just exclude drafts
+        where.AND = where.AND || [];
+        where.AND.push({ status: { not: "draft" } });
+      }
     }
 
     // Execute query with count

@@ -69,15 +69,21 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Trending Categories Section */}
+      {/* Explore Categories Section */}
       <section className="py-16 px-8 bg-muted/50">
         <div className="container mx-auto">
           <h2 className="text-3xl font-bold mb-10">Explore Categories</h2>
           <div className="flex flex-wrap gap-3 justify-center">
             {categories.map((category) => (
-              <Button key={category} variant="secondary" className="rounded-full">
-                {category}
-              </Button>
+              <Link
+                key={category}
+                href={`/browse?genre=${encodeURIComponent(category)}`}
+                passHref
+              >
+                <Button variant="secondary" className="rounded-full">
+                  {category}
+                </Button>
+              </Link>
             ))}
           </div>
         </div>
@@ -209,11 +215,26 @@ const categories = [
   "Fantasy",
   "Science Fiction",
   "Mystery",
+  "Thriller",
   "Romance",
   "Horror",
+  "Historical",
   "Adventure",
-  "Historical Fiction",
   "Young Adult",
-  "Thriller",
+  "Drama",
+  "Comedy",
+  "Non-Fiction",
+  "Memoir",
+  "Biography",
+  "Self-Help",
+  "Children",
+  "Crime",
   "Poetry",
+  "LGBTQ+",
+  "Short Story",
+  "Urban",
+  "Paranormal",
+  "Dystopian",
+  "Slice of Life",
+  "Fanfiction"
 ]
