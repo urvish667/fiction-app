@@ -36,6 +36,8 @@ export default function StoryInfoPage() {
   const [imageFallback, setImageFallback] = useState(false)
   const [isFollowing, setIsFollowing] = useState(false)
   const [followLoading, setFollowLoading] = useState(false)
+  const [likeLoading, setLikeLoading] = useState(false)
+  const [bookmarkLoading, setBookmarkLoading] = useState(false)
 
   // Fetch story data based on slug
   useEffect(() => {
@@ -144,6 +146,8 @@ export default function StoryInfoPage() {
     try {
       if (!story) return;
 
+      setLikeLoading(true)
+
       if (story.isLiked) {
         await StoryService.unlikeStory(story.id)
       } else {
@@ -155,6 +159,13 @@ export default function StoryInfoPage() {
       setStory(updatedStory)
     } catch (err) {
       console.error("Error updating like status:", err)
+      toast({
+        title: "Error",
+        description: "Failed to update like status",
+        variant: "destructive"
+      })
+    } finally {
+      setLikeLoading(false)
     }
   }
 
@@ -177,6 +188,8 @@ export default function StoryInfoPage() {
     try {
       if (!story) return;
 
+      setBookmarkLoading(true)
+
       if (story.isBookmarked) {
         await StoryService.removeBookmark(story.id)
       } else {
@@ -188,6 +201,13 @@ export default function StoryInfoPage() {
       setStory(updatedStory)
     } catch (err) {
       console.error("Error updating bookmark status:", err)
+      toast({
+        title: "Error",
+        description: "Failed to update bookmark status",
+        variant: "destructive"
+      })
+    } finally {
+      setBookmarkLoading(false)
     }
   }
 
@@ -319,13 +339,19 @@ export default function StoryInfoPage() {
             >
               <h1 className="text-3xl md:text-4xl font-bold mb-2">{story.title}</h1>
 
-              {/* Author Info Section (Original Structure) */}
+              {/* Author Info Section with Genre */}
               {author && (
-                  <div className="flex items-center gap-3 mb-4 text-lg">
+                  <div className="flex items-center flex-wrap gap-3 mb-4 text-lg">
                     <span>By</span>
                     <Link href={`/user/${author.username || ''}`} className="font-semibold hover:text-primary">
                         {author.name || author.username || 'Unknown Author'}
                     </Link>
+                    <span className="text-muted-foreground">•</span>
+                    <Badge variant="secondary" className="text-sm">
+                      {typeof story.genre === 'object' && story.genre !== null
+                        ? (story.genre as {name: string}).name
+                        : (typeof story.genre === 'string' ? story.genre : 'General')}
+                    </Badge>
                   </div>
               )}
 
@@ -348,9 +374,14 @@ export default function StoryInfoPage() {
                   onClick={handleLike}
                   className="flex items-center gap-2"
                   title={!session ? "Sign in to like this story" : undefined}
+                  disabled={likeLoading}
                 >
-                  <Heart size={16} className={story.isLiked ? "fill-current text-red-500" : ""} />
-                  {story.likeCount || 0} Likes
+                  {likeLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                  ) : (
+                    <Heart size={16} className={story.isLiked ? "fill-current text-red-500" : ""} />
+                  )}
+                  {likeLoading ? "Processing..." : `${story.likeCount || 0} Likes`}
                 </Button>
 
                 <Button
@@ -359,9 +390,14 @@ export default function StoryInfoPage() {
                   onClick={handleBookmark}
                   className="flex items-center gap-2"
                   title={!session ? "Sign in to bookmark this story" : undefined}
+                  disabled={bookmarkLoading}
                 >
-                  <Bookmark size={16} className={story.isBookmarked ? "fill-current text-primary" : ""} />
-                  {story.isBookmarked ? 'Saved' : 'Save'}
+                  {bookmarkLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                  ) : (
+                    <Bookmark size={16} className={story.isBookmarked ? "fill-current text-primary" : ""} />
+                  )}
+                  {bookmarkLoading ? "Processing..." : (story.isBookmarked ? 'Saved' : 'Save')}
                 </Button>
 
                 {/* Follow button - only show if author exists and is not the current user */}

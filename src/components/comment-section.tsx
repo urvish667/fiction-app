@@ -32,6 +32,11 @@ export default function CommentSection({ storyId }: CommentSectionProps) {
   const [editContent, setEditContent] = useState("")
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
   const [replyContent, setReplyContent] = useState("")
+  const [expandedReplies, setExpandedReplies] = useState<{[key: string]: Comment[]}>({})
+  const [loadingReplies, setLoadingReplies] = useState<{[key: string]: boolean}>({})
+  const [editingReply, setEditingReply] = useState<string | null>(null)
+  const [editReplyContent, setEditReplyContent] = useState("")
+  const [likingComment, setLikingComment] = useState<{[key: string]: boolean}>({})
 
   // Fetch comments
   useEffect(() => {
@@ -207,6 +212,14 @@ export default function CommentSection({ storyId }: CommentSectionProps) {
         return comment
       }))
 
+      // If replies are already expanded for this comment, add the new reply
+      if (expandedReplies[parentId]) {
+        setExpandedReplies(prev => ({
+          ...prev,
+          [parentId]: [...prev[parentId], createdReply]
+        }))
+      }
+
       // Reset reply state
       setReplyingTo(null)
       setReplyContent("")
@@ -224,6 +237,208 @@ export default function CommentSection({ storyId }: CommentSectionProps) {
       })
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  // Handle like/unlike for comments and replies
+  const handleLike = async (id: string, isReply: boolean = false) => {
+    if (!session) {
+      router.push(`/login?callbackUrl=/story/${storyId}`)
+      return
+    }
+
+    // Set liking state
+    setLikingComment(prev => ({ ...prev, [id]: true }))
+
+    try {
+      // This is a placeholder - you would need to implement the actual API call
+      // For now, we'll just simulate a successful like
+      await new Promise(resolve => setTimeout(resolve, 300))
+
+      // Update the UI to show the like
+      // In a real implementation, you would update based on the API response
+      if (isReply) {
+        // Update the reply in expandedReplies
+        setExpandedReplies(prev => {
+          const newState = { ...prev }
+
+          // Find which comment this reply belongs to
+          Object.keys(newState).forEach(commentId => {
+            newState[commentId] = newState[commentId].map(reply => {
+              if (reply.id === id) {
+                return {
+                  ...reply,
+                  isLiked: !reply.isLiked,
+                  likeCount: reply.isLiked ? (reply.likeCount || 1) - 1 : (reply.likeCount || 0) + 1
+                }
+              }
+              return reply
+            })
+          })
+
+          return newState
+        })
+      } else {
+        // Update the comment
+        setComments(prev => prev.map(comment => {
+          if (comment.id === id) {
+            return {
+              ...comment,
+              isLiked: !comment.isLiked,
+              likeCount: comment.isLiked ? (comment.likeCount || 1) - 1 : (comment.likeCount || 0) + 1
+            }
+          }
+          return comment
+        }))
+      }
+    } catch (err) {
+      console.error("Error liking comment/reply:", err)
+      toast({
+        title: "Error",
+        description: "Failed to like comment",
+        variant: "destructive"
+      })
+    } finally {
+      setLikingComment(prev => ({ ...prev, [id]: false }))
+    }
+  }
+
+  // Handle edit reply
+  const handleEditReply = async (commentId: string, replyId: string) => {
+    if (!editReplyContent.trim() || !session) return
+
+    try {
+      setIsSubmitting(true)
+
+      // This would be your actual API call
+      // const updatedReply = await CommentService.updateComment(replyId, {
+      //   content: editReplyContent
+      // })
+
+      // For now, simulate a successful update
+      await new Promise(resolve => setTimeout(resolve, 300))
+
+      // Update the reply in the UI
+      setExpandedReplies(prev => {
+        const newState = { ...prev }
+
+        if (newState[commentId]) {
+          newState[commentId] = newState[commentId].map(reply => {
+            if (reply.id === replyId) {
+              return {
+                ...reply,
+                content: editReplyContent
+              }
+            }
+            return reply
+          })
+        }
+
+        return newState
+      })
+
+      // Reset editing state
+      setEditingReply(null)
+      setEditReplyContent("")
+
+      toast({
+        title: "Reply updated",
+        description: "Your reply has been updated successfully"
+      })
+    } catch (err) {
+      console.error("Error updating reply:", err)
+      toast({
+        title: "Error",
+        description: "Failed to update your reply",
+        variant: "destructive"
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  // Handle delete reply
+  const handleDeleteReply = async (commentId: string, replyId: string) => {
+    if (!session) return
+
+    try {
+      // This would be your actual API call
+      // await CommentService.deleteComment(replyId)
+
+      // For now, simulate a successful delete
+      await new Promise(resolve => setTimeout(resolve, 300))
+
+      // Remove the reply from the UI
+      setExpandedReplies(prev => {
+        const newState = { ...prev }
+
+        if (newState[commentId]) {
+          newState[commentId] = newState[commentId].filter(reply => reply.id !== replyId)
+        }
+
+        return newState
+      })
+
+      // Update the parent comment's reply count
+      setComments(comments.map(comment => {
+        if (comment.id === commentId) {
+          return {
+            ...comment,
+            replyCount: Math.max((comment.replyCount || 1) - 1, 0)
+          }
+        }
+        return comment
+      }))
+
+      toast({
+        title: "Reply deleted",
+        description: "Your reply has been deleted successfully"
+      })
+    } catch (err) {
+      console.error("Error deleting reply:", err)
+      toast({
+        title: "Error",
+        description: "Failed to delete your reply",
+        variant: "destructive"
+      })
+    }
+  }
+
+  // Load replies for a comment
+  const loadReplies = async (commentId: string) => {
+    // If replies are already loaded, toggle visibility instead
+    if (expandedReplies[commentId]) {
+      setExpandedReplies(prev => {
+        const newState = {...prev}
+        delete newState[commentId]
+        return newState
+      })
+      return
+    }
+
+    // Set loading state
+    setLoadingReplies(prev => ({ ...prev, [commentId]: true }))
+
+    try {
+      const response = await CommentService.getReplies(commentId, {
+        page: 1,
+        limit: 50 // Load a reasonable number of replies
+      })
+
+      // Store the replies
+      setExpandedReplies(prev => ({
+        ...prev,
+        [commentId]: response.replies
+      }))
+    } catch (err) {
+      console.error("Error loading replies:", err)
+      toast({
+        title: "Error",
+        description: "Failed to load replies",
+        variant: "destructive"
+      })
+    } finally {
+      setLoadingReplies(prev => ({ ...prev, [commentId]: false }))
     }
   }
 
@@ -368,16 +583,15 @@ export default function CommentSection({ storyId }: CommentSectionProps) {
                     variant="ghost"
                     size="sm"
                     className="h-8 px-2 text-xs"
-                    onClick={() => {
-                      if (!session) {
-                        router.push(`/login?callbackUrl=/story/${storyId}`);
-                        return;
-                      }
-                      // Like functionality would go here
-                    }}
+                    onClick={() => handleLike(comment.id)}
+                    disabled={likingComment[comment.id]}
                   >
-                    <Heart size={14} className="mr-1" />
-                    Like
+                    <Heart
+                      size={14}
+                      className={`mr-1 ${comment.isLiked ? 'fill-current text-red-500' : ''}`}
+                    />
+                    {likingComment[comment.id] ? 'Liking...' :
+                      comment.isLiked ? `${comment.likeCount || 1} Liked` : 'Like'}
                   </Button>
 
                   <Button
@@ -436,18 +650,138 @@ export default function CommentSection({ storyId }: CommentSectionProps) {
                   </div>
                 )}
 
-                {/* Show reply count */}
+                {/* Show reply count and toggle button */}
                 {comment.replyCount > 0 && (
                   <div className="mt-2 ml-4">
                     <Button
                       variant="link"
                       className="h-auto p-0 text-sm"
-                      onClick={() => {
-                        // Load replies functionality would go here
-                      }}
+                      onClick={() => loadReplies(comment.id)}
+                      disabled={loadingReplies[comment.id]}
                     >
-                      View {comment.replyCount} {comment.replyCount === 1 ? "reply" : "replies"}
+                      {loadingReplies[comment.id] ? (
+                        <>
+                          <div className="animate-spin rounded-full h-3 w-3 border-t-2 border-b-2 border-primary mr-2"></div>
+                          Loading replies...
+                        </>
+                      ) : expandedReplies[comment.id] ? (
+                        `Hide ${comment.replyCount} ${comment.replyCount === 1 ? "reply" : "replies"}`
+                      ) : (
+                        `View ${comment.replyCount} ${comment.replyCount === 1 ? "reply" : "replies"}`
+                      )}
                     </Button>
+                  </div>
+                )}
+
+                {/* Display replies when expanded */}
+                {expandedReplies[comment.id] && expandedReplies[comment.id].length > 0 && (
+                  <div className="mt-4 ml-8 space-y-4">
+                    {expandedReplies[comment.id].map(reply => (
+                      <div key={reply.id} className="flex gap-3">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={reply.user?.image || "/placeholder-user.jpg"} alt={reply.user?.name || "User"} />
+                          <AvatarFallback>{(reply.user?.name?.[0] || "U").toUpperCase()}</AvatarFallback>
+                        </Avatar>
+
+                        <div className="flex-1">
+                          <div className="bg-muted/30 rounded-lg p-3">
+                            <div className="flex justify-between items-start mb-1">
+                              <div>
+                                <span className="font-medium text-sm">{reply.user?.name || reply.user?.username || "Unknown User"}</span>
+                                <span className="text-xs text-muted-foreground ml-2">{formatDate(reply.createdAt)}</span>
+                              </div>
+
+                              {/* Reply dropdown menu */}
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-6 w-6">
+                                    <MoreVertical size={14} />
+                                    <span className="sr-only">More</span>
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem>
+                                    <Flag size={14} className="mr-2" />
+                                    Report
+                                  </DropdownMenuItem>
+                                  {session?.user?.id === reply.userId && (
+                                    <>
+                                      <DropdownMenuItem onClick={() => {
+                                        setEditingReply(reply.id);
+                                        setEditReplyContent(reply.content);
+                                      }}>
+                                        <Edit size={14} className="mr-2" />
+                                        Edit
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        className="text-destructive"
+                                        onClick={() => handleDeleteReply(comment.id, reply.id)}
+                                      >
+                                        <Trash size={14} className="mr-2" />
+                                        Delete
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+
+                            {/* Reply content - show edit form if editing */}
+                            {editingReply === reply.id ? (
+                              <div className="space-y-2">
+                                <Textarea
+                                  value={editReplyContent}
+                                  onChange={(e) => setEditReplyContent(e.target.value)}
+                                  className="resize-none text-sm"
+                                  disabled={isSubmitting}
+                                />
+                                <div className="flex justify-end gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 text-xs"
+                                    onClick={() => {
+                                      setEditingReply(null);
+                                      setEditReplyContent("");
+                                    }}
+                                    disabled={isSubmitting}
+                                  >
+                                    Cancel
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    className="h-7 text-xs"
+                                    onClick={() => handleEditReply(comment.id, reply.id)}
+                                    disabled={!editReplyContent.trim() || isSubmitting}
+                                  >
+                                    {isSubmitting ? "Saving..." : "Save"}
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="text-sm">{reply.content}</p>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-2 mt-1 ml-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-2 text-xs"
+                              onClick={() => handleLike(reply.id, true)}
+                              disabled={likingComment[reply.id]}
+                            >
+                              <Heart
+                                size={12}
+                                className={`mr-1 ${reply.isLiked ? 'fill-current text-red-500' : ''}`}
+                              />
+                              {likingComment[reply.id] ? 'Liking...' :
+                                reply.isLiked ? `${reply.likeCount || 1} Liked` : 'Like'}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>

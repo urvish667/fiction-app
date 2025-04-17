@@ -34,6 +34,7 @@ import { useSession } from "next-auth/react"
 import { StoryService } from "@/services/story-service"
 import { Story as StoryType, Chapter as ChapterType } from "@/types/story"
 import { useToast } from "@/components/ui/use-toast"
+import { SupportButton } from "@/components/SupportButton"
 
 export default function ReadingPage() {
   const params = useParams()
@@ -53,8 +54,11 @@ export default function ReadingPage() {
   const [showComments, setShowComments] = useState(false)
   const [fontSize, setFontSize] = useState(16)
   const [readingProgress, setReadingProgress] = useState(0)
-  const [liked, setLiked] = useState(false)
-  const [following, setFollowing] = useState(false)
+  const [isLiked, setIsLiked] = useState(false)
+  const [isFollowing, setIsFollowing] = useState(false)
+  const [followLoading, setFollowLoading] = useState(false)
+  const [likeLoading, setLikeLoading] = useState(false)
+  const [contentLength, setContentLength] = useState<'short' | 'medium' | 'long'>('medium')
 
   // Fetch story and chapter data
   useEffect(() => {
@@ -108,6 +112,16 @@ export default function ReadingPage() {
             // Set chapter data if published
             setChapter(chapterDetails)
 
+            // Determine content length based on word count
+            const wordCount = (chapterDetails.content || '').replace(/<[^>]*>/g, '').split(/\s+/).length
+            if (wordCount > 3000) {
+              setContentLength('long')
+            } else if (wordCount > 1000) {
+              setContentLength('medium')
+            } else {
+              setContentLength('short')
+            }
+
             // Update reading progress if available
             if (chapterDetails.readingProgress) {
               setReadingProgress(chapterDetails.readingProgress)
@@ -126,6 +140,28 @@ export default function ReadingPage() {
 
     fetchData()
   }, [slug, chapterNumber, chapter, story])
+
+  // Check if the user is following the author and if the story is liked
+  useEffect(() => {
+    const checkUserInteractions = async () => {
+      if (!session || !story || !story.author || typeof story.author !== 'object') return
+
+      try {
+        // Don't check follow status if the author is the current user
+        if (story.author.id !== session.user.id && story.author.username) {
+          const isFollowing = await StoryService.isFollowingUser(story.author.username)
+          setIsFollowing(isFollowing)
+        }
+
+        // Set like status based on story data
+        setIsLiked(story.isLiked || false)
+      } catch (err) {
+        console.error("Error checking user interactions:", err)
+      }
+    }
+
+    checkUserInteractions()
+  }, [session, story])
 
   // Track reading progress
   useEffect(() => {
@@ -187,6 +223,169 @@ export default function ReadingPage() {
   const adjustFontSize = (amount: number) => {
     setFontSize((prev) => Math.min(Math.max(prev + amount, 12), 24))
   }
+
+  // Handle like/unlike story
+  const handleLike = async () => {
+    if (!session) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to like this story",
+        variant: "default",
+        action: (
+          <Button variant="default" size="sm" onClick={() => router.push(`/login?callbackUrl=/story/${slug}/chapter/${chapterNumber}`)}>
+            Sign in
+          </Button>
+        ),
+      })
+      return
+    }
+
+    if (!story) return;
+
+    try {
+      setLikeLoading(true)
+
+      if (isLiked) {
+        await StoryService.unlikeStory(story.id)
+      } else {
+        await StoryService.likeStory(story.id)
+      }
+
+      // Toggle like status locally
+      setIsLiked(!isLiked)
+    } catch (err) {
+      console.error("Error updating like status:", err)
+      toast({
+        title: "Error",
+        description: "Failed to update like status",
+        variant: "destructive"
+      })
+    } finally {
+      setLikeLoading(false)
+    }
+  }
+
+  // Handle follow/unfollow author
+  const handleFollow = async () => {
+    if (!session) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to follow this author",
+        variant: "default",
+        action: (
+          <Button variant="default" size="sm" onClick={() => router.push(`/login?callbackUrl=/story/${slug}/chapter/${chapterNumber}`)}>
+            Sign in
+          </Button>
+        ),
+      })
+      return
+    }
+
+    if (!story || !story.author || typeof story.author !== 'object') return;
+
+    // Don't allow following yourself
+    if (story.author.id === session.user.id) return;
+
+    // Need username to follow/unfollow
+    if (!story.author.username) return;
+
+    setFollowLoading(true)
+
+    try {
+      if (isFollowing) {
+        await StoryService.unfollowUser(story.author.username)
+        setIsFollowing(false)
+      } else {
+        await StoryService.followUser(story.author.username)
+        setIsFollowing(true)
+      }
+    } catch (err) {
+      console.error("Error updating follow status:", err)
+      toast({
+        title: "Error",
+        description: "Failed to update follow status",
+        variant: "destructive"
+      })
+    } finally {
+      setFollowLoading(false)
+    }
+  }
+
+  // Function to split content for ad placement
+  const splitContentForAds = (content: string, parts: number, partIndex: number): string => {
+    // Parse the HTML content
+    const parser = new DOMParser()
+    const doc = parser.parseFromString(content, 'text/html')
+    const elements = Array.from(doc.body.children)
+
+    // If no elements, return empty string
+    if (elements.length === 0) return ''
+
+    // Calculate the number of elements per part
+    const elementsPerPart = Math.ceil(elements.length / parts)
+
+    // Calculate start and end indices for the requested part
+    const startIndex = partIndex * elementsPerPart
+    const endIndex = Math.min(startIndex + elementsPerPart, elements.length)
+
+    // If indices are out of range, return empty string
+    if (startIndex >= elements.length) return ''
+
+    // Create a container for the part
+    const container = document.createElement('div')
+
+    // Add the elements for this part to the container
+    for (let i = startIndex; i < endIndex; i++) {
+      container.appendChild(elements[i].cloneNode(true))
+    }
+
+    // Return the HTML of the container
+    return container.innerHTML
+  }
+
+  // Handle copy protection notification
+  const handleCopyAttempt = (e: React.ClipboardEvent | React.MouseEvent) => {
+    e.preventDefault()
+    toast({
+      title: "Content Protected",
+      description: "This content is protected and cannot be copied.",
+      variant: "default",
+    })
+    return false
+  }
+
+  // Handle share functionality
+  const handleShare = (platform: string) => {
+    if (!story || !chapter) return;
+
+    const url = `${window.location.origin}/story/${slug}/chapter/${chapterNumber}`;
+    const title = `${chapter.title} - ${story.title}`;
+    const text = `Check out "${chapter.title}" from ${story.title}`;
+
+    switch (platform) {
+      case 'twitter':
+        window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}&title=${encodeURIComponent(title)}`, '_blank');
+        break;
+      case 'facebook':
+        window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank');
+        break;
+      case 'copy':
+        navigator.clipboard.writeText(url).then(() => {
+          toast({
+            title: "Link copied",
+            description: "Chapter link copied to clipboard",
+          });
+        }).catch(err => {
+          console.error('Failed to copy link:', err);
+          toast({
+            title: "Copy failed",
+            description: "Failed to copy link to clipboard",
+            variant: "destructive"
+          });
+        });
+        break;
+    }
+  };
 
   // Format date
   const formatDate = (dateInput: Date | string) => {
@@ -382,10 +581,115 @@ export default function ReadingPage() {
             className="prose prose-lg dark:prose-invert max-w-none mb-12"
             style={{ fontSize: `${fontSize}px` }}
           >
-            {/* Render the actual chapter content */}
-            <div dangerouslySetInnerHTML={{ __html: chapter.content || 'Content not available.' }} />
+            {/* Smart Ad Placement based on content length */}
+            {contentLength === 'long' ? (
+              // For long content: Show ads at 1/3 and 2/3 of the content
+              <>
+                {/* First third of content */}
+                <div
+                  className="content-protected"
+                  dangerouslySetInnerHTML={{
+                    __html: chapter.content ?
+                      splitContentForAds(chapter.content, 3, 0) :
+                      'Content not available.'
+                  }}
+                  onContextMenu={handleCopyAttempt}
+                  onCopy={handleCopyAttempt}
+                  onCut={handleCopyAttempt}
+                  onDrag={handleCopyAttempt}
+                  onDragStart={handleCopyAttempt}
+                />
 
-            <AdBanner type="interstitial" className="my-8 w-full h-32" />
+                {/* First ad after 1/3 of content */}
+                <AdBanner type="interstitial" className="my-8 w-full h-32" />
+
+                {/* Second third of content */}
+                <div
+                  className="content-protected"
+                  dangerouslySetInnerHTML={{
+                    __html: chapter.content ?
+                      splitContentForAds(chapter.content, 3, 1) :
+                      ''
+                  }}
+                  onContextMenu={handleCopyAttempt}
+                  onCopy={handleCopyAttempt}
+                  onCut={handleCopyAttempt}
+                  onDrag={handleCopyAttempt}
+                  onDragStart={handleCopyAttempt}
+                />
+
+                {/* Second ad after 2/3 of content */}
+                <AdBanner type="interstitial" className="my-8 w-full h-32" />
+
+                {/* Final third of content */}
+                <div
+                  className="content-protected"
+                  dangerouslySetInnerHTML={{
+                    __html: chapter.content ?
+                      splitContentForAds(chapter.content, 3, 2) :
+                      ''
+                  }}
+                  onContextMenu={handleCopyAttempt}
+                  onCopy={handleCopyAttempt}
+                  onCut={handleCopyAttempt}
+                  onDrag={handleCopyAttempt}
+                  onDragStart={handleCopyAttempt}
+                />
+              </>
+            ) : contentLength === 'medium' ? (
+              // For medium content: Show one ad in the middle
+              <>
+                {/* First half of content */}
+                <div
+                  className="content-protected"
+                  dangerouslySetInnerHTML={{
+                    __html: chapter.content ?
+                      splitContentForAds(chapter.content, 2, 0) :
+                      'Content not available.'
+                  }}
+                  onContextMenu={handleCopyAttempt}
+                  onCopy={handleCopyAttempt}
+                  onCut={handleCopyAttempt}
+                  onDrag={handleCopyAttempt}
+                  onDragStart={handleCopyAttempt}
+                />
+
+                {/* Ad in the middle */}
+                <AdBanner type="interstitial" className="my-8 w-full h-32" />
+
+                {/* Second half of content */}
+                <div
+                  className="content-protected"
+                  dangerouslySetInnerHTML={{
+                    __html: chapter.content ?
+                      splitContentForAds(chapter.content, 2, 1) :
+                      ''
+                  }}
+                  onContextMenu={handleCopyAttempt}
+                  onCopy={handleCopyAttempt}
+                  onCut={handleCopyAttempt}
+                  onDrag={handleCopyAttempt}
+                  onDragStart={handleCopyAttempt}
+                />
+              </>
+            ) : (
+              // For short content: Show content first, then ad at the end
+              <>
+                {/* Full content */}
+                <div
+                  className="content-protected"
+                  dangerouslySetInnerHTML={{ __html: chapter.content || 'Content not available.' }}
+                  onContextMenu={handleCopyAttempt}
+                  onCopy={handleCopyAttempt}
+                  onCut={handleCopyAttempt}
+                  onDrag={handleCopyAttempt}
+                  onDragStart={handleCopyAttempt}
+                />
+
+                {/* Ad at the end */}
+                <AdBanner type="interstitial" className="my-8 w-full h-32" />
+              </>
+            )}
           </motion.div>
 
           {/* Chapter Navigation Buttons */}
@@ -416,29 +720,19 @@ export default function ReadingPage() {
             <div className="flex flex-wrap justify-between items-center gap-4 mb-8">
               <div className="flex items-center gap-4">
                 <Button
-                  variant={liked ? "default" : "outline"}
+                  variant={isLiked ? "default" : "outline"}
                   size="sm"
-                  onClick={() => {
-                    if (!session) {
-                      toast({
-                        title: "Sign in required",
-                        description: "Please sign in to like this story",
-                        variant: "default",
-                        action: (
-                          <Button variant="default" size="sm" onClick={() => router.push(`/login?callbackUrl=/story/${slug}/chapter/${chapterNumber}`)}>
-                            Sign in
-                          </Button>
-                        ),
-                      })
-                      return
-                    }
-                    setLiked(!liked)
-                  }}
+                  onClick={handleLike}
+                  disabled={likeLoading}
                   className="flex items-center gap-2"
                   title={!session ? "Sign in to like this story" : undefined}
                 >
-                  <Heart size={16} className={liked ? "fill-white" : ""} />
-                  {liked ? "Liked" : "Like"}
+                  {likeLoading ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-current mr-1"></div>
+                  ) : (
+                    <Heart size={16} className={isLiked ? "fill-current" : ""} />
+                  )}
+                  {isLiked ? "Liked" : "Like"}
                 </Button>
 
                 <Button
@@ -448,7 +742,7 @@ export default function ReadingPage() {
                   className="flex items-center gap-2"
                 >
                   <MessageSquare size={16} />
-                  Comments ({story.commentCount || 0})
+                  Story Comments ({story.commentCount || 0})
                 </Button>
 
                 <DropdownMenu>
@@ -459,39 +753,55 @@ export default function ReadingPage() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem>Twitter</DropdownMenuItem>
-                    <DropdownMenuItem>Facebook</DropdownMenuItem>
-                    <DropdownMenuItem>Copy Link</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleShare('twitter')}>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
+                        <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"></path>
+                      </svg>
+                      Twitter
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleShare('facebook')}>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
+                        <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path>
+                      </svg>
+                      Facebook
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleShare('copy')}>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                      </svg>
+                      Copy Link
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
 
-              {session ? (
+              {/* Only show follow button if user is not the author */}
+              {session && story?.author && typeof story.author === 'object' &&
+               session.user.id !== story.author.id ? (
                 <Button
-                  variant={following ? "default" : "outline"}
+                  variant={isFollowing ? "default" : "outline"}
                   size="sm"
-                  onClick={() => setFollowing(!following)}
+                  onClick={handleFollow}
+                  disabled={followLoading}
                   className="flex items-center gap-2"
                 >
-                  <Bell size={16} />
-                  {following ? "Following Author" : "Follow Author"}
+                  {followLoading ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-current mr-1"></div>
+                  ) : (
+                    <Bell size={16} />
+                  )}
+                  {isFollowing ? "Following Author" : "Follow Author"}
                 </Button>
+              ) : session && story?.author && typeof story.author === 'object' &&
+                  session.user.id === story.author.id ? (
+                /* Don't show anything if user is the author */
+                null
               ) : (
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => {
-                    toast({
-                      title: "Sign in required",
-                      description: "Please sign in to follow this author",
-                      variant: "default",
-                      action: (
-                        <Button variant="default" size="sm" onClick={() => router.push(`/login?callbackUrl=/story/${slug}/chapter/${chapterNumber}`)}>
-                          Sign in
-                        </Button>
-                      ),
-                    })
-                  }}
+                  onClick={handleFollow}
                   className="flex items-center gap-2"
                 >
                   <Bell size={16} />
@@ -510,22 +820,27 @@ export default function ReadingPage() {
                   transition={{ duration: 0.3 }}
                   className="mb-12"
                 >
-                  <h2 className="text-2xl font-bold mb-6">Comments</h2>
+                  <h2 className="text-2xl font-bold mb-6">Story Comments</h2>
                   <CommentSection storyId={story.id} />
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* Support the Author Section */}
-            <div className="bg-muted/30 rounded-lg p-6 text-center mb-12">
-              <h2 className="text-xl font-bold mb-2">Support the Author</h2>
-              <p className="text-muted-foreground mb-4">
-                If you enjoyed this chapter, consider supporting the author to help them create more amazing content.
-              </p>
-              <Button variant="default">Support {typeof story.author === 'object' ?
-                (story.author?.name || story.author?.username || "the Author") :
-                story.author || "the Author"}</Button>
-            </div>
+            {/* Support the Author Section - Only shown when monetization is enabled */}
+            {story.author && typeof story.author === 'object' && story.author.donationsEnabled && (
+              <div className="bg-muted/30 rounded-lg p-6 text-center mb-12">
+                <h2 className="text-xl font-bold mb-2">Support the Author</h2>
+                <p className="text-muted-foreground mb-4">
+                  If you enjoyed this chapter, consider supporting the author to help them create more amazing content.
+                </p>
+                <SupportButton
+                  authorId={story.author.id}
+                  donationMethod={story.author.donationMethod ?? null}
+                  donationLink={story.author.donationLink ?? null}
+                  authorName={story.author.name || story.author.username || 'Author'}
+                />
+              </div>
+            )}
 
             {/* More from this Author */}
             <div className="mb-12">

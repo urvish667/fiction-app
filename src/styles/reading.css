@@ -1,5 +1,18 @@
 /* Reading view styles */
 
+/* Prevent text selection in protected content */
+.content-protected {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Prevent right-click context menu on protected content */
+.content-protected {
+  -webkit-touch-callout: none;
+}
+
 /* Image alignment styles for reading view */
 .prose img, .prose img.editor-image {
   max-width: 100%;
