@@ -31,15 +31,15 @@ export function SupportButton({
     setIsProcessing(true);
     try {
       // Fixed amount for now
-      const amountInCents = 500; 
+      const amountInCents = 500;
 
       const response = await fetch('/api/donations/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
-          recipientId: authorId, 
+        body: JSON.stringify({
+          recipientId: authorId,
           amount: amountInCents,
           paymentMethod: donationMethod
         }),
@@ -75,7 +75,12 @@ export function SupportButton({
   const buttonText = `Support ${authorName || 'the Author'}`;
 
   return (
-    <Button onClick={handleDonation} disabled={isProcessing} variant="outline">
+    <Button
+      onClick={handleDonation}
+      disabled={isProcessing}
+      variant="outline"
+      className="bg-orange-500 hover:bg-orange-600 text-white border-orange-500 hover:border-orange-600"
+    >
       {isProcessing ? (
         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
       ) : (
@@ -84,4 +89,4 @@ export function SupportButton({
       {isProcessing ? 'Processing...' : buttonText}
     </Button>
   );
-} 
+}

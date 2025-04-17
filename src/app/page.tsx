@@ -122,7 +122,11 @@ function StoryCard({ story }: { story: Story }) {
             fill
             className="object-cover transition-transform hover:scale-105"
           />
-          <Badge className="absolute top-2 right-2">{story.genre}</Badge>
+          <Badge className="absolute top-2 right-2">
+            {typeof story.genre === 'object' && story.genre !== null
+              ? (story.genre as {name: string}).name
+              : (typeof story.genre === 'string' ? story.genre : 'General')}
+          </Badge>
         </div>
         <CardHeader className="pb-2">
           <h3 className="font-bold text-lg line-clamp-1">{story.title}</h3>

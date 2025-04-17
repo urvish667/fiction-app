@@ -114,7 +114,11 @@ export default function StoryCard({ story, viewMode = "grid" }: StoryCardProps) 
               }}
               unoptimized={true} // Skip Next.js image optimization for external URLs
             />
-            <Badge className="absolute top-2 right-2">{story.genre}</Badge>
+            <Badge className="absolute top-2 right-2">
+              {typeof story.genre === 'object' && story.genre !== null
+                ? (story.genre as {name: string}).name
+                : (typeof story.genre === 'string' ? story.genre : 'General')}
+            </Badge>
           </div>
         </div>
 

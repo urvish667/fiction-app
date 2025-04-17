@@ -256,9 +256,6 @@ export default function StoryInfoPage() {
   // Extract author details safely
   const author = story.author;
 
-  // *** Add console log to check the cover image URL ***
-  console.log('[Story Page Render] story.coverImage:', story?.coverImage);
-
   return (
     <div className="min-h-screen">
       <Navbar />
@@ -325,13 +322,7 @@ export default function StoryInfoPage() {
               {/* Author Info Section (Original Structure) */}
               {author && (
                   <div className="flex items-center gap-3 mb-4 text-lg">
-                    <Link href={`/user/${author.username || ''}`}>
-                       <Avatar className="h-8 w-8">
-                          <AvatarImage src={author.image || "/placeholder-user.jpg"} alt={author.name || author.username || 'Author'} />
-                          <AvatarFallback>{(author.name || author.username || "A").charAt(0)}</AvatarFallback>
-                        </Avatar>
-                    </Link>
-                    <span>by</span>
+                    <span>By</span>
                     <Link href={`/user/${author.username || ''}`} className="font-semibold hover:text-primary">
                         {author.name || author.username || 'Unknown Author'}
                     </Link>
@@ -425,6 +416,11 @@ export default function StoryInfoPage() {
                 </p>
               </div>
 
+              {/* Interstitial Ad between Description and Table of Contents */}
+              <div className="mb-6">
+                <AdBanner type="interstitial" className="w-full h-32" />
+              </div>
+
               {/* Chapters */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -450,26 +446,27 @@ export default function StoryInfoPage() {
           </div>
         </div>
 
-        {/* Ad Banner */}
-        <div className="mb-12">
-          <AdBanner type="interstitial" className="w-full h-32" />
-        </div>
 
-        {/* Support the Author Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.8 }}
-          className="mb-12 bg-muted/30 rounded-lg p-6 text-center"
-        >
-          <h2 className="text-xl font-bold mb-2">Support the Author</h2>
-          <p className="text-muted-foreground mb-4">
-            If you enjoyed this story, consider supporting the author to help them create more amazing content.
-          </p>
-          <Button variant="default">Support {typeof story.author === 'object' ?
-            (story.author?.name || story.author?.username || "the Author") :
-            story.author || "the Author"}</Button>
-        </motion.div>
+        {/* Support the Author Section - Only shown when monetization is enabled */}
+        {author?.donationsEnabled && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.8 }}
+            className="mb-12 bg-muted/30 rounded-lg p-6 text-center"
+          >
+            <h2 className="text-xl font-bold mb-2">Support the Author</h2>
+            <p className="text-muted-foreground mb-4">
+              If you enjoyed this story, consider supporting the author to help them create more amazing content.
+            </p>
+            <SupportButton
+              authorId={author.id}
+              donationMethod={author.donationMethod ?? null}
+              donationLink={author.donationLink ?? null}
+              authorName={author.name || author.username || 'Author'}
+            />
+          </motion.div>
+        )}
       </main>
 
       {/* Fixed Bottom Banner Ad */}
