@@ -38,8 +38,8 @@ export default function Navbar() {
 
   if (isLoading) {
     return (
-      <header className="px-8 sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-md">
-        <div className="container flex h-16 items-center justify-between">
+      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-md">
+        <div className="w-full max-w-screen-2xl mx-auto flex h-16 items-center justify-between px-4 sm:px-6">
           <Link href="/" className="flex items-center">
             <motion.h1
               className="text-2xl font-bold font-serif"
@@ -59,8 +59,8 @@ export default function Navbar() {
   }
 
   return (
-    <header className="px-8 sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-md">
-      <div className="container flex h-16 items-center justify-between">
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-md">
+      <div className="w-full max-w-screen-2xl mx-auto flex h-16 items-center justify-between px-4 sm:px-6">
         {/* Logo */}
         <Link href="/" className="flex items-center">
           <motion.h1
@@ -98,10 +98,17 @@ export default function Navbar() {
         </div>
 
         {/* Mobile Navigation */}
-        <div className="md:hidden flex items-center">
+        <div className="md:hidden flex items-center space-x-1 ml-auto">
+          {/* Show user avatar on mobile if authenticated, otherwise show login button */}
+          {isAuthenticated && userWithAvatar ? (
+            <UserAvatarMenu user={userWithAvatar} onLogout={handleLogout} />
+          ) : (
+            <Button size="sm" onClick={() => setShowLoginModal(true)}>Login</Button>
+          )}
+
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="mr-2">
+              <Button variant="ghost" size="icon" className="ml-0">
                 <Menu className="h-5 w-5" />
                 <span className="sr-only">Toggle menu</span>
               </Button>
@@ -115,38 +122,7 @@ export default function Navbar() {
                   Browse
                 </Link>
 
-                {isAuthenticated && session.user ? (
-                  <>
-                    <Link href={`/user/${session.user.name}`} className="text-lg font-medium">
-                      Profile
-                    </Link>
-                    <Link href="/library" className="text-lg font-medium">
-                      Library
-                    </Link>
-                    <Link href="/works" className="text-lg font-medium">
-                      My Works
-                    </Link>
-                    <Link href="/notifications" className="text-lg font-medium flex items-center">
-                      Notifications
-                      {session.user.unreadNotifications > 0 && (
-                        <span className="ml-2 bg-destructive text-destructive-foreground rounded-full px-2 py-0.5 text-xs">
-                          {session.user.unreadNotifications}
-                        </span>
-                      )}
-                    </Link>
-                    <Link href="/settings" className="text-lg font-medium">
-                      Settings
-                    </Link>
-                    <Link href="/dashboard" className="text-lg font-medium">
-                      Dashboard
-                    </Link>
-                    <Button variant="ghost" onClick={handleLogout}>
-                      Log out
-                    </Button>
-                  </>
-                ) : (
-                  <Button onClick={() => setShowLoginModal(true)}>Login / Signup</Button>
-                )}
+                {/* No need to duplicate user menu items here since we have the avatar menu on mobile */}
               </div>
             </SheetContent>
           </Sheet>
