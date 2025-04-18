@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { PenSquare, Eye, BarChart3, MoreVertical, Trash2, Copy, X, Heart, MessageSquare, BookOpen, Loader2, Clock } from "lucide-react"
+import StoryCardSkeleton from "@/components/story-card-skeleton"
 import Navbar from "@/components/navbar"
 import { useToast } from "@/components/ui/use-toast"
 import { StoryService } from "@/services/story-service"
@@ -302,12 +303,12 @@ function WorksContent({ works, searchQuery, isLoading, onDeleteStory }: WorksCon
 
   if (isLoading) {
     return (
-      <div className="text-center py-12 bg-muted/30 rounded-lg">
-        <h3 className="text-xl font-semibold mb-2">Loading your stories...</h3>
-        <div className="animate-pulse flex flex-col items-center">
-          <div className="h-4 bg-muted-foreground/20 rounded w-48 mb-4"></div>
-          <div className="h-4 bg-muted-foreground/20 rounded w-32"></div>
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {Array.from({ length: 8 }).map((_, index) => (
+          <div key={`skeleton-${index}`}>
+            <StoryCardSkeleton viewMode="grid" />
+          </div>
+        ))}
       </div>
     )
   }
@@ -332,13 +333,22 @@ function WorksContent({ works, searchQuery, isLoading, onDeleteStory }: WorksCon
   }
 
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {works.map((work) => (
-          <Card key={work.id} className="overflow-hidden flex flex-col">
-            <div className="relative aspect-[3/2] overflow-hidden">
-              {/* Log the coverImage for debugging */}
-              <>{console.log(`Story ${work.id} coverImage:`, work.coverImage)}</>
+    <motion.div
+      layout
+      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+    >
+      {works.map((work) => (
+        <motion.div
+          key={work.id}
+          layout
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <Card className="overflow-hidden flex flex-col h-full">
+            <div className="relative aspect-[3/2] overflow-hidden bg-muted">
+              {/* Cover image */}
               <Image
                 src={work.coverImage || "/placeholder.svg"}
                 alt={work.title}
@@ -383,7 +393,7 @@ function WorksContent({ works, searchQuery, isLoading, onDeleteStory }: WorksCon
               </div>
             </div>
 
-            <CardContent className="flex-grow p-4">
+            <CardContent className="flex-grow p-4 space-y-2">
               <div className="flex justify-between items-start">
                 <div>
                   <h3 className="font-bold text-lg line-clamp-1">{work.title}</h3>
@@ -478,8 +488,8 @@ function WorksContent({ works, searchQuery, isLoading, onDeleteStory }: WorksCon
               )}
             </CardFooter>
           </Card>
-        ))}
-      </div>
+        </motion.div>
+      ))}
     </motion.div>
   )
 }

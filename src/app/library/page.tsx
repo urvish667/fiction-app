@@ -6,9 +6,10 @@ import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Grid, List, X, Loader2 } from "lucide-react"
+import { Grid, List, X } from "lucide-react"
 import Navbar from "@/components/navbar"
 import StoryCard from "@/components/story-card"
+import StoryCardSkeleton from "@/components/story-card-skeleton"
 import { StoryService } from "@/services/story-service"
 import { useToast } from "@/components/ui/use-toast"
 
@@ -208,9 +209,14 @@ export default function LibraryPage() {
 
         <div className="mt-6">
           {loading ? (
-            <div className="flex flex-col justify-center items-center py-20">
-              <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
-              <span className="text-lg">Loading your library...</span>
+            <div className={`grid gap-6 ${
+              viewMode === "grid" ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "grid-cols-1"
+            }`}>
+              {Array.from({ length: 8 }).map((_, index) => (
+                <div key={`skeleton-${index}`}>
+                  <StoryCardSkeleton viewMode={viewMode} />
+                </div>
+              ))}
             </div>
           ) : (
             <LibraryContent stories={filteredStories} viewMode={viewMode} searchQuery={searchQuery} />
@@ -229,19 +235,34 @@ interface LibraryContentProps {
 
 function LibraryContent({ stories, viewMode, searchQuery }: LibraryContentProps) {
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+    <>
       {stories.length > 0 ? (
-        <div
+        <motion.div
+          layout
           className={`grid gap-6 ${
             viewMode === "grid" ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "grid-cols-1"
           }`}
         >
           {stories.map((story) => (
-            <StoryCard key={story.id} story={story} viewMode={viewMode} />
+            <motion.div
+              key={story.id}
+              layout
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <StoryCard story={story} viewMode={viewMode} />
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       ) : (
-        <div className="text-center py-12 bg-muted/30 rounded-lg">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="text-center py-12 bg-muted/30 rounded-lg"
+        >
           <h3 className="text-xl font-semibold mb-2">No stories found</h3>
           <p className="text-muted-foreground mb-6">
             {searchQuery
@@ -251,9 +272,9 @@ function LibraryContent({ stories, viewMode, searchQuery }: LibraryContentProps)
           <Button asChild>
             <Link href="/browse">Browse Stories</Link>
           </Button>
-        </div>
+        </motion.div>
       )}
-    </motion.div>
+    </>
   )
 }
 
