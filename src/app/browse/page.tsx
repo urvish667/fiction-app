@@ -11,7 +11,7 @@ import AdBanner from "@/components/ad-banner"
 import Pagination from "@/components/pagination"
 import { SiteFooter } from "@/components/site-footer"
 import { Button } from "@/components/ui/button"
-import { Filter, Grid, List, Loader2 } from "lucide-react"
+import { Filter, Grid, List } from "lucide-react"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { StoryService } from "@/services/story-service"
 import { useToast } from "@/components/ui/use-toast"
@@ -141,7 +141,7 @@ export default function BrowsePage() {
   }
 
   // Helper function to map API story to BrowseStory type
-  const formatStory = (story: any): BrowseStory => {
+  const formatStory = (story: Record<string, any>): BrowseStory => {
     // Extract genre name from genre object if it exists
     let genreName = "General";
     if (story.genre) {
@@ -179,7 +179,7 @@ export default function BrowsePage() {
       }
       // If tags is an array of objects with a tag property (from the API)
       else if (Array.isArray(story.tags) && story.tags.length > 0) {
-        tags = story.tags.map((storyTag: any) => {
+        tags = story.tags.map((storyTag: Record<string, any>) => {
           // Handle different possible structures
           if (typeof storyTag === 'string') return storyTag;
           if (storyTag.tag && storyTag.tag.name) return storyTag.tag.name;
@@ -215,7 +215,10 @@ export default function BrowsePage() {
     };
   }
 
-  // Helper function to apply client-side filtering and sorting
+  /**
+   * Apply client-side filtering and sorting to stories
+   * This is used when the API doesn't support certain filter combinations
+   */
   const applyClientFilters = (stories: BrowseStory[]): BrowseStory[] => {
     // If no client-side filters are needed, return the original stories (but still apply sorting)
     let filteredStories = stories;
@@ -287,7 +290,12 @@ export default function BrowsePage() {
     return sortStories(filteredStories, sortBy);
   }
 
-  // Helper function to sort stories
+  /**
+   * Sort stories based on the selected sort option
+   * @param stories - Array of stories to sort
+   * @param sortOption - Sort option (newest, popular, mostRead)
+   * @returns Sorted array of stories
+   */
   const sortStories = (stories: BrowseStory[], sortOption: string): BrowseStory[] => {
     const storiesCopy = [...stories]; // Create a copy to avoid mutating the original array
 
@@ -484,12 +492,9 @@ export default function BrowsePage() {
               <div className="flex-1">
 
 
-                {/* Loading state */}
+                {/* Loading state or error state */}
                 {loading ? (
-                  <div className="flex justify-center items-center py-16">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    <span className="ml-2">Loading stories...</span>
-                  </div>
+                  <StoryGrid stories={[]} viewMode={viewMode} isLoading={true} />
                 ) : error ? (
                   <div className="text-center py-16">
                     <h3 className="text-xl font-semibold mb-2">Error loading stories</h3>
@@ -539,7 +544,7 @@ export default function BrowsePage() {
                     </div>
 
                     {/* Story Grid with Ads */}
-                    <StoryGrid stories={stories} viewMode={viewMode} showAds={true} />
+                    <StoryGrid stories={stories} viewMode={viewMode} showAds={true} isLoading={false} />
 
                     {/* Pagination */}
                     {totalPages > 1 && (

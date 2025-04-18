@@ -54,8 +54,7 @@ export default function StoryCard({ story, viewMode = "grid" }: StoryCardProps) 
       story.coverImage :
       "/placeholder.svg"
 
-  // Log image URL for debugging
-  console.log(`Story card image for "${story.title}": ${imageUrl}`)
+  // Image URL is now properly handled without logging
 
   const formatDate = (date?: Date | string) => {
     if (!date) return "";
@@ -66,7 +65,6 @@ export default function StoryCard({ story, viewMode = "grid" }: StoryCardProps) 
 
       // Check if date is valid
       if (isNaN(dateObj.getTime())) {
-        console.warn(`Invalid date value: ${date}`);
         return "";
       }
 
@@ -76,7 +74,6 @@ export default function StoryCard({ story, viewMode = "grid" }: StoryCardProps) 
         year: "numeric",
       }).format(dateObj);
     } catch (error) {
-      console.error(`Error formatting date: ${date}`, error);
       return "";
     }
   }
@@ -108,7 +105,6 @@ export default function StoryCard({ story, viewMode = "grid" }: StoryCardProps) 
               fill
               className="object-cover transition-transform hover:scale-105"
               onError={(e) => {
-                console.error("Image load error:", e);
                 // @ts-ignore - setting src on error
                 e.target.src = "/placeholder.svg";
               }}

@@ -1,6 +1,7 @@
 "use client"
 import { motion } from "framer-motion"
 import StoryCard from "@/components/story-card"
+import StoryCardSkeleton from "@/components/story-card-skeleton"
 import AdBanner from "@/components/ad-banner"
 
 // Define a generic type for stories that matches what StoryCard expects
@@ -31,9 +32,10 @@ interface StoryGridProps {
   stories: StoryItem[]
   viewMode: "grid" | "list"
   showAds?: boolean
+  isLoading?: boolean
 }
 
-export default function StoryGrid({ stories, viewMode, showAds = false }: StoryGridProps) {
+export default function StoryGrid({ stories, viewMode, showAds = false, isLoading = false }: StoryGridProps) {
   // Insert ads after every 6 stories
   const storiesWithAds = showAds
     ? stories.reduce((acc: (StoryItem | { isAd: true })[], story, index) => {
@@ -45,12 +47,28 @@ export default function StoryGrid({ stories, viewMode, showAds = false }: StoryG
       }, [])
     : stories
 
+  // Define grid layout class based on view mode
+  const gridClass = `grid gap-6 ${
+    viewMode === "grid" ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "grid-cols-1"
+  }`
+
+  // If loading, show skeleton cards
+  if (isLoading) {
+    return (
+      <div className={gridClass}>
+        {Array.from({ length: 8 }).map((_, index) => (
+          <div key={`skeleton-${index}`}>
+            <StoryCardSkeleton viewMode={viewMode} />
+          </div>
+        ))}
+      </div>
+    )
+  }
+
   return (
     <motion.div
       layout
-      className={`grid gap-6 ${
-        viewMode === "grid" ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "grid-cols-1"
-      }`}
+      className={gridClass}
     >
       {storiesWithAds.map((item, index) => {
         if ("isAd" in item) {
