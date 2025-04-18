@@ -50,6 +50,8 @@ export default function StoryRecommendations({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [includesSameAuthor, setIncludesSameAuthor] = useState(false);
+  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
 
   // Fetch recommendations
   useEffect(() => {
@@ -57,17 +59,41 @@ export default function StoryRecommendations({
       try {
         setLoading(true);
         setError(null);
+        setIncludesSameAuthor(false); // Reset this flag when fetching new recommendations
 
-        const response = await fetch(
-          `/api/recommendations/${storyId}?limit=${limit}&excludeSameAuthor=${excludeSameAuthor}`
-        );
+        // First try with excludeSameAuthor as specified
+        const url = `/api/recommendations/${storyId}?limit=${limit}&excludeSameAuthor=${excludeSameAuthor}`;
+        const response = await fetch(url);
 
         if (!response.ok) {
-          throw new Error("Failed to fetch recommendations");
+          throw new Error(`Failed to fetch recommendations: ${response.status}`);
         }
 
         const data = await response.json();
-        setRecommendations(data);
+
+        // If we got recommendations, use them
+        if (data.length > 0) {
+          setRecommendations(data);
+        }
+        // If we got no recommendations and we were excluding same author, try again including same author
+        else if (excludeSameAuthor) {
+          console.log('No recommendations found excluding same author, trying with same author included');
+
+          // Try again with excludeSameAuthor=false
+          const fallbackUrl = `/api/recommendations/${storyId}?limit=${limit}&excludeSameAuthor=false`;
+          const fallbackResponse = await fetch(fallbackUrl);
+
+          if (!fallbackResponse.ok) {
+            throw new Error(`Failed to fetch fallback recommendations: ${fallbackResponse.status}`);
+          }
+
+          const fallbackData = await fallbackResponse.json();
+          setRecommendations(fallbackData);
+          setIncludesSameAuthor(true);
+        } else {
+          // No recommendations found even with same author included
+          setRecommendations([]);
+        }
       } catch (err) {
         console.error("Error fetching recommendations:", err);
         setError("Failed to load recommendations");
@@ -81,20 +107,61 @@ export default function StoryRecommendations({
     }
   }, [storyId, limit, excludeSameAuthor]);
 
+  // Handle window resize
+  useEffect(() => {
+    const handleResize = () => {
+      const newIsMobile = window.innerWidth < 768;
+      if (newIsMobile !== isMobile) {
+        setIsMobile(newIsMobile);
+        // Reset to first page when switching between mobile and desktop
+        setCurrentIndex(0);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [isMobile]);
+
+  // Get cards per page based on screen size
+  const getCardsPerPage = () => {
+    return isMobile ? 1 : 3;
+  };
+
   // Navigation functions
   const handlePrevious = () => {
-    setCurrentIndex((prev) => (prev > 0 ? prev - 1 : prev));
+    const cardsPerPage = getCardsPerPage();
+    const newIndex = Math.max(0, currentIndex - cardsPerPage);
+    setCurrentIndex(newIndex);
   };
 
   const handleNext = () => {
-    setCurrentIndex((prev) =>
-      prev < recommendations.length - 1 ? prev + 1 : prev
-    );
+    const cardsPerPage = getCardsPerPage();
+    const newIndex = Math.min(recommendations.length - 1, currentIndex + cardsPerPage);
+    setCurrentIndex(newIndex);
   };
 
-  // If there's an error, don't render anything
+  // Calculate the current page
+  const getCurrentPage = () => {
+    const cardsPerPage = getCardsPerPage();
+    return Math.floor(currentIndex / cardsPerPage);
+  };
+
+  // Calculate total number of pages
+  const getTotalPages = () => {
+    const cardsPerPage = getCardsPerPage();
+    return Math.ceil(recommendations.length / cardsPerPage);
+  };
+
+  // If there's an error, show a message instead of returning null
   if (!loading && error) {
-    return null;
+    return (
+      <div className={`my-8 ${className}`}>
+        <div className="text-center py-8 border rounded-lg bg-muted/20">
+          <p className="text-muted-foreground">Unable to load recommendations.</p>
+          <p className="text-sm text-muted-foreground mt-2">Please try again later.</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -129,7 +196,7 @@ export default function StoryRecommendations({
         // Recommendations carousel
         <div className="relative">
           {/* Navigation buttons */}
-          {recommendations.length > 1 && (
+          {recommendations.length > getCardsPerPage() && (
             <>
               <Button
                 variant="outline"
@@ -145,7 +212,7 @@ export default function StoryRecommendations({
                 size="icon"
                 className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-background/80 backdrop-blur-sm"
                 onClick={handleNext}
-                disabled={currentIndex === recommendations.length - 1}
+                disabled={currentIndex >= recommendations.length - getCardsPerPage()}
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
@@ -163,44 +230,57 @@ export default function StoryRecommendations({
                 transition={{ duration: 0.3 }}
                 className="grid grid-cols-1 md:grid-cols-3 gap-4"
               >
-                {/* Current recommendation */}
-                {recommendations.length > 0 && (
-                  <RecommendationCard story={recommendations[currentIndex]} />
-                )}
+                {/* Display current page of recommendations */}
+                {(() => {
+                  const cardsPerPage = getCardsPerPage();
+                  const visibleCards = [];
 
-                {/* Next recommendations (on larger screens) */}
-                {recommendations.length > currentIndex + 1 && (
-                  <div className="hidden md:block">
-                    <RecommendationCard
-                      story={recommendations[currentIndex + 1]}
-                    />
-                  </div>
-                )}
+                  // Display cards for current page
+                  for (let i = 0; i < cardsPerPage; i++) {
+                    const index = currentIndex + i;
+                    if (index < recommendations.length) {
+                      visibleCards.push(
+                        <RecommendationCard
+                          key={index}
+                          story={recommendations[index]}
+                        />
+                      );
+                    }
+                  }
 
-                {recommendations.length > currentIndex + 2 && (
-                  <div className="hidden md:block">
-                    <RecommendationCard
-                      story={recommendations[currentIndex + 2]}
-                    />
-                  </div>
-                )}
+                  return visibleCards;
+                })()}
               </motion.div>
             </AnimatePresence>
           </div>
 
           {/* Pagination dots */}
           {recommendations.length > 1 && (
-            <div className="flex justify-center mt-4 gap-1">
-              {recommendations.map((_, i) => (
-                <button
-                  key={i}
-                  className={`h-2 w-2 rounded-full ${
-                    i === currentIndex ? "bg-primary" : "bg-muted"
-                  }`}
-                  onClick={() => setCurrentIndex(i)}
-                  aria-label={`Go to recommendation ${i + 1}`}
-                />
-              ))}
+            <div className="flex flex-col items-center mt-4 gap-2">
+              <div className="flex justify-center gap-1">
+                {Array.from({ length: getTotalPages() }).map((_, pageIndex) => {
+                  const cardsPerPage = getCardsPerPage();
+                  const isCurrentPage = getCurrentPage() === pageIndex;
+
+                  return (
+                    <button
+                      key={pageIndex}
+                      className={`h-2 w-2 rounded-full ${
+                        isCurrentPage ? "bg-primary" : "bg-muted"
+                      }`}
+                      onClick={() => setCurrentIndex(pageIndex * cardsPerPage)}
+                      aria-label={`Go to page ${pageIndex + 1}`}
+                    />
+                  );
+                })}
+              </div>
+
+              {/* Note when recommendations include stories from the same author */}
+              {includesSameAuthor && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  Showing stories from the same author due to limited recommendations
+                </p>
+              )}
             </div>
           )}
         </div>

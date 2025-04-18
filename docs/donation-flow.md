@@ -4,11 +4,12 @@ This document outlines the donation flow in FableSpace, including how payments a
 
 ## Overview
 
-FableSpace allows readers to support creators through direct donations using PayPal and Stripe. The donation flow consists of:
+FableSpace allows readers to support creators through direct donations using PayPal and Stripe. Donations can be made directly to a creator or in the context of a specific story. The donation flow consists of:
 
 1. A donation page where users select an amount and payment method
-2. Payment processing through either PayPal or Stripe
-3. A success page that confirms the donation
+2. If the donation is for a specific story, the story information is displayed in the donation context
+3. Payment processing through either PayPal or Stripe
+4. A success page that confirms the donation and shows which story it was for (if applicable)
 
 ## Components
 
@@ -17,6 +18,7 @@ FableSpace allows readers to support creators through direct donations using Pay
 This page allows users to:
 - Select a predefined donation amount or enter a custom amount
 - Add an optional message to the creator
+- See which story they're supporting (if the donation is story-specific)
 - Choose between PayPal and Stripe for payment processing
 
 The page uses the `UnifiedPaymentForm` component which dynamically loads either the PayPal or Stripe payment form based on the creator's preferred payment method.
@@ -38,12 +40,14 @@ This page is shown after a successful donation and displays:
 - A confirmation message
 - The donation amount
 - The recipient's name
+- The story title (if the donation was for a specific story)
 - The user's message (if provided)
+- A link to return to the story (if applicable)
 
 ### 4. API Endpoints
 
-- **`/api/donations/create`**: Creates a Stripe payment intent
-- **`/api/donations/record-paypal`**: Records a PayPal donation in the database
+- **`/api/donations/create`**: Creates a Stripe payment intent (accepts optional storyId)
+- **`/api/donations/record-paypal`**: Records a PayPal donation in the database (accepts optional storyId)
 - **`/api/payments/paypal/verify-order`**: Verifies a PayPal order status
 - **`/api/user/payment-method`**: Gets a user's preferred payment method
 - **`/api/user/paypal-link`**: Gets a user's PayPal link for fallback payments
@@ -172,6 +176,15 @@ For production, consider implementing:
    - API errors
    - Client-side exceptions
 
+## Story-Linked Donations
+
+The system supports linking donations to specific stories:
+
+1. **Support Button**: The SupportButton component can be passed a storyId to link the donation to a specific story
+2. **Donation Context**: When a donation is linked to a story, the story title is displayed in the donation form
+3. **Payment Description**: The story title is included in the payment description for both PayPal and Stripe
+4. **Success Page**: The success page displays which story the donation was for and provides a link back to it
+
 ## Future Improvements
 
 Potential enhancements to consider:
@@ -180,3 +193,4 @@ Potential enhancements to consider:
 2. Additional payment methods
 3. Gift donations (donate on behalf of someone else)
 4. Donation goals and milestones for creators
+5. Chapter-specific donations

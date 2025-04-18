@@ -53,9 +53,14 @@ export default function DonatePage() {
   const [error, setError] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
   const [clientSecret, setClientSecret] = useState<string | null>(null)
+  const [storyId, setStoryId] = useState<string | null>(null)
+  const [storyTitle, setStoryTitle] = useState<string | null>(null)
+  const [storySlug, setStorySlug] = useState<string | null>(null)
   const searchParams = useSearchParams()
   const urlClientSecret = searchParams?.get('clientSecret') || null
   const urlAmount = searchParams?.get('amount') || null
+  const urlStoryId = searchParams?.get('storyId') || null
+  const urlStoryTitle = searchParams?.get('storyTitle') || null
 
   useEffect(() => {
     const fetchWriter = async () => {
@@ -83,6 +88,35 @@ export default function DonatePage() {
           const amountInDollars = (parseInt(urlAmount) / 100).toString()
           setDonationAmount(amountInDollars)
         }
+
+        // If we have a story ID in the URL, set it in the state and fetch story details
+        if (urlStoryId) {
+          setStoryId(urlStoryId)
+          if (urlStoryTitle) {
+            setStoryTitle(decodeURIComponent(urlStoryTitle))
+          }
+
+          // Fetch the story slug for the success page
+          try {
+            const storyResponse = await fetch(`/api/stories/${urlStoryId}`)
+            if (storyResponse.ok) {
+              const storyData = await storyResponse.json()
+              if (storyData) {
+                // If we don't have a title from the URL, use the one from the API
+                if (!urlStoryTitle && storyData.title) {
+                  setStoryTitle(storyData.title)
+                }
+                // Set the slug for the return link
+                if (storyData.slug) {
+                  setStorySlug(storyData.slug)
+                }
+              }
+            }
+          } catch (error) {
+            console.error('Error fetching story details:', error)
+            // Non-critical error, we can continue without the slug
+          }
+        }
       } catch (error) {
         console.error('Error fetching writer:', error)
         toast({
@@ -96,7 +130,7 @@ export default function DonatePage() {
     }
 
     fetchWriter()
-  }, [params?.username, toast, urlClientSecret, urlAmount])
+  }, [params?.username, toast, urlClientSecret, urlAmount, urlStoryId, urlStoryTitle])
 
   const handleCustomAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
@@ -137,6 +171,7 @@ export default function DonatePage() {
           recipientId: writer?.id,
           amount: Math.round(amount * 100), // Convert to cents
           message: message,
+          storyId: storyId, // Include story ID if available
           // No need to specify payment method - the backend will determine it based on recipient settings
         }),
       })
@@ -194,6 +229,9 @@ export default function DonatePage() {
       writer: writer.name || writer.username,
       amount: donationAmount === "custom" ? customAmount : donationAmount,
       message: message,
+      storyId: storyId,
+      storyTitle: storyTitle,
+      storySlug: storySlug,
     };
 
     // Store donation details for the success page - use try/catch to handle potential errors
@@ -275,6 +313,9 @@ export default function DonatePage() {
 
                 <CardTitle>Support {writer?.name || writer?.username}</CardTitle>
                 <CardDescription>
+                  {storyTitle ? (
+                    <>For the story: <span className="font-semibold">{storyTitle}</span><br /></>
+                  ) : null}
                   Choose your donation amount. Your payment will be processed securely and sent directly to the creator.
                 </CardDescription>
               </CardHeader>
@@ -337,6 +378,8 @@ export default function DonatePage() {
                     recipientId={writer.id}
                     amount={donationAmount === "custom" ? Math.round(Number.parseFloat(customAmount) * 100) : Math.round(Number.parseFloat(donationAmount) * 100)}
                     message={message}
+                    storyId={storyId}
+                    storyTitle={storyTitle}
                     onSuccess={handlePaymentSuccess}
                     onError={handlePaymentError}
                     onCancel={() => {

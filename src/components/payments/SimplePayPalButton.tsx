@@ -10,6 +10,8 @@ interface SimplePayPalButtonProps {
   recipientId: string;
   amount: number;
   message?: string;
+  storyId?: string | null;
+  storyTitle?: string | null;
   paypalLink: string;
   onSuccess: () => void;
   onCancel: () => void;
@@ -19,6 +21,8 @@ export function SimplePayPalButton({
   recipientId,
   amount,
   message,
+  storyId,
+  storyTitle,
   paypalLink,
   onSuccess,
   onCancel
@@ -64,6 +68,7 @@ export function SimplePayPalButton({
           recipientId,
           amount,
           message,
+          storyId,
           paypalOrderId: `MANUAL_${Date.now()}`,
         }),
       });

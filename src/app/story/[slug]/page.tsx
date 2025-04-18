@@ -428,6 +428,8 @@ export default function StoryInfoPage() {
                         donationLink={author.donationLink ?? null}
                         authorName={author.name || author.username || 'Author'}
                         authorUsername={author.username || undefined}
+                        storyId={story.id}
+                        storyTitle={story.title}
                     />
                  )}
               </div>
@@ -502,6 +504,8 @@ export default function StoryInfoPage() {
               donationLink={author.donationLink ?? null}
               authorName={author.name || author.username || 'Author'}
               authorUsername={author.username || undefined}
+              storyId={story.id}
+              storyTitle={story.title}
             />
           </motion.div>
         )}

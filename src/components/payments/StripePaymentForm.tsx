@@ -24,9 +24,10 @@ interface StripePaymentFormProps {
   clientSecret: string
   onSuccess: () => void
   onError: (error: Error) => void
+  storyTitle?: string | null
 }
 
-function PaymentForm({ onSuccess, onError }: Omit<StripePaymentFormProps, 'clientSecret'>) {
+function PaymentForm({ onSuccess, onError, storyTitle }: Omit<StripePaymentFormProps, 'clientSecret'>) {
   const stripe = useStripe()
   const elements = useElements()
   const { toast } = useToast()
@@ -129,7 +130,14 @@ function PaymentForm({ onSuccess, onError }: Omit<StripePaymentFormProps, 'clien
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <PaymentElement />
+      <div className="mb-4">
+        {storyTitle && (
+          <div className="mb-4 p-3 bg-muted/50 rounded-md">
+            <p className="text-sm">Donation for story: <span className="font-semibold">{storyTitle}</span></p>
+          </div>
+        )}
+        <PaymentElement />
+      </div>
       {error && (
         <div className="text-sm text-destructive mt-2">
           {error}
@@ -149,7 +157,7 @@ function PaymentForm({ onSuccess, onError }: Omit<StripePaymentFormProps, 'clien
   )
 }
 
-export function StripePaymentForm({ clientSecret, onSuccess, onError }: StripePaymentFormProps) {
+export function StripePaymentForm({ clientSecret, onSuccess, onError, storyTitle }: StripePaymentFormProps) {
   const { toast } = useToast();
   const [isReady, setIsReady] = useState(false);
 
@@ -190,7 +198,7 @@ export function StripePaymentForm({ clientSecret, onSuccess, onError }: StripePa
     <div className="w-full">
 
       <Elements stripe={stripePromise} options={{ clientSecret }}>
-        <PaymentForm onSuccess={onSuccess} onError={onError} />
+        <PaymentForm onSuccess={onSuccess} onError={onError} storyTitle={storyTitle} />
       </Elements>
     </div>
   );

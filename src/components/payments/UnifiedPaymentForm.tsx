@@ -11,6 +11,8 @@ interface UnifiedPaymentFormProps {
   recipientId: string
   amount: number // in cents
   message?: string
+  storyId?: string | null
+  storyTitle?: string | null
   onSuccess: () => void
   onError: (error: Error) => void
   onCancel: () => void
@@ -24,6 +26,8 @@ export function UnifiedPaymentForm({
   recipientId,
   amount,
   message,
+  storyId,
+  storyTitle,
   onSuccess,
   onError,
   onCancel
@@ -73,6 +77,7 @@ export function UnifiedPaymentForm({
             recipientId,
             amount,
             message,
+            storyId,
           }),
         })
 
@@ -125,6 +130,7 @@ export function UnifiedPaymentForm({
             setError(error.message)
             onError(error)
           }}
+          storyTitle={storyTitle}
         />
       </div>
     )
@@ -135,6 +141,8 @@ export function UnifiedPaymentForm({
           recipientId={recipientId}
           amount={amount}
           message={message}
+          storyId={storyId}
+          storyTitle={storyTitle}
           onSuccess={onSuccess}
           onError={(error) => {
             setError(error.message)

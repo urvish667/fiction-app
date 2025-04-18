@@ -292,13 +292,54 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Extract genre and language from validated data
+    const { genre, language, ...otherData } = validatedData;
+
+    // Prepare data for Prisma with proper relation handling
+    const createData: any = {
+      ...otherData,
+      slug,
+      authorId: session.user.id,
+    };
+
+    // Handle genre relation if provided - use genreId field directly
+    if (genre) {
+      console.log('Using genre ID:', genre);
+      createData.genreId = genre;
+    }
+
+    // Handle language relation if provided - use languageId field directly
+    if (language) {
+      console.log('Using language ID or name:', language);
+
+      // Check if language is a name (like "English") or an ID
+      if (language.length > 20 && language.startsWith('c')) {
+        // Looks like an ID, use directly
+        createData.languageId = language;
+      } else {
+        // Looks like a name, try to find the language by name
+        try {
+          // We'll add this in a try/catch to avoid breaking if language lookup fails
+          // The story will be created without a language in that case
+          const languageObj = await prisma.language.findFirst({
+            where: { name: { equals: language, mode: 'insensitive' } }
+          });
+
+          if (languageObj) {
+            console.log('Found language by name:', languageObj.name, 'with ID:', languageObj.id);
+            createData.languageId = languageObj.id;
+          } else {
+            console.log('Language not found by name:', language);
+          }
+        } catch (langError) {
+          console.error('Error looking up language by name:', langError);
+        }
+      }
+    }
+
     // Create the story
     const story = await prisma.story.create({
-      data: {
-        ...validatedData,
-        slug,
-        authorId: session.user.id,
-      },
+      data: createData,
       include: {
         author: {
           select: {
@@ -308,6 +349,8 @@ export async function POST(request: NextRequest) {
             image: true,
           },
         },
+        genre: true,
+        language: true,
       },
     });
 
@@ -321,8 +364,35 @@ export async function POST(request: NextRequest) {
     }
 
     console.error("Error creating story:", error);
+
+    // Provide more detailed error message
+    let errorMessage = "Unknown error";
+    let errorDetails = null;
+
+    if (error instanceof Error) {
+      errorMessage = error.message;
+
+      // Check if it's a Prisma error with more details
+      if (error.name === 'PrismaClientValidationError' ||
+          error.name === 'PrismaClientKnownRequestError') {
+        // Log the full error for debugging
+        console.error('Prisma error details:', JSON.stringify(error, null, 2));
+
+        // Extract useful information from the error
+        if (error.message.includes('Unknown argument')) {
+          errorDetails = 'Invalid field in story data. Check the console for details.';
+        } else if (error.message.includes('Foreign key constraint failed')) {
+          errorDetails = 'Referenced record (like genre or language) does not exist.';
+        }
+      }
+    }
+
     return NextResponse.json(
-      { error: "Failed to create story" },
+      {
+        error: "Failed to create story",
+        message: errorMessage,
+        details: errorDetails
+      },
       { status: 500 }
     );
   }

@@ -43,6 +43,8 @@ interface PayPalPaymentFormProps {
   recipientId: string;
   amount: number; // in cents
   message?: string;
+  storyId?: string | null;
+  storyTitle?: string | null;
   onSuccess: () => void;
   onError: (error: Error) => void;
   onCancel: () => void;
@@ -52,6 +54,8 @@ export function PayPalPaymentForm({
   recipientId,
   amount,
   message,
+  storyId,
+  storyTitle,
   onSuccess,
   onError,
   onCancel
@@ -210,6 +214,7 @@ export function PayPalPaymentForm({
             recipientId: recipientId,
             amount: amount,
             message: message,
+            storyId: storyId,
             paypalOrderId: data.orderID,
             paypalTransactionId: details.purchase_units[0]?.payments?.captures[0]?.id,
           }),
@@ -331,7 +336,9 @@ export function PayPalPaymentForm({
                                 value: amountInDollars,
                                 currency_code: "USD"
                               },
-                              description: `Donation to creator`
+                              description: storyTitle
+                                ? `Donation for story: ${storyTitle}`
+                                : `Donation to creator`
                             },
                           ],
                           application_context: {

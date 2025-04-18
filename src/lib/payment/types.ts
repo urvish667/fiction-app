@@ -17,6 +17,7 @@ export interface PaymentRequest {
   amount: number; // Amount in cents
   recipientId: string;
   message?: string;
+  storyId?: string;
   donorId: string;
 }
 
@@ -35,9 +36,9 @@ export interface PaymentResponse {
 
 export interface PaymentProcessor {
   processPayment(
-    request: PaymentRequest, 
+    request: PaymentRequest,
     recipient: PaymentRecipient
   ): Promise<PaymentResponse>;
-  
+
   validatePaymentSetup(recipient: PaymentRecipient): boolean;
 }

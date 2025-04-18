@@ -276,7 +276,12 @@ export function EngagementSection({
 
       {/* Story Recommendations - You Might Also Like */}
       <div className="mt-8">
-        <h2 className="text-2xl font-bold mb-6">You Might Also Like</h2>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold">You Might Also Like</h2>
+          <span className="text-sm text-muted-foreground">
+            Based on genre and tags
+          </span>
+        </div>
         <StoryRecommendations
           storyId={story.id}
           excludeSameAuthor={true}

@@ -10,6 +10,7 @@ const donationSchema = z.object({
   recipientId: z.string().min(1, { message: 'Recipient ID is required' }),
   amount: z.number().positive({ message: 'Amount must be positive' }).int({ message: 'Amount must be an integer (in cents)' }),
   message: z.string().optional(),
+  storyId: z.string().optional(),
 });
 
 /**
@@ -40,7 +41,7 @@ export async function POST(req: Request) {
     }
 
     // 3. Extract validated data
-    const { recipientId, amount, message } = validation.data;
+    const { recipientId, amount, message, storyId } = validation.data;
 
     // 4. Process payment using the unified payment service
     const paymentService = new PaymentService();
@@ -48,6 +49,7 @@ export async function POST(req: Request) {
       recipientId,
       amount,
       message,
+      storyId,
       donorId: session.user.id
     });
 

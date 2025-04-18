@@ -11,6 +11,9 @@ interface DonationDetails {
   writer: string
   amount: string
   message?: string
+  storyId?: string | null
+  storyTitle?: string | null
+  storySlug?: string | null
 }
 
 export default function DonationSuccessPage() {
@@ -119,6 +122,11 @@ export default function DonationSuccessPage() {
                   <span className="font-bold text-primary">${donation.amount}</span> to{" "}
                   <span className="font-bold">{donation.writer}</span>
                 </p>
+                {donation.storyTitle && (
+                  <p className="text-muted-foreground">
+                    For the story: <span className="font-semibold">{donation.storyTitle}</span>
+                  </p>
+                )}
                 {donation.message && (
                   <p className="text-muted-foreground mt-2 italic">
                     Your message: "{donation.message}"
@@ -130,6 +138,15 @@ export default function DonationSuccessPage() {
               </div>
 
               <div className="flex flex-col gap-2">
+                {donation.storyTitle ? (
+                  <Button
+                    onClick={() => router.push(donation.storySlug ? `/story/${donation.storySlug}` : `/`)}
+                    variant="outline"
+                    className="mb-2"
+                  >
+                    Return to Story
+                  </Button>
+                ) : null}
                 <Button onClick={() => router.push("/")} variant="default">
                   Return Home
                 </Button>

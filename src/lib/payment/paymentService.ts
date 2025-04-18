@@ -98,6 +98,7 @@ export class PaymentService {
         recipientId: request.recipientId,
         amount: request.amount,
         message: request.message || null,
+        storyId: request.storyId || null,
         status: 'pending',
         paymentMethod: paymentMethod || undefined,
       }
@@ -109,7 +110,7 @@ export class PaymentService {
    */
   private async updateDonationRecord(donationId: string, response: PaymentResponse) {
     const updateData: any = {};
-    
+
     if (response.processorType === 'stripe' && response.clientSecret) {
       // Extract payment intent ID from client secret
       const paymentIntentId = response.clientSecret.split('_secret')[0];

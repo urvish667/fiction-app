@@ -62,7 +62,8 @@ The `PayPalPaymentProcessor` handles payments through PayPal:
   {
     "recipientId": "user_id",
     "amount": 1000, // in cents
-    "message": "Optional message"
+    "message": "Optional message",
+    "storyId": "story_id" // Optional story ID
   }
   ```
 - **Response**:
@@ -83,7 +84,8 @@ The `PayPalPaymentProcessor` handles payments through PayPal:
   {
     "recipientId": "user_id",
     "amount": 1000, // in cents
-    "message": "Optional message"
+    "message": "Optional message",
+    "storyId": "story_id" // Optional story ID
   }
   ```
 - **Response**:
@@ -160,11 +162,14 @@ model Donation {
   donor                User     @relation("DonationsMade", fields: [donorId], references: [id])
   recipientId          String
   recipient            User     @relation("DonationsReceived", fields: [recipientId], references: [id])
+  storyId              String?  // ID of the story being donated to (optional)
+  story                Story?   @relation(fields: [storyId], references: [id], onDelete: SetNull)
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
   @@index([donorId])
   @@index([recipientId])
+  @@index([storyId])
   @@index([status])
   @@index([createdAt])
   @@index([paypalOrderId])

@@ -10,15 +10,15 @@ datasource db {
 model Account {
   id                 String  @id @default(cuid())
   userId             String
-  type               String  // OAuth or credentials
-  provider           String  // google, facebook, etc.
-  providerAccountId  String  // ID from the OAuth provider
-  refresh_token      String? @db.Text  // Changed to Text for longer tokens
-  access_token       String? @db.Text  // Changed to Text for longer tokens
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?
+  access_token       String?
   expires_at         Int?
   token_type         String?
   scope              String?
-  id_token           String? @db.Text  // Changed to Text for longer tokens
+  id_token           String?
   session_state      String?
   oauth_token_secret String?
   oauth_token        String?
@@ -39,60 +39,54 @@ model Session {
 }
 
 model User {
-  id                  String    @id @default(cuid())
+  id                  String            @id @default(cuid())
   name                String?
-  email               String?   @unique
+  email               String?           @unique
   emailVerified       DateTime?
   image               String?
   bannerImage         String?
-  username            String?   @unique
+  username            String?           @unique
   password            String?
   birthdate           DateTime?
   bio                 String?
   pronoun             String?
   location            String?
   website             String?
-  socialLinks         Json?     // For storing Twitter, Instagram, etc.
-  language            String?   @default("en")
-  theme               String?   @default("system")
-  termsAccepted       Boolean   @default(false)
-  marketingOptIn      Boolean   @default(false)
-  isProfileComplete   Boolean   @default(false)
-  provider            String?   // Primary OAuth provider if any
-  unreadNotifications Int       @default(0)
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  socialLinks         Json?
+  language            String?           @default("en")
+  theme               String?           @default("system")
+  termsAccepted       Boolean           @default(false)
+  marketingOptIn      Boolean           @default(false)
+  isProfileComplete   Boolean           @default(false)
+  provider            String?
+  unreadNotifications Int               @default(0)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
   lastLogin           DateTime?
-  accounts            Account[]
-  sessions            Session[]
-  notifications       Notification[]
-  preferences         Json?     @default("{\"emailNotifications\":{\"newFollower\":false,\"newComment\":false,\"newLike\":false,\"newChapter\":false},\"privacySettings\":{\"publicProfile\":false,\"showEmail\":false,\"showLocation\":false,\"allowMessages\":false}}")
+  preferences         Json?             @default("{\"privacySettings\": {\"showEmail\": false, \"showLocation\": false, \"allowMessages\": false, \"publicProfile\": false}, \"emailNotifications\": {\"newLike\": false, \"newChapter\": false, \"newComment\": false, \"newFollower\": false}}")
   donationLink        String?
   donationMethod      String?
-  donationsEnabled    Boolean   @default(false)
-  country             String?   @default("US")
-
-  // Story management relations
-  stories             Story[]
-  comments            Comment[]
-  likes               Like[]
+  donationsEnabled    Boolean           @default(false)
+  country             String?           @default("US")
+  accounts            Account[]
   bookmarks           Bookmark[]
-  readingProgresses   ReadingProgress[]
-  storyViews          StoryView[]
   chapterViews        ChapterView[]
-
-  // Social relations
-  followers           Follow[] @relation("Followers")
-  following           Follow[] @relation("Following")
-
-  // Donation relations
-  donationsMade       Donation[] @relation("DonationsMade")
-  donationsReceived   Donation[] @relation("DonationsReceived")
+  comments            Comment[]
+  donationsMade       Donation[]        @relation("DonationsMade")
+  donationsReceived   Donation[]        @relation("DonationsReceived")
+  following           Follow[]          @relation("Following")
+  followers           Follow[]          @relation("Followers")
+  likes               Like[]
+  notifications       Notification[]
+  readingProgresses   ReadingProgress[]
+  sessions            Session[]
+  stories             Story[]
+  storyViews          StoryView[]
 
   @@index([email])
   @@index([username])
-  @@index([provider])  // Added index for provider queries
-  @@index([isProfileComplete])  // Added index for profile completion queries
+  @@index([provider])
+  @@index([isProfileComplete])
 }
 
 model VerificationToken {
@@ -102,13 +96,13 @@ model VerificationToken {
 
   @@unique([identifier, token])
   @@index([identifier])
-  @@index([expires])  // Added index for token cleanup
+  @@index([expires])
 }
 
 model Notification {
   id        String   @id @default(cuid())
   userId    String
-  type      String   // Type of notification (e.g., "comment", "like", "follow")
+  type      String
   title     String
   message   String
   read      Boolean  @default(false)
@@ -120,65 +114,55 @@ model Notification {
   @@index([createdAt])
 }
 
-// Story Management Models
-
 model Story {
-  genreId    String?
-  genre      Genre?    @relation(fields: [genreId], references: [id])
-  languageId String?
-  language   Language? @relation(fields: [languageId], references: [id])
-  tags       StoryTag[]
-  id          String    @id @default(cuid())
-  title       String
-  slug        String    @unique
-  description String?   @db.Text
-  coverImage  String?
-  isMature    Boolean   @default(false)
-  status      String    @default("ongoing") // "ongoing", "completed", or "draft"
-  wordCount   Int       @default(0)
-  readCount   Int       @default(0)
-
-  authorId    String
-  author      User      @relation(fields: [authorId], references: [id])
-
-  chapters    Chapter[]
-  comments    Comment[]
-  likes       Like[]
-  bookmarks   Bookmark[]
-  views       StoryView[]
-
-  // Recommendation relations
-  recommendations      StoryRecommendation[] @relation("StoryRecommendations")
-  recommendedIn        StoryRecommendation[] @relation("RecommendedTo")
-
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id              String                @id @default(cuid())
+  title           String
+  slug            String                @unique
+  description     String?
+  coverImage      String?
+  isMature        Boolean               @default(false)
+  status          String                @default("ongoing")
+  wordCount       Int                   @default(0)
+  readCount       Int                   @default(0)
+  authorId        String
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  genreId         String?
+  languageId      String?
+  bookmarks       Bookmark[]
+  chapters        Chapter[]
+  comments        Comment[]
+  donations       Donation[]
+  likes           Like[]
+  author          User                  @relation(fields: [authorId], references: [id])
+  genre           Genre?                @relation(fields: [genreId], references: [id])
+  language        Language?             @relation(fields: [languageId], references: [id])
+  recommendedIn   StoryRecommendation[] @relation("RecommendedTo")
+  recommendations StoryRecommendation[] @relation("StoryRecommendations")
+  tags            StoryTag[]
+  views           StoryView[]
 
   @@index([authorId])
-
   @@index([status])
   @@index([createdAt])
 }
 
 model Chapter {
-  id          String    @id @default(cuid())
-  title       String
-  contentKey  String    // S3 object key for content
-  number      Int
-  wordCount   Int       @default(0)
-  isPremium   Boolean   @default(false)
-  status      String    @default("draft") // Valid values: 'draft', 'scheduled', 'published'
-  publishDate DateTime?  // For scheduled publishing
-  readCount   Int       @default(0)
-
-  storyId     String
-  story       Story     @relation(fields: [storyId], references: [id], onDelete: Cascade)
-
-  readingProgresses ReadingProgress[]
+  id                String            @id @default(cuid())
+  title             String
+  contentKey        String
+  number            Int
+  wordCount         Int               @default(0)
+  isPremium         Boolean           @default(false)
+  status            String            @default("draft")
+  publishDate       DateTime?
+  readCount         Int               @default(0)
+  storyId           String
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  story             Story             @relation(fields: [storyId], references: [id], onDelete: Cascade)
   views             ChapterView[]
-
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  readingProgresses ReadingProgress[]
 
   @@unique([storyId, number])
   @@index([storyId])
@@ -187,21 +171,17 @@ model Chapter {
 }
 
 model Comment {
-  id          String    @id @default(cuid())
-  content     String    @db.Text
-
-  userId      String
-  user        User      @relation(fields: [userId], references: [id])
-
-  storyId     String
-  story       Story     @relation(fields: [storyId], references: [id], onDelete: Cascade)
-
-  parentId    String?
-  parent      Comment?  @relation("CommentToReply", fields: [parentId], references: [id])
-  replies     Comment[] @relation("CommentToReply")
-
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id        String    @id @default(cuid())
+  content   String
+  userId    String
+  storyId   String
+  parentId  String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  parent    Comment?  @relation("CommentToReply", fields: [parentId], references: [id])
+  replies   Comment[] @relation("CommentToReply")
+  story     Story     @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([storyId])
@@ -211,10 +191,10 @@ model Comment {
 model Like {
   id        String   @id @default(cuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
   storyId   String
-  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
 
   @@unique([userId, storyId])
   @@index([userId])
@@ -224,10 +204,10 @@ model Like {
 model Bookmark {
   id        String   @id @default(cuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
   storyId   String
-  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
 
   @@unique([userId, storyId])
   @@index([userId])
@@ -236,15 +216,12 @@ model Bookmark {
 
 model ReadingProgress {
   id        String   @id @default(cuid())
-  progress  Float    @default(0) // 0-100 percentage
-
+  progress  Float    @default(0)
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
-
   chapterId String
-  chapter   Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
-
   lastRead  DateTime @default(now())
+  chapter   Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
 
   @@unique([userId, chapterId])
   @@index([userId])
@@ -252,12 +229,12 @@ model ReadingProgress {
 }
 
 model Follow {
-  id           String   @id @default(cuid())
-  followerId   String
-  follower     User     @relation("Following", fields: [followerId], references: [id])
-  followingId  String
-  following    User     @relation("Followers", fields: [followingId], references: [id])
-  createdAt    DateTime @default(now())
+  id          String   @id @default(cuid())
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+  follower    User     @relation("Following", fields: [followerId], references: [id])
+  following   User     @relation("Followers", fields: [followingId], references: [id])
 
   @@unique([followerId, followingId])
   @@index([followerId])
@@ -265,51 +242,54 @@ model Follow {
 }
 
 model Tag {
-  id      String   @id @default(cuid())
-  name    String   @unique
+  id      String     @id @default(cuid())
+  name    String     @unique
   stories StoryTag[]
 }
 
 model StoryTag {
-  id      String   @id @default(cuid())
-  story   Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  id      String @id @default(cuid())
   storyId String
-  tag     Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
   tagId   String
+  story   Story  @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  tag     Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
   @@unique([storyId, tagId])
   @@index([tagId])
 }
 
 model Genre {
-  id      String   @id @default(cuid())
-  name    String   @unique
+  id      String  @id @default(cuid())
+  name    String  @unique
   stories Story[]
 }
 
 model Language {
-  id      String   @id @default(cuid())
-  name    String   @unique
+  id      String  @id @default(cuid())
+  name    String  @unique
   stories Story[]
 }
 
 model Donation {
-  id                   String   @id @default(cuid())
-  amount               Int      // Amount in cents
-  message              String?
-  status               String   @default("pending") // pending, succeeded, failed
-  stripePaymentIntentId String? @unique
-  paypalOrderId        String? // PayPal order ID for tracking
-  paymentMethod        String?  // stripe, paypal
-  donorId              String
-  donor                User     @relation("DonationsMade", fields: [donorId], references: [id])
-  recipientId          String
-  recipient            User     @relation("DonationsReceived", fields: [recipientId], references: [id])
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  id                    String   @id @default(cuid())
+  amount                Int
+  message               String?
+  status                String   @default("pending")
+  stripePaymentIntentId String?  @unique
+  donorId               String
+  recipientId           String
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  storyId               String?
+  paymentMethod         String?
+  paypalOrderId         String?
+  donor                 User     @relation("DonationsMade", fields: [donorId], references: [id])
+  recipient             User     @relation("DonationsReceived", fields: [recipientId], references: [id])
+  story                 Story?   @relation(fields: [storyId], references: [id])
 
   @@index([donorId])
   @@index([recipientId])
+  @@index([storyId])
   @@index([status])
   @@index([createdAt])
   @@index([paypalOrderId])
@@ -322,9 +302,8 @@ model StoryRecommendation {
   score              Float
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
-
-  story              Story    @relation("StoryRecommendations", fields: [storyId], references: [id], onDelete: Cascade)
   recommendedStory   Story    @relation("RecommendedTo", fields: [recommendedStoryId], references: [id], onDelete: Cascade)
+  story              Story    @relation("StoryRecommendations", fields: [storyId], references: [id], onDelete: Cascade)
 
   @@unique([storyId, recommendedStoryId])
   @@index([storyId])
@@ -335,14 +314,13 @@ model StoryRecommendation {
 model StoryView {
   id        String   @id @default(cuid())
   userId    String?
-  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   storyId   String
-  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
   clientIp  String?
   userAgent String?
   createdAt DateTime @default(now())
+  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  user      User?    @relation(fields: [userId], references: [id])
 
-  @@unique([userId, storyId], map: "unique_user_story_view", name: "unique_user_story_view")
   @@index([userId])
   @@index([storyId])
 }
@@ -350,14 +328,13 @@ model StoryView {
 model ChapterView {
   id        String   @id @default(cuid())
   userId    String?
-  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   chapterId String
-  chapter   Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
   clientIp  String?
   userAgent String?
   createdAt DateTime @default(now())
+  chapter   Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  user      User?    @relation(fields: [userId], references: [id])
 
-  @@unique([userId, chapterId], map: "unique_user_chapter_view", name: "unique_user_chapter_view")
   @@index([userId])
   @@index([chapterId])
 }

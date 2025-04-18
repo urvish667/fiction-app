@@ -12,6 +12,8 @@ interface SupportButtonProps {
   donationLink: string | null;
   authorName?: string;
   authorUsername?: string;
+  storyId?: string;
+  storyTitle?: string;
 }
 
 export function SupportButton({
@@ -19,7 +21,9 @@ export function SupportButton({
   donationMethod,
   donationLink,
   authorName,
-  authorUsername
+  authorUsername,
+  storyId,
+  storyTitle
 }: SupportButtonProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const router = useRouter();
@@ -39,7 +43,19 @@ export function SupportButton({
       // The donation page will use our UnifiedPaymentForm component
       // Use username for the URL if available, otherwise use ID
       const userIdentifier = authorUsername || authorId;
-      router.push(`/donate/${userIdentifier}?amount=${amountInCents}`);
+
+      // Build the URL with query parameters
+      let donationUrl = `/donate/${userIdentifier}?amount=${amountInCents}`;
+
+      // Add story information if available
+      if (storyId) {
+        donationUrl += `&storyId=${storyId}`;
+        if (storyTitle) {
+          donationUrl += `&storyTitle=${encodeURIComponent(storyTitle)}`;
+        }
+      }
+
+      router.push(donationUrl);
     } catch (error) {
       console.error('[DONATION_ERROR]', error);
       toast({

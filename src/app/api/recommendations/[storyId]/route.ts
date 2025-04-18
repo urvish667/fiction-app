@@ -116,7 +116,30 @@ export async function GET(
     };
 
     // Get recommendations
+    console.log(`Fetching recommendations for story ID: ${storyId}`);
+
+    // First check if any recommendations exist for this story (without all the includes)
+    const recommendationCount = await prisma.storyRecommendation.count({
+      where: { storyId: storyId }
+    });
+
+    console.log(`Found ${recommendationCount} raw recommendations for story ${storyId}`);
+
+    // If no recommendations exist at all, return early
+    if (recommendationCount === 0) {
+      console.log(`No recommendations found in database for story ${storyId}`);
+      return NextResponse.json([]);
+    }
+
+    // Get recommendations with all the includes
     let recommendations = await prisma.storyRecommendation.findMany(query) as RecommendationWithRelations[];
+    console.log(`Found ${recommendations.length} recommendations with includes for story ${storyId}`);
+
+    // If no recommendations found after includes, return empty array
+    if (recommendations.length === 0) {
+      console.log(`No recommendations found after applying includes for story ${storyId}`);
+      return NextResponse.json([]);
+    }
 
     // If excludeSameAuthor is true, filter out stories by the same author
     if (excludeSameAuthor) {

@@ -10,6 +10,7 @@ const recordPaypalSchema = z.object({
   recipientId: z.string().min(1, { message: 'Recipient ID is required' }),
   amount: z.number().positive({ message: 'Amount must be positive' }).int({ message: 'Amount must be an integer (in cents)' }),
   message: z.string().optional(),
+  storyId: z.string().optional(),
   paypalOrderId: z.string().min(1, { message: 'PayPal order ID is required' }),
   paypalTransactionId: z.string().optional(),
 });
@@ -23,7 +24,7 @@ export async function POST(req: Request) {
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.id) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: 'Unauthorized',
         message: 'You must be logged in to record a payment'
       }, { status: 401 });
@@ -34,20 +35,20 @@ export async function POST(req: Request) {
     const validation = recordPaypalSchema.safeParse(body);
 
     if (!validation.success) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: 'Validation Error',
         message: 'Invalid payment data',
-        errors: validation.error.errors 
+        errors: validation.error.errors
       }, { status: 400 });
     }
 
     // 3. Extract validated data
-    const { recipientId, amount, message, paypalOrderId, paypalTransactionId } = validation.data;
+    const { recipientId, amount, message, storyId, paypalOrderId, paypalTransactionId } = validation.data;
 
     // 4. Fetch recipient's donation settings
     const recipient = await prisma.user.findUnique({
       where: { id: recipientId },
-      select: { 
+      select: {
         id: true,
         donationMethod: true,
         donationsEnabled: true,
@@ -55,7 +56,7 @@ export async function POST(req: Request) {
     });
 
     if (!recipient || !recipient.donationsEnabled) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: 'Recipient Not Found',
         message: 'Recipient not found or donations not enabled'
       }, { status: 404 });
@@ -63,7 +64,7 @@ export async function POST(req: Request) {
 
     // 5. Check if this payment has already been recorded
     const existingDonation = await prisma.donation.findFirst({
-      where: { 
+      where: {
         paypalOrderId: paypalOrderId,
       },
     });
@@ -72,13 +73,13 @@ export async function POST(req: Request) {
       // Update the existing donation record
       await prisma.donation.update({
         where: { id: existingDonation.id },
-        data: { 
+        data: {
           status: 'succeeded',
           updatedAt: new Date(),
         },
       });
 
-      return NextResponse.json({ 
+      return NextResponse.json({
         success: true,
         donationId: existingDonation.id,
         message: 'Payment record updated successfully'
@@ -92,6 +93,7 @@ export async function POST(req: Request) {
         recipientId,
         amount,
         message: message || null,
+        storyId: storyId || null,
         status: 'succeeded',
         paymentMethod: 'paypal',
         paypalOrderId,
@@ -99,7 +101,7 @@ export async function POST(req: Request) {
     });
 
     // 7. Return success response
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: true,
       donationId: donation.id,
       message: 'Payment recorded successfully'
@@ -107,7 +109,7 @@ export async function POST(req: Request) {
 
   } catch (error) {
     logger.error('Error recording PayPal payment:', error);
-    return NextResponse.json({ 
+    return NextResponse.json({
       error: 'Internal Server Error',
       message: 'An unexpected error occurred while recording your payment'
     }, { status: 500 });
