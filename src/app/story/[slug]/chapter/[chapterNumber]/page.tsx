@@ -33,6 +33,7 @@ interface ChapterState {
   chapter: ChapterType | null;
   chapters: ChapterType[];
   isLoading: boolean;
+  isContentLoading: boolean; // For content-only refreshes
   error: string | null;
   readingProgress: number;
   isLiked: boolean;
@@ -58,6 +59,7 @@ export default function ReadingPage() {
     chapter: null,
     chapters: [],
     isLoading: true,
+    isContentLoading: false,
     error: null,
     readingProgress: 0,
     isLiked: false,
@@ -68,7 +70,7 @@ export default function ReadingPage() {
 
   // Destructure state for easier access
   const {
-    story, chapter, chapters, isLoading, error,
+    story, chapter, chapters, isLoading, isContentLoading, error,
     readingProgress, isLiked, isFollowing, contentLength, fontSize
   } = state
 
@@ -244,6 +246,83 @@ export default function ReadingPage() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [readingProgress, updateProgressDebounced])
 
+  // Function to fetch chapter data without page navigation
+  const fetchChapterData = useCallback(async (chapterNumber: number) => {
+    if (!story) return false
+
+    // Set loading state for content only
+    setState(prev => ({ ...prev, isContentLoading: true }))
+
+    try {
+      // Find the chapter by number
+      const targetChapter = chapters.find(c => c.number === chapterNumber)
+
+      if (!targetChapter) {
+        toast({
+          title: "Error",
+          description: "Chapter not found",
+          variant: "destructive"
+        })
+        return false
+      }
+
+      // Fetch the full chapter details
+      const chapterDetails = await StoryService.getChapter(story.id, targetChapter.id)
+
+      // Check if chapter is published
+      if (chapterDetails.status !== 'published') {
+        toast({
+          title: "Error",
+          description: "This chapter is not yet published",
+          variant: "destructive"
+        })
+        return false
+      }
+
+      // Determine content length based on word count
+      const wordCount = (chapterDetails.content || '').replace(/<[^>]*>/g, '').split(/\s+/).length
+      let contentLengthValue: 'short' | 'medium' | 'long' = 'medium'
+
+      if (wordCount > 3000) {
+        contentLengthValue = 'long'
+      } else if (wordCount > 1000) {
+        contentLengthValue = 'medium'
+      } else {
+        contentLengthValue = 'short'
+      }
+
+      // Update state with new chapter data
+      setState(prev => ({
+        ...prev,
+        chapter: chapterDetails,
+        contentLength: contentLengthValue,
+        readingProgress: chapterDetails.readingProgress || 0,
+        isContentLoading: false
+      }))
+
+      // Update URL without full page navigation
+      window.history.pushState(
+        { chapterNumber },
+        '',
+        `/story/${slug}/chapter/${chapterNumber}`
+      )
+
+      // Scroll to top
+      window.scrollTo(0, 0)
+
+      return true
+    } catch (err) {
+      console.error("Error fetching chapter data:", err)
+      toast({
+        title: "Error",
+        description: "Failed to load chapter. Please try again.",
+        variant: "destructive"
+      })
+      setState(prev => ({ ...prev, isContentLoading: false }))
+      return false
+    }
+  }, [story, chapters, slug, toast])
+
   // Handle navigation to previous/next chapter
   const navigateToChapter = useCallback((direction: "prev" | "next") => {
     if (!chapter || !chapters.length) return
@@ -261,13 +340,25 @@ export default function ReadingPage() {
     }
 
     const targetChapter = chapters[targetIndex]
-    router.push(`/story/${slug}/chapter/${targetChapter.number}`)
-  }, [chapter, chapters, router, slug])
+    fetchChapterData(targetChapter.number)
+  }, [chapter, chapters, fetchChapterData])
 
   // Handle back to story info
   const handleBackToStory = useCallback(() => {
     router.push(`/story/${slug}`)
   }, [router, slug])
+
+  // Handle browser back/forward navigation
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      if (event.state && typeof event.state.chapterNumber === 'number') {
+        fetchChapterData(event.state.chapterNumber)
+      }
+    }
+
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [fetchChapterData])
 
   // Increase/decrease font size
   const adjustFontSize = useCallback((amount: number) => {
@@ -376,6 +467,7 @@ export default function ReadingPage() {
             fontSize={fontSize}
             handleCopyAttempt={handleCopyAttempt}
             contentRef={contentRef}
+            isContentLoading={isContentLoading}
           />
 
           {/* Chapter Navigation Buttons */}

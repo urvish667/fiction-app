@@ -10,19 +10,21 @@ interface ChapterContentProps {
   fontSize: number
   handleCopyAttempt: (e: React.ClipboardEvent | React.MouseEvent) => void
   contentRef: React.RefObject<HTMLDivElement>
+  isContentLoading?: boolean
 }
 
-export function ChapterContent({ 
-  chapter, 
-  contentLength, 
-  fontSize, 
+export function ChapterContent({
+  chapter,
+  contentLength,
+  fontSize,
   handleCopyAttempt,
-  contentRef 
+  contentRef,
+  isContentLoading = false
 }: ChapterContentProps) {
   // Function to split content for ad placement
   const splitContentForAds = (content: string, parts: number, partIndex: number): string => {
     if (typeof window === 'undefined') return '';
-    
+
     // Parse the HTML content
     const parser = new DOMParser()
     const doc = parser.parseFromString(content, 'text/html')
@@ -59,9 +61,15 @@ export function ChapterContent({
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5, delay: 0.2 }}
       ref={contentRef}
-      className="prose prose-lg dark:prose-invert max-w-none mb-12"
+      className="prose prose-lg dark:prose-invert max-w-none mb-12 relative"
       style={{ fontSize: `${fontSize}px` }}
     >
+      {/* Loading overlay */}
+      {isContentLoading && (
+        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        </div>
+      )}
       {contentLength === 'long' ? (
         // For long content: Show ads at 1/3 and 2/3 of the content
         <>
