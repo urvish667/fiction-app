@@ -92,16 +92,19 @@ export default function StoryRecommendations({
     );
   };
 
-  // If there are no recommendations, don't render anything
-  if (!loading && (recommendations.length === 0 || error)) {
+  // If there's an error, don't render anything
+  if (!loading && error) {
     return null;
   }
 
   return (
     <div className={`my-8 ${className}`}>
-      <h2 className="text-2xl font-bold mb-6">You Might Also Like</h2>
-
-      {loading ? (
+      {!loading && recommendations.length === 0 ? (
+        <div className="text-center py-8 border rounded-lg bg-muted/20">
+          <p className="text-muted-foreground">No recommendations found for this story yet.</p>
+          <p className="text-sm text-muted-foreground mt-2">Check back later for similar stories.</p>
+        </div>
+      ) : loading ? (
         // Loading skeleton
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {Array.from({ length: 3 }).map((_, i) => (
