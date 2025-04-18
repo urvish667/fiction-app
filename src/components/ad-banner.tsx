@@ -26,7 +26,7 @@ export default function AdBanner({ type, className = "" }: AdBannerProps) {
     >
       <div className="text-center text-muted-foreground">
         <p className="text-sm font-medium">Advertisement</p>
-        <p className="text-xs">
+        <p className="text-xs opacity-70">
           {type === "banner" && "Banner Ad"}
           {type === "interstitial" && "Interstitial Ad"}
           {type === "sidebar" && "Sidebar Ad"}

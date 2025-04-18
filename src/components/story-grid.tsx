@@ -36,21 +36,26 @@ interface StoryGridProps {
 }
 
 export default function StoryGrid({ stories, viewMode, showAds = false, isLoading = false }: StoryGridProps) {
-  // Insert ads after every 6 stories
-  const storiesWithAds = showAds
+
+  // Define grid layout class based on view mode
+  const gridClass = `grid gap-6 ${
+    viewMode === "grid" ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "grid-cols-1"
+  }`
+
+  // Simplified approach: just insert ads after every 8 stories (2 rows on XL screens)
+  // This ensures ads appear after complete rows on all screen sizes
+  const simplifiedStoriesWithAds = showAds
     ? stories.reduce((acc: (StoryItem | { isAd: true })[], story, index) => {
         acc.push(story)
-        if ((index + 1) % 6 === 0 && index !== stories.length - 1) {
+        if ((index + 1) % 8 === 0 && index !== stories.length - 1) {
           acc.push({ isAd: true })
         }
         return acc
       }, [])
     : stories
 
-  // Define grid layout class based on view mode
-  const gridClass = `grid gap-6 ${
-    viewMode === "grid" ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "grid-cols-1"
-  }`
+  // Use the simplified approach instead of the complex one
+  const storiesWithAds = simplifiedStoriesWithAds
 
   // If loading, show skeleton cards
   if (isLoading) {
@@ -73,8 +78,11 @@ export default function StoryGrid({ stories, viewMode, showAds = false, isLoadin
       {storiesWithAds.map((item, index) => {
         if ("isAd" in item) {
           return (
-            <div key={`ad-${index}`} className={viewMode === "grid" ? "col-span-full" : ""}>
-              <AdBanner type="interstitial" className="w-full h-32 sm:h-40" />
+            <div key={`ad-${index}`} className="col-span-1 sm:col-span-2 lg:col-span-3 xl:col-span-4 w-full">
+              <AdBanner
+                type="interstitial"
+                className="w-full h-32 sm:h-40"
+              />
             </div>
           )
         }
