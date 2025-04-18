@@ -17,20 +17,83 @@ export default function DonationSuccessPage() {
   const router = useRouter()
   const [donation, setDonation] = useState<DonationDetails | null>(null)
 
+  const [isLoading, setIsLoading] = useState(true);
+  const [shouldRedirect, setShouldRedirect] = useState(false);
+
   useEffect(() => {
-    // Get donation details from session storage
-    const donationData = sessionStorage.getItem("donation")
-    if (donationData) {
-      setDonation(JSON.parse(donationData))
-      // Clear the donation data
-      sessionStorage.removeItem("donation")
-    }
+    // Function to get donation details from session storage
+    const getDonationDetails = () => {
+      try {
+        // Get donation details from session storage
+        const donationData = window.sessionStorage.getItem("donation");
+
+        if (donationData) {
+          // Parse the donation data
+          const parsedData = JSON.parse(donationData);
+
+          // Set the donation state
+          setDonation(parsedData);
+
+          // Clear the donation data
+          window.sessionStorage.removeItem("donation");
+        } else {
+          // If no donation details found, set flag to redirect
+          setShouldRedirect(true);
+        }
+      } catch (error) {
+        setShouldRedirect(true);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    // Add a small delay to ensure session storage is available
+    const timer = setTimeout(() => {
+      getDonationDetails();
+    }, 300);
+
+    return () => clearTimeout(timer);
   }, [])
 
-  if (!donation) {
-    // If no donation details found, redirect to home
-    router.push("/")
-    return null
+  // Handle redirect in a separate effect
+  useEffect(() => {
+    if (shouldRedirect && !isLoading) {
+      // Add a small delay before redirecting
+      const timer = setTimeout(() => {
+        router.push("/");
+      }, 500);
+
+      return () => clearTimeout(timer);
+    }
+  }, [shouldRedirect, isLoading, router]);
+
+  // Fallback donation data in case session storage fails
+  useEffect(() => {
+    // If we're not loading and don't have donation data and aren't redirecting yet
+    if (!isLoading && !donation && !shouldRedirect) {
+
+      // Set a generic donation as fallback
+      setDonation({
+        writer: "the creator",
+        amount: "some amount",
+        message: "Thank you for your support!"
+      });
+    }
+  }, [isLoading, donation, shouldRedirect]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen">
+        <Navbar />
+        <div className="container mx-auto px-4 py-16 flex justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (shouldRedirect || !donation) {
+    return null; // Return null while redirecting
   }
 
   return (
@@ -40,6 +103,7 @@ export default function DonationSuccessPage() {
       <main className="container mx-auto px-4 py-16">
         <div className="max-w-lg mx-auto">
           <Card>
+
             <CardHeader className="text-center">
               <div className="flex justify-center mb-4">
                 <CheckCircle2 className="h-16 w-16 text-green-500" />
@@ -49,25 +113,25 @@ export default function DonationSuccessPage() {
             </CardHeader>
 
             <CardContent className="space-y-6">
-              <div className="text-center space-y-2">
+              <div className="text-center space-y-2 p-4 bg-muted/30 rounded-lg">
                 <p className="text-lg">
                   You have donated{" "}
                   <span className="font-bold text-primary">${donation.amount}</span> to{" "}
                   <span className="font-bold">{donation.writer}</span>
                 </p>
                 {donation.message && (
-                  <p className="text-muted-foreground">
+                  <p className="text-muted-foreground mt-2 italic">
                     Your message: "{donation.message}"
                   </p>
                 )}
+                <p className="text-sm text-muted-foreground mt-4">
+                  Your support helps creators continue to produce amazing content.
+                </p>
               </div>
 
               <div className="flex flex-col gap-2">
                 <Button onClick={() => router.push("/")} variant="default">
                   Return Home
-                </Button>
-                <Button onClick={() => router.back()} variant="outline">
-                  Go Back
                 </Button>
               </div>
             </CardContent>

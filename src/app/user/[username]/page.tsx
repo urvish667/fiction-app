@@ -263,16 +263,17 @@ export default function UserProfilePage() {
               </Avatar>
               <div className="flex items-center space-x-2 pb-4 pr-4">
                 {user.donationsEnabled && (
-                  <SupportButton 
+                  <SupportButton
                     authorId={user.id}
                     donationMethod={user.donationMethod ?? null}
                     donationLink={user.donationLink ?? null}
-                    authorName={user.name || user.username} 
+                    authorName={user.name || user.username}
+                    authorUsername={user.username}
                   />
                 )}
-                <ProfileActionButtons 
+                <ProfileActionButtons
                   username={user.username}
-                  isCurrentUser={user.isCurrentUser} 
+                  isCurrentUser={user.isCurrentUser}
                 />
               </div>
             </div>

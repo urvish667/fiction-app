@@ -17,9 +17,7 @@ import { Separator } from "@/components/ui/separator"
 import { BookOpen, Heart, Users, DollarSign, AlertCircle, Loader2 } from "lucide-react"
 import Navbar from "@/components/navbar"
 import { useToast } from "@/components/ui/use-toast"
-import { StripePaymentForm } from "@/components/payments/StripePaymentForm"
-import { PayPalPaymentForm } from "@/components/payments/PayPalPaymentForm"
-import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js"
+import { UnifiedPaymentForm } from "@/components/payments/UnifiedPaymentForm"
 
 // Predefined donation amounts
 const donationAmounts = [
@@ -56,7 +54,8 @@ export default function DonatePage() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [clientSecret, setClientSecret] = useState<string | null>(null)
   const searchParams = useSearchParams()
-  const paymentIntent = searchParams?.get('payment_intent') || null
+  const urlClientSecret = searchParams?.get('clientSecret') || null
+  const urlAmount = searchParams?.get('amount') || null
 
   useEffect(() => {
     const fetchWriter = async () => {
@@ -73,6 +72,17 @@ export default function DonatePage() {
         }
         const data = await response.json()
         setWriter(data)
+
+        // If we have a client secret in the URL, set it in the state
+        if (urlClientSecret) {
+          setClientSecret(urlClientSecret)
+        }
+
+        // If we have an amount in the URL, set it in the state
+        if (urlAmount) {
+          const amountInDollars = (parseInt(urlAmount) / 100).toString()
+          setDonationAmount(amountInDollars)
+        }
       } catch (error) {
         console.error('Error fetching writer:', error)
         toast({
@@ -86,7 +96,7 @@ export default function DonatePage() {
     }
 
     fetchWriter()
-  }, [params?.username, toast])
+  }, [params?.username, toast, urlClientSecret, urlAmount])
 
   const handleCustomAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
@@ -96,9 +106,12 @@ export default function DonatePage() {
     }
   }
 
+  /**
+   * Handle donation submission using the unified payment gateway
+   */
   const handleDonate = async () => {
     try {
-      // Validate amount
+      // 1. Validate amount
       const amount = donationAmount === "custom" ? Number.parseFloat(customAmount) : Number.parseFloat(donationAmount)
 
       if (isNaN(amount) || amount < 1) {
@@ -114,7 +127,7 @@ export default function DonatePage() {
       setError("")
       setIsProcessing(true)
 
-      // Create payment intent
+      // 2. Process payment through unified payment gateway
       const response = await fetch('/api/donations/create', {
         method: 'POST',
         headers: {
@@ -124,7 +137,7 @@ export default function DonatePage() {
           recipientId: writer?.id,
           amount: Math.round(amount * 100), // Convert to cents
           message: message,
-          paymentMethod: writer?.donationMethod,
+          // No need to specify payment method - the backend will determine it based on recipient settings
         }),
       })
 
@@ -134,12 +147,16 @@ export default function DonatePage() {
         throw new Error(data.message || 'Failed to create donation')
       }
 
-      if (data.paypalLink) {
-        // Redirect to PayPal
-        window.location.href = data.paypalLink
-      } else if (data.clientSecret) {
+      // 3. Handle response based on payment processor type
+      if (data.processorType === 'stripe' && data.clientSecret) {
         // Handle Stripe payment
         setClientSecret(data.clientSecret)
+      } else if (data.processorType === 'paypal') {
+        // For PayPal, we'll use the UnifiedPaymentForm component
+        // which will render the PayPalPaymentForm
+        setClientSecret('paypal') // This is a hack to trigger the UnifiedPaymentForm
+      } else {
+        throw new Error('Invalid payment response')
       }
 
     } catch (error) {
@@ -164,17 +181,40 @@ export default function DonatePage() {
       return;
     }
 
-    // Store donation details for the success page
-    sessionStorage.setItem(
-      "donation",
-      JSON.stringify({
-        writer: writer.name,
-        amount: donationAmount === "custom" ? customAmount : donationAmount,
-        message: message,
-      })
-    )
 
-    router.push("/donate/success")
+    // Show a success message
+    toast({
+      title: "Payment Successful!",
+      description: "Thank you for supporting " + (writer.name || writer.username),
+      variant: "default",
+    });
+
+    // Prepare donation details
+    const donationDetails = {
+      writer: writer.name || writer.username,
+      amount: donationAmount === "custom" ? customAmount : donationAmount,
+      message: message,
+    };
+
+    // Store donation details for the success page - use try/catch to handle potential errors
+    try {
+      // First, clear any existing donation data
+      window.sessionStorage.removeItem("donation");
+
+      // Then set the new donation data
+      window.sessionStorage.setItem(
+        "donation",
+        JSON.stringify(donationDetails)
+      );
+    } catch (error) {
+      // Silent error handling - we'll use fallback on success page if needed
+    }
+
+    // Add a small delay before redirecting to ensure session storage is set
+    setTimeout(() => {
+      // Redirect to success page
+      router.push("/donate/success");
+    }, 500);
   }
 
   // Handle payment error
@@ -232,6 +272,7 @@ export default function DonatePage() {
           >
             <Card className="border-2">
               <CardHeader>
+
                 <CardTitle>Support {writer?.name || writer?.username}</CardTitle>
                 <CardDescription>
                   Choose your donation amount. Your payment will be processed securely and sent directly to the creator.
@@ -292,10 +333,16 @@ export default function DonatePage() {
                 </div>
 
                 {clientSecret ? (
-                  <StripePaymentForm
-                    clientSecret={clientSecret}
+                  <UnifiedPaymentForm
+                    recipientId={writer.id}
+                    amount={donationAmount === "custom" ? Math.round(Number.parseFloat(customAmount) * 100) : Math.round(Number.parseFloat(donationAmount) * 100)}
+                    message={message}
                     onSuccess={handlePaymentSuccess}
                     onError={handlePaymentError}
+                    onCancel={() => {
+                      setClientSecret(null);
+                      setIsProcessing(false);
+                    }}
                   />
                 ) : (
                   <div className="flex justify-end">

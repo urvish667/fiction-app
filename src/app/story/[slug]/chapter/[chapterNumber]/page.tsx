@@ -838,6 +838,7 @@ export default function ReadingPage() {
                   donationMethod={story.author.donationMethod ?? null}
                   donationLink={story.author.donationLink ?? null}
                   authorName={story.author.name || story.author.username || 'Author'}
+                  authorUsername={story.author.username || undefined}
                 />
               </div>
             )}

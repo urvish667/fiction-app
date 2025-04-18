@@ -11,13 +11,15 @@ interface SupportButtonProps {
   donationMethod: 'paypal' | 'stripe' | null;
   donationLink: string | null;
   authorName?: string;
+  authorUsername?: string;
 }
 
 export function SupportButton({
   authorId,
   donationMethod,
   donationLink,
-  authorName
+  authorName,
+  authorUsername
 }: SupportButtonProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const router = useRouter();
@@ -30,37 +32,14 @@ export function SupportButton({
   const handleDonation = async () => {
     setIsProcessing(true);
     try {
-      // Fixed amount for now
+      // Fixed amount for now - $5
       const amountInCents = 500;
 
-      const response = await fetch('/api/donations/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          recipientId: authorId,
-          amount: amountInCents,
-          paymentMethod: donationMethod
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || data.error || 'Could not initiate donation. Please try again.');
-      }
-
-      if (data.paypalLink) {
-        // Redirect to PayPal
-        window.location.href = data.paypalLink;
-      } else if (data.clientSecret) {
-        // Handle Stripe payment
-        router.push(`/donate/${authorId}?payment_intent=${data.clientSecret}`);
-      } else {
-        throw new Error('Invalid payment response');
-      }
-
+      // Instead of processing the payment here, redirect to the donation page
+      // The donation page will use our UnifiedPaymentForm component
+      // Use username for the URL if available, otherwise use ID
+      const userIdentifier = authorUsername || authorId;
+      router.push(`/donate/${userIdentifier}?amount=${amountInCents}`);
     } catch (error) {
       console.error('[DONATION_ERROR]', error);
       toast({

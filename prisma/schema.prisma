@@ -296,6 +296,7 @@ model Donation {
   message              String?
   status               String   @default("pending") // pending, succeeded, failed
   stripePaymentIntentId String? @unique
+  paypalOrderId        String? // PayPal order ID for tracking
   paymentMethod        String?  // stripe, paypal
   donorId              String
   donor                User     @relation("DonationsMade", fields: [donorId], references: [id])
@@ -308,6 +309,7 @@ model Donation {
   @@index([recipientId])
   @@index([status])
   @@index([createdAt])
+  @@index([paypalOrderId])
 }
 
 model StoryRecommendation {

@@ -8,8 +8,17 @@ import { prisma } from '@/lib/prisma';
 const enableDonationsSchema = z.object({
   method: z.literal('paypal'), // For now, only handling PayPal
   link: z.string().min(1, { message: 'PayPal link cannot be empty' })
-    .refine(val => val.includes('paypal.me/') || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val),
-      { message: 'Please enter a valid PayPal.me link or PayPal email address' }),
+    .refine(val => {
+      // Valid formats:
+      // 1. PayPal.me link (with or without https://)
+      // 2. PayPal.me username
+      // 3. PayPal email address
+      return (
+        val.includes('paypal.me/') || // Full PayPal.me link
+        /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val) || // Email address
+        /^[\w-]+$/.test(val) // Just a username
+      );
+    }, { message: 'Please enter a valid PayPal.me link, username, or PayPal email address' }),
 });
 
 export async function POST(req: Request) {
@@ -29,13 +38,26 @@ export async function POST(req: Request) {
 
     const { method, link } = validation.data;
 
+    // Format the PayPal link correctly
+    let formattedLink = link;
+
+    // If it's a PayPal.me link, ensure it's stored in a consistent format
+    // We'll store it without the https:// prefix to keep it simple
+    if (formattedLink.includes('paypal.me/')) {
+      // Extract the username from the PayPal.me link
+      const match = formattedLink.match(/paypal\.me\/([\w-]+)/);
+      if (match && match[1]) {
+        formattedLink = match[1];
+      }
+    }
+
     // Update user in the database
     await prisma.user.update({
       where: { id: session.user.id },
       data: {
         donationsEnabled: true,
         donationMethod: method,
-        donationLink: link,
+        donationLink: formattedLink,
         updatedAt: new Date(), // Explicitly update updatedAt
       },
     });
@@ -50,4 +72,4 @@ export async function POST(req: Request) {
     }
     return new NextResponse('Internal Server Error', { status: 500 });
   }
-} 
+}

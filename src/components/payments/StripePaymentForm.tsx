@@ -1,11 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js"
 import { loadStripe } from "@stripe/stripe-js"
 import { Button } from "@/components/ui/button"
 import { Loader2 } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@/components/ui/use-toast"
+import { logger } from "@/lib/logger"
 
 // Initialize Stripe
 let stripePromise: Promise<any> | null = null;
@@ -13,7 +14,7 @@ let stripePromise: Promise<any> | null = null;
 if (typeof window !== 'undefined') {
   const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
   if (!publishableKey) {
-    console.warn('Stripe publishable key is not configured. Stripe payments will not work.');
+    logger.warn('Stripe publishable key is not configured. Stripe payments will not work.');
   } else {
     stripePromise = loadStripe(publishableKey);
   }
@@ -34,6 +35,11 @@ function PaymentForm({ onSuccess, onError }: Omit<StripePaymentFormProps, 'clien
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+
+    // Prevent multiple submissions
+    if (isProcessing) return;
+
+    // Validate stripe and elements are available
     if (!stripe || !elements) {
       toast({
         title: "Error",
@@ -44,12 +50,20 @@ function PaymentForm({ onSuccess, onError }: Omit<StripePaymentFormProps, 'clien
     }
 
     try {
+      // Set processing state
       setIsProcessing(true);
       setError(null);
 
+      // Show processing toast
+      toast({
+        title: "Processing Payment",
+        description: "Please wait while we process your payment...",
+      });
+
+      // 1. First validate the payment element
       const { error: submitError } = await elements.submit();
       if (submitError) {
-        console.error('Form submission error:', submitError);
+        logger.error('Form submission error:', submitError);
         const errorMessage = submitError.message || 'Please check your payment details';
         setError(errorMessage);
         toast({
@@ -57,19 +71,25 @@ function PaymentForm({ onSuccess, onError }: Omit<StripePaymentFormProps, 'clien
           description: errorMessage,
           variant: "destructive",
         });
+        setIsProcessing(false);
         return;
       }
 
-      const { error: paymentError } = await stripe.confirmPayment({
+      // 2. Confirm the payment
+      const result = await stripe.confirmPayment({
         elements,
         confirmParams: {
-          return_url: `${window.location.origin}/payment/complete`,
+          // Redirect to the completion page
+          return_url: `${window.location.origin}/donate/success`,
         },
+        redirect: 'if_required',
       });
 
-      if (paymentError) {
-        console.error('Payment confirmation error:', paymentError);
-        const errorMessage = paymentError.message || 'Payment could not be processed';
+      // 3. Handle the result
+      if (result.error) {
+        // Show error to your customer
+        logger.error('Payment confirmation error:', result.error);
+        const errorMessage = result.error.message || 'Payment could not be processed';
         setError(errorMessage);
         toast({
           title: "Payment Failed",
@@ -77,17 +97,23 @@ function PaymentForm({ onSuccess, onError }: Omit<StripePaymentFormProps, 'clien
           variant: "destructive",
         });
         onError(new Error(errorMessage));
-      } else {
-        // Payment successful
+      } else if (result.paymentIntent && result.paymentIntent.status === 'succeeded') {
+        // Payment succeeded
         toast({
-          title: "Success",
-          description: "Payment processed successfully",
+          title: "Payment Successful!",
+          description: "Your donation has been processed successfully. Thank you for your support!",
+          variant: "default",
         });
-        onSuccess();
+
+        // Add a small delay before calling onSuccess to ensure the user sees the toast
+        setTimeout(() => {
+          onSuccess();
+        }, 1500);
       }
     } catch (err) {
+      // Handle unexpected errors
       const error = err as Error;
-      console.error('Unexpected error:', error);
+      logger.error('Unexpected error:', error);
       const errorMessage = error.message || 'An unexpected error occurred';
       setError(errorMessage);
       toast({
@@ -125,6 +151,16 @@ function PaymentForm({ onSuccess, onError }: Omit<StripePaymentFormProps, 'clien
 
 export function StripePaymentForm({ clientSecret, onSuccess, onError }: StripePaymentFormProps) {
   const { toast } = useToast();
+  const [isReady, setIsReady] = useState(false);
+
+  // Add a small delay to ensure the component is fully mounted
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsReady(true);
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   if (!stripePromise) {
     toast({
@@ -139,9 +175,23 @@ export function StripePaymentForm({ clientSecret, onSuccess, onError }: StripePa
     );
   }
 
+  if (!isReady) {
+    return (
+      <div className="flex flex-col items-center justify-center py-8">
+        <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+        <p className="text-center text-muted-foreground">
+          Preparing payment form...
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <Elements stripe={stripePromise} options={{ clientSecret }}>
-      <PaymentForm onSuccess={onSuccess} onError={onError} />
-    </Elements>
+    <div className="w-full">
+
+      <Elements stripe={stripePromise} options={{ clientSecret }}>
+        <PaymentForm onSuccess={onSuccess} onError={onError} />
+      </Elements>
+    </div>
   );
-} 
+}
