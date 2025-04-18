@@ -1,0 +1,5 @@
+-- This migration is now empty as the unique constraints were already created in the previous migration
+-- The original migration attempted to create duplicate constraints which would cause errors
+-- Original constraints are already in place as:
+-- - "StoryView_userId_storyId_key" on "StoryView"("userId", "storyId")
+-- - "ChapterView_userId_chapterId_key" on "ChapterView"("userId", "chapterId")

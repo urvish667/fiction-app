@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/auth/db-adapter";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { calculateStoryStatus, isStoryPublic } from "@/lib/story-helpers";
+import { ViewService } from "@/services/view-service";
 
 // GET endpoint to retrieve a story by slug
 export async function GET(
@@ -116,12 +117,18 @@ export async function GET(
       _count: undefined,
     };
 
-    // Increment read count if not the author
+    // Track view if not the author
     if (session?.user?.id !== story.authorId) {
-      await prisma.story.update({
-        where: { id: story.id },
-        data: { readCount: { increment: 1 } },
-      });
+      // Get client IP and user agent for anonymous tracking
+      const clientIp = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip');
+      const userAgent = request.headers.get('user-agent');
+
+      // Track the view
+      await ViewService.trackStoryView(
+        story.id,
+        session?.user?.id,
+        { ip: clientIp || undefined, userAgent: userAgent || undefined }
+      );
     }
 
     return NextResponse.json(formattedStory);

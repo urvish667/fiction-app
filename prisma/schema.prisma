@@ -78,6 +78,8 @@ model User {
   likes               Like[]
   bookmarks           Bookmark[]
   readingProgresses   ReadingProgress[]
+  storyViews          StoryView[]
+  chapterViews        ChapterView[]
 
   // Social relations
   followers           Follow[] @relation("Followers")
@@ -121,7 +123,6 @@ model Notification {
 // Story Management Models
 
 model Story {
-  // ... existing fields
   genreId    String?
   genre      Genre?    @relation(fields: [genreId], references: [id])
   languageId String?
@@ -144,6 +145,7 @@ model Story {
   comments    Comment[]
   likes       Like[]
   bookmarks   Bookmark[]
+  views       StoryView[]
 
   // Recommendation relations
   recommendations      StoryRecommendation[] @relation("StoryRecommendations")
@@ -173,6 +175,7 @@ model Chapter {
   story       Story     @relation(fields: [storyId], references: [id], onDelete: Cascade)
 
   readingProgresses ReadingProgress[]
+  views             ChapterView[]
 
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -327,4 +330,34 @@ model StoryRecommendation {
   @@index([storyId])
   @@index([recommendedStoryId])
   @@index([score])
+}
+
+model StoryView {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  storyId   String
+  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  clientIp  String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@unique([userId, storyId], map: "unique_user_story_view", name: "unique_user_story_view")
+  @@index([userId])
+  @@index([storyId])
+}
+
+model ChapterView {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  chapterId String
+  chapter   Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  clientIp  String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@unique([userId, chapterId], map: "unique_user_chapter_view", name: "unique_user_chapter_view")
+  @@index([userId])
+  @@index([chapterId])
 }

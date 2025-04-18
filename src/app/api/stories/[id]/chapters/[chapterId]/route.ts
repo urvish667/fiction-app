@@ -6,6 +6,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { countWords } from "@/lib/utils";
 import { S3Service } from "@/lib/s3-service";
 import { calculateStoryStatus, isStoryPublic } from "@/lib/story-helpers";
+import { ViewService } from "@/services/view-service";
 
 // Validation schema for updating a chapter
 const updateChapterSchema = z.object({
@@ -121,12 +122,19 @@ export async function GET(
       }
     }
 
-    // Increment read count if not the author
+    // Track view if not the author
     if (session?.user?.id !== story.authorId) {
-      await prisma.chapter.update({
-        where: { id: chapter.id },
-        data: { readCount: { increment: 1 } },
-      });
+      // Get client IP and user agent for anonymous tracking
+      const clientIp = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip');
+      const userAgent = request.headers.get('user-agent');
+
+      // Track the chapter view and automatically track story view
+      await ViewService.trackChapterView(
+        chapter.id,
+        session?.user?.id,
+        { ip: clientIp || undefined, userAgent: userAgent || undefined },
+        true // Also track a view for the story
+      );
     }
 
     // Fetch content from S3
