@@ -3,16 +3,38 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Heart } from "lucide-react"
+import { Heart, Flame } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import Navbar from "@/components/navbar"
 import { SiteFooter } from "@/components/site-footer"
 import { motion } from "framer-motion"
 import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
+import { Skeleton } from "@/components/ui/skeleton"
 
 export default function Home() {
-  const router = useRouter()
+  const [stories, setStories] = useState<any[] | null>(null)
+
+  useEffect(() => {
+    async function fetchMostViewedStories() {
+      try {
+        const response = await fetch('/api/stories/most-viewed?limit=4')
+        if (response.ok) {
+          const data = await response.json()
+          setStories(data.stories || [])
+        } else {
+          console.error('Failed to fetch most viewed stories')
+          setStories([])
+        }
+      } catch (error) {
+        console.error('Error fetching most viewed stories:', error)
+        setStories([])
+      }
+    }
+
+    fetchMostViewedStories()
+  }, [])
 
   return (
     <main className="min-h-screen">
@@ -34,9 +56,11 @@ export default function Home() {
               Join our community of writers and readers to discover, create, and share captivating stories.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button size="lg" className="text-base">
-                Start Reading
-              </Button>
+              <Link href="/browse">
+                <Button size="lg" className="text-base">
+                  Start Reading
+                </Button>
+              </Link>
               <Link href="/write/story-info">
                 <Button size="lg" variant="outline" className="text-base border-2 border-primary">
                   Start Writing
@@ -53,19 +77,55 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Featured Stories Section */}
+      {/* Most Viewed Stories Section */}
       <section className="py-16 px-8 bg-background">
         <div className="container mx-auto">
           <div className="flex justify-between items-center mb-10">
-            <h2 className="text-3xl font-bold">Featured Stories</h2>
-            <Button variant="ghost">View All</Button>
+            <div>
+              <h2 className="text-3xl font-bold">Most Viewed Stories</h2>
+              <p className="text-muted-foreground mt-1">Our most popular stories</p>
+            </div>
+            <Link href="/browse?sortBy=mostRead">
+              <Button variant="ghost">View All</Button>
+            </Link>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {featuredStories.map((story) => (
-              <StoryCard key={story.id} story={story} />
-            ))}
-          </div>
+          {!stories ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {Array(8).fill(0).map((_, index) => (
+                <div key={index} className="space-y-3">
+                  <Skeleton className="h-[200px] w-full rounded-md" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-5 w-4/5" />
+                    <Skeleton className="h-4 w-2/3" />
+                    <Skeleton className="h-4 w-full" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : stories.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">No stories available yet. Start reading or writing to see stories here!</p>
+              <div className="mt-4 flex justify-center gap-4">
+                <Link href="/browse">
+                  <Button>Browse Stories</Button>
+                </Link>
+                <Link href="/write/story-info">
+                  <Button variant="outline">Start Writing</Button>
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {stories.map((story, index) => (
+                <StoryCard
+                  key={story.id}
+                  story={story}
+                  isTopStory={index === 0}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -110,7 +170,7 @@ export default function Home() {
 }
 
 // Update the StoryCard component in the homepage to make it clickable
-function StoryCard({ story }: { story: Story }) {
+function StoryCard({ story, isTopStory = false }: { story: any, isTopStory?: boolean }) {
   const router = useRouter()
 
   return (
@@ -120,10 +180,10 @@ function StoryCard({ story }: { story: Story }) {
       onClick={() => router.push(`/story/${story.id}`)}
       className="cursor-pointer"
     >
-      <Card className="h-full overflow-hidden flex flex-col">
+      <Card className={`h-full overflow-hidden flex flex-col ${isTopStory ? 'ring-2 ring-primary' : ''}`}>
         <div className="relative aspect-[3/2] overflow-hidden">
           <Image
-            src={story.thumbnail || "/placeholder.svg"}
+            src={story.coverImage || "/placeholder.svg"}
             alt={story.title}
             fill
             className="object-cover transition-transform hover:scale-105"
@@ -133,6 +193,12 @@ function StoryCard({ story }: { story: Story }) {
               ? (story.genre as {name: string}).name
               : (typeof story.genre === 'string' ? story.genre : 'General')}
           </Badge>
+          {isTopStory && (
+            <div className="absolute top-2 left-2 bg-primary text-primary-foreground px-2 py-1 rounded-md flex items-center gap-1">
+              <Flame size={14} />
+              <span className="text-xs font-medium">Most Read</span>
+            </div>
+          )}
         </div>
         <CardHeader className="pb-2">
           <h3 className="font-bold text-lg line-clamp-1">{story.title}</h3>
@@ -141,75 +207,21 @@ function StoryCard({ story }: { story: Story }) {
             story.author}</p>
         </CardHeader>
         <CardContent className="pb-2 flex-grow">
-          <p className="text-sm text-muted-foreground line-clamp-2">{story.excerpt}</p>
+          <p className="text-sm text-muted-foreground line-clamp-2">{story.description || story.excerpt}</p>
         </CardContent>
         <CardFooter className="pt-0 flex justify-between">
           <div className="flex items-center gap-1 text-sm text-muted-foreground">
             <Heart size={16} className="text-muted-foreground" />
-            <span>{story.likes}</span>
+            <span>{story.likeCount || story.likes || 0}</span>
           </div>
-          <span className="text-sm text-muted-foreground">{story.readTime} min read</span>
+          <span className="text-sm text-muted-foreground">{story.viewCount || story.readCount || 0} views</span>
         </CardFooter>
       </Card>
     </motion.div>
   )
 }
 
-// Types
-interface Story {
-  id: number
-  title: string
-  author: string
-  genre: string
-  thumbnail: string
-  excerpt: string
-  likes: number
-  readTime: number
-}
 
-// Sample Data
-const featuredStories: Story[] = [
-  {
-    id: 1,
-    title: "The Last Lighthouse",
-    author: "Emma Rivers",
-    genre: "Fantasy",
-    thumbnail: "/placeholder.svg?height=300&width=450",
-    excerpt: "In a world where darkness consumes everything, one lighthouse stands as humanity's last hope.",
-    likes: 342,
-    readTime: 8,
-  },
-  {
-    id: 2,
-    title: "Echoes of Tomorrow",
-    author: "James Chen",
-    genre: "Sci-Fi",
-    thumbnail: "/placeholder.svg?height=300&width=450",
-    excerpt: "When the future sends messages to the past, one woman must decide whether to listen.",
-    likes: 289,
-    readTime: 12,
-  },
-  {
-    id: 3,
-    title: "Whispers in the Hallway",
-    author: "Sarah Blake",
-    genre: "Mystery",
-    thumbnail: "/placeholder.svg?height=300&width=450",
-    excerpt: "The old school holds secrets that have been buried for generations, until now.",
-    likes: 176,
-    readTime: 10,
-  },
-  {
-    id: 4,
-    title: "Beyond the Horizon",
-    author: "Michael Torres",
-    genre: "Adventure",
-    thumbnail: "/placeholder.svg?height=300&width=450",
-    excerpt: "A journey across uncharted waters leads to discoveries that will change the world.",
-    likes: 421,
-    readTime: 15,
-  },
-]
 
 const categories = [
   "Fantasy",

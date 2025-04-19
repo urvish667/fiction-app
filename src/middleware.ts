@@ -10,29 +10,65 @@ const protectedRoutes = [
   '/works',
 ];
 
+// Routes that require profile completion
+const profileRequiredRoutes = [
+  '/write',
+  '/settings',
+  '/dashboard',
+  '/works',
+];
+
+// Routes that are exempt from profile completion check
+const profileExemptRoutes = [
+  '/complete-profile',
+  '/verify-email',
+];
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  
+
+  // Skip middleware for exempt routes
+  if (profileExemptRoutes.some(route => pathname.startsWith(route))) {
+    return NextResponse.next();
+  }
+
+  // Get the session token
+  const token = await getToken({
+    req: request,
+    secret: process.env.NEXTAUTH_SECRET
+  });
+
   // Check if the path is a protected route
-  const isProtectedRoute = protectedRoutes.some(route => 
+  const isProtectedRoute = protectedRoutes.some(route =>
     pathname.startsWith(route)
   );
-  
+
   if (isProtectedRoute) {
-    // Get the session token
-    const token = await getToken({ 
-      req: request,
-      secret: process.env.NEXTAUTH_SECRET
-    });
-    
-    // If there's no token, redirect to the home page with a return URL
+    // If there's no token, redirect to the login page with a return URL
     if (!token) {
-      const url = new URL('/', request.url);
+      const url = new URL('/login', request.url);
       url.searchParams.set('callbackUrl', pathname);
       return NextResponse.redirect(url);
     }
   }
-  
+
+  // Check if user needs to complete their profile
+  if (token &&
+      profileRequiredRoutes.some(route => pathname.startsWith(route)) &&
+      (!token.isProfileComplete || token.needsProfileCompletion)) {
+    // Redirect to profile completion page
+    return NextResponse.redirect(new URL('/complete-profile', request.url));
+  }
+
+  // Check if email verification is required
+  if (token &&
+      profileRequiredRoutes.some(route => pathname.startsWith(route)) &&
+      !token.emailVerified &&
+      token.provider === 'credentials') {
+    // Redirect to email verification page
+    return NextResponse.redirect(new URL('/verify-email', request.url));
+  }
+
   return NextResponse.next();
 }
 

@@ -1,6 +1,5 @@
 "use client"
 
-import { useState } from "react"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
@@ -12,15 +11,13 @@ import {
   navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { Search, Menu } from "lucide-react"
+import { Menu } from "lucide-react"
 import { motion } from "framer-motion"
-import LoginModal from "./login-modal"
 import UserAvatarMenu from "./user-avatar-menu"
 import { Skeleton } from "@/components/ui/skeleton"
 
 export default function Navbar() {
   const { data: session, status } = useSession()
-  const [showLoginModal, setShowLoginModal] = useState(false)
   const isLoading = status === "loading"
   const isAuthenticated = status === "authenticated"
 
@@ -93,7 +90,9 @@ export default function Navbar() {
           {isAuthenticated && userWithAvatar ? (
             <UserAvatarMenu user={userWithAvatar} onLogout={handleLogout} />
           ) : (
-            <Button onClick={() => setShowLoginModal(true)}>Login / Signup</Button>
+            <Button asChild>
+              <Link href="/login">Login / Signup</Link>
+            </Button>
           )}
         </div>
 
@@ -103,7 +102,9 @@ export default function Navbar() {
           {isAuthenticated && userWithAvatar ? (
             <UserAvatarMenu user={userWithAvatar} onLogout={handleLogout} />
           ) : (
-            <Button size="sm" onClick={() => setShowLoginModal(true)}>Login</Button>
+            <Button size="sm" asChild>
+              <Link href="/login">Login</Link>
+            </Button>
           )}
 
           <Sheet>
@@ -128,9 +129,6 @@ export default function Navbar() {
           </Sheet>
         </div>
       </div>
-
-      {/* Login Modal */}
-      <LoginModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} onLogin={() => setShowLoginModal(false)} />
     </header>
   )
 }

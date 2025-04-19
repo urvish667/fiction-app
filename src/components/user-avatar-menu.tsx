@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { BookMarked, PenSquare, Bell, Settings, LogOut, Home, LayoutDashboard } from "lucide-react"
+import { BookMarked, PenSquare, Bell, Settings, LogOut, Home, LayoutDashboard, FileEdit } from "lucide-react"
 import { motion } from "framer-motion"
 
 interface UserAvatarMenuProps {
@@ -111,6 +111,12 @@ export default function UserAvatarMenu({ user, onLogout }: UserAvatarMenuProps) 
             <p className="text-xs leading-none text-muted-foreground">@{user.username}</p>
           </div>
         </DropdownMenuLabel>
+        <DropdownMenuItem asChild className="mt-2 mb-1 bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground focus:bg-primary/90 focus:text-primary-foreground">
+          <Link href="/write/story-info" className="flex items-center justify-center py-1 cursor-pointer">
+            <FileEdit className="mr-2 h-5 w-5" />
+            <span className="font-medium">Start Writing</span>
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           {menuItems.map((item) => (

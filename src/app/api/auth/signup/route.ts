@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createUser, isEmailAvailable, isUsernameAvailable } from "@/lib/auth/auth-utils";
+import { generateVerificationToken, sendVerificationEmail } from "@/lib/auth/email-utils";
 import { ZodError, z } from "zod";
 
 // Signup request validation schema
@@ -48,7 +49,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create user
+    // Create user with emailVerified set to null (unverified)
     const user = await createUser({
       email: validatedData.email,
       username: validatedData.username,
@@ -57,11 +58,18 @@ export async function POST(request: NextRequest) {
       pronoun: validatedData.pronoun,
       termsAccepted: validatedData.termsAccepted,
       marketingOptIn: validatedData.marketingOptIn || false,
+      emailVerified: null, // Mark as unverified
     });
+
+    // Generate verification token
+    const verificationToken = await generateVerificationToken(validatedData.email);
+
+    // Send verification email
+    await sendVerificationEmail(validatedData.email, verificationToken);
 
     return NextResponse.json(
       {
-        message: "User created successfully",
+        message: "User created successfully. Please check your email to verify your account.",
         user: {
           id: user.id,
           username: user.username,
@@ -73,7 +81,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (error instanceof ZodError) {
       const fieldErrors = {} as Record<string, string>;
-      
+
       error.errors.forEach((err) => {
         if (err.path && err.path.length > 0) {
           const field = String(err.path[0]); // Convert to string to ensure it's a valid key
@@ -93,4 +101,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-} 
+}

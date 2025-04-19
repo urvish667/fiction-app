@@ -31,7 +31,7 @@ export const authOptions: NextAuthOptions = {
           id: profile.sub,
           name: profile.name,
           bannerImage: null,
-          donationLink: null, 
+          donationLink: null,
           donationMethod: null,
           donationsEnabled: false,
           email: profile.email,
@@ -85,7 +85,7 @@ export const authOptions: NextAuthOptions = {
           name: profile.name,
           bannerImage: null,
           donationLink: null,
-          donationMethod: null, 
+          donationMethod: null,
           donationsEnabled: false,
           email: profile.email,
           image: profile.picture?.data?.url,
@@ -216,6 +216,18 @@ export const authOptions: NextAuthOptions = {
     error: "/login", // Handle errors in the login page
   },
 
+  // Redirect to profile completion page if needed
+  callbacks: {
+    async redirect({ url, baseUrl }) {
+      // If the user is not logged in, redirect to the requested URL
+      if (url.startsWith(baseUrl)) return url;
+
+      // If the URL is absolute, make it relative
+      const relativeUrl = url.startsWith('/') ? url : `/${url}`;
+
+      return relativeUrl;
+    },
+
   // Events to handle special auth cases
   events: {
     // Process new users from OAuth providers - optimized to reduce DB load
@@ -286,6 +298,9 @@ export const authOptions: NextAuthOptions = {
             where: { id: dbUser.id },
             data: { isProfileComplete: false },
           });
+
+          // Set a flag to redirect to profile completion page
+          user.needsProfileCompletion = true;
         }
 
       } catch (error) {
@@ -298,8 +313,7 @@ export const authOptions: NextAuthOptions = {
     },
   },
 
-  // Callbacks to customize auth behavior
-  callbacks: {
+  // Session and token callbacks
     // Add custom user data to session - optimized for performance
     async session({ session, token }) {
       // Create a new session object with only the standard fields
@@ -311,6 +325,7 @@ export const authOptions: NextAuthOptions = {
         bannerImage: token.bannerImage,
         username: token.username,
         isProfileComplete: token.isProfileComplete,
+        needsProfileCompletion: token.needsProfileCompletion,
         unreadNotifications: 0, // Default value for now
         // Add preferences if available
         preferences: token.preferences || {
@@ -349,18 +364,22 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user, account, trigger }) {
       // If this is a sign-in event, set the initial token data
       if (user) {
+        // Check if user needs profile completion (set in signIn event)
+        if ((user as any).needsProfileCompletion) {
+          token.needsProfileCompletion = true;
+        }
         // Fetch the user from DB to ensure we have the database ID
         const dbUser = await prisma.user.findUnique({
           where: { email: user.email! },
-          select: { 
-            id: true, 
-            username: true, 
-            provider: true, 
-            isProfileComplete: true, 
-            image: true, 
-            bannerImage: true, 
-            preferences: true, 
-            marketingOptIn: true 
+          select: {
+            id: true,
+            username: true,
+            provider: true,
+            isProfileComplete: true,
+            image: true,
+            bannerImage: true,
+            preferences: true,
+            marketingOptIn: true
           }
         });
 
@@ -368,7 +387,7 @@ export const authOptions: NextAuthOptions = {
           // Should not happen if adapter/signIn works correctly, but handle defensively
           console.error(`JWT Callback: Could not find user in DB during initial sign-in: ${user.email}`);
           // Return the token as-is or throw an error depending on desired behavior
-          return token; 
+          return token;
         }
 
         // Store data from the DB user in the token
@@ -398,7 +417,7 @@ export const authOptions: NextAuthOptions = {
         console.log(`JWT Callback: Initial token created for user ID: ${token.id}`);
         return token; // Return the populated token
       }
-      
+
       // If it's not the initial sign-in, check if user data needs refreshing
       const shouldFetchUser =
         trigger === 'update' ||

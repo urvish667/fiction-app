@@ -64,9 +64,10 @@ export async function createUser(userData: {
   pronoun: string;
   termsAccepted: boolean;
   marketingOptIn: boolean;
+  emailVerified?: Date | null;
 }) {
   const hashedPassword = await hashPassword(userData.password);
-  
+
   return prisma.user.create({
     data: {
       email: userData.email,
@@ -76,6 +77,7 @@ export async function createUser(userData: {
       pronoun: userData.pronoun,
       termsAccepted: userData.termsAccepted,
       marketingOptIn: userData.marketingOptIn,
+      emailVerified: userData.emailVerified,
       isProfileComplete: true,
       provider: "credentials",
     },
@@ -90,7 +92,7 @@ export async function isProfileComplete(userId: string) {
     where: { id: userId },
     select: { isProfileComplete: true, username: true, birthdate: true, pronoun: true },
   });
-  
+
   return !!user?.isProfileComplete && !!user?.username && !!user?.birthdate && !!user?.pronoun;
 }
 
