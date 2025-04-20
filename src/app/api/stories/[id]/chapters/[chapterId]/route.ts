@@ -128,13 +128,23 @@ export async function GET(
       const clientIp = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip');
       const userAgent = request.headers.get('user-agent');
 
-      // Track the chapter view and automatically track story view
-      await ViewService.trackChapterView(
-        chapter.id,
-        session?.user?.id,
-        { ip: clientIp || undefined, userAgent: userAgent || undefined },
-        true // Also track a view for the story
-      );
+      try {
+        // Track the chapter view and automatically track story view using the improved ViewService
+        const viewResult = await ViewService.trackChapterView(
+          chapter.id,
+          session?.user?.id,
+          { ip: clientIp || undefined, userAgent: userAgent || undefined },
+          true // Also track a view for the story
+        );
+
+        // Log if this is a first view (for debugging)
+        if (viewResult?.isFirstView) {
+          console.log(`First view recorded for chapter ${chapter.id} by user ${session?.user?.id || 'anonymous'}`);
+        }
+      } catch (viewError) {
+        // Log the error but don't fail the request
+        console.error("Error tracking chapter view:", viewError);
+      }
     }
 
     // Fetch content from S3

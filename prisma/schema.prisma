@@ -322,29 +322,35 @@ model StoryRecommendation {
 }
 
 model StoryView {
-  id        String   @id @default(cuid())
-  userId    String?
-  storyId   String
-  clientIp  String?
-  userAgent String?
-  createdAt DateTime @default(now())
-  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
-  user      User?    @relation(fields: [userId], references: [id])
+  id         String   @id @default(cuid())
+  userId     String?
+  storyId    String
+  clientIp   String?
+  userAgent  String?
+  isFirstView Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  story      Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  user       User?    @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([storyId])
+  @@index([storyId, createdAt])
+  @@index([userId, storyId])
 }
 
 model ChapterView {
-  id        String   @id @default(cuid())
-  userId    String?
-  chapterId String
-  clientIp  String?
-  userAgent String?
-  createdAt DateTime @default(now())
-  chapter   Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
-  user      User?    @relation(fields: [userId], references: [id])
+  id         String   @id @default(cuid())
+  userId     String?
+  chapterId  String
+  clientIp   String?
+  userAgent  String?
+  isFirstView Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  chapter    Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  user       User?    @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([chapterId])
+  @@index([chapterId, createdAt])
+  @@index([userId, chapterId])
 }

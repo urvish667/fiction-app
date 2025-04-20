@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback, useReducer } from "react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { motion } from "framer-motion"
@@ -26,28 +26,68 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { ArrowLeft, Upload, Trash2, AlertCircle, Eye, BookOpen, Plus, FileText, Clock, CheckCircle2, Edit } from "lucide-react"
+import { ArrowLeft, Upload, Trash2, AlertCircle, Eye, BookOpen, Plus, FileText, Clock, CheckCircle2, Edit, X } from "lucide-react"
 import Navbar from "@/components/navbar"
 import { SiteFooter } from "@/components/site-footer"
 import { useDebounce } from "@/hooks/use-debounce"
 import { StoryService } from "@/services/story-service"
 import { CreateStoryRequest, UpdateStoryRequest } from "@/types/story"
 import { fetchWithCsrf } from "@/lib/client/csrf"
+import { useIsMobile } from "@/hooks/use-mobile"
 
+// Types for the story info page
+interface StoryFormData {
+  id: string;
+  title: string;
+  description: string;
+  genre: string;
+  language: string;
+  isMature: boolean;
+  coverImage: string;
+  status: "draft" | "ongoing" | "completed";
+  lastSaved: Date | null;
+  slug: string;
+}
 
-import { X } from "lucide-react";
+interface FormErrors {
+  title: string;
+  description: string;
+  genre: string;
+}
+
+interface ChapterData {
+  id: string;
+  title: string;
+  status: "published" | "draft" | "scheduled" | "premium";
+  wordCount: number;
+  lastUpdated: Date;
+  number: number;
+}
+
+interface TagData {
+  name: string;
+}
 
 export default function StoryInfoPage() {
-  // --- All useState hooks at the top ---
+  const isMobile = useIsMobile();
+  const router = useRouter();
+  const { toast } = useToast();
+  const { data: session } = useSession();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Reference data state
   const [genres, setGenres] = useState<{ id: string; name: string }[]>([]);
   const [languages, setLanguages] = useState<{ id: string; name: string }[]>([]);
+
+  // Tags state
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
-  const [tagSuggestions, setTagSuggestions] = useState<{ name: string }[]>([]);
-  const [popularTags, setPopularTags] = useState<{ name: string }[]>([]);
+  const [tagSuggestions, setTagSuggestions] = useState<TagData[]>([]);
+  const [popularTags, setPopularTags] = useState<TagData[]>([]);
   const [tagError, setTagError] = useState<string>("");
 
-  const [storyData, setStoryData] = useState({
+  // Story data state
+  const [storyData, setStoryData] = useState<StoryFormData>({
     id: "",
     title: "",
     description: "",
@@ -56,16 +96,18 @@ export default function StoryInfoPage() {
     isMature: false,
     coverImage: "/placeholder.svg?height=1600&width=900",
     status: "draft",
-    lastSaved: null as Date | null,
+    lastSaved: null,
     slug: "",
   });
 
-  const [errors, setErrors] = useState({
+  // Form validation state
+  const [errors, setErrors] = useState<FormErrors>({
     title: "",
     description: "",
     genre: "",
   });
 
+  // UI state
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isLoadingChapters, setIsLoadingChapters] = useState(false);
@@ -73,19 +115,11 @@ export default function StoryInfoPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [chapterToDelete, setChapterToDelete] = useState<{id: string, title: string} | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
-  // Use full chapter object type, not just { id: string }
-const [chapters, setChapters] = useState<Array<{
-  id: string;
-  title: string;
-  status: "published" | "draft" | "scheduled" | "premium";
-  wordCount: number;
-  lastUpdated: Date;
-  number: number;
-}>>([]);
+  const [justCreatedStory, setJustCreatedStory] = useState(false);
+  const [chapters, setChapters] = useState<ChapterData[]>([]);
 
-  // --- End useState hooks ---
-
-  // ...rest of hooks and logic follow
+  // Create debounced version of storyData for auto-save
+  const debouncedStoryData = useDebounce(storyData, 3000);
 
   // Fetch genres/languages/tags on mount
   useEffect(() => {
@@ -107,7 +141,7 @@ const [chapters, setChapters] = useState<Array<{
   }, [storyData.id]);
 
   // Tag input normalization & validation
-  const addTag = (raw: string) => {
+  const addTag = useCallback((raw: string) => {
     const tag = raw.trim().toLowerCase();
     if (!tag || tags.includes(tag)) return;
     if (tags.length >= 10) {
@@ -123,13 +157,11 @@ const [chapters, setChapters] = useState<Array<{
 
     // Mark that we have unsaved changes when adding a tag
     setHasChanges(true);
-    console.log('Tag added, hasChanges set to true');
 
     // If we have a valid number of tags and a story ID, trigger an immediate save
     if (storyData.id && newTags.length >= 3 && newTags.length <= 10) {
       // Use setTimeout to ensure state is updated before saving
       setTimeout(() => {
-        console.log('Saving tags immediately after adding tag');
         // Save the story data first
         saveStoryData(false).then(savedStory => {
           if (savedStory) {
@@ -140,8 +172,6 @@ const [chapters, setChapters] = useState<Array<{
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({ storyId: savedStory.id, tags: newTags }),
-            }).then(() => {
-              console.log('Tags saved successfully');
             }).catch(err => {
               console.error('Failed to save tags:', err);
             });
@@ -149,8 +179,9 @@ const [chapters, setChapters] = useState<Array<{
         });
       }, 100);
     }
-  };
-  const removeTag = (idx: number) => {
+  }, [storyData.id, tags]);
+
+  const removeTag = useCallback((idx: number) => {
     // Update tags state
     const newTags = tags.filter((_, i) => i !== idx);
     setTags(newTags);
@@ -158,13 +189,11 @@ const [chapters, setChapters] = useState<Array<{
 
     // Mark that we have unsaved changes when removing a tag
     setHasChanges(true);
-    console.log('Tag removed, hasChanges set to true');
 
     // If we have a story ID, trigger an immediate save
     if (storyData.id) {
       // Use setTimeout to ensure state is updated before saving
       setTimeout(() => {
-        console.log('Saving tags immediately after removing tag');
         // Save the story data first
         saveStoryData(false).then(savedStory => {
           if (savedStory) {
@@ -175,8 +204,6 @@ const [chapters, setChapters] = useState<Array<{
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({ storyId: savedStory.id, tags: newTags }),
-            }).then(() => {
-              console.log('Tags saved successfully');
             }).catch(err => {
               console.error('Failed to save tags:', err);
             });
@@ -184,15 +211,17 @@ const [chapters, setChapters] = useState<Array<{
         });
       }, 100);
     }
-  };
-  const handleTagInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+  }, [storyData.id, tags]);
+
+  const handleTagInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setTagInput(e.target.value);
     // Filter suggestions
     setTagSuggestions(
       popularTags.filter(t => t.name.includes(e.target.value.trim().toLowerCase()) && !tags.includes(t.name))
     );
-  };
-  const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  }, [popularTags, tags]);
+
+  const handleTagKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (["Enter", ",", " "].includes(e.key)) {
       e.preventDefault();
       addTag(tagInput);
@@ -200,10 +229,10 @@ const [chapters, setChapters] = useState<Array<{
     if (e.key === "Backspace" && !tagInput && tags.length) {
       removeTag(tags.length - 1);
     }
-  };
+  }, [addTag, removeTag, tagInput, tags.length]);
 
   // Tag validation helper
-  const validateTags = () => {
+  const validateTags = useCallback(() => {
     if (tags.length < 3) {
       setTagError("Add at least 3 tags.");
       return false;
@@ -214,29 +243,13 @@ const [chapters, setChapters] = useState<Array<{
     }
     setTagError("");
     return true;
-  };
+  }, [tags.length]);
 
   // Use validateTags in the auto-save effect to ensure it's used
   useEffect(() => {
     // Validate tags whenever they change
     validateTags();
-  }, [tags]);
-
-  // --- In saveStoryData, after saving story fields ---
-  // await fetch("/api/tags/upsert", { method: "POST", body: JSON.stringify({ storyId: id, tags }) })
-
-  // ...rest of existing logic
-
-  const router = useRouter()
-  const { toast } = useToast()
-  const fileInputRef = useRef<HTMLInputElement>(null)
-
-
-  // Create debounced version of storyData for auto-save
-  const debouncedStoryData = useDebounce(storyData, 3000);
-
-  // Track if we've just created a story to prevent duplicate creation
-  const [justCreatedStory, setJustCreatedStory] = useState(false);
+  }, [tags, validateTags]);
 
   // Auto-save effect
   useEffect(() => {
@@ -265,9 +278,6 @@ const [chapters, setChapters] = useState<Array<{
     }
   }, [debouncedStoryData, hasChanges, isSaving, justCreatedStory, storyData, tags]);
 
-  // Get the session for authentication
-  const { data: session } = useSession();
-
   // Load existing story data if editing
   useEffect(() => {
     const storyId = new URLSearchParams(window.location.search).get("id");
@@ -277,19 +287,12 @@ const [chapters, setChapters] = useState<Array<{
         try {
           const story = await StoryService.getStory(storyId);
 
-          // Convert to our local state format
-          // Log the story data to debug genre and language
-          console.log('Story data from API:', story);
-          console.log('Genre data:', story.genre);
-          console.log('Language data:', story.language);
-
           // Extract genre and language IDs from the response
           let genreId = "";
           let languageId = "";
 
           // Handle genre - it might be an object with id property or a string ID
           if (story.genre && typeof story.genre === 'object') {
-            // Use type assertion to tell TypeScript this is an object with an id
             const genreObj = story.genre as { id: string, name: string };
             if (genreObj.id) {
               genreId = genreObj.id;
@@ -300,7 +303,6 @@ const [chapters, setChapters] = useState<Array<{
 
           // Handle language - it might be an object with id property or a string ID
           if (story.language && typeof story.language === 'object') {
-            // Use type assertion to tell TypeScript this is an object with an id
             const languageObj = story.language as { id: string, name: string };
             if (languageObj.id) {
               languageId = languageObj.id;
@@ -309,8 +311,10 @@ const [chapters, setChapters] = useState<Array<{
             languageId = story.language;
           }
 
-          console.log('Extracted genreId:', genreId);
-          console.log('Extracted languageId:', languageId);
+          // Determine the status with type safety
+          const storyStatus = story.status === "ongoing" || story.status === "completed"
+            ? story.status
+            : "draft" as const;
 
           setStoryData({
             id: story.id,
@@ -323,12 +327,10 @@ const [chapters, setChapters] = useState<Array<{
             coverImage: story.coverImage && story.coverImage.trim() !== ""
               ? story.coverImage
               : "/placeholder.svg?height=1600&width=900",
-            status: story.status || "draft", // Load the story status
+            status: storyStatus,
             lastSaved: new Date(story.updatedAt),
             slug: story.slug,
           });
-
-          console.log('Loaded story with coverImage:', story.coverImage);
 
           // Fetch chapters for this story
           fetchChapters(story.id);
@@ -347,7 +349,7 @@ const [chapters, setChapters] = useState<Array<{
   }, [toast])
 
   // Fetch chapters for a story
-  const fetchChapters = async (storyId: string) => {
+  const fetchChapters = useCallback(async (storyId: string) => {
     if (!storyId) return;
 
     setIsLoadingChapters(true);
@@ -355,20 +357,11 @@ const [chapters, setChapters] = useState<Array<{
     try {
       const chaptersData = await StoryService.getChapters(storyId);
 
-      // Debug: Log the raw chapter data to see what's coming from the API
-      console.log('Raw chapter data:', chaptersData);
-
       // Convert to our local format
       const formattedChapters = chaptersData.map(chapter => {
-        // Debug: Log each chapter's status
-        console.log(`Chapter ${chapter.id} status:`, chapter.status);
-
-        // Ensure status is one of the allowed values
-        let status: "draft" | "published" | "scheduled" | "premium";
-
         // Determine status based on chapter status and isPremium flag
-        status = chapter.status === 'scheduled' ? 'scheduled' :
-                (chapter.status === 'published' ? (chapter.isPremium ? 'premium' : 'published') : 'draft');
+        const status = chapter.status === 'scheduled' ? 'scheduled' as const :
+                (chapter.status === 'published' ? (chapter.isPremium ? 'premium' as const : 'published' as const) : 'draft' as const);
 
         return {
           id: chapter.id,
@@ -380,18 +373,7 @@ const [chapters, setChapters] = useState<Array<{
         };
       });
 
-      // Debug: Log the formatted chapters
-      console.log('Formatted chapters:', formattedChapters);
-
-      // Explicitly type the chapters to fix TypeScript error
-      setChapters(formattedChapters as Array<{
-        id: string;
-        title: string;
-        status: "draft" | "published" | "scheduled" | "premium";
-        wordCount: number;
-        lastUpdated: Date;
-        number: number;
-      }>);
+      setChapters(formattedChapters);
     } catch (error) {
       console.error("Failed to fetch chapters", error);
       toast({
@@ -402,10 +384,10 @@ const [chapters, setChapters] = useState<Array<{
     } finally {
       setIsLoadingChapters(false);
     }
-  };
+  }, [toast]);
 
   // Handle input changes
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
 
     // Update the story data
@@ -425,21 +407,15 @@ const [chapters, setChapters] = useState<Array<{
         [name]: "",
       }))
     }
-  }
+  }, [errors]);
 
   // Handle select changes
-  const handleSelectChange = (name: string, value: string) => {
-    console.log(`Select change: ${name} = ${value}`);
-
-    setStoryData((prev) => {
-      const newData = {
-        ...prev,
-        [name]: value,
-        lastSaved: null, // Mark as unsaved
-      };
-      console.log(`Updated story data for ${name}:`, newData);
-      return newData;
-    });
+  const handleSelectChange = useCallback((name: string, value: string) => {
+    setStoryData((prev) => ({
+      ...prev,
+      [name]: value,
+      lastSaved: null, // Mark as unsaved
+    }));
 
     // Mark that we have unsaved changes
     setHasChanges(true);
@@ -456,17 +432,15 @@ const [chapters, setChapters] = useState<Array<{
     if (name === 'genre' || name === 'language') {
       // Use setTimeout to ensure state is updated before saving
       setTimeout(() => {
-        console.log(`Saving ${name} change immediately with value: ${value}`);
         // Force a save with the current state including the new genre/language value
         const currentState = { ...storyData, [name]: value };
-        console.log('Current state for immediate save:', currentState);
         saveStoryData(true, currentState); // Show toast to confirm save
       }, 100);
     }
-  }
+  }, [errors, storyData]);
 
   // Handle switch changes
-  const handleSwitchChange = async (name: string, checked: boolean) => {
+  const handleSwitchChange = useCallback(async (name: string, checked: boolean) => {
     // Special handling for status change to "completed"
     if (name === "status") {
       if (checked) { // checked means changing to "completed"
@@ -538,7 +512,6 @@ const [chapters, setChapters] = useState<Array<{
       // Save the changes immediately to avoid auto-save conflicts
       setTimeout(() => {
         setStoryData(currentState => {
-          console.log('Saving status change immediately:', currentState.status);
           saveStoryData(false, currentState);
           return currentState; // Don't actually change the state
         });
@@ -554,14 +527,14 @@ const [chapters, setChapters] = useState<Array<{
       // Mark that we have unsaved changes
       setHasChanges(true);
     }
-  }
+  }, [storyData.id, toast]);
 
   // Handle cover image upload
-  const handleCoverImageClick = () => {
+  const handleCoverImageClick = useCallback(() => {
     fileInputRef.current?.click()
-  }
+  }, []);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
@@ -616,31 +589,25 @@ const [chapters, setChapters] = useState<Array<{
 
       const data = await response.json();
       const imageUrl = data.url;
-      console.log('Image uploaded, received URL:', imageUrl);
 
       if (!imageUrl) {
         throw new Error('No image URL returned from server');
       }
 
       // Update the story data with the S3 URL
-      setStoryData((prev) => {
-        console.log('Updating story data with new coverImage:', imageUrl);
-        return {
-          ...prev,
-          coverImage: imageUrl,
-          lastSaved: null, // Mark as unsaved
-        };
-      });
+      setStoryData((prev) => ({
+        ...prev,
+        coverImage: imageUrl,
+        lastSaved: null, // Mark as unsaved
+      }));
+
       // Explicitly trigger a save after image upload
       setHasChanges(true); // Mark that we have unsaved changes
-      console.log('Story data updated, hasChanges set to true');
 
       // Force a save immediately instead of waiting for auto-save
       setTimeout(() => {
-        console.log('Forcing save after image upload');
         // Get the latest state to ensure we have the most up-to-date data
         setStoryData(currentState => {
-          console.log('Current state before forced save:', currentState);
           // Save with the current state to ensure we have the latest data
           saveStoryData(false, currentState);
           return currentState; // Don't actually change the state
@@ -656,12 +623,10 @@ const [chapters, setChapters] = useState<Array<{
     } finally {
       setIsUploading(false)
     }
-  }
+  }, [storyData.id, toast]);
 
   // Remove cover image
-  const handleRemoveCoverImage = async () => {
-    console.log('Removing cover image, setting to placeholder');
-
+  const handleRemoveCoverImage = useCallback(async () => {
     try {
       setIsSaving(true);
 
@@ -673,8 +638,6 @@ const [chapters, setChapters] = useState<Array<{
 
       // Only proceed if we have an ID (existing story)
       if (storyData.id) {
-        console.log('Sending direct API request to remove cover image with null value');
-
         // Make a direct fetch call to ensure we're bypassing any client-side type checking
         const response = await fetchWithCsrf(`/api/stories/${storyData.id}`, {
           method: "PUT",
@@ -690,7 +653,6 @@ const [chapters, setChapters] = useState<Array<{
         }
 
         const result = await response.json();
-        console.log('Cover image removal result:', result);
 
         // Update the state with the result
         setStoryData(prev => ({
@@ -725,10 +687,10 @@ const [chapters, setChapters] = useState<Array<{
     } finally {
       setIsSaving(false);
     }
-  }
+  }, [storyData.id, toast]);
 
   // Validate form
-  const validateForm = () => {
+  const validateForm = useCallback(() => {
     const newErrors = {
       title: "",
       description: "",
@@ -760,19 +722,15 @@ const [chapters, setChapters] = useState<Array<{
 
     setErrors(newErrors)
     return isValid
-  }
+  }, [storyData.title, storyData.description, storyData.genre]);
 
   // Save story data
-  const saveStoryData = async (showToast = true, dataToSave = storyData) => {
-    if (isSaving) return
+  const saveStoryData = useCallback(async (showToast = true, dataToSave = storyData) => {
+    if (isSaving) return null;
 
-    setIsSaving(true)
+    setIsSaving(true);
 
     try {
-      // Prepare the story data for API
-      // Log the coverImage value for debugging
-      console.log('Cover image before save:', dataToSave.coverImage);
-
       // Determine how to handle the coverImage field
       const isPlaceholder = dataToSave.coverImage === "/placeholder.svg" ||
                           dataToSave.coverImage === "/placeholder.svg?height=1600&width=900";
@@ -791,17 +749,6 @@ const [chapters, setChapters] = useState<Array<{
         coverImageValue = dataToSave.coverImage; // Include real image URL
       }
 
-      console.log('Cover image handling:');
-      console.log('- Original value:', dataToSave.coverImage);
-      console.log('- Is placeholder:', isPlaceholder);
-      console.log('- Is existing story:', !!dataToSave.id);
-      console.log('- Final coverImage value for API:', coverImageValue);
-
-      // Log genre information before creating the request
-      console.log('Genre information:');
-      console.log('- Genre value:', dataToSave.genre);
-      console.log('- Genre type:', typeof dataToSave.genre);
-
       const storyRequest: CreateStoryRequest | UpdateStoryRequest = {
         title: dataToSave.title,
         description: dataToSave.description,
@@ -812,34 +759,20 @@ const [chapters, setChapters] = useState<Array<{
         status: dataToSave.status || "draft", // Include the story status
       };
 
-      // Log the final request object
-      console.log('Story request object:', JSON.stringify(storyRequest, null, 2));
-
-      console.log('Final storyRequest:', storyRequest);
-
-      // Log the request for debugging
-      console.log('Story request:', storyRequest);
-
       let savedStory;
 
       if (dataToSave.id) {
         // Update existing story
         savedStory = await StoryService.updateStory(dataToSave.id, storyRequest);
-        console.log('Updated existing story with ID:', dataToSave.id);
       } else {
         // Check if we're already in the process of creating this story
         if (isSaving) {
-          console.log('Skipping duplicate story creation - already saving');
           return null;
         }
 
         // Create new story
-        console.log('Creating new story with title:', dataToSave.title);
         savedStory = await StoryService.createStory(storyRequest as CreateStoryRequest);
-        console.log('Created new story with ID:', savedStory.id);
       }
-
-      console.log('Story saved successfully, server response:', savedStory);
 
       // Update state with the saved story data
       const updatedStoryData = {
@@ -852,8 +785,6 @@ const [chapters, setChapters] = useState<Array<{
         // Preserve the coverImage from the server response if it exists
         coverImage: savedStory.coverImage || dataToSave.coverImage,
       };
-
-      console.log('Updated story data after save:', updatedStoryData);
 
       // Only update the state if the current data matches what we tried to save
       // This prevents overwriting newer changes that happened during the save operation
@@ -887,17 +818,14 @@ const [chapters, setChapters] = useState<Array<{
 
         // Status (toggle)
         if (prevData.status !== dataToSave.status) {
-          console.log('Preserving newer status:', prevData.status);
           newData.status = prevData.status;
         }
 
         // Cover image
         if (prevData.coverImage !== dataToSave.coverImage) {
-          console.log('Preserving newer coverImage:', prevData.coverImage);
           newData.coverImage = prevData.coverImage;
         }
 
-        console.log('Final state after preserving user changes:', newData);
         return newData;
       });
 
@@ -936,23 +864,19 @@ const [chapters, setChapters] = useState<Array<{
     } finally {
       setIsSaving(false);
     }
-  }
-
-
-
-
+  }, [isSaving, storyData, tags, toast]);
 
   // Format date for display
-  const formatDate = (date: Date) => {
+  const formatDate = useCallback((date: Date) => {
     return new Intl.DateTimeFormat("en-US", {
       month: "short",
       day: "numeric",
       year: "numeric",
     }).format(date)
-  }
+  }, []);
 
   // Handle creating a new chapter
-  const handleCreateChapter = async () => {
+  const handleCreateChapter = useCallback(async () => {
     // First save the story if it's not saved yet
     if (!storyData.id) {
       if (!validateForm()) {
@@ -981,16 +905,16 @@ const [chapters, setChapters] = useState<Array<{
       // Navigate to editor with new chapter using new URL pattern
       router.push(`/write/editor/${storyData.id}/new-chapter`)
     }
-  }
+  }, [router, saveStoryData, storyData.id, toast, validateForm]);
 
   // Handle editing an existing chapter
-  const handleEditChapter = (chapterId: string) => {
+  const handleEditChapter = useCallback((chapterId: string) => {
     // Use the new URL pattern
     router.push(`/write/editor/${storyData.id}/${chapterId}`)
-  }
+  }, [router, storyData.id]);
 
   // Handle chapter deletion
-  const handleDeleteChapter = async () => {
+  const handleDeleteChapter = useCallback(async () => {
     if (!chapterToDelete || !storyData.id) return;
 
     setIsDeleting(true);
@@ -1020,13 +944,13 @@ const [chapters, setChapters] = useState<Array<{
     } finally {
       setIsDeleting(false);
     }
-  }
+  }, [chapterToDelete, storyData.id, toast]);
 
   // Open delete confirmation dialog
-  const openDeleteDialog = (chapter: {id: string, title: string}) => {
+  const openDeleteDialog = useCallback((chapter: {id: string, title: string}) => {
     setChapterToDelete(chapter);
     setDeleteDialogOpen(true);
-  }
+  }, []);
 
   // Check authentication
   useEffect(() => {
@@ -1040,9 +964,9 @@ const [chapters, setChapters] = useState<Array<{
     <div className="min-h-screen flex flex-col">
       <Navbar />
 
-      <main className="flex-1 container mx-auto px-8 py-8">
+      <main className="flex-1 container mx-auto px-4 sm:px-6 md:px-8 py-6 md:py-8">
         {/* Header with Back button and Auto-save status on the same line */}
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 mb-8">
           <div className="flex items-center gap-2">
             <Button variant="ghost" onClick={() => router.push('/works')} className="pl-0 flex items-center gap-2">
               <ArrowLeft size={16} />
@@ -1050,7 +974,7 @@ const [chapters, setChapters] = useState<Array<{
             </Button>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4">
             {/* Auto-save status with single loading animation */}
             {isSaving ? (
               <div className="text-sm text-muted-foreground flex items-center gap-1">
@@ -1077,7 +1001,7 @@ const [chapters, setChapters] = useState<Array<{
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 mb-8 md:mb-12">
           {/* Cover Image */}
           <div className="md:col-span-1">
             <motion.div
@@ -1089,7 +1013,7 @@ const [chapters, setChapters] = useState<Array<{
               <h2 className="text-xl font-bold">Cover Image</h2>
 
               <div
-                className="relative aspect-[16/9] rounded-lg overflow-hidden border cursor-pointer group"
+                className="relative aspect-[3/4] sm:aspect-[16/9] rounded-lg overflow-hidden border cursor-pointer group"
                 onClick={handleCoverImageClick}
               >
                 {isUploading ? (
@@ -1393,9 +1317,9 @@ const [chapters, setChapters] = useState<Array<{
           transition={{ duration: 0.5, delay: 0.4 }}
           className="mb-12"
         >
-          <div className="flex justify-between items-center mb-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 mb-6">
             <h2 className="text-2xl font-bold">Chapters</h2>
-            <Button onClick={handleCreateChapter} className="flex items-center gap-2">
+            <Button onClick={handleCreateChapter} className="flex items-center gap-2 w-full sm:w-auto justify-center sm:justify-start">
               <Plus size={16} />
               New Chapter
             </Button>
@@ -1410,25 +1334,24 @@ const [chapters, setChapters] = useState<Array<{
               {chapters.map((chapter) => (
                 <Card key={chapter.id} className="overflow-hidden">
                   <CardContent className="p-0">
-                    <div className="flex items-center p-4">
-                      <div className="flex-shrink-0 mr-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center p-4">
+                      <div className="flex-shrink-0 mr-4 mb-3 sm:mb-0">
                         <div className="bg-muted/50 rounded-full p-3">
                           <FileText size={24} className="text-muted-foreground" />
                         </div>
                       </div>
 
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
+                      <div className="flex-1 mb-3 sm:mb-0">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="font-medium">{chapter.title}</h3>
                           <div className="flex gap-1">
-                            {/* Debug: Show the actual status */}
                             <Badge variant={chapter.status === "draft" ? "outline" : "default"} className={chapter.status === "premium" ? "bg-amber-500" : ""}>
                               {chapter.status.charAt(0).toUpperCase() + chapter.status.slice(1)}
                             </Badge>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground flex-wrap">
                           <div className="flex items-center gap-1">
                             <Clock size={14} />
                             <span>Last updated: {formatDate(chapter.lastUpdated)}</span>
@@ -1437,11 +1360,11 @@ const [chapters, setChapters] = useState<Array<{
                         </div>
                       </div>
 
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-wrap w-full sm:w-auto">
                         <Button
                           variant="outline"
                           size="sm"
-                          className="flex items-center gap-1"
+                          className="flex items-center gap-1 flex-1 sm:flex-initial justify-center"
                           onClick={() => handleEditChapter(chapter.id)}
                         >
                           <Edit size={14} />
@@ -1450,7 +1373,7 @@ const [chapters, setChapters] = useState<Array<{
                         <Button
                           variant="outline"
                           size="sm"
-                          className="flex items-center gap-1"
+                          className="flex items-center gap-1 flex-1 sm:flex-initial justify-center"
                           onClick={() => router.push(`/story/${storyData.slug}/chapter/${chapter.number}`)}
                         >
                           <Eye size={14} />
@@ -1459,7 +1382,7 @@ const [chapters, setChapters] = useState<Array<{
                         <Button
                           variant="outline"
                           size="sm"
-                          className="flex items-center gap-1 text-destructive hover:text-destructive"
+                          className="flex items-center gap-1 text-destructive hover:text-destructive flex-1 sm:flex-initial justify-center"
                           onClick={() => openDeleteDialog({id: chapter.id, title: chapter.title})}
                         >
                           <Trash2 size={14} />

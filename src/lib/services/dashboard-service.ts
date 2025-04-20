@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { ViewService } from "@/services/view-service";
 import {
   DashboardOverviewData,
   DashboardStats,
@@ -83,14 +84,10 @@ export async function getDashboardStats(userId: string, timeRange: string = '30d
     },
   });
 
-  // Get total reads (views)
-  const totalViews = await prisma.storyView.count({
-    where: {
-      story: {
-        authorId: userId,
-      },
-    },
-  });
+  // Get total reads (views) using the optimized ViewService
+  const userStoryIds = stories.map(story => story.id);
+  const viewCountMap = await ViewService.getBatchStoryViewCounts(userStoryIds);
+  const totalViews = Array.from(viewCountMap.values()).reduce((sum, count) => sum + count, 0);
 
   // Calculate total likes, comments
   const totalLikes = stories.reduce((sum, story) => sum + story._count.likes, 0);
@@ -105,18 +102,14 @@ export async function getDashboardStats(userId: string, timeRange: string = '30d
   // Convert cents to dollars
   const totalEarnings = totalEarningsInCents / 100;
 
-  // Get previous period views
-  const previousPeriodViews = await prisma.storyView.count({
-    where: {
-      story: {
-        authorId: userId,
-      },
-      createdAt: {
-        gte: previousStartDate,
-        lt: previousEndDate,
-      },
-    },
-  });
+  // Get previous period views using the optimized ViewService
+  const previousPeriodViewCountMap = await ViewService.getBatchStoryViewCounts(
+    userStoryIds,
+    'custom',
+    previousStartDate,
+    previousEndDate
+  );
+  const previousPeriodViews = Array.from(previousPeriodViewCountMap.values()).reduce((sum, count) => sum + count, 0);
 
   // Get previous period likes
   const previousPeriodLikes = await prisma.like.count({
@@ -177,17 +170,13 @@ export async function getDashboardStats(userId: string, timeRange: string = '30d
     return Number((((current - previous) / previous) * 100).toFixed(1));
   };
 
-  // Get current period views
-  const currentPeriodViews = await prisma.storyView.count({
-    where: {
-      story: {
-        authorId: userId,
-      },
-      createdAt: {
-        gte: startDate,
-      },
-    },
-  });
+  // Get current period views using the optimized ViewService
+  const currentPeriodViewCountMap = await ViewService.getBatchStoryViewCounts(
+    userStoryIds,
+    'custom',
+    startDate
+  );
+  const currentPeriodViews = Array.from(currentPeriodViewCountMap.values()).reduce((sum, count) => sum + count, 0);
 
   // Get current period likes
   const currentPeriodLikes = await prisma.like.count({
@@ -343,22 +332,9 @@ export async function getTopStories(userId: string, limit: number = 5, sortBy: s
     take: limit,
   });
 
-  // Get view counts for each story
-  const viewCounts = await Promise.all(
-    stories.map(async (story) => {
-      const count = await prisma.storyView.count({
-        where: {
-          storyId: story.id,
-        },
-      });
-      return { storyId: story.id, count };
-    })
-  );
-
-  // Create a map of story ID to view count for easy lookup
-  const viewCountMap = new Map(
-    viewCounts.map((item) => [item.storyId, item.count])
-  );
+  // Get view counts for each story using the optimized ViewService
+  const storyIds = stories.map(story => story.id);
+  const viewCountMap = await ViewService.getBatchStoryViewCounts(storyIds, timeRange);
 
   // Format stories data
   let formattedStories: DashboardStory[] = stories.map(story => {
@@ -439,18 +415,30 @@ export async function getReadsChartData(userId: string, timeRange: string = '30d
   // Get reads data for each month
   const readsData: ReadsDataPoint[] = [];
 
+  // Get all user's stories
+  const userStories = await prisma.story.findMany({
+    where: {
+      authorId: userId,
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  const userStoryIds = userStories.map(story => story.id);
+
+  // Process each month
   for (const month of months) {
-    const reads = await prisma.storyView.count({
-      where: {
-        story: {
-          authorId: userId,
-        },
-        createdAt: {
-          gte: month.date,
-          lt: month.nextMonth,
-        },
-      },
-    });
+    // Get view counts for this month using the optimized ViewService
+    const viewCountMap = await ViewService.getBatchStoryViewCounts(
+      userStoryIds,
+      'custom',
+      month.date,
+      month.nextMonth
+    );
+
+    // Sum up all views
+    const reads = Array.from(viewCountMap.values()).reduce((sum, count) => sum + count, 0);
 
     readsData.push({
       name: month.name,
@@ -550,22 +538,9 @@ export async function getUserStories(userId: string) {
     },
   });
 
-  // Get view counts for each story
-  const viewCounts = await Promise.all(
-    stories.map(async (story) => {
-      const count = await prisma.storyView.count({
-        where: {
-          storyId: story.id,
-        },
-      });
-      return { storyId: story.id, count };
-    })
-  );
-
-  // Create a map of story ID to view count for easy lookup
-  const viewCountMap = new Map(
-    viewCounts.map((item) => [item.storyId, item.count])
-  );
+  // Get view counts for each story using the optimized ViewService
+  const storyIds = stories.map(story => story.id);
+  const viewCountMap = await ViewService.getBatchStoryViewCounts(storyIds);
 
   // Format stories data
   const formattedStories = stories.map(story => {
@@ -611,22 +586,9 @@ export async function getEarningsData(userId: string, timeRange: string = '30day
     },
   });
 
-  // Get view counts for each story
-  const viewCounts = await Promise.all(
-    stories.map(async (story) => {
-      const count = await prisma.storyView.count({
-        where: {
-          storyId: story.id,
-        },
-      });
-      return { storyId: story.id, count };
-    })
-  );
-
-  // Create a map of story ID to view count for easy lookup
-  const viewCountMap = new Map(
-    viewCounts.map((item) => [item.storyId, item.count])
-  );
+  // Get view counts for each story using the optimized ViewService
+  const storyIds = stories.map(story => story.id);
+  const viewCountMap = await ViewService.getBatchStoryViewCounts(storyIds);
 
   // Calculate total earnings (all time)
   const totalEarningsInCents = stories.reduce(

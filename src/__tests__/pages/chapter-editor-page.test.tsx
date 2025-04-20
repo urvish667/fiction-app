@@ -29,13 +29,44 @@ jest.mock('@/services/story-service', () => ({
 jest.mock('@/components/editor', () => ({
   Editor: ({ content, onChange, readOnly }) => (
     <div data-testid="mock-editor">
-      <textarea 
+      <textarea
         data-testid="mock-editor-textarea"
-        value={content} 
+        value={content}
         onChange={(e) => onChange(e.target.value)}
         readOnly={readOnly}
       />
     </div>
+  )
+}))
+
+jest.mock('@/components/editor/editor-header', () => ({
+  EditorHeader: ({ chapter, storyId, hasChanges, isSaving, showPreview, setShowPreview, setIsPublishDialogOpen, handleTitleChange, saveChapter }) => (
+    <header data-testid="mock-editor-header">
+      <button data-testid="back-button">Back to Story</button>
+      <input
+        data-testid="title-input"
+        value={chapter.title}
+        onChange={handleTitleChange}
+      />
+      <button data-testid="save-button" onClick={() => saveChapter(true, true)}>Save Draft</button>
+      <button data-testid="preview-button" onClick={() => setShowPreview(!showPreview)}>
+        {showPreview ? "Edit" : "Preview"}
+      </button>
+      <button data-testid="publish-button" onClick={() => setIsPublishDialogOpen(true)}>Publish</button>
+    </header>
+  )
+}))
+
+jest.mock('@/components/editor/publish-dialog', () => ({
+  PublishDialog: ({ isOpen, setIsOpen, publishSettings, extendedSettings, handlePublishSettingsChange, handlePublish }) => (
+    isOpen ? (
+      <div data-testid="mock-publish-dialog">
+        <button data-testid="publish-confirm-button" onClick={handlePublish}>
+          {publishSettings.schedulePublish ? "Schedule" : "Publish Now"}
+        </button>
+        <button data-testid="publish-cancel-button" onClick={() => setIsOpen(false)}>Cancel</button>
+      </div>
+    ) : null
   )
 }))
 
@@ -53,7 +84,7 @@ describe('ChapterEditorPage', () => {
     push: jest.fn(),
     replace: jest.fn()
   }
-  
+
   const mockSession = {
     data: {
       user: {
@@ -62,12 +93,12 @@ describe('ChapterEditorPage', () => {
       }
     }
   }
-  
+
   const mockParams = {
     storyId: 'test-story-id',
     chapterId: 'test-chapter-id'
   }
-  
+
   const mockChapter = {
     id: 'test-chapter-id',
     title: 'Test Chapter',
@@ -81,93 +112,123 @@ describe('ChapterEditorPage', () => {
     storyId: 'test-story-id',
     contentKey: 'test-content-key'
   }
-  
+
   const mockStory = {
     id: 'test-story-id',
     title: 'Test Story',
     authorId: 'test-user-id'
   }
-  
+
   beforeEach(() => {
     jest.clearAllMocks()
-    
+
     // Setup mocks
     useSession.mockReturnValue(mockSession)
     useParams.mockReturnValue(mockParams)
     useRouter.mockReturnValue(mockRouter)
-    
+
     StoryService.getChapter.mockResolvedValue(mockChapter)
     StoryService.getStory.mockResolvedValue(mockStory)
     StoryService.updateChapter.mockResolvedValue(mockChapter)
     StoryService.getChapters.mockResolvedValue([mockChapter])
   })
-  
+
   it('renders the chapter editor with loaded data', async () => {
     render(<ChapterEditorPage />)
-    
+
     // Wait for data to load
     await waitFor(() => {
       expect(StoryService.getChapter).toHaveBeenCalledWith('test-story-id', 'test-chapter-id')
     })
-    
+
     // Check that the editor is rendered
     expect(screen.getByTestId('mock-editor')).toBeInTheDocument()
-    
+
+    // Check that the editor header is rendered
+    expect(screen.getByTestId('mock-editor-header')).toBeInTheDocument()
+
     // Check that the title is set
-    const titleInput = screen.getByDisplayValue('Test Chapter')
-    expect(titleInput).toBeInTheDocument()
+    const titleInput = screen.getByTestId('title-input')
+    expect(titleInput).toHaveValue('Test Chapter')
   })
-  
+
   it('handles title changes', async () => {
     render(<ChapterEditorPage />)
-    
+
     // Wait for data to load
     await waitFor(() => {
       expect(StoryService.getChapter).toHaveBeenCalledWith('test-story-id', 'test-chapter-id')
     })
-    
+
     // Find the title input
-    const titleInput = screen.getByDisplayValue('Test Chapter')
-    
+    const titleInput = screen.getByTestId('title-input')
+
     // Change the title
     fireEvent.change(titleInput, { target: { value: 'Updated Chapter Title' } })
-    
+
     // Check that the title was updated
-    expect(screen.getByDisplayValue('Updated Chapter Title')).toBeInTheDocument()
+    expect(titleInput).toHaveValue('Updated Chapter Title')
   })
-  
+
   it('handles content changes', async () => {
     render(<ChapterEditorPage />)
-    
+
     // Wait for data to load
     await waitFor(() => {
       expect(StoryService.getChapter).toHaveBeenCalledWith('test-story-id', 'test-chapter-id')
     })
-    
+
     // Find the editor textarea
     const editorTextarea = screen.getByTestId('mock-editor-textarea')
-    
+
     // Change the content
     fireEvent.change(editorTextarea, { target: { value: '<p>Updated content</p>' } })
-    
+
     // Check that the content was updated
     expect(editorTextarea).toHaveValue('<p>Updated content</p>')
   })
-  
-  it('handles save button click', async () => {
+
+  it('handles publish dialog open and close', async () => {
     render(<ChapterEditorPage />)
-    
+
     // Wait for data to load
     await waitFor(() => {
       expect(StoryService.getChapter).toHaveBeenCalledWith('test-story-id', 'test-chapter-id')
     })
-    
+
+    // Find the publish button
+    const publishButton = screen.getByTestId('publish-button')
+
+    // Click the publish button to open dialog
+    fireEvent.click(publishButton)
+
+    // Check that the publish dialog is rendered
+    expect(screen.getByTestId('mock-publish-dialog')).toBeInTheDocument()
+
+    // Find the cancel button
+    const cancelButton = screen.getByTestId('publish-cancel-button')
+
+    // Click the cancel button to close dialog
+    fireEvent.click(cancelButton)
+
+    // Check that the publish dialog is no longer rendered
+    expect(screen.queryByTestId('mock-publish-dialog')).not.toBeInTheDocument()
+  })
+
+  it('handles save button click', async () => {
+    render(<ChapterEditorPage />)
+
+    // Wait for data to load
+    await waitFor(() => {
+      expect(StoryService.getChapter).toHaveBeenCalledWith('test-story-id', 'test-chapter-id')
+    })
+
     // Find the save button
-    const saveButton = screen.getByText('Save Draft')
-    
+    const saveButton = screen.getByTestId('save-button')
+
     // Click the save button
     fireEvent.click(saveButton)
-    
+
     // Check that updateChapter was called
     await waitFor(() => {
       expect(StoryService.updateChapter).toHaveBeenCalledWith(
@@ -180,52 +241,52 @@ describe('ChapterEditorPage', () => {
       )
     })
   })
-  
+
   it('handles preview toggle', async () => {
     render(<ChapterEditorPage />)
-    
+
     // Wait for data to load
     await waitFor(() => {
       expect(StoryService.getChapter).toHaveBeenCalledWith('test-story-id', 'test-chapter-id')
     })
-    
+
     // Find the preview button
-    const previewButton = screen.getByText('Preview')
-    
+    const previewButton = screen.getByTestId('preview-button')
+
     // Click the preview button
     fireEvent.click(previewButton)
-    
+
     // Check that the button text changed to "Edit"
-    expect(screen.getByText('Edit')).toBeInTheDocument()
-    
+    expect(screen.getByTestId('preview-button')).toHaveTextContent('Edit')
+
     // Click again to toggle back
-    fireEvent.click(screen.getByText('Edit'))
-    
+    fireEvent.click(screen.getByTestId('preview-button'))
+
     // Check that the button text changed back to "Preview"
-    expect(screen.getByText('Preview')).toBeInTheDocument()
+    expect(screen.getByTestId('preview-button')).toHaveTextContent('Preview')
   })
-  
+
   it('confirms before navigating away with unsaved changes', async () => {
     render(<ChapterEditorPage />)
-    
+
     // Wait for data to load
     await waitFor(() => {
       expect(StoryService.getChapter).toHaveBeenCalledWith('test-story-id', 'test-chapter-id')
     })
-    
+
     // Find the editor textarea and make a change
     const editorTextarea = screen.getByTestId('mock-editor-textarea')
     fireEvent.change(editorTextarea, { target: { value: '<p>Updated content</p>' } })
-    
+
     // Find the back button
-    const backButton = screen.getByText('Back to Story')
-    
+    const backButton = screen.getByTestId('back-button')
+
     // Click the back button
     fireEvent.click(backButton)
-    
+
     // Check that confirm was called
     expect(global.confirm).toHaveBeenCalled()
-    
+
     // Check that router.push was called since we mocked confirm to return true
     expect(mockRouter.push).toHaveBeenCalledWith(`/write/story-info?id=test-story-id`)
   })
