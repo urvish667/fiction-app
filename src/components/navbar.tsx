@@ -21,6 +21,10 @@ export default function Navbar() {
   const isLoading = status === "loading"
   const isAuthenticated = status === "authenticated"
 
+  // Debug session data
+  console.log('Session status:', status)
+  console.log('Session data:', session)
+
   const userWithAvatar = session?.user ? {
     id: session.user.id,
     name: session.user.name || 'User',
@@ -28,6 +32,9 @@ export default function Navbar() {
     avatar: session.user.image || '/placeholder-user.jpg',
     unreadNotifications: session.user.unreadNotifications || 0
   } : null
+
+  // Debug user avatar data
+  console.log('User avatar data:', userWithAvatar)
 
   const handleLogout = () => {
     // NextAuth signOut will be handled by UserAvatarMenu

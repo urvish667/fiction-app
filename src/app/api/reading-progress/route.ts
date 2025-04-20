@@ -21,31 +21,31 @@ export async function PUT(request: NextRequest) {
         { status: 401 }
       );
     }
-    
+
     // Parse and validate request body
     const body = await request.json();
     const validatedData = updateProgressSchema.parse(body);
-    
+
     // Find the chapter to ensure it exists
     const chapter = await prisma.chapter.findUnique({
       where: { id: validatedData.chapterId },
       include: { story: true },
     });
-    
+
     if (!chapter) {
       return NextResponse.json(
         { error: "Chapter not found" },
         { status: 404 }
       );
     }
-    
+
     // Don't track reading progress for the author
     if (chapter.story.authorId === session.user.id) {
       return NextResponse.json({
         message: "Reading progress not tracked for the author",
       });
     }
-    
+
     // Update or create reading progress
     const progress = await prisma.readingProgress.upsert({
       where: {
@@ -65,7 +65,7 @@ export async function PUT(request: NextRequest) {
         lastRead: new Date(),
       },
     });
-    
+
     return NextResponse.json(progress);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -74,7 +74,7 @@ export async function PUT(request: NextRequest) {
         { status: 400 }
       );
     }
-    
+
     console.error("Error updating reading progress:", error);
     return NextResponse.json(
       { error: "Failed to update reading progress" },
@@ -94,16 +94,16 @@ export async function GET(request: NextRequest) {
         { status: 401 }
       );
     }
-    
+
     const { searchParams } = new URL(request.url);
     const chapterId = searchParams.get("chapterId");
     const storyId = searchParams.get("storyId");
-    
+
     // Build query based on parameters
     const where: any = {
       userId: session.user.id,
     };
-    
+
     if (chapterId) {
       where.chapterId = chapterId;
     } else if (storyId) {
@@ -111,7 +111,15 @@ export async function GET(request: NextRequest) {
         storyId,
       };
     }
-    
+
+    // Get reading progress with pagination and limit
+    const page = parseInt(searchParams.get("page") || "1", 10);
+    const limit = parseInt(searchParams.get("limit") || "20", 10);
+    const skip = (page - 1) * limit;
+
+    // Limit to reasonable values
+    const safeLimit = Math.min(limit, 50);
+
     // Get reading progress
     const progress = await prisma.readingProgress.findMany({
       where,
@@ -135,9 +143,22 @@ export async function GET(request: NextRequest) {
       orderBy: {
         lastRead: "desc",
       },
+      skip,
+      take: safeLimit,
     });
-    
-    return NextResponse.json(progress);
+
+    // Get total count for pagination
+    const total = await prisma.readingProgress.count({ where });
+
+    return NextResponse.json({
+      data: progress,
+      pagination: {
+        page,
+        limit: safeLimit,
+        total,
+        totalPages: Math.ceil(total / safeLimit)
+      }
+    });
   } catch (error) {
     console.error("Error fetching reading progress:", error);
     return NextResponse.json(

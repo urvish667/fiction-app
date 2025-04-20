@@ -1,4 +1,5 @@
 import { S3Service } from "./s3-service";
+import { fetchWithCsrf } from "./client/csrf";
 
 /**
  * Utility for handling image uploads
@@ -14,14 +15,14 @@ export const ImageUpload = {
     try {
       // Read the file as an ArrayBuffer
       const arrayBuffer = await file.arrayBuffer();
-      
+
       // Generate a unique key for the image
       const timestamp = Date.now();
       const fileExtension = file.name.split('.').pop() || 'jpg';
       const imageKey = `users/${userId}/profile-${timestamp}.${fileExtension}`;
-      
-      // Upload to S3 via the API
-      const response = await fetch('/api/upload-image', {
+
+      // Upload to S3 via the API with CSRF token
+      const response = await fetchWithCsrf('/api/upload-image', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -32,12 +33,12 @@ export const ImageUpload = {
           data: Array.from(new Uint8Array(arrayBuffer)),
         }),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to upload profile image');
       }
-      
+
       const result = await response.json();
       return result.url;
     } catch (error) {
@@ -45,7 +46,7 @@ export const ImageUpload = {
       throw error;
     }
   },
-  
+
   /**
    * Upload a banner image to S3
    * @param userId The user ID
@@ -56,14 +57,14 @@ export const ImageUpload = {
     try {
       // Read the file as an ArrayBuffer
       const arrayBuffer = await file.arrayBuffer();
-      
+
       // Generate a unique key for the image
       const timestamp = Date.now();
       const fileExtension = file.name.split('.').pop() || 'jpg';
       const imageKey = `users/${userId}/banner-${timestamp}.${fileExtension}`;
-      
-      // Upload to S3 via the API
-      const response = await fetch('/api/upload-image', {
+
+      // Upload to S3 via the API with CSRF token
+      const response = await fetchWithCsrf('/api/upload-image', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -74,12 +75,12 @@ export const ImageUpload = {
           data: Array.from(new Uint8Array(arrayBuffer)),
         }),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Failed to upload banner image');
       }
-      
+
       const result = await response.json();
       return result.url;
     } catch (error) {
@@ -87,7 +88,7 @@ export const ImageUpload = {
       throw error;
     }
   },
-  
+
   /**
    * Process an image before upload (resize, compress, etc.)
    * @param file The image file
@@ -100,39 +101,39 @@ export const ImageUpload = {
       try {
         const img = new Image();
         const url = URL.createObjectURL(file);
-        
+
         img.onload = () => {
           // Release the object URL
           URL.revokeObjectURL(url);
-          
+
           // Calculate new dimensions while maintaining aspect ratio
           let width = img.width;
           let height = img.height;
-          
+
           if (width > maxWidth) {
             height = (height * maxWidth) / width;
             width = maxWidth;
           }
-          
+
           if (height > maxHeight) {
             width = (width * maxHeight) / height;
             height = maxHeight;
           }
-          
+
           // Create a canvas to resize the image
           const canvas = document.createElement('canvas');
           canvas.width = width;
           canvas.height = height;
-          
+
           // Draw the image on the canvas
           const ctx = canvas.getContext('2d');
           if (!ctx) {
             reject(new Error('Failed to get canvas context'));
             return;
           }
-          
+
           ctx.drawImage(img, 0, 0, width, height);
-          
+
           // Convert to blob
           canvas.toBlob(
             (blob) => {
@@ -140,29 +141,70 @@ export const ImageUpload = {
                 reject(new Error('Failed to create blob'));
                 return;
               }
-              
+
               // Create a new file from the blob
               const newFile = new File([blob], file.name, {
                 type: 'image/jpeg',
                 lastModified: Date.now(),
               });
-              
+
               resolve(newFile);
             },
             'image/jpeg',
             0.85 // Quality
           );
         };
-        
+
         img.onerror = () => {
           URL.revokeObjectURL(url);
           reject(new Error('Failed to load image'));
         };
-        
+
         img.src = url;
       } catch (error) {
         reject(error);
       }
     });
+  },
+
+  /**
+   * Upload an editor image to S3
+   * @param file The image file
+   * @returns The URL of the uploaded image
+   */
+  async uploadEditorImage(file: File): Promise<string> {
+    try {
+      // Read the file as an ArrayBuffer
+      const arrayBuffer = await file.arrayBuffer();
+
+      // Generate a unique key for the image
+      const timestamp = Date.now();
+      const fileExtension = file.name.split('.').pop() || 'jpg';
+      const imageKey = `editor/images/${timestamp}-${Math.random().toString(36).substring(2, 10)}.${fileExtension}`;
+
+      // Upload to S3 via the API with CSRF token
+      const response = await fetchWithCsrf('/api/upload-image', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          key: imageKey,
+          contentType: file.type,
+          data: Array.from(new Uint8Array(arrayBuffer)),
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to upload editor image');
+      }
+
+      const result = await response.json();
+      return result.url;
+    } catch (error) {
+      console.error('Error uploading editor image:', error);
+      throw error;
+    }
   }
 };

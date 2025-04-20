@@ -84,12 +84,15 @@ export async function GET(
     let chaptersWithProgress = chapters;
 
     if (session?.user?.id) {
+      // Get only the chapter IDs we need to query
+      const chapterIds = chapters.map(chapter => chapter.id);
+
       const readingProgresses = await prisma.readingProgress.findMany({
         where: {
           userId: session.user.id,
-          chapter: {
-            storyId,
-          },
+          chapterId: {
+            in: chapterIds
+          }
         },
       });
 

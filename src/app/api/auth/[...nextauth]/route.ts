@@ -12,11 +12,34 @@ export const authOptions: NextAuthOptions = {
   // Use Prisma adapter for database integration
   adapter: getPrismaAdapter(),
 
-  // Configure session strategy with longer duration to reduce auth requests
+  // Configure session strategy with secure settings
   session: {
     strategy: "jwt",
-    maxAge: 60 * 24 * 60 * 60, // 60 days
+    maxAge: 14 * 24 * 60 * 60, // 14 days (reduced from 60 days for better security)
     updateAge: 24 * 60 * 60, // 24 hours - only update session if older than this
+  },
+
+  // JWT configuration
+  jwt: {
+    // Use secure JWT settings
+    secret: process.env.NEXTAUTH_SECRET,
+    // Set max age to match session
+    maxAge: 14 * 24 * 60 * 60, // 14 days
+  },
+
+  // Cookie configuration
+  cookies: {
+    sessionToken: {
+      name: process.env.NODE_ENV === 'production'
+        ? `__Secure-next-auth.session-token`
+        : `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+      },
+    },
   },
 
   // Configure auth providers
@@ -316,16 +339,18 @@ export const authOptions: NextAuthOptions = {
   // Session and token callbacks
     // Add custom user data to session - optimized for performance
     async session({ session, token }) {
+      console.log('Session callback - token:', token);
+
       // Create a new session object with only the standard fields
       const userSession: any = {
-        id: token.id as string,
+        id: token.id as string || token.sub,
         name: token.name,
         email: token.email,
         image: token.image || token.picture,
         bannerImage: token.bannerImage,
-        username: token.username,
-        isProfileComplete: token.isProfileComplete,
-        needsProfileCompletion: token.needsProfileCompletion,
+        username: token.username || (token.name ? String(token.name).split(' ')[0].toLowerCase() : 'user'),
+        isProfileComplete: token.isProfileComplete || false,
+        needsProfileCompletion: token.needsProfileCompletion || false,
         unreadNotifications: 0, // Default value for now
         // Add preferences if available
         preferences: token.preferences || {
@@ -362,6 +387,9 @@ export const authOptions: NextAuthOptions = {
 
     // Add custom user data to token
     async jwt({ token, user, account, trigger }) {
+      console.log('JWT callback - token before:', token);
+      console.log('JWT callback - user:', user);
+
       // If this is a sign-in event, set the initial token data
       if (user) {
         // Check if user needs profile completion (set in signIn event)
@@ -475,6 +503,7 @@ export const authOptions: NextAuthOptions = {
         }
       }
 
+      console.log('JWT callback - token after:', token);
       return token;
     },
   },

@@ -10,6 +10,8 @@ import Placeholder from "@tiptap/extension-placeholder"
 import { Image } from "@tiptap/extension-image"
 import Link from "@tiptap/extension-link"
 import TextAlign from "@tiptap/extension-text-align"
+import { ImageUpload } from "@/lib/image-upload"
+import { useToast } from "@/components/ui/use-toast"
 import { Button } from "@/components/ui/button"
 import {
   Bold,
@@ -37,6 +39,8 @@ interface EditorProps {
 
 export function Editor({ content, onChange, readOnly = false }: EditorProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const { toast } = useToast()
+  const [isUploading, setIsUploading] = useState(false)
 
   // Track if content is being updated internally to avoid unnecessary saves
   const [isInternalUpdate, setIsInternalUpdate] = useState(false)
@@ -124,23 +128,33 @@ export function Editor({ content, onChange, readOnly = false }: EditorProps) {
     fileInputRef.current?.click()
   }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
     // Check if file is an image
     if (!file.type.startsWith("image/")) {
-      alert("Please select an image file")
+      toast({
+        title: "Invalid file type",
+        description: "Please select an image file",
+        variant: "destructive",
+      })
       return
     }
 
-    // Read the file as a data URL
-    const reader = new FileReader()
-    reader.onload = (event) => {
-      if (event.target?.result && editor) {
+    try {
+      setIsUploading(true)
+
+      // Process the image (resize, compress)
+      const processedFile = await ImageUpload.processImage(file, 1200, 800)
+
+      // Upload the image to S3 with CSRF token
+      const imageUrl = await ImageUpload.uploadEditorImage(processedFile)
+
+      if (editor) {
         // Create a temporary HTML image to get the original dimensions
         const tempImg = new window.Image()
-        tempImg.src = event.target.result as string
+        tempImg.src = imageUrl
 
         tempImg.onload = () => {
           // Calculate dimensions while maintaining aspect ratio and limiting size
@@ -157,7 +171,7 @@ export function Editor({ content, onChange, readOnly = false }: EditorProps) {
             .insertContent({
               type: 'image',
               attrs: {
-                src: event.target.result as string,
+                src: imageUrl,
                 ...widthAttr
               }
             })
@@ -171,11 +185,18 @@ export function Editor({ content, onChange, readOnly = false }: EditorProps) {
             .run()
         }
       }
+    } catch (error) {
+      console.error("Error uploading image:", error)
+      toast({
+        title: "Upload failed",
+        description: "Failed to upload image. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsUploading(false)
+      // Reset the input so the same file can be selected again
+      e.target.value = ""
     }
-    reader.readAsDataURL(file)
-
-    // Reset the input so the same file can be selected again
-    e.target.value = ""
   }
 
   // Handle link
@@ -279,12 +300,13 @@ export function Editor({ content, onChange, readOnly = false }: EditorProps) {
             <span className="sr-only">Code Block</span>
           </Button>
 
-          <Button variant="ghost" size="icon" onClick={handleImageUpload}>
+          <Button variant="ghost" size="icon" onClick={handleImageUpload} disabled={isUploading}>
             <ImageIcon size={16} />
             <span className="sr-only">Image</span>
+            {isUploading && <span className="ml-2 text-xs">Uploading...</span>}
           </Button>
 
-          <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
+          <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" disabled={isUploading} />
 
           <Button variant="ghost" size="icon" onClick={setLink}>
             <LinkIcon size={16} />

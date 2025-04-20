@@ -100,7 +100,7 @@ export async function GET(
 
     // Get user's reading progress if logged in
     let readingProgress = null;
-    if (session?.user?.id) {
+    if (session?.user?.id && session.user.id !== story.authorId) {
       readingProgress = await prisma.readingProgress.findUnique({
         where: {
           userId_chapterId: {
@@ -111,7 +111,7 @@ export async function GET(
       });
 
       // If no reading progress exists, create one with 0 progress
-      if (!readingProgress && session.user.id !== story.authorId) {
+      if (!readingProgress) {
         readingProgress = await prisma.readingProgress.create({
           data: {
             userId: session.user.id,

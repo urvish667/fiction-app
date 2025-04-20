@@ -207,11 +207,14 @@ export default function ReadingPage() {
     (progress: number) => {
       if (!chapter || !session?.user?.id) return;
 
-      // Debounce the API call to avoid too many requests
-      // Only send updates when progress changes by at least 5%
-      const debounceProgress = Math.floor(progress / 5) * 5;
+      // Skip if user is the author
+      if (story && session.user.id === story.author?.id) return;
 
-      if (Math.abs(debounceProgress - readingProgress) >= 5) {
+      // Debounce the API call to avoid too many requests
+      // Only send updates when progress changes by at least 10%
+      const debounceProgress = Math.floor(progress / 10) * 10;
+
+      if (Math.abs(debounceProgress - readingProgress) >= 10) {
         // Update reading progress in the API
         StoryService.updateReadingProgress(chapter.id, debounceProgress)
           .catch(err => console.error("Error updating reading progress:", err));
@@ -220,7 +223,7 @@ export default function ReadingPage() {
         setState(prev => ({ ...prev, readingProgress: debounceProgress }));
       }
     },
-    [chapter, readingProgress, session]
+    [chapter, readingProgress, session, story]
   );
 
   // Track reading progress

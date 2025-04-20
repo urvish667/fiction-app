@@ -8,6 +8,7 @@ import {
   StoryResponse,
   ChapterResponse
 } from "@/types/story";
+import { fetchWithCsrf } from "@/lib/client/csrf";
 
 /**
  * Service for interacting with the story API endpoints
@@ -102,7 +103,7 @@ export const StoryService = {
    */
   async createStory(data: CreateStoryRequest): Promise<Story> {
     console.log('StoryService.createStory called with data:', data);
-    const response = await fetch("/api/stories", {
+    const response = await fetchWithCsrf("/api/stories", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -126,7 +127,7 @@ export const StoryService = {
    */
   async updateStory(id: string, data: UpdateStoryRequest): Promise<Story> {
     console.log('StoryService.updateStory called with id:', id, 'data:', data);
-    const response = await fetch(`/api/stories/${id}`, {
+    const response = await fetchWithCsrf(`/api/stories/${id}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -149,7 +150,7 @@ export const StoryService = {
    * Delete a story
    */
   async deleteStory(id: string): Promise<void> {
-    const response = await fetch(`/api/stories/${id}`, {
+    const response = await fetchWithCsrf(`/api/stories/${id}`, {
       method: "DELETE",
     });
 
@@ -191,7 +192,7 @@ export const StoryService = {
    * Create a new chapter
    */
   async createChapter(storyId: string, data: CreateChapterRequest): Promise<Chapter> {
-    const response = await fetch(`/api/stories/${storyId}/chapters`, {
+    const response = await fetchWithCsrf(`/api/stories/${storyId}/chapters`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -212,7 +213,7 @@ export const StoryService = {
    * Update a chapter
    */
   async updateChapter(storyId: string, chapterId: string, data: UpdateChapterRequest): Promise<Chapter> {
-    const response = await fetch(`/api/stories/${storyId}/chapters/${chapterId}`, {
+    const response = await fetchWithCsrf(`/api/stories/${storyId}/chapters/${chapterId}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -232,7 +233,7 @@ export const StoryService = {
    * Delete a chapter
    */
   async deleteChapter(storyId: string, chapterId: string): Promise<void> {
-    const response = await fetch(`/api/stories/${storyId}/chapters/${chapterId}`, {
+    const response = await fetchWithCsrf(`/api/stories/${storyId}/chapters/${chapterId}`, {
       method: "DELETE",
     });
 
@@ -246,7 +247,7 @@ export const StoryService = {
    * Update reading progress
    */
   async updateReadingProgress(chapterId: string, progress: number): Promise<any> {
-    const response = await fetch("/api/reading-progress", {
+    const response = await fetchWithCsrf("/api/reading-progress", {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -266,7 +267,7 @@ export const StoryService = {
    * Like a story
    */
   async likeStory(storyId: string): Promise<any> {
-    const response = await fetch(`/api/stories/${storyId}/like`, {
+    const response = await fetchWithCsrf(`/api/stories/${storyId}/like`, {
       method: "POST",
     });
 
@@ -282,7 +283,7 @@ export const StoryService = {
    * Unlike a story
    */
   async unlikeStory(storyId: string): Promise<void> {
-    const response = await fetch(`/api/stories/${storyId}/like`, {
+    const response = await fetchWithCsrf(`/api/stories/${storyId}/like`, {
       method: "DELETE",
     });
 
@@ -296,7 +297,7 @@ export const StoryService = {
    * Bookmark a story
    */
   async bookmarkStory(storyId: string): Promise<any> {
-    const response = await fetch(`/api/stories/${storyId}/bookmark`, {
+    const response = await fetchWithCsrf(`/api/stories/${storyId}/bookmark`, {
       method: "POST",
     });
 
@@ -312,7 +313,7 @@ export const StoryService = {
    * Remove a bookmark
    */
   async removeBookmark(storyId: string): Promise<void> {
-    const response = await fetch(`/api/stories/${storyId}/bookmark`, {
+    const response = await fetchWithCsrf(`/api/stories/${storyId}/bookmark`, {
       method: "DELETE",
     });
 
@@ -354,7 +355,7 @@ export const StoryService = {
    * Follow a user
    */
   async followUser(username: string): Promise<any> {
-    const response = await fetch(`/api/user/${username}/follow`, {
+    const response = await fetchWithCsrf(`/api/user/${username}/follow`, {
       method: "POST",
     });
 
@@ -370,7 +371,7 @@ export const StoryService = {
    * Unfollow a user
    */
   async unfollowUser(username: string): Promise<void> {
-    const response = await fetch(`/api/user/${username}/follow`, {
+    const response = await fetchWithCsrf(`/api/user/${username}/follow`, {
       method: "DELETE",
     });
 

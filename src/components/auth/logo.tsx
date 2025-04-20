@@ -5,7 +5,7 @@ import Link from "next/link"
 
 export default function AuthLogo() {
   return (
-    <Link href="/" className="flex justify-center mb-6">
+    <Link href="/" className="flex justify-center">
       <motion.div
         className="flex items-center"
         initial={{ opacity: 0, scale: 0.9 }}

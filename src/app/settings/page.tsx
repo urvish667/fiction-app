@@ -12,6 +12,7 @@ import { z } from "zod"
 import Navbar from "@/components/navbar"
 import { UserPreferences, defaultPreferences } from "@/types/user"
 import { useRouter, useSearchParams } from 'next/navigation';
+import { fetchWithCsrf } from "@/lib/client/csrf";
 
 // UI Imports (ensure all needed are here)
 import { Button } from '@/components/ui/button';
@@ -194,7 +195,7 @@ export default function SettingsPage() {
 
   // Handle messages from Stripe callback (for donations)
   useEffect(() => {
-    if (!searchParams) return; 
+    if (!searchParams) return;
 
     const stripeSuccess = searchParams.get('success');
     const stripeError = searchParams.get('error');
@@ -209,7 +210,7 @@ export default function SettingsPage() {
       setEnableDonations(true);
       setDonationMethod('stripe');
       // TODO: Optionally re-fetch donation settings to get the Stripe ID for display
-      router.replace('/settings?tab=monetization', { scroll: false }); 
+      router.replace('/settings?tab=monetization', { scroll: false });
     }
 
     if (stripeError && currentTab === 'monetization') {
@@ -218,7 +219,7 @@ export default function SettingsPage() {
         description: `Could not connect Stripe account: ${stripeError}. Please try again.` ,
         variant: 'destructive',
       });
-      router.replace('/settings?tab=monetization', { scroll: false }); 
+      router.replace('/settings?tab=monetization', { scroll: false });
     }
   }, [searchParams, router, toast]);
   // --- End Donation Settings Effects ---
@@ -263,7 +264,7 @@ export default function SettingsPage() {
 
       console.log('Saving profile data:', profileData)
 
-      const response = await fetch("/api/user/profile", {
+      const response = await fetchWithCsrf("/api/user/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(profileData),
@@ -305,7 +306,7 @@ export default function SettingsPage() {
     if (!session?.user?.id) return
 
     try {
-      const response = await fetch("/api/user/profile", {
+      const response = await fetchWithCsrf("/api/user/profile", {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -339,7 +340,7 @@ export default function SettingsPage() {
     if (!session?.user?.id) return
 
     try {
-      const response = await fetch("/api/user/profile", {
+      const response = await fetchWithCsrf("/api/user/profile", {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -383,7 +384,7 @@ export default function SettingsPage() {
 
       console.log('Saving social links:', linksData)
 
-      const response = await fetch("/api/user/profile", {
+      const response = await fetchWithCsrf("/api/user/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(linksData),
@@ -449,7 +450,7 @@ export default function SettingsPage() {
     setIsChangingPassword(true)
     try {
       console.log('Sending password change request...');
-      const response = await fetch("/api/user/change-password", {
+      const response = await fetchWithCsrf("/api/user/change-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(passwordForm),
@@ -489,7 +490,7 @@ export default function SettingsPage() {
         requestData.password = deletePassword
       }
 
-      const response = await fetch("/api/user/delete-account", {
+      const response = await fetchWithCsrf("/api/user/delete-account", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestData),
@@ -522,7 +523,7 @@ export default function SettingsPage() {
   const savePreferences = async (preferences: UserPreferences) => {
      console.log("Saving preferences:", preferences);
     try {
-      const response = await fetch('/api/user/preferences', {
+      const response = await fetchWithCsrf('/api/user/preferences', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(preferences),
@@ -621,7 +622,7 @@ export default function SettingsPage() {
   };
 
   const handleConnectStripe = () => {
-    setIsSavingDonations(true); 
+    setIsSavingDonations(true);
     const clientId = process.env.NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID;
     const redirectUri = `${window.location.origin}/api/stripe/oauth/callback`;
     const state = 'random_state_value_TODO'; // Replace with actual state generation
@@ -643,10 +644,10 @@ export default function SettingsPage() {
     try {
       let response: Response | undefined;
       if (!enableDonations) {
-        response = await fetch('/api/user/disable-donations', { method: 'POST' });
+        response = await fetchWithCsrf('/api/user/disable-donations', { method: 'POST' });
       } else {
         if (donationMethod === 'paypal') {
-          response = await fetch('/api/user/enable-donations', {
+          response = await fetchWithCsrf('/api/user/enable-donations', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ method: 'paypal', link: paypalLink }),
@@ -699,7 +700,7 @@ export default function SettingsPage() {
       setDonationSettings({
         donationsEnabled: enableDonations,
         donationMethod: enableDonations ? donationMethod : null,
-        donationLink: finalDonationLink 
+        donationLink: finalDonationLink
       });
 
     } catch (err) {
@@ -798,7 +799,7 @@ export default function SettingsPage() {
                         <Switch
                           id="enable-donations"
                           checked={enableDonations}
-                          onCheckedChange={handleEnableDonationToggle} 
+                          onCheckedChange={handleEnableDonationToggle}
                           aria-label="Enable or disable donations"
                         />
                       </div>
@@ -872,7 +873,7 @@ export default function SettingsPage() {
                 </CardContent>
                 {!isLoadingDonations && (
                   <CardFooter className="border-t px-6 py-4">
-                    <Button 
+                    <Button
                       onClick={handleSaveDonationChanges}
                       disabled={isSavingDonations || isLoadingDonations}
                       className="ml-auto"

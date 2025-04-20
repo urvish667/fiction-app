@@ -32,6 +32,7 @@ import { SiteFooter } from "@/components/site-footer"
 import { useDebounce } from "@/hooks/use-debounce"
 import { StoryService } from "@/services/story-service"
 import { CreateStoryRequest, UpdateStoryRequest } from "@/types/story"
+import { fetchWithCsrf } from "@/lib/client/csrf"
 
 
 import { X } from "lucide-react";
@@ -133,9 +134,11 @@ const [chapters, setChapters] = useState<Array<{
         saveStoryData(false).then(savedStory => {
           if (savedStory) {
             // Then explicitly save the tags
-            fetch('/api/tags/upsert', {
+            fetchWithCsrf('/api/tags/upsert', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: {
+                'Content-Type': 'application/json',
+              },
               body: JSON.stringify({ storyId: savedStory.id, tags: newTags }),
             }).then(() => {
               console.log('Tags saved successfully');
@@ -166,9 +169,11 @@ const [chapters, setChapters] = useState<Array<{
         saveStoryData(false).then(savedStory => {
           if (savedStory) {
             // Then explicitly save the tags
-            fetch('/api/tags/upsert', {
+            fetchWithCsrf('/api/tags/upsert', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: {
+                'Content-Type': 'application/json',
+              },
               body: JSON.stringify({ storyId: savedStory.id, tags: newTags }),
             }).then(() => {
               console.log('Tags saved successfully');
@@ -244,9 +249,11 @@ const [chapters, setChapters] = useState<Array<{
           const savedStory = await saveStoryData(false, currentStoryData);
           if (savedStory) {
             // Upsert tags after save
-            await fetch('/api/tags/upsert', {
+            await fetchWithCsrf('/api/tags/upsert', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: {
+                'Content-Type': 'application/json',
+              },
               body: JSON.stringify({ storyId: savedStory.id, tags }),
             });
           }
@@ -589,8 +596,8 @@ const [chapters, setChapters] = useState<Array<{
       const fileExtension = file.name.split('.').pop() || 'jpg';
       const imageKey = `stories/covers/${storyData.id || 'new'}-${timestamp}.${fileExtension}`;
 
-      // Upload to S3
-      const response = await fetch('/api/upload-image', {
+      // Upload to S3 with CSRF token
+      const response = await fetchWithCsrf('/api/upload-image', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -669,7 +676,7 @@ const [chapters, setChapters] = useState<Array<{
         console.log('Sending direct API request to remove cover image with null value');
 
         // Make a direct fetch call to ensure we're bypassing any client-side type checking
-        const response = await fetch(`/api/stories/${storyData.id}`, {
+        const response = await fetchWithCsrf(`/api/stories/${storyData.id}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -899,7 +906,7 @@ const [chapters, setChapters] = useState<Array<{
       // Upsert tags after save (if not handled by autosave)
       if (updatedStoryData.id && tags.length >= 3 && tags.length <= 10) {
         try {
-          await fetch('/api/tags/upsert', {
+          await fetchWithCsrf('/api/tags/upsert', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ storyId: updatedStoryData.id, tags }),

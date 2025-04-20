@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createUser, isEmailAvailable, isUsernameAvailable } from "@/lib/auth/auth-utils";
 import { generateVerificationToken, sendVerificationEmail } from "@/lib/auth/email-utils";
 import { ZodError, z } from "zod";
+import { rateLimit } from "@/lib/rate-limit";
 
 // Signup request validation schema
 const signupSchema = z.object({
@@ -24,6 +25,32 @@ const signupSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  // Apply rate limiting - 5 signup attempts per IP per hour
+  const rateLimitResult = await rateLimit(request, {
+    limit: 5,
+    windowMs: 60 * 60 * 1000, // 1 hour
+  });
+
+  // If rate limit exceeded
+  if (!rateLimitResult.success) {
+    return new NextResponse(
+      JSON.stringify({
+        error: "Too many signup attempts",
+        message: "Please try again later.",
+      }),
+      {
+        status: 429,
+        headers: {
+          "Content-Type": "application/json",
+          "X-RateLimit-Limit": rateLimitResult.limit.toString(),
+          "X-RateLimit-Remaining": rateLimitResult.remaining.toString(),
+          "X-RateLimit-Reset": rateLimitResult.reset.toString(),
+          "Retry-After": Math.ceil((rateLimitResult.reset * 1000 - Date.now()) / 1000).toString(),
+        },
+      }
+    );
+  }
+
   try {
     // Parse and validate the request body
     const body = await request.json();

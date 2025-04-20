@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
 import { z } from "zod"
 import { prisma } from "@/lib/auth/db-adapter"
-import { authOptions } from "@/lib/auth"
+import { withAuth } from "@/lib/auth/jwt-utils"
 
 // Validation schema for social links
 const socialLinksSchema = z.object({
@@ -31,18 +30,14 @@ const profileUpdateSchema = z.object({
 })
 
 // GET method to retrieve user profile
-export async function GET() {
+export const GET = withAuth(async (req: NextRequest, token) => {
   try {
-    // Get the session
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    // User ID is available from the verified token
+    const userId = token.id
 
     // Fetch user profile
     const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { id: userId },
       select: {
         id: true,
         name: true,
@@ -73,17 +68,13 @@ export async function GET() {
       { status: 500 }
     )
   }
-}
+})
 
 // PATCH method to update user profile
-export async function PATCH(request: NextRequest) {
+export const PATCH = withAuth(async (request: NextRequest, token) => {
   try {
-    // Get the session
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    // User ID is available from the verified token
+    const userId = token.id
 
     // Parse and validate request body
     const body = await request.json()
@@ -94,7 +85,7 @@ export async function PATCH(request: NextRequest) {
       const existingUser = await prisma.user.findUnique({
         where: {
           username: validatedData.username,
-          NOT: { id: session.user.id }
+          NOT: { id: userId }
         },
       })
 
@@ -109,7 +100,7 @@ export async function PATCH(request: NextRequest) {
     // If only updating image or bannerImage, get the current user data
     if ((validatedData.image !== undefined || validatedData.bannerImage !== undefined) && !validatedData.username) {
       const currentUser = await prisma.user.findUnique({
-        where: { id: session.user.id },
+        where: { id: userId },
         select: { username: true }
       })
 
@@ -120,7 +111,7 @@ export async function PATCH(request: NextRequest) {
 
     // Update user profile
     const updatedUser = await prisma.user.update({
-      where: { id: session.user.id },
+      where: { id: userId },
       data: {
         name: validatedData.name,
         username: validatedData.username,
@@ -175,4 +166,4 @@ export async function PATCH(request: NextRequest) {
       { status: 500 }
     )
   }
-}
+})
