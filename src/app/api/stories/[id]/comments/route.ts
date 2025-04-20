@@ -19,6 +19,8 @@ export async function GET(
     const params = await context.params;
     const storyId = params.id;
     const { searchParams } = new URL(request.url);
+    const session = await getServerSession(authOptions);
+    const userId = session?.user?.id;
 
     // Parse query parameters
     const page = parseInt(searchParams.get("page") || "1");
@@ -50,6 +52,7 @@ export async function GET(
           _count: {
             select: {
               replies: true,
+              likes: true,
             },
           },
         },
@@ -60,10 +63,33 @@ export async function GET(
       prisma.comment.count({ where }),
     ]);
 
-    // Transform comments to include counts
+    // Get likes for the current user if logged in
+    let userLikes: Record<string, boolean> = {};
+    if (userId) {
+      const commentIds = comments.map(comment => comment.id);
+      const likes = await prisma.commentLike.findMany({
+        where: {
+          userId,
+          commentId: { in: commentIds },
+        },
+        select: {
+          commentId: true,
+        },
+      });
+
+      // Create a map of commentId -> true for liked comments
+      userLikes = likes.reduce((acc, like) => {
+        acc[like.commentId] = true;
+        return acc;
+      }, {} as Record<string, boolean>);
+    }
+
+    // Transform comments to include counts and like status
     const formattedComments = comments.map((comment) => ({
       ...comment,
       replyCount: comment._count.replies,
+      likeCount: comment._count.likes,
+      isLiked: !!userLikes[comment.id],
       _count: undefined,
     }));
 

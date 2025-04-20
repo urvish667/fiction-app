@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/auth/db-adapter";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 // GET endpoint to retrieve replies for a comment
 export async function GET(
@@ -10,6 +12,8 @@ export async function GET(
   try {
     const commentId = params.id;
     const { searchParams } = new URL(request.url);
+    const session = await getServerSession(authOptions);
+    const userId = session?.user?.id;
 
     // Parse query parameters
     const page = parseInt(searchParams.get("page") || "1");
@@ -45,6 +49,11 @@ export async function GET(
               image: true,
             },
           },
+          _count: {
+            select: {
+              likes: true,
+            },
+          },
         },
         orderBy: { createdAt: "asc" },
         skip,
@@ -57,12 +66,41 @@ export async function GET(
       }),
     ]);
 
+    // Get likes for the current user if logged in
+    let userLikes: Record<string, boolean> = {};
+    if (userId) {
+      const replyIds = replies.map(reply => reply.id);
+      const likes = await prisma.commentLike.findMany({
+        where: {
+          userId,
+          commentId: { in: replyIds },
+        },
+        select: {
+          commentId: true,
+        },
+      });
+
+      // Create a map of commentId -> true for liked replies
+      userLikes = likes.reduce((acc, like) => {
+        acc[like.commentId] = true;
+        return acc;
+      }, {} as Record<string, boolean>);
+    }
+
+    // Transform replies to include like information
+    const formattedReplies = replies.map((reply) => ({
+      ...reply,
+      likeCount: reply._count.likes,
+      isLiked: !!userLikes[reply.id],
+      _count: undefined,
+    }));
+
     // Add pagination metadata
     const totalPages = Math.ceil(total / limit);
     const hasMore = page < totalPages;
 
     return NextResponse.json({
-      replies,
+      replies: formattedReplies,
       pagination: {
         page,
         limit,

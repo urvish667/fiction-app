@@ -1,4 +1,5 @@
 import { Comment } from "@/types/story";
+import { fetchWithCsrf } from "@/lib/client/csrf";
 
 /**
  * Service for interacting with the comment API endpoints
@@ -23,12 +24,12 @@ export const CommentService = {
     }
 
     const response = await fetch(`/api/stories/${storyId}/comments?${queryParams.toString()}`);
-    
+
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || "Failed to fetch comments");
     }
-    
+
     return response.json();
   },
 
@@ -37,12 +38,12 @@ export const CommentService = {
    */
   async getComment(commentId: string): Promise<Comment> {
     const response = await fetch(`/api/comments/${commentId}`);
-    
+
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || "Failed to fetch comment");
     }
-    
+
     return response.json();
   },
 
@@ -50,19 +51,19 @@ export const CommentService = {
    * Create a new comment
    */
   async createComment(storyId: string, data: { content: string; parentId?: string }): Promise<Comment> {
-    const response = await fetch(`/api/stories/${storyId}/comments`, {
+    const response = await fetchWithCsrf(`/api/stories/${storyId}/comments`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(data),
     });
-    
+
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || "Failed to create comment");
     }
-    
+
     return response.json();
   },
 
@@ -70,19 +71,19 @@ export const CommentService = {
    * Update a comment
    */
   async updateComment(commentId: string, data: { content: string }): Promise<Comment> {
-    const response = await fetch(`/api/comments/${commentId}`, {
+    const response = await fetchWithCsrf(`/api/comments/${commentId}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(data),
     });
-    
+
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || "Failed to update comment");
     }
-    
+
     return response.json();
   },
 
@@ -90,10 +91,10 @@ export const CommentService = {
    * Delete a comment
    */
   async deleteComment(commentId: string): Promise<void> {
-    const response = await fetch(`/api/comments/${commentId}`, {
+    const response = await fetchWithCsrf(`/api/comments/${commentId}`, {
       method: "DELETE",
     });
-    
+
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || "Failed to delete comment");
@@ -118,12 +119,44 @@ export const CommentService = {
     }
 
     const response = await fetch(`/api/comments/${commentId}/replies?${queryParams.toString()}`);
-    
+
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || "Failed to fetch replies");
     }
-    
+
+    return response.json();
+  },
+
+  /**
+   * Like a comment
+   */
+  async likeComment(commentId: string): Promise<{ like: any; likeCount: number }> {
+    const response = await fetchWithCsrf(`/api/comments/${commentId}/like`, {
+      method: "POST",
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to like comment");
+    }
+
+    return response.json();
+  },
+
+  /**
+   * Unlike a comment
+   */
+  async unlikeComment(commentId: string): Promise<{ likeCount: number }> {
+    const response = await fetchWithCsrf(`/api/comments/${commentId}/like`, {
+      method: "DELETE",
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to unlike comment");
+    }
+
     return response.json();
   },
 };

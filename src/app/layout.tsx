@@ -5,7 +5,6 @@ import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import Providers from "./providers"
 import { Toaster } from "@/components/ui/toaster"
-import SessionDebug from "@/components/debug/session-debug"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -26,7 +25,6 @@ export default function RootLayout({
         <Providers>
           <ThemeProvider>
             {children}
-            {process.env.NODE_ENV !== 'production' && <SessionDebug />}
           </ThemeProvider>
         </Providers>
         <Toaster />

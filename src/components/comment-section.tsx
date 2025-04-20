@@ -251,12 +251,27 @@ export default function CommentSection({ storyId }: CommentSectionProps) {
     setLikingComment(prev => ({ ...prev, [id]: true }))
 
     try {
-      // This is a placeholder - you would need to implement the actual API call
-      // For now, we'll just simulate a successful like
-      await new Promise(resolve => setTimeout(resolve, 300))
+      let result;
 
-      // Update the UI to show the like
-      // In a real implementation, you would update based on the API response
+      // Get the comment to check if it's already liked
+      const comment = isReply
+        ? Object.values(expandedReplies).flat().find(reply => reply.id === id)
+        : comments.find(comment => comment.id === id);
+
+      if (!comment) {
+        throw new Error("Comment not found");
+      }
+
+      // Toggle like status
+      if (comment.isLiked) {
+        // Unlike the comment
+        result = await CommentService.unlikeComment(id);
+      } else {
+        // Like the comment
+        result = await CommentService.likeComment(id);
+      }
+
+      // Update the UI based on the API response
       if (isReply) {
         // Update the reply in expandedReplies
         setExpandedReplies(prev => {
@@ -269,7 +284,7 @@ export default function CommentSection({ storyId }: CommentSectionProps) {
                 return {
                   ...reply,
                   isLiked: !reply.isLiked,
-                  likeCount: reply.isLiked ? (reply.likeCount || 1) - 1 : (reply.likeCount || 0) + 1
+                  likeCount: result.likeCount
                 }
               }
               return reply
@@ -285,7 +300,7 @@ export default function CommentSection({ storyId }: CommentSectionProps) {
             return {
               ...comment,
               isLiked: !comment.isLiked,
-              likeCount: comment.isLiked ? (comment.likeCount || 1) - 1 : (comment.likeCount || 0) + 1
+              likeCount: result.likeCount
             }
           }
           return comment

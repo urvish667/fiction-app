@@ -28,12 +28,12 @@ export function TopNavigation({
   navigateToChapter
 }: TopNavigationProps) {
   const currentIndex = chapters.findIndex((c) => c.number === currentChapter.number)
-  
+
   return (
-    <div className="flex justify-between items-center mb-8">
-      <Button variant="ghost" onClick={handleBackToStory} className="pl-0 flex items-center gap-2">
+    <div className="flex justify-between items-center mb-6 sm:mb-8">
+      <Button variant="ghost" onClick={handleBackToStory} className="pl-0 flex items-center gap-1 sm:gap-2">
         <ArrowLeft size={16} />
-        Back to Story
+        <span className="text-sm sm:text-base">Back to Story</span>
       </Button>
 
       <div className="flex items-center gap-2">
@@ -59,9 +59,9 @@ export function TopNavigation({
           {/* Chapter Selector */}
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="outline" className="mx-2 text-sm">
-                Chapter {currentIndex + 1} of {chapters.length}
-                <List size={16} className="ml-2" />
+              <Button variant="outline" className="mx-2 text-xs sm:text-sm">
+                <span className="hidden xs:inline">Chapter </span>{currentIndex + 1}/{chapters.length}
+                <List size={16} className="ml-1 sm:ml-2" />
               </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">

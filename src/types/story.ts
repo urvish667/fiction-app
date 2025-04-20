@@ -53,6 +53,9 @@ export type Comment = {
   parentId?: string;
   parent?: Comment;
   replies?: Comment[];
+  replyCount?: number;
+  likeCount?: number;
+  isLiked?: boolean;
   createdAt: Date;
   updatedAt: Date;
 };

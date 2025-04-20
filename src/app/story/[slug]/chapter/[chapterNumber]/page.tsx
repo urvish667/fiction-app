@@ -442,7 +442,7 @@ export default function ReadingPage() {
 
       <Navbar />
 
-      <main className="container mx-auto px-8 py-8">
+      <main className="container mx-auto px-4 sm:px-8 py-6 sm:py-8">
         {/* Top Navigation */}
         <TopNavigation
           slug={slug}

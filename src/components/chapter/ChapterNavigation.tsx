@@ -16,24 +16,24 @@ export function ChapterNavigation({ chapters, currentChapter, navigateToChapter 
   const hasNext = currentIndex < chapters.length - 1
 
   return (
-    <div className="flex justify-between items-center mb-12">
+    <div className="flex justify-between items-center mb-8 sm:mb-12">
       <Button
         variant="outline"
         onClick={() => navigateToChapter("prev")}
         disabled={!hasPrevious}
-        className="flex items-center gap-2"
+        className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
       >
         <ChevronLeft size={16} />
-        Previous Chapter
+        <span className="hidden xs:inline">Previous </span>Chapter
       </Button>
 
       <Button
         variant="outline"
         onClick={() => navigateToChapter("next")}
         disabled={!hasNext}
-        className="flex items-center gap-2"
+        className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
       >
-        Next Chapter
+        <span className="hidden xs:inline">Next </span>Chapter
         <ChevronRight size={16} />
       </Button>
     </div>

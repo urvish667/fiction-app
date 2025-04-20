@@ -72,6 +72,7 @@ model User {
   bookmarks           Bookmark[]
   chapterViews        ChapterView[]
   comments            Comment[]
+  commentLikes        CommentLike[]
   donationsMade       Donation[]        @relation("DonationsMade")
   donationsReceived   Donation[]        @relation("DonationsReceived")
   following           Follow[]          @relation("Following")
@@ -181,17 +182,18 @@ model Chapter {
 }
 
 model Comment {
-  id        String    @id @default(cuid())
+  id        String       @id @default(cuid())
   content   String
   userId    String
   storyId   String
   parentId  String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  parent    Comment?  @relation("CommentToReply", fields: [parentId], references: [id])
-  replies   Comment[] @relation("CommentToReply")
-  story     Story     @relation(fields: [storyId], references: [id], onDelete: Cascade)
-  user      User      @relation(fields: [userId], references: [id])
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  parent    Comment?     @relation("CommentToReply", fields: [parentId], references: [id])
+  replies   Comment[]    @relation("CommentToReply")
+  story     Story        @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  user      User         @relation(fields: [userId], references: [id])
+  likes     CommentLike[]
 
   @@index([userId])
   @@index([storyId])
@@ -353,4 +355,17 @@ model ChapterView {
   @@index([chapterId])
   @@index([chapterId, createdAt])
   @@index([userId, chapterId])
+}
+
+model CommentLike {
+  id        String   @id @default(cuid())
+  userId    String
+  commentId String
+  createdAt DateTime @default(now())
+  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, commentId])
+  @@index([userId])
+  @@index([commentId])
 }

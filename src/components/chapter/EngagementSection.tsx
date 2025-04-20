@@ -163,7 +163,7 @@ export function EngagementSection({
   return (
     <div className="border-t pt-8 mb-12">
       <div className="flex flex-wrap justify-between items-center gap-4 mb-8">
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4">
           <Button
             variant={isLiked ? "default" : "outline"}
             size="sm"
@@ -257,11 +257,12 @@ export function EngagementSection({
         )}
       </AnimatePresence>
 
-      {/* Support the Author Section - Only shown when monetization is enabled */}
-      {story.author && typeof story.author === 'object' && story.author.donationsEnabled && (
-        <div className="bg-muted/30 rounded-lg p-6 text-center mb-12">
-          <h2 className="text-xl font-bold mb-2">Support the Author</h2>
-          <p className="text-muted-foreground mb-4">
+      {/* Support the Author Section - Only shown when monetization is enabled and user is not the author */}
+      {story.author && typeof story.author === 'object' && story.author.donationsEnabled &&
+       session && session.user.id !== story.author.id && (
+        <div className="bg-muted/30 rounded-lg p-4 sm:p-6 text-center mb-12">
+          <h2 className="text-lg sm:text-xl font-bold mb-2">Support the Author</h2>
+          <p className="text-sm sm:text-base text-muted-foreground mb-4">
             If you enjoyed this chapter, consider supporting the author to help them create more amazing content.
           </p>
           <SupportButton
@@ -276,9 +277,9 @@ export function EngagementSection({
 
       {/* Story Recommendations - You Might Also Like */}
       <div className="mt-8">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold">You Might Also Like</h2>
-          <span className="text-sm text-muted-foreground">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6">
+          <h2 className="text-xl sm:text-2xl font-bold mb-1 sm:mb-0">You Might Also Like</h2>
+          <span className="text-xs sm:text-sm text-muted-foreground">
             Based on genre and tags
           </span>
         </div>
