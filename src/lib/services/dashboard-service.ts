@@ -84,9 +84,9 @@ export async function getDashboardStats(userId: string, timeRange: string = '30d
     },
   });
 
-  // Get total reads (views) using the optimized ViewService
+  // Get total reads (views) using the optimized ViewService with combined story + chapter views
   const userStoryIds = stories.map(story => story.id);
-  const viewCountMap = await ViewService.getBatchStoryViewCounts(userStoryIds);
+  const viewCountMap = await ViewService.getBatchCombinedViewCounts(userStoryIds);
   const totalViews = Array.from(viewCountMap.values()).reduce((sum, count) => sum + count, 0);
 
   // Calculate total likes, comments
@@ -102,8 +102,8 @@ export async function getDashboardStats(userId: string, timeRange: string = '30d
   // Convert cents to dollars
   const totalEarnings = totalEarningsInCents / 100;
 
-  // Get previous period views using the optimized ViewService
-  const previousPeriodViewCountMap = await ViewService.getBatchStoryViewCounts(
+  // Get previous period views using the optimized ViewService with combined story + chapter views
+  const previousPeriodViewCountMap = await ViewService.getBatchCombinedViewCounts(
     userStoryIds,
     'custom',
     previousStartDate,
@@ -170,8 +170,8 @@ export async function getDashboardStats(userId: string, timeRange: string = '30d
     return Number((((current - previous) / previous) * 100).toFixed(1));
   };
 
-  // Get current period views using the optimized ViewService
-  const currentPeriodViewCountMap = await ViewService.getBatchStoryViewCounts(
+  // Get current period views using the optimized ViewService with combined story + chapter views
+  const currentPeriodViewCountMap = await ViewService.getBatchCombinedViewCounts(
     userStoryIds,
     'custom',
     startDate
@@ -278,7 +278,7 @@ export async function getDashboardStats(userId: string, timeRange: string = '30d
  * @param sortBy Field to sort by (reads, likes, comments, earnings)
  * @returns Array of dashboard stories
  */
-export async function getTopStories(userId: string, limit: number = 5, sortBy: string = 'reads'): Promise<DashboardStory[]> {
+export async function getTopStories(userId: string, limit: number = 5, sortBy: string = 'reads', timeRange: string = '30days'): Promise<DashboardStory[]> {
   // Determine the order by field based on sortBy parameter
   let orderBy: any = {};
 
@@ -332,9 +332,9 @@ export async function getTopStories(userId: string, limit: number = 5, sortBy: s
     take: limit,
   });
 
-  // Get view counts for each story using the optimized ViewService
+  // Get view counts for each story using the optimized ViewService with combined story + chapter views
   const storyIds = stories.map(story => story.id);
-  const viewCountMap = await ViewService.getBatchStoryViewCounts(storyIds, timeRange);
+  const viewCountMap = await ViewService.getBatchCombinedViewCounts(storyIds, timeRange);
 
   // Format stories data
   let formattedStories: DashboardStory[] = stories.map(story => {
@@ -377,7 +377,7 @@ export async function getDashboardOverviewData(userId: string, timeRange: string
   const stats = await getDashboardStats(userId, timeRange);
 
   // Get top stories
-  const stories = await getTopStories(userId, 5, 'reads');
+  const stories = await getTopStories(userId, 5, 'reads', timeRange);
 
   // Get chart data
   const readsData = await getReadsChartData(userId, timeRange);
@@ -429,8 +429,8 @@ export async function getReadsChartData(userId: string, timeRange: string = '30d
 
   // Process each month
   for (const month of months) {
-    // Get view counts for this month using the optimized ViewService
-    const viewCountMap = await ViewService.getBatchStoryViewCounts(
+    // Get view counts for this month using the optimized ViewService with combined story + chapter views
+    const viewCountMap = await ViewService.getBatchCombinedViewCounts(
       userStoryIds,
       'custom',
       month.date,
@@ -538,9 +538,9 @@ export async function getUserStories(userId: string) {
     },
   });
 
-  // Get view counts for each story using the optimized ViewService
+  // Get view counts for each story using the optimized ViewService with combined story + chapter views
   const storyIds = stories.map(story => story.id);
-  const viewCountMap = await ViewService.getBatchStoryViewCounts(storyIds);
+  const viewCountMap = await ViewService.getBatchCombinedViewCounts(storyIds);
 
   // Format stories data
   const formattedStories = stories.map(story => {
@@ -586,9 +586,9 @@ export async function getEarningsData(userId: string, timeRange: string = '30day
     },
   });
 
-  // Get view counts for each story using the optimized ViewService
+  // Get view counts for each story using the optimized ViewService with combined story + chapter views
   const storyIds = stories.map(story => story.id);
-  const viewCountMap = await ViewService.getBatchStoryViewCounts(storyIds);
+  const viewCountMap = await ViewService.getBatchCombinedViewCounts(storyIds);
 
   // Calculate total earnings (all time)
   const totalEarningsInCents = stories.reduce(

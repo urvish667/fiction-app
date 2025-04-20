@@ -10,7 +10,7 @@ type ProvidersProps = {
 
 export default function Providers({ children }: ProvidersProps) {
   return (
-    <SessionProvider refetchInterval={5 * 60} refetchOnWindowFocus={true}>
+    <SessionProvider refetchInterval={5 * 60} refetchOnWindowFocus={false}>
       <CsrfProvider>
         {children}
       </CsrfProvider>

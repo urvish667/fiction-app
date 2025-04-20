@@ -13,8 +13,8 @@ import { ensureCsrfToken, setCsrfToken } from '@/lib/client/csrf'
 export default function CsrfProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
 
+  // Set up CSRF token when the component mounts or pathname changes
   useEffect(() => {
-    // Function to set up CSRF token
     const setupCsrfToken = async () => {
       try {
         // Ensure we have a CSRF token
@@ -25,10 +25,11 @@ export default function CsrfProvider({ children }: { children: React.ReactNode }
       }
     }
 
-    // Set up CSRF token when the component mounts or pathname changes
     setupCsrfToken()
+  }, [pathname])
 
-    // Also set up a listener for the storage event to sync tokens across tabs
+  // Set up storage event listener only once when component mounts
+  useEffect(() => {
     const handleStorageChange = (event: StorageEvent) => {
       if (event.key === 'fablespace_csrf' && event.newValue) {
         setCsrfToken(event.newValue)
@@ -40,7 +41,7 @@ export default function CsrfProvider({ children }: { children: React.ReactNode }
     return () => {
       window.removeEventListener('storage', handleStorageChange)
     }
-  }, [pathname])
+  }, [])
 
   return <>{children}</>
 }

@@ -24,7 +24,7 @@ export function ChapterNavigation({ chapters, currentChapter, navigateToChapter 
         className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
       >
         <ChevronLeft size={16} />
-        <span className="hidden xs:inline">Previous </span>Chapter
+        <span>Previous Chapter</span>
       </Button>
 
       <Button
@@ -33,7 +33,7 @@ export function ChapterNavigation({ chapters, currentChapter, navigateToChapter 
         disabled={!hasNext}
         className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
       >
-        <span className="hidden xs:inline">Next </span>Chapter
+        <span>Next Chapter</span>
         <ChevronRight size={16} />
       </Button>
     </div>

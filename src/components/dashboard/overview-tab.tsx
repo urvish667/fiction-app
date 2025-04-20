@@ -42,7 +42,7 @@ export function OverviewTab({ timeRange }: OverviewTabProps) {
     data: storiesData,
     isLoading: storiesLoading,
     error: storiesError
-  } = useDashboardStories(5, 'reads');
+  } = useDashboardStories(5, 'reads', timeRange);
 
   // Fetch chart data
   const {

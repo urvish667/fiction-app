@@ -60,7 +60,7 @@ export function TopNavigation({
           <Sheet>
             <SheetTrigger asChild>
               <Button variant="outline" className="mx-2 text-xs sm:text-sm">
-                <span className="hidden xs:inline">Chapter </span>{currentIndex + 1}/{chapters.length}
+                <span>Chapter {currentIndex + 1}/{chapters.length}</span>
                 <List size={16} className="ml-1 sm:ml-2" />
               </Button>
             </SheetTrigger>

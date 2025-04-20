@@ -13,11 +13,12 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const limit = parseInt(url.searchParams.get('limit') || '5');
   const sortBy = url.searchParams.get('sortBy') || 'reads';
+  const timeRange = url.searchParams.get('timeRange') || '30days';
 
   try {
     // Check authentication
     const session = await getServerSession(authOptions);
-    
+
     if (!session || !session.user) {
       return NextResponse.json<ApiResponse<null>>({
         success: false,
@@ -27,7 +28,7 @@ export async function GET(request: Request) {
 
     // Get user ID from session
     const userId = session.user.id;
-    
+
     if (!userId) {
       return NextResponse.json<ApiResponse<null>>({
         success: false,
@@ -36,15 +37,15 @@ export async function GET(request: Request) {
     }
 
     // Fetch top stories
-    const stories = await getTopStories(userId, limit, sortBy);
-    
+    const stories = await getTopStories(userId, limit, sortBy, timeRange);
+
     return NextResponse.json<ApiResponse<DashboardStory[]>>({
       success: true,
       data: stories,
     });
   } catch (error) {
     console.error("Error fetching top stories:", error);
-    
+
     return NextResponse.json<ApiResponse<null>>({
       success: false,
       error: "Failed to fetch top stories",

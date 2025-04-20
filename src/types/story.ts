@@ -24,6 +24,7 @@ export type Story = {
   commentCount?: number;
   bookmarkCount?: number;
   chapterCount?: number;
+  viewCount?: number; // Combined story + chapter views
 };
 
 export type Chapter = {
@@ -123,6 +124,7 @@ export type StoryResponse = Story & {
   likeCount: number;
   commentCount: number;
   bookmarkCount: number;
+  viewCount?: number; // Combined story + chapter views
   isLiked?: boolean;
   isBookmarked?: boolean;
 };

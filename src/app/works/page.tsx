@@ -41,59 +41,83 @@ export default function MyWorksPage() {
 
   // Fetch user's stories from the database
   useEffect(() => {
-    const fetchStories = async () => {
-      if (!session?.user?.id) return
+    // Skip if we don't have a session or if we already have works loaded
+    if (!session?.user?.id) return
 
+    // Track if the component is mounted to prevent state updates after unmount
+    let isMounted = true;
+
+    const fetchStories = async () => {
       try {
         setIsLoading(true)
         const response = await StoryService.getStories({
           authorId: session.user.id
         })
 
-        // Get chapters for each story to count chapters by status
-        const worksWithChapters = await Promise.all(response.stories.map(async (story) => {
-          let draftChapters = 0;
-          let scheduledChapters = 0;
-          let publishedChapters = 0;
-
+        // Create a batch of promises to fetch chapters for all stories
+        const storiesWithChaptersPromises = response.stories.map(async (story) => {
           try {
+            // Fetch chapters for this story
             const chapters = await StoryService.getChapters(story.id);
 
+            // Only process if component is still mounted
+            if (!isMounted) return null;
+
             // Count chapters by status
-            draftChapters = chapters.filter(chapter => chapter.status === 'draft').length;
-            scheduledChapters = chapters.filter(chapter => chapter.status === 'scheduled').length;
-            publishedChapters = chapters.filter(chapter => chapter.status === 'published').length;
+            const draftChapters = chapters.filter(chapter => chapter.status === 'draft').length;
+            const scheduledChapters = chapters.filter(chapter => chapter.status === 'scheduled').length;
+            const publishedChapters = chapters.filter(chapter => chapter.status === 'published').length;
+
+            return {
+              ...story,
+              lastEdited: new Date(story.updatedAt),
+              draftChapters,
+              scheduledChapters,
+              publishedChapters
+            };
           } catch (error) {
             console.error(`Failed to fetch chapters for story ${story.id}:`, error);
+            // Return the story without chapter counts if fetching chapters fails
+            return {
+              ...story,
+              lastEdited: new Date(story.updatedAt),
+              draftChapters: 0,
+              scheduledChapters: 0,
+              publishedChapters: 0
+            };
           }
+        });
 
-          return {
-            ...story,
-            lastEdited: new Date(story.updatedAt),
-            draftChapters,
-            scheduledChapters,
-            publishedChapters
-          };
-        }));
+        // Wait for all chapter fetches to complete
+        const worksWithChapters = await Promise.all(storiesWithChaptersPromises);
 
-        // Transform API response to our WorkStory format
-        const works = worksWithChapters as WorkStory[]
-
-        setMyWorks(works)
+        // Only update state if component is still mounted
+        if (isMounted) {
+          // Transform API response to our WorkStory format and filter out any null values
+          const works = worksWithChapters.filter(Boolean) as WorkStory[]
+          setMyWorks(works)
+          setIsLoading(false)
+        }
       } catch (error) {
         console.error("Failed to fetch stories:", error)
-        toast({
-          title: "Error",
-          description: "Failed to load your stories. Please try again.",
-          variant: "destructive"
-        })
-      } finally {
-        setIsLoading(false)
+        if (isMounted) {
+          toast({
+            title: "Error",
+            description: "Failed to load your stories. Please try again.",
+            variant: "destructive"
+          })
+          setIsLoading(false)
+        }
       }
     }
 
     fetchStories()
-  }, [session, toast])
+
+    // Cleanup function to prevent state updates after unmount
+    return () => {
+      isMounted = false;
+    }
+  }, [session?.user?.id, toast])
 
   // Open delete confirmation dialog
   const openDeleteDialog = (story: {id: string, title: string}) => {
@@ -204,34 +228,8 @@ export default function MyWorksPage() {
             <TabsTrigger value="completed">Completed</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="all">
-            <WorksContent
-              works={filteredWorks}
-              searchQuery={searchQuery}
-              isLoading={isLoading}
-              onDeleteStory={openDeleteDialog}
-            />
-          </TabsContent>
-
-          <TabsContent value="draft">
-            <WorksContent
-              works={filteredWorks}
-              searchQuery={searchQuery}
-              isLoading={isLoading}
-              onDeleteStory={openDeleteDialog}
-            />
-          </TabsContent>
-
-          <TabsContent value="ongoing">
-            <WorksContent
-              works={filteredWorks}
-              searchQuery={searchQuery}
-              isLoading={isLoading}
-              onDeleteStory={openDeleteDialog}
-            />
-          </TabsContent>
-
-          <TabsContent value="completed">
+          {/* Use a single TabsContent component that renders for all tab values */}
+          <TabsContent value={activeTab}>
             <WorksContent
               works={filteredWorks}
               searchQuery={searchQuery}

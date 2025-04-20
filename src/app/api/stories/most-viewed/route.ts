@@ -53,8 +53,8 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Get actual view counts for these stories
-    const viewCountMap = await ViewService.getBatchStoryViewCounts(
+    // Get combined view counts (story + chapter views) for these stories
+    const viewCountMap = await ViewService.getBatchCombinedViewCounts(
       mostViewedStoryIds,
       timeRange
     );

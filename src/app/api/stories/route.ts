@@ -5,6 +5,7 @@ import { prisma } from "@/lib/auth/db-adapter";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { slugify } from "@/lib/utils";
 import { calculateStoryStatus, isStoryPublic } from "@/lib/story-helpers";
+import { ViewService } from "@/services/view-service";
 
 // Validation schema for creating a story
 const createStorySchema = z.object({
@@ -204,12 +205,19 @@ export async function GET(request: NextRequest) {
 
 
 
+    // Get combined view counts (story + chapter views) for these stories
+    const storyIds = stories.map(story => story.id);
+    const viewCountMap = await ViewService.getBatchCombinedViewCounts(storyIds);
+
     // Transform stories to include counts and format tags
     const formattedStories = stories.map((story) => {
       // Extract tags safely
       const tags = Array.isArray(story.tags)
         ? story.tags.map(storyTag => storyTag.tag?.name || '').filter(Boolean)
         : [];
+
+      // Get combined view count
+      const viewCount = viewCountMap.get(story.id) || 0;
 
       return {
         ...story,
@@ -218,6 +226,7 @@ export async function GET(request: NextRequest) {
         commentCount: story._count.comments,
         bookmarkCount: story._count.bookmarks,
         chapterCount: story._count.chapters,
+        viewCount, // Add combined view count
         _count: undefined,
       };
     });

@@ -291,6 +291,58 @@ export class ViewService {
   }
 
   /**
+   * Get the combined view count for a story (story views + chapter views)
+   * @param storyId The ID of the story
+   * @param timeRange Optional time range for filtering views (e.g., '7days', '30days')
+   * @returns The combined view count (story views + chapter views)
+   */
+  static async getCombinedViewCount(storyId: string, timeRange?: string) {
+    try {
+      // Get story views
+      const storyViews = await this.getStoryViewCount(storyId, timeRange);
+
+      // Get chapter views for all chapters of this story
+      let chapterViewsWhereClause: any = {};
+
+      // Add time range filter if provided
+      if (timeRange) {
+        const startDate = this.getStartDateFromTimeRange(timeRange);
+        if (startDate) {
+          chapterViewsWhereClause.createdAt = { gte: startDate };
+        }
+      }
+
+      // Find all chapters for this story
+      const chapters = await prisma.chapter.findMany({
+        where: { storyId },
+        select: { id: true }
+      });
+
+      // Get chapter IDs
+      const chapterIds = chapters.map(chapter => chapter.id);
+
+      // If no chapters, return just story views
+      if (chapterIds.length === 0) {
+        return storyViews;
+      }
+
+      // Count chapter views
+      const chapterViews = await prisma.chapterView.count({
+        where: {
+          ...chapterViewsWhereClause,
+          chapterId: { in: chapterIds }
+        }
+      });
+
+      // Return combined count
+      return storyViews + chapterViews;
+    } catch (error) {
+      console.error("Error getting combined view count:", error);
+      return 0;
+    }
+  }
+
+  /**
    * Get the total view count for a chapter
    * @param chapterId The ID of the chapter
    * @param timeRange Optional time range for filtering views (e.g., '7days', '30days')
@@ -376,6 +428,67 @@ export class ViewService {
       return viewCountMap;
     } catch (error) {
       console.error("Error getting batch story view counts:", error);
+      // Return empty map with 0 counts for all requested stories
+      return new Map(storyIds.map(id => [id, 0]));
+    }
+  }
+
+  /**
+   * Get combined view counts (story + chapter views) for multiple stories in a batch
+   * @param storyIds Array of story IDs
+   * @param timeRange Optional time range for filtering views
+   * @param startDate Optional custom start date (used when timeRange is 'custom')
+   * @param endDate Optional custom end date (used when timeRange is 'custom')
+   * @returns Map of story ID to combined view count
+   */
+  static async getBatchCombinedViewCounts(
+    storyIds: string[],
+    timeRange?: string,
+    startDate?: Date,
+    endDate?: Date
+  ): Promise<Map<string, number>> {
+    try {
+      // Get story view counts
+      const storyViewCountMap = await this.getBatchStoryViewCounts(storyIds, timeRange, startDate, endDate);
+
+      // Create a map for the combined counts, starting with story views
+      const combinedViewCountMap = new Map<string, number>(storyViewCountMap);
+
+      // Get all chapters for these stories
+      const chapters = await prisma.chapter.findMany({
+        where: { storyId: { in: storyIds } },
+        select: { id: true, storyId: true }
+      });
+
+      // Group chapters by story ID
+      const chaptersByStory = chapters.reduce((acc, chapter) => {
+        if (!acc[chapter.storyId]) {
+          acc[chapter.storyId] = [];
+        }
+        acc[chapter.storyId].push(chapter.id);
+        return acc;
+      }, {} as Record<string, string[]>);
+
+      // For each story with chapters, get chapter view counts
+      for (const storyId of Object.keys(chaptersByStory)) {
+        const chapterIds = chaptersByStory[storyId];
+
+        if (chapterIds.length > 0) {
+          // Get chapter view counts
+          const chapterViewCountMap = await this.getBatchChapterViewCounts(chapterIds, timeRange, startDate, endDate);
+
+          // Sum up all chapter views for this story
+          const totalChapterViews = Array.from(chapterViewCountMap.values()).reduce((sum, count) => sum + count, 0);
+
+          // Add chapter views to story views
+          const currentStoryViews = combinedViewCountMap.get(storyId) || 0;
+          combinedViewCountMap.set(storyId, currentStoryViews + totalChapterViews);
+        }
+      }
+
+      return combinedViewCountMap;
+    } catch (error) {
+      console.error("Error getting batch combined view counts:", error);
       // Return empty map with 0 counts for all requested stories
       return new Map(storyIds.map(id => [id, 0]));
     }
