@@ -15,15 +15,18 @@ import { Menu } from "lucide-react"
 import { motion } from "framer-motion"
 import UserAvatarMenu from "./user-avatar-menu"
 import { Skeleton } from "@/components/ui/skeleton"
+import { clientLogger } from "@/lib/logger/client-logger"
 
 export default function Navbar() {
   const { data: session, status } = useSession()
   const isLoading = status === "loading"
   const isAuthenticated = status === "authenticated"
 
-  // Debug session data
-  console.log('Session status:', status)
-  console.log('Session data:', session)
+  // Create a component logger
+  const navLogger = clientLogger.child('navbar');
+
+  // Log session status in development only
+  navLogger.debug('Session status', { status, hasUser: !!session?.user });
 
   const userWithAvatar = session?.user ? {
     id: session.user.id,
@@ -32,9 +35,6 @@ export default function Navbar() {
     avatar: session.user.image || '/placeholder-user.jpg',
     unreadNotifications: session.user.unreadNotifications || 0
   } : null
-
-  // Debug user avatar data
-  console.log('User avatar data:', userWithAvatar)
 
   const handleLogout = () => {
     // NextAuth signOut will be handled by UserAvatarMenu

@@ -123,12 +123,22 @@ export async function GET(
       const clientIp = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip');
       const userAgent = request.headers.get('user-agent');
 
-      // Track the view
-      await ViewService.trackStoryView(
-        story.id,
-        session?.user?.id,
-        { ip: clientIp || undefined, userAgent: userAgent || undefined }
-      );
+      try {
+        // Track the view
+        const viewResult = await ViewService.trackStoryView(
+          story.id,
+          session?.user?.id,
+          { ip: clientIp || undefined, userAgent: userAgent || undefined }
+        );
+
+        // Update the view count in the response if available
+        if (viewResult?.viewCount !== undefined) {
+          formattedStory.viewCount = viewResult.viewCount;
+        }
+      } catch (viewError) {
+        // Log the error but don't fail the request
+        console.error("Error tracking story view:", viewError);
+      }
     }
 
     return NextResponse.json(formattedStory);

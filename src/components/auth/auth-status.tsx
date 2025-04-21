@@ -12,6 +12,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { clientLogger } from '@/lib/logger/client-logger'
 
 export default function AuthStatus() {
   const { data: session, status } = useSession()
@@ -73,10 +74,17 @@ export default function AuthStatus() {
     )
   }
 
+  // Create a component logger
+  const authLogger = clientLogger.child('auth-status');
+
   if (session?.user) {
     const initials = getInitials(session.user)
-    console.log('User session:', session.user) // Debug log
-    console.log('Generated initials:', initials) // Debug log
+    authLogger.debug('User session loaded', {
+      hasName: !!session.user.name,
+      hasUsername: !!session.user.username,
+      hasImage: !!session.user.image,
+      initials
+    })
 
     return (
       <DropdownMenu>

@@ -175,6 +175,34 @@ export default function ReadingPage() {
     fetchData()
   }, [slug, chapterNumber])
 
+  // Refresh chapter and story data to get updated view counts
+  useEffect(() => {
+    if (!story || !chapter) return
+
+    // Create a timer to refresh the data after a short delay
+    // This ensures the view counts are updated after the views are tracked
+    const timer = setTimeout(async () => {
+      try {
+        // Fetch the latest chapter data to get updated view count
+        const updatedChapter = await StoryService.getChapter(story.id, chapter.id)
+        // Fetch the latest story data to get updated view count
+        const updatedStory = await StoryService.getStory(story.id)
+
+        if (updatedChapter && updatedStory) {
+          setState(prev => ({
+            ...prev,
+            chapter: updatedChapter,
+            story: updatedStory
+          }))
+        }
+      } catch (err) {
+        console.error("Error refreshing data:", err)
+      }
+    }, 1000) // 1 second delay
+
+    return () => clearTimeout(timer)
+  }, [story?.id, chapter?.id])
+
   // Check if the user is following the author and if the story is liked
   useEffect(() => {
     const checkUserInteractions = async () => {

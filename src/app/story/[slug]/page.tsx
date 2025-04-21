@@ -91,6 +91,27 @@ export default function StoryInfoPage() {
     fetchStory()
   }, [slug])
 
+  // Refresh story data to get updated view count
+  useEffect(() => {
+    if (!story) return
+
+    // Create a timer to refresh the story data after a short delay
+    // This ensures the view count is updated after the view is tracked
+    const timer = setTimeout(async () => {
+      try {
+        // Fetch the latest story data to get updated view count
+        const updatedStory = await StoryService.getStory(story.id)
+        if (updatedStory) {
+          setStory(updatedStory)
+        }
+      } catch (err) {
+        console.error("Error refreshing story data:", err)
+      }
+    }, 1000) // 1 second delay
+
+    return () => clearTimeout(timer)
+  }, [story?.id])
+
   // Check if the user is following the author
   useEffect(() => {
     const checkFollowStatus = async () => {

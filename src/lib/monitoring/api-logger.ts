@@ -1,6 +1,6 @@
 /**
  * API Logger
- * 
+ *
  * This module provides structured logging for API requests and responses
  * in the FableSpace application. It includes utilities for tracking request/response
  * cycles and logging security events.
@@ -9,6 +9,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getClientIp } from '../security/rate-limit';
 import { logError, logWarning } from '../error-logger';
+import { logger } from '../logger';
+
+// Create a dedicated API logger instance
+const apiLogger = logger.child('api');
 
 // Log levels
 export enum LogLevel {
@@ -91,22 +95,22 @@ export async function extractRequestInfo(
 ): Promise<RequestLogContext> {
   // Get URL information
   const url = new URL(req.url);
-  
+
   // Get query parameters
   const query: Record<string, string> = {};
   url.searchParams.forEach((value, key) => {
     query[key] = value;
   });
-  
+
   // Get client IP
   const ip = await getClientIp(req);
-  
+
   // Get user agent
   const userAgent = req.headers.get('user-agent') || 'unknown';
-  
+
   // Get referer
   const referer = req.headers.get('referer') || undefined;
-  
+
   // Create request context
   return {
     method: req.method,
@@ -133,13 +137,13 @@ export function extractResponseInfo(
 ): ResponseLogContext {
   // Calculate response time
   const responseTime = Date.now() - requestContext.startTime;
-  
+
   // Get content type
   const contentType = res.headers.get('content-type') || undefined;
-  
+
   // Get content length
   const contentLength = parseInt(res.headers.get('content-length') || '0', 10) || undefined;
-  
+
   // Create response context
   return {
     statusCode: res.status,
@@ -165,19 +169,15 @@ export function logApiRequest(context: RequestLogContext): void {
       type: 'request',
     },
   };
-  
-  // Log to console in development
-  if (process.env.NODE_ENV !== 'production' || process.env.API_DEBUG === 'true') {
-    console.log(`[${logEntry.timestamp}] ${logEntry.message}`, {
-      method: context.method,
-      path: context.path,
-      ip: context.ip,
-      requestId: context.requestId,
-    });
-  }
-  
-  // In production, you would send this to a logging service
-  // This is where you would integrate with a logging service
+
+  // Log using the API logger
+  apiLogger.info(logEntry.message, {
+    method: context.method,
+    path: context.path,
+    ip: context.ip,
+    requestId: context.requestId,
+    query: Object.keys(context.query).length > 0 ? context.query : undefined,
+  });
 }
 
 /**
@@ -200,10 +200,38 @@ export function logApiResponse(
       type: 'response',
     },
   };
-  
-  // Log to console in development
-  if (process.env.NODE_ENV !== 'production' || process.env.API_DEBUG === 'true') {
-    console.log(`[${logEntry.timestamp}] ${logEntry.message}`, {
+
+  // Log using the API logger with appropriate level based on status code
+  if (responseContext.statusCode >= 500) {
+    apiLogger.error(`API Error: ${requestContext.method} ${requestContext.path} ${responseContext.statusCode}`, {
+      method: requestContext.method,
+      path: requestContext.path,
+      statusCode: responseContext.statusCode,
+      responseTime: responseContext.responseTime,
+      requestId: responseContext.requestId,
+    });
+
+    // Also log to error logger for centralized error tracking
+    logError(`API Error: ${requestContext.method} ${requestContext.path} ${responseContext.statusCode}`, {
+      ...requestContext,
+      ...responseContext,
+    });
+  } else if (responseContext.statusCode >= 400) {
+    apiLogger.warn(`API Warning: ${requestContext.method} ${requestContext.path} ${responseContext.statusCode}`, {
+      method: requestContext.method,
+      path: requestContext.path,
+      statusCode: responseContext.statusCode,
+      responseTime: responseContext.responseTime,
+      requestId: responseContext.requestId,
+    });
+
+    // Also log to warning logger for centralized warning tracking
+    logWarning(`API Warning: ${requestContext.method} ${requestContext.path} ${responseContext.statusCode}`, {
+      ...requestContext,
+      ...responseContext,
+    });
+  } else {
+    apiLogger.info(logEntry.message, {
       method: requestContext.method,
       path: requestContext.path,
       statusCode: responseContext.statusCode,
@@ -211,22 +239,6 @@ export function logApiResponse(
       requestId: responseContext.requestId,
     });
   }
-  
-  // Log errors with more details
-  if (responseContext.statusCode >= 500) {
-    logError(`API Error: ${requestContext.method} ${requestContext.path} ${responseContext.statusCode}`, {
-      ...requestContext,
-      ...responseContext,
-    });
-  } else if (responseContext.statusCode >= 400) {
-    logWarning(`API Warning: ${requestContext.method} ${requestContext.path} ${responseContext.statusCode}`, {
-      ...requestContext,
-      ...responseContext,
-    });
-  }
-  
-  // In production, you would send this to a logging service
-  // This is where you would integrate with a logging service
 }
 
 /**
@@ -244,25 +256,21 @@ export function logSecurityEvent(context: SecurityEventLogContext): void {
       type: 'security',
     },
   };
-  
-  // Log to console in development
-  if (process.env.NODE_ENV !== 'production' || process.env.API_DEBUG === 'true') {
-    console.warn(`[${logEntry.timestamp}] ${logEntry.message}`, {
-      eventType: context.eventType,
-      path: context.path,
-      ip: context.ip,
-      userId: context.userId,
-      requestId: context.requestId,
-    });
-  }
-  
-  // Log security events with more details
+
+  // Log security events with the API logger
+  apiLogger.warn(`Security Event: ${context.eventType}`, {
+    eventType: context.eventType,
+    path: context.path,
+    ip: context.ip,
+    userId: context.userId,
+    requestId: context.requestId,
+    details: context.details,
+  });
+
+  // Also log to warning logger for centralized security event tracking
   logWarning(`Security Event: ${context.eventType}`, {
     ...context,
   });
-  
-  // In production, you would send this to a logging service
-  // This is where you would integrate with a logging service
 }
 
 /**
@@ -275,26 +283,26 @@ export function withApiLogging(
   return async function loggingHandler(req: NextRequest) {
     // Generate a unique request ID
     const requestId = generateRequestId();
-    
+
     // Extract request information
     const requestContext = await extractRequestInfo(req, requestId);
-    
+
     // Log the request
     logApiRequest(requestContext);
-    
+
     try {
       // Call the original handler
       const response = await handler(req);
-      
+
       // Add request ID to response headers
       response.headers.set('X-Request-ID', requestId);
-      
+
       // Extract response information
       const responseContext = extractResponseInfo(response, requestContext);
-      
+
       // Log the response
       logApiResponse(requestContext, responseContext);
-      
+
       return response;
     } catch (error) {
       // Log the error
@@ -302,7 +310,7 @@ export function withApiLogging(
         ...requestContext,
         error,
       });
-      
+
       // Re-throw the error to be handled by error middleware
       throw error;
     }

@@ -13,11 +13,16 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "8");
     const timeRange = searchParams.get("timeRange") || "30days";
 
+    console.log(`Fetching most viewed stories with limit=${limit}, timeRange=${timeRange}`);
+
     // Get most viewed story IDs using the optimized ViewService
     const mostViewedStoryIds = await ViewService.getMostViewedStories(limit, timeRange);
 
+    console.log(`Found ${mostViewedStoryIds.length} most viewed story IDs:`, mostViewedStoryIds);
+
     // If no stories found, return empty array
     if (mostViewedStoryIds.length === 0) {
+      console.log('No most viewed stories found, returning empty array');
       return NextResponse.json({ stories: [] });
     }
 
@@ -87,6 +92,8 @@ export async function GET(request: NextRequest) {
         _count: undefined,
       };
     });
+
+    console.log(`Returning ${formattedStories.length} formatted stories`);
 
     return NextResponse.json({
       stories: formattedStories,

@@ -6,6 +6,10 @@ import { getPrismaAdapter } from "@/lib/auth/db-adapter";
 import { getUserByEmail, verifyPassword } from "@/lib/auth/auth-utils";
 import { prisma } from "@/lib/auth/db-adapter";
 import { defaultPreferences } from "@/types/user";
+import { logger } from "@/lib/logger";
+
+// Create a dedicated auth logger
+const authLogger = logger.child('nextauth');
 
 // Main NextAuth configuration
 export const authOptions: NextAuthOptions = {
@@ -49,7 +53,8 @@ export const authOptions: NextAuthOptions = {
       clientId: process.env.GOOGLE_CLIENT_ID || "",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
       profile(profile, _tokens) {
-        // Return a complete User object with all required fields
+        // Return a user object with required fields
+        // @ts-ignore - NextAuth types don't match our custom user model
         return {
           id: profile.sub,
           name: profile.name,
@@ -92,7 +97,8 @@ export const authOptions: NextAuthOptions = {
               showLocation: false,
               allowMessages: false,
             }
-          }
+          },
+          country: "US"
         }
       },
     }),
@@ -102,7 +108,8 @@ export const authOptions: NextAuthOptions = {
       clientId: process.env.FACEBOOK_CLIENT_ID || "",
       clientSecret: process.env.FACEBOOK_CLIENT_SECRET || "",
       profile(profile, _tokens) {
-        // Return a complete User object with all required fields
+        // Return a user object with required fields
+        // @ts-ignore - NextAuth types don't match our custom user model
         return {
           id: profile.id,
           name: profile.name,
@@ -145,7 +152,8 @@ export const authOptions: NextAuthOptions = {
               showLocation: false,
               allowMessages: false,
             }
-          }
+          },
+          country: "US"
         }
       },
     }),
@@ -157,6 +165,7 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
+      // @ts-ignore - NextAuth types don't match our custom user model
       async authorize(credentials, _req) {
         if (!credentials?.email || !credentials?.password) {
           throw new Error("Invalid credentials");
@@ -228,6 +237,7 @@ export const authOptions: NextAuthOptions = {
           createdAt: user.createdAt || new Date(),
           updatedAt: user.updatedAt || new Date(),
           lastLogin: user.lastLogin || null,
+          country: user.country || "US",
         };
       },
     }),
@@ -250,18 +260,19 @@ export const authOptions: NextAuthOptions = {
 
       return relativeUrl;
     },
-
-  // Events to handle special auth cases
-  events: {
     // Process new users from OAuth providers - optimized to reduce DB load
+    // @ts-ignore - NextAuth types don't match our implementation
     async signIn({ user, account }) {
       if (account?.provider === "credentials") {
-        return; // Skip for credentials login
+        return true; // Skip for credentials login
       }
 
       try {
-        // Reduce logging to minimize server load
-        console.log(`OAuth SignIn: ${user.email} via ${account?.provider}`);
+        // Log OAuth sign-in with structured data
+        authLogger.info(`OAuth SignIn via ${account?.provider}`, {
+          email: user.email,
+          provider: account?.provider
+        });
 
         // Check if user exists before attempting upsert
         const existingUser = await prisma.user.findUnique({
@@ -312,7 +323,7 @@ export const authOptions: NextAuthOptions = {
           },
         });
 
-        console.log("DB User after upsert:", dbUser);
+        authLogger.debug("DB User after upsert", { userId: dbUser.id });
 
         // Check if profile completion is needed
         const needsProfileCompletion = !dbUser.username || !dbUser.birthdate || !dbUser.pronoun;
@@ -323,24 +334,26 @@ export const authOptions: NextAuthOptions = {
           });
 
           // Set a flag to redirect to profile completion page
-          user.needsProfileCompletion = true;
+          (user as any).needsProfileCompletion = true;
         }
 
       } catch (error) {
-        console.error("Error in signIn event:", error);
+        authLogger.error("Error in signIn event", { error });
       }
+
+      return true; // Always return true to allow sign in
     },
 
-    async createUser({ user }) {
-      console.log("Create User Event:", user);
+    async createUser({ user }: { user: any }) {
+      authLogger.info("User created", {
+        email: user.email,
+        hasName: !!user.name,
+        hasImage: !!user.image
+      });
     },
-  },
 
-  // Session and token callbacks
     // Add custom user data to session - optimized for performance
     async session({ session, token }) {
-      console.log('Session callback - token:', token);
-
       // Create a new session object with only the standard fields
       const userSession: any = {
         id: token.id as string || token.sub,
@@ -387,8 +400,11 @@ export const authOptions: NextAuthOptions = {
 
     // Add custom user data to token
     async jwt({ token, user, account, trigger }) {
-      console.log('JWT callback - token before:', token);
-      console.log('JWT callback - user:', user);
+      authLogger.debug('JWT callback started', {
+        hasUser: !!user,
+        trigger,
+        tokenId: token.id || token.sub
+      });
 
       // If this is a sign-in event, set the initial token data
       if (user) {
@@ -413,7 +429,7 @@ export const authOptions: NextAuthOptions = {
 
         if (!dbUser) {
           // Should not happen if adapter/signIn works correctly, but handle defensively
-          console.error(`JWT Callback: Could not find user in DB during initial sign-in: ${user.email}`);
+          authLogger.error(`User not found in DB during initial sign-in`, { email: user.email });
           // Return the token as-is or throw an error depending on desired behavior
           return token;
         }
@@ -429,7 +445,10 @@ export const authOptions: NextAuthOptions = {
         token.lastUpdated = Date.now();
 
         // Add emailVerified status to token
-        if (user.emailVerified) {
+        // For social logins, set emailVerified to current date if not already set
+        if (account?.provider && (account.provider === 'google' || account.provider === 'facebook')) {
+          token.emailVerified = new Date();
+        } else if (user.emailVerified) {
           token.emailVerified = user.emailVerified;
         }
 
@@ -440,14 +459,14 @@ export const authOptions: NextAuthOptions = {
               ? JSON.parse(dbUser.preferences)
               : dbUser.preferences;
           } catch (error) {
-            console.error('Error parsing preferences in JWT (initial sign-in):', error);
+            authLogger.error('Error parsing preferences in JWT (initial sign-in)', { error });
             token.preferences = defaultPreferences; // Fallback to defaults
           }
         } else {
           token.preferences = defaultPreferences;
         }
 
-        console.log(`JWT Callback: Initial token created for user ID: ${token.id}`);
+        authLogger.debug(`Initial token created`, { userId: token.id });
         return token; // Return the populated token
       }
 
@@ -459,7 +478,7 @@ export const authOptions: NextAuthOptions = {
         Date.now() > (token.lastUpdated as number) + (60 * 60 * 1000); // Re-fetch every 1 hour
 
       if (shouldFetchUser && token.id) { // Only fetch if we have a valid token.id (DB ID)
-        console.log(`JWT Callback: Refreshing token data for user ID: ${token.id}`);
+        authLogger.debug(`Refreshing token data`, { userId: token.id });
         try {
           // Fetch user data using the reliable database ID from the token
           const dbUser = await prisma.user.findUnique({
@@ -495,9 +514,9 @@ export const authOptions: NextAuthOptions = {
                   ...defaultPreferences,
                   ...prefsData
                 };
-                console.log('JWT callback - updated preferences from DB');
+                authLogger.debug('Updated preferences from DB', { userId: token.id });
               } catch (error) {
-                console.error('Error parsing preferences in JWT callback:', error);
+                authLogger.error('Error parsing preferences in JWT callback', { error, userId: token.id });
               }
             } else {
               // Set default preferences if none exist
@@ -505,12 +524,12 @@ export const authOptions: NextAuthOptions = {
             }
           }
         } catch (error) {
-          console.error('Error refreshing token data:', error);
+          authLogger.error('Error refreshing token data', { error, userId: token.id });
           // Continue with existing token data on error
         }
       }
 
-      console.log('JWT callback - token after:', token);
+      authLogger.debug('JWT callback completed', { userId: token.id || token.sub });
       return token;
     },
   },

@@ -141,6 +141,15 @@ export async function GET(
         if (viewResult?.isFirstView) {
           console.log(`First view recorded for chapter ${chapter.id} by user ${session?.user?.id || 'anonymous'}`);
         }
+
+        // Add view counts to the response
+        if (viewResult?.chapterViewCount !== undefined) {
+          chapter.viewCount = viewResult.chapterViewCount;
+        }
+
+        if (viewResult?.storyViewCount !== undefined && story) {
+          story.viewCount = viewResult.storyViewCount;
+        }
       } catch (viewError) {
         // Log the error but don't fail the request
         console.error("Error tracking chapter view:", viewError);

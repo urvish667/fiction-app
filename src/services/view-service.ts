@@ -29,45 +29,47 @@ export class ViewService {
         // For logged-in users, use upsert to atomically create or find the view
         if (userId) {
           // Check if this is the first view for this user and story
-          const existingView = await tx.storyView.findUnique({
+          const existingView = await tx.storyView.findFirst({
             where: {
-              StoryView_userId_storyId_key: {
-                userId,
-                storyId,
-              },
+              userId,
+              storyId,
             },
           });
 
           isFirstView = !existingView;
 
           // Upsert the view with isFirstView flag
-          view = await tx.storyView.upsert({
-            where: {
-              StoryView_userId_storyId_key: {
-                userId,
-                storyId,
+          if (existingView) {
+            // Update existing view
+            view = await tx.storyView.update({
+              where: {
+                id: existingView.id,
               },
-            },
-            create: {
-              storyId,
-              userId,
-              clientIp: clientInfo?.ip || null,
-              userAgent: clientInfo?.userAgent || null,
-              isFirstView: true, // Mark as first view for new records
-            },
-            update: {
-              // Update timestamp but don't change isFirstView status
-              createdAt: new Date(),
-            },
-          });
-
-          // Only increment read count if this is a new view
-          if (incrementReadCount && isFirstView) {
-            await tx.story.update({
-              where: { id: storyId },
-              data: { readCount: { increment: 1 } },
+              data: {
+                createdAt: new Date(),
+              },
             });
+          } else {
+            // Create new view
+            view = await tx.storyView.create({
+              data: {
+                storyId,
+                userId,
+                clientIp: clientInfo?.ip || null,
+                userAgent: clientInfo?.userAgent || null,
+                isFirstView: true, // Mark as first view for new records
+              },
+            });
+
+            // Only increment read count if this is a new view
+            if (incrementReadCount) {
+              await tx.story.update({
+                where: { id: storyId },
+                data: { readCount: { increment: 1 } },
+              });
+            }
           }
+
         } else {
           // For anonymous users, try to find an existing view with the same client info
           // within the last 24 hours to avoid counting the same anonymous user multiple times
@@ -113,7 +115,10 @@ export class ViewService {
         }
       });
 
-      return { view, isFirstView };
+      // Get the updated view count after tracking the view
+      const updatedViewCount = await this.getCombinedViewCount(storyId);
+
+      return { view, isFirstView, viewCount: updatedViewCount };
     } catch (error) {
       console.error("Error tracking story view:", error);
       return null;
@@ -161,45 +166,45 @@ export class ViewService {
         // For logged-in users, use upsert to atomically create or find the view
         if (userId) {
           // Check if this is the first view for this user and chapter
-          const existingView = await tx.chapterView.findUnique({
+          const existingView = await tx.chapterView.findFirst({
             where: {
-              ChapterView_userId_chapterId_key: {
-                userId,
-                chapterId,
-              },
+              userId,
+              chapterId,
             },
           });
 
           isFirstView = !existingView;
 
           // Upsert the view with isFirstView flag
-          view = await tx.chapterView.upsert({
-            where: {
-              ChapterView_userId_chapterId_key: {
-                userId,
-                chapterId,
+          if (existingView) {
+            // Update existing view
+            view = await tx.chapterView.update({
+              where: {
+                id: existingView.id,
               },
-            },
-            create: {
-              chapterId,
-              userId,
-              clientIp: clientInfo?.ip || null,
-              userAgent: clientInfo?.userAgent || null,
-              isFirstView: true, // Mark as first view for new records
-            },
-            update: {
-              // Update timestamp but don't change isFirstView status
-              createdAt: new Date(),
-            },
-          });
+              data: {
+                createdAt: new Date(),
+              },
+            });
+          } else {
+            // Create new view
+            view = await tx.chapterView.create({
+              data: {
+                chapterId,
+                userId,
+                clientIp: clientInfo?.ip || null,
+                userAgent: clientInfo?.userAgent || null,
+                isFirstView: true, // Mark as first view for new records
+              },
+            });
 
-          // Only increment read count if this is a new view
-          if (isFirstView) {
+            // Only increment read count if this is a new view
             await tx.chapter.update({
               where: { id: chapterId },
               data: { readCount: { increment: 1 } },
             });
           }
+
         } else {
           // For anonymous users, try to find an existing view with the same client info
           // within the last 24 hours to avoid counting the same anonymous user multiple times
@@ -243,6 +248,9 @@ export class ViewService {
         }
       });
 
+      // Get the updated chapter view count
+      const chapterViewCount = await this.getChapterViewCount(chapterId);
+
       // If requested and we have a story ID, track a story view as well
       // This is done outside the transaction to avoid nested transactions
       let storyViewResult = null;
@@ -255,7 +263,16 @@ export class ViewService {
         }
       }
 
-      return { view, isFirstView, storyViewResult };
+      // Get the combined view count for the story
+      const storyViewCount = storyId ? await this.getCombinedViewCount(storyId) : 0;
+
+      return {
+        view,
+        isFirstView,
+        storyViewResult,
+        chapterViewCount,
+        storyViewCount
+      };
     } catch (error) {
       console.error("Error tracking chapter view:", error);
       return null;
@@ -407,25 +424,22 @@ export class ViewService {
         }
       }
 
-      // Group by storyId and count views
-      const viewCounts = await prisma.storyView.groupBy({
-        by: ['storyId'],
-        where: whereClause,
-        _count: {
-          _all: true
-        },
-      });
-
-      // Create a map of story ID to view count
+      // Use a simpler approach with count
       const viewCountMap = new Map<string, number>();
 
       // Initialize all requested story IDs with 0 views
       storyIds.forEach(id => viewCountMap.set(id, 0));
 
-      // Update with actual counts
-      viewCounts.forEach(item => {
-        viewCountMap.set(item.storyId, item._count._all);
-      });
+      // For each story ID, get the count directly
+      for (const storyId of storyIds) {
+        const count = await prisma.storyView.count({
+          where: {
+            ...whereClause,
+            storyId
+          }
+        });
+        viewCountMap.set(storyId, count);
+      }
 
       return viewCountMap;
     } catch (error) {
@@ -533,25 +547,22 @@ export class ViewService {
         }
       }
 
-      // Group by chapterId and count views
-      const viewCounts = await prisma.chapterView.groupBy({
-        by: ['chapterId'],
-        where: whereClause,
-        _count: {
-          _all: true
-        },
-      });
-
-      // Create a map of chapter ID to view count
+      // Use a simpler approach with count
       const viewCountMap = new Map<string, number>();
 
       // Initialize all requested chapter IDs with 0 views
       chapterIds.forEach(id => viewCountMap.set(id, 0));
 
-      // Update with actual counts
-      viewCounts.forEach(item => {
-        viewCountMap.set(item.chapterId, item._count._all);
-      });
+      // For each chapter ID, get the count directly
+      for (const chapterId of chapterIds) {
+        const count = await prisma.chapterView.count({
+          where: {
+            ...whereClause,
+            chapterId
+          }
+        });
+        viewCountMap.set(chapterId, count);
+      }
 
       return viewCountMap;
     } catch (error) {
@@ -576,43 +587,34 @@ export class ViewService {
     endDate?: Date
   ): Promise<string[]> {
     try {
-      const whereClause: any = {};
-
-      // Add time range filter if provided
-      if (timeRange === 'custom' && (startDate || endDate)) {
-        // Use custom date range
-        whereClause.createdAt = {};
-        if (startDate) {
-          whereClause.createdAt.gte = startDate;
-        }
-        if (endDate) {
-          whereClause.createdAt.lt = endDate;
-        }
-      } else if (timeRange) {
-        // Use predefined time range
-        const rangeStartDate = this.getStartDateFromTimeRange(timeRange);
-        if (rangeStartDate) {
-          whereClause.createdAt = { gte: rangeStartDate };
-        }
-      }
-
-      // Group by storyId and count views
-      const viewCounts = await prisma.storyView.groupBy({
-        by: ['storyId'],
-        where: whereClause,
-        _count: {
-          _all: true
-        },
-        orderBy: {
-          _count: {
-            _all: 'desc'
-          }
-        },
-        take: limit,
+      // Simple approach: Get all published stories
+      const stories = await prisma.story.findMany({
+        where: { status: "published" },
+        select: { id: true },
       });
 
-      // Extract story IDs
-      return viewCounts.map(item => item.storyId);
+      if (stories.length === 0) {
+        return [];
+      }
+
+      // Get the story IDs
+      const storyIds = stories.map(story => story.id);
+
+      // Get view counts for all stories
+      const viewCountMap = await this.getBatchCombinedViewCounts(
+        storyIds,
+        timeRange,
+        startDate,
+        endDate
+      );
+
+      // Convert to array, sort by count, and take top N
+      const sortedStories = Array.from(viewCountMap.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, limit)
+        .map(entry => entry[0]);
+
+      return sortedStories;
     } catch (error) {
       console.error("Error getting most viewed stories:", error);
       return [];

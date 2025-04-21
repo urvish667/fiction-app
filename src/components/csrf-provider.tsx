@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { ensureCsrfToken, setCsrfToken } from '@/lib/client/csrf'
+import { clientLogger } from '@/lib/logger/client-logger'
 
 /**
  * CSRF Provider Component
@@ -13,15 +14,18 @@ import { ensureCsrfToken, setCsrfToken } from '@/lib/client/csrf'
 export default function CsrfProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
 
+  // Create a component logger
+  const csrfLogger = clientLogger.child('csrf-provider');
+
   // Set up CSRF token when the component mounts or pathname changes
   useEffect(() => {
     const setupCsrfToken = async () => {
       try {
         // Ensure we have a CSRF token
         const token = await ensureCsrfToken()
-        console.log('CSRF token set up successfully:', token.substring(0, 10) + '...')
+        csrfLogger.debug('CSRF token set up', { tokenLength: token.length })
       } catch (error) {
-        console.error('Error setting up CSRF token:', error)
+        csrfLogger.error('Error setting up CSRF token', { error })
       }
     }
 

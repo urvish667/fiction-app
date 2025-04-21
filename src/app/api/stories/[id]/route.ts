@@ -158,6 +158,13 @@ export async function GET(
         if (viewResult?.isFirstView) {
           console.log(`First view recorded for story ${story.id} by user ${session?.user?.id || 'anonymous'}`);
         }
+
+        console.log('View tracking result:', viewResult);
+
+        // Update the view count in the response if available
+        if (viewResult?.viewCount !== undefined) {
+          formattedStory.viewCount = viewResult.viewCount;
+        }
       } catch (viewError) {
         // Log the error but don't fail the request
         console.error("Error tracking story view:", viewError);
