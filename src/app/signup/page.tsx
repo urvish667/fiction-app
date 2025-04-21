@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { AlertCircle, CalendarIcon } from "lucide-react"
+import { AlertCircle } from "lucide-react"
 import { format } from "date-fns"
 import { useRouter, useSearchParams } from "next/navigation"
 import { signIn } from "next-auth/react"
@@ -94,8 +94,9 @@ export default function SignupPage() {
   }
 
   // Handle date selection
-  const handleDateSelect = (date: Date | undefined) => {
-    setSignupForm((prev) => ({ ...prev, birthdate: date || null }))
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const date = e.target.value ? new Date(e.target.value) : null
+    setSignupForm((prev) => ({ ...prev, birthdate: date }))
     if (errors.birthdate) {
       setErrors((prev) => {
         const newErrors = { ...prev }
@@ -376,23 +377,14 @@ export default function SignupPage() {
               <div className="space-y-2">
                 <Label htmlFor="signup-birthdate">Birthdate</Label>
                 <div className="relative">
-                  <Button
-                    variant="outline"
-                    className={`w-full justify-start text-left font-normal ${
-                      !signupForm.birthdate && "text-muted-foreground"
-                    }`}
-                    type="button"
-                    onClick={() => {
-                      // Open date picker (simplified for this example)
-                      const date = prompt("Enter your birthdate (YYYY-MM-DD)")
-                      if (date) {
-                        handleDateSelect(new Date(date))
-                      }
-                    }}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {signupForm.birthdate ? format(signupForm.birthdate, "PPP") : "Select your birthdate"}
-                  </Button>
+                  <Input
+                    id="signup-birthdate"
+                    type="date"
+                    value={signupForm.birthdate ? format(signupForm.birthdate, "yyyy-MM-dd") : ""}
+                    onChange={handleDateChange}
+                    max={format(new Date(new Date().setFullYear(new Date().getFullYear() - 13)), "yyyy-MM-dd")}
+                    className="w-full"
+                  />
                 </div>
                 {errors.birthdate && (
                   <p className="text-xs text-destructive flex items-center gap-1">

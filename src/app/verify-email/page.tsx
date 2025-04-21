@@ -36,9 +36,17 @@ export default function VerifyEmailPage() {
 
       if (response.ok) {
         setVerificationState("success")
-        // Redirect to login after 3 seconds
+
+        // No need to update session here since the user isn't logged in yet
+        // The email verification has already been recorded in the database
+        // When the user logs in, they'll get a token with the updated emailVerified status
+
+        // Always redirect to login page after email verification
         setTimeout(() => {
-          router.push("/login")
+          // Store the callback URL in the login redirect if provided
+          const callbackUrl = searchParams?.get("callbackUrl")
+          const loginUrl = callbackUrl ? `/login?callbackUrl=${encodeURIComponent(callbackUrl)}` : '/login'
+          router.push(loginUrl)
         }, 3000)
       } else {
         setVerificationState("error")

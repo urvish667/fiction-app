@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { AlertCircle, CalendarIcon } from "lucide-react"
+import { AlertCircle } from "lucide-react"
 import { format } from "date-fns"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
@@ -122,8 +122,9 @@ export default function CompleteProfilePage() {
     }
   }
 
-  const handleDateSelect = (date: Date | undefined) => {
-    setFormData((prev) => ({ ...prev, birthdate: date || null }))
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const date = e.target.value ? new Date(e.target.value) : null
+    setFormData((prev) => ({ ...prev, birthdate: date }))
     if (errors.birthdate) {
       setErrors((prev) => {
         const newErrors = { ...prev }
@@ -266,23 +267,14 @@ export default function CompleteProfilePage() {
             <div className="space-y-2">
               <Label htmlFor="birthdate">Birthdate</Label>
               <div className="relative">
-                <Button
-                  variant="outline"
-                  className={`w-full justify-start text-left font-normal ${
-                    !formData.birthdate && "text-muted-foreground"
-                  }`}
-                  type="button"
-                  onClick={() => {
-                    // Open date picker (simplified for this example)
-                    const date = prompt("Enter your birthdate (YYYY-MM-DD)")
-                    if (date) {
-                      handleDateSelect(new Date(date))
-                    }
-                  }}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {formData.birthdate ? format(formData.birthdate, "PPP") : "Select your birthdate"}
-                </Button>
+                <Input
+                  id="birthdate"
+                  type="date"
+                  value={formData.birthdate ? format(formData.birthdate, "yyyy-MM-dd") : ""}
+                  onChange={handleDateChange}
+                  max={format(new Date(new Date().setFullYear(new Date().getFullYear() - 13)), "yyyy-MM-dd")}
+                  className="w-full"
+                />
               </div>
               {errors.birthdate && (
                 <p className="text-xs text-destructive flex items-center gap-1">

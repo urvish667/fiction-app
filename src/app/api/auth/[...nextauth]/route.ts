@@ -428,6 +428,11 @@ export const authOptions: NextAuthOptions = {
         token.marketingOptIn = dbUser.marketingOptIn;
         token.lastUpdated = Date.now();
 
+        // Add emailVerified status to token
+        if (user.emailVerified) {
+          token.emailVerified = user.emailVerified;
+        }
+
         // Process preferences if they exist
         if (dbUser.preferences) {
           try {
@@ -466,6 +471,7 @@ export const authOptions: NextAuthOptions = {
               marketingOptIn: true,
               image: true,
               bannerImage: true,
+              emailVerified: true,
             }
           });
 
@@ -475,6 +481,7 @@ export const authOptions: NextAuthOptions = {
             token.marketingOptIn = dbUser.marketingOptIn;
             token.image = dbUser.image;
             token.bannerImage = dbUser.bannerImage;
+            token.emailVerified = dbUser.emailVerified;
             token.lastUpdated = Date.now();
 
             // Process preferences if they exist

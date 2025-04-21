@@ -250,10 +250,12 @@ export async function middleware(request: NextRequest) {
   // Check if email verification is required
   if (token &&
       profileRequiredRoutes.some(route => pathname.startsWith(route)) &&
-      !token.emailVerified &&
-      token.provider === 'credentials') {
-    // Redirect to email verification page
-    return NextResponse.redirect(new URL('/verify-email', request.url));
+      token.provider === 'credentials' &&
+      !token.emailVerified) {
+    // Redirect to email verification page with callback URL
+    const verifyEmailUrl = new URL('/verify-email', request.url);
+    verifyEmailUrl.searchParams.set('callbackUrl', pathname);
+    return NextResponse.redirect(verifyEmailUrl);
   }
 
   // Apply security headers to the response

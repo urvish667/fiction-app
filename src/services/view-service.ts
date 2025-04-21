@@ -411,7 +411,9 @@ export class ViewService {
       const viewCounts = await prisma.storyView.groupBy({
         by: ['storyId'],
         where: whereClause,
-        _count: true,
+        _count: {
+          _all: true
+        },
       });
 
       // Create a map of story ID to view count
@@ -422,7 +424,7 @@ export class ViewService {
 
       // Update with actual counts
       viewCounts.forEach(item => {
-        viewCountMap.set(item.storyId, item._count);
+        viewCountMap.set(item.storyId, item._count._all);
       });
 
       return viewCountMap;
@@ -535,7 +537,9 @@ export class ViewService {
       const viewCounts = await prisma.chapterView.groupBy({
         by: ['chapterId'],
         where: whereClause,
-        _count: true,
+        _count: {
+          _all: true
+        },
       });
 
       // Create a map of chapter ID to view count
@@ -546,7 +550,7 @@ export class ViewService {
 
       // Update with actual counts
       viewCounts.forEach(item => {
-        viewCountMap.set(item.chapterId, item._count);
+        viewCountMap.set(item.chapterId, item._count._all);
       });
 
       return viewCountMap;
@@ -596,9 +600,13 @@ export class ViewService {
       const viewCounts = await prisma.storyView.groupBy({
         by: ['storyId'],
         where: whereClause,
-        _count: true,
+        _count: {
+          _all: true
+        },
         orderBy: {
-          _count: 'desc',
+          _count: {
+            _all: 'desc'
+          }
         },
         take: limit,
       });
