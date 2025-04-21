@@ -3,7 +3,6 @@ import { useState } from "react"
 import type { UseFormReturn } from "react-hook-form"
 import type { Session } from "next-auth"
 import { UserPreferences } from "@/types/user"
-import { Card } from "@/components/ui/card"
 import { z } from "zod"
 
 // Define a custom type for the session user that includes bannerImage
@@ -36,11 +35,11 @@ const profileUpdateSchemaSubset = z.object({
     .regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, underscores, and hyphens"),
   bio: z.string().max(500, "Bio must be less than 500 characters").optional().nullable(),
   location: z.string().max(100, "Location must be less than 100 characters").optional().nullable(),
-  website: z.string().url("Please enter a valid URL").optional().nullable().or(z.literal('')),
+  website: z.union([z.literal(''), z.string().url("Please enter a valid URL")]).optional().nullable(),
   socialLinks: z.object({
-    twitter: z.string().url("Please enter a valid Twitter URL").optional().nullable().or(z.literal('')),
-    instagram: z.string().url("Please enter a valid Instagram URL").optional().nullable().or(z.literal('')),
-    facebook: z.string().url("Please enter a valid Facebook URL").optional().nullable().or(z.literal('')),
+    twitter: z.union([z.literal(''), z.string().url("Please enter a valid Twitter URL")]).optional().nullable(),
+    instagram: z.union([z.literal(''), z.string().url("Please enter a valid Instagram URL")]).optional().nullable(),
+    facebook: z.union([z.literal(''), z.string().url("Please enter a valid Facebook URL")]).optional().nullable(),
   }).optional().nullable(),
 })
 
@@ -78,30 +77,30 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
       {/* Profile Information + Social Links Column*/}
       <div className="md:col-span-2 space-y-6">
-        <ProfileInfoForm 
-          form={form} 
-          isUpdating={isUpdating} 
-          saveProfileInfo={saveProfileInfo} 
+        <ProfileInfoForm
+          form={form}
+          isUpdating={isUpdating}
+          saveProfileInfo={saveProfileInfo}
         />
-        
-        <SocialLinksForm 
-          form={form} 
-          isUpdating={isUpdating} 
-          saveSocialLinks={saveSocialLinks} 
+
+        <SocialLinksForm
+          form={form}
+          isUpdating={isUpdating}
+          saveSocialLinks={saveSocialLinks}
         />
       </div>
 
       {/* Profile Picture & Banner */}
       <div>
-        <ProfileImageUpload 
-          session={session} 
+        <ProfileImageUpload
+          session={session}
           isUploading={isUploadingProfile}
           setIsUploading={setIsUploadingProfile}
           updateProfileImage={updateProfileImage}
         />
 
-        <BannerImageUpload 
-          session={session} 
+        <BannerImageUpload
+          session={session}
           isUploading={isUploadingBanner}
           setIsUploading={setIsUploadingBanner}
           updateBannerImage={updateBannerImage}

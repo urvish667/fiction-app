@@ -18,7 +18,7 @@ interface ProfileInfoFormProps {
 
 export const ProfileInfoForm = ({ form, isUpdating, saveProfileInfo }: ProfileInfoFormProps) => {
   const { toast } = useToast();
-  
+
   // Destructure for easier access
   const { register, formState: { errors, dirtyFields }, getValues } = form;
 
@@ -26,7 +26,7 @@ export const ProfileInfoForm = ({ form, isUpdating, saveProfileInfo }: ProfileIn
   const onProfileInfoSubmit = async (event: React.FormEvent) => {
     // Prevent default form submission
     event.preventDefault();
-    
+
     try {
       // Get current values directly for only profile fields
       const profileData = {
@@ -36,7 +36,7 @@ export const ProfileInfoForm = ({ form, isUpdating, saveProfileInfo }: ProfileIn
         location: getValues('location'),
         website: getValues('website'),
       };
-      
+
       // Create a subset schema for just profile fields
       const profileFieldsSchema = z.object({
         name: z.string().max(50, "Name is too long").optional(),
@@ -46,17 +46,17 @@ export const ProfileInfoForm = ({ form, isUpdating, saveProfileInfo }: ProfileIn
           .regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, underscores, and hyphens"),
         bio: z.string().max(500, "Bio must be less than 500 characters").optional().nullable(),
         location: z.string().max(100, "Location must be less than 100 characters").optional().nullable(),
-        website: z.string().url("Please enter a valid URL").optional().nullable().or(z.literal('')),
+        website: z.union([z.literal(''), z.string().url("Please enter a valid URL")]).optional().nullable(),
       });
-      
+
       // Manually validate just the profile fields
       try {
         profileFieldsSchema.parse(profileData);
-        
+
         // Check if any profile fields are dirty
-        const isProfileDataDirty = dirtyFields.name || dirtyFields.username || 
+        const isProfileDataDirty = dirtyFields.name || dirtyFields.username ||
           dirtyFields.bio || dirtyFields.location || dirtyFields.website;
-        
+
         if (isProfileDataDirty) {
           // Save profile data
           await saveProfileInfo(profileData);
@@ -76,7 +76,7 @@ export const ProfileInfoForm = ({ form, isUpdating, saveProfileInfo }: ProfileIn
             form.setError(path, { message: err.message });
           });
         }
-        
+
         toast({
           title: "Validation Error",
           description: "Please check your profile information fields for errors.",
@@ -94,7 +94,7 @@ export const ProfileInfoForm = ({ form, isUpdating, saveProfileInfo }: ProfileIn
   };
 
   // Determine if profile fields are dirty for button state
-  const isProfileDirty = dirtyFields.name || dirtyFields.username || 
+  const isProfileDirty = dirtyFields.name || dirtyFields.username ||
     dirtyFields.bio || dirtyFields.location || dirtyFields.website;
 
   return (
@@ -205,4 +205,4 @@ export const ProfileInfoForm = ({ form, isUpdating, saveProfileInfo }: ProfileIn
       </Card>
     </form>
   );
-}; 
+};

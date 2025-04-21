@@ -38,11 +38,11 @@ const settingsFormSchema = z.object({
     .regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, underscores, and hyphens"),
   bio: z.string().max(500, "Bio must be less than 500 characters").optional().nullable(),
   location: z.string().max(100, "Location must be less than 100 characters").optional().nullable(),
-  website: z.string().url("Please enter a valid URL").optional().nullable(),
+  website: z.union([z.literal(''), z.string().url("Please enter a valid URL")]).optional().nullable(),
   socialLinks: z.object({
-    twitter: z.string().url("Please enter a valid URL").optional().nullable(),
-    instagram: z.string().url("Please enter a valid URL").optional().nullable(),
-    facebook: z.string().url("Please enter a valid URL").optional().nullable(),
+    twitter: z.union([z.literal(''), z.string().url("Please enter a valid URL")]).optional().nullable(),
+    instagram: z.union([z.literal(''), z.string().url("Please enter a valid URL")]).optional().nullable(),
+    facebook: z.union([z.literal(''), z.string().url("Please enter a valid URL")]).optional().nullable(),
   }).optional().nullable(),
   // Keep language and theme here if they might be used elsewhere in SettingsPage or are global settings
   // language: z.enum(["en", "es", "fr", "de", "it", "pt", "ru", "zh", "ja", "ko"]).optional().default("en"),

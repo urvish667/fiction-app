@@ -5,9 +5,9 @@ import { withAuth } from "@/lib/auth/jwt-utils"
 
 // Validation schema for social links
 const socialLinksSchema = z.object({
-  twitter: z.string().url().nullish(),
-  instagram: z.string().url().nullish(),
-  facebook: z.string().url().nullish(),
+  twitter: z.union([z.literal(''), z.string().url()]).nullish(),
+  instagram: z.union([z.literal(''), z.string().url()]).nullish(),
+  facebook: z.union([z.literal(''), z.string().url()]).nullish(),
 }).nullish()
 
 // Validation schema for profile update
@@ -20,7 +20,7 @@ const profileUpdateSchema = z.object({
     .optional(), // Make username optional for image updates
   bio: z.string().max(500, "Bio must be less than 500 characters").optional().nullable(),
   location: z.string().max(100, "Location must be less than 100 characters").optional().nullable(),
-  website: z.string().url("Please enter a valid URL").optional().nullable(),
+  website: z.union([z.literal(''), z.string().url("Please enter a valid URL")]).optional().nullable(),
   socialLinks: socialLinksSchema,
   language: z.enum(["en", "es", "fr", "de", "it", "pt", "ru", "zh", "ja", "ko"]).optional().default("en"),
   theme: z.enum(["light", "dark", "system"]).optional().default("system"),
