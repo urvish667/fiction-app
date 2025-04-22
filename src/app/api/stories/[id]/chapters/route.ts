@@ -4,7 +4,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/auth/db-adapter";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { countWords } from "@/lib/utils";
-import { S3Service } from "@/lib/s3-service";
+import { AzureService } from "@/lib/azure-service";
 import { calculateStoryStatus, isStoryPublic } from "@/lib/story-helpers";
 
 // Validation schema for creating a chapter
@@ -193,16 +193,16 @@ export async function POST(
     // Calculate word count
     const wordCount = countWords(validatedData.content);
 
-    // Generate S3 key for the chapter content
+    // Generate Azure Blob Storage key for the chapter content
     const contentKey = `stories/${storyId}/chapters/${validatedData.number}.txt`;
 
-    // Upload content to S3
+    // Upload content to Azure Blob Storage
     try {
-      await S3Service.uploadContent(contentKey, validatedData.content);
-    } catch (s3Error) {
-      console.error("S3 upload error:", s3Error);
+      await AzureService.uploadContent(contentKey, validatedData.content);
+    } catch (storageError) {
+      console.error("Azure Blob Storage upload error:", storageError);
       return NextResponse.json(
-        { error: "Failed to upload chapter content to storage", message: s3Error instanceof Error ? s3Error.message : "Unknown S3 error" },
+        { error: "Failed to upload chapter content to storage", message: storageError instanceof Error ? storageError.message : "Unknown storage error" },
         { status: 400 }
       );
     }
@@ -256,8 +256,8 @@ export async function POST(
           },
         });
 
-        // Update the content in S3 with the new key
-        await S3Service.uploadContent(`stories/${storyId}/chapters/${nextNumber}.txt`, validatedData.content);
+        // Update the content in Azure Blob Storage with the new key
+        await AzureService.uploadContent(`stories/${storyId}/chapters/${nextNumber}.txt`, validatedData.content);
       } else {
         // If it's some other error, rethrow it
         throw error;

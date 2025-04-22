@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { S3Service } from "@/lib/s3-service";
+import { AzureService } from "@/lib/azure-service";
 
 // Validation schema for image upload
 const uploadImageSchema = z.object({
@@ -30,9 +30,9 @@ export async function POST(request: NextRequest) {
     // Convert array back to ArrayBuffer
     const uint8Array = new Uint8Array(validatedData.data);
 
-    // Upload to S3
-    console.log('Uploading image to S3 with key:', validatedData.key);
-    const imageUrl = await S3Service.uploadImage(
+    // Upload to Azure Blob Storage
+    console.log('Uploading image to Azure Blob Storage with key:', validatedData.key);
+    const imageUrl = await AzureService.uploadImage(
       validatedData.key,
       uint8Array.buffer,
       validatedData.contentType

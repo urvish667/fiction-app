@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { S3Service } from "@/lib/s3-service";
+import { AzureService } from "@/lib/azure-service";
 
-// GET endpoint to serve images from S3
+// GET endpoint to serve images from Azure Blob Storage
 export async function GET(
   request: NextRequest,
   context: { params: { key: string[] } | Promise<{ key: string[] }> }
@@ -13,7 +13,7 @@ export async function GET(
     const key = keyParts.join('/');
 
     // Generate a signed URL with a short expiration (1 hour)
-    const signedUrl = await S3Service.getSignedUrl(key, 3600);
+    const signedUrl = await AzureService.getSignedUrl(key, 3600);
 
     // Redirect to the signed URL
     return NextResponse.redirect(signedUrl);

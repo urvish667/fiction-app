@@ -4,7 +4,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/auth/db-adapter";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { countWords } from "@/lib/utils";
-import { S3Service } from "@/lib/s3-service";
+import { AzureService } from "@/lib/azure-service";
 import { calculateStoryStatus, isStoryPublic } from "@/lib/story-helpers";
 import { ViewService } from "@/services/view-service";
 
@@ -156,12 +156,12 @@ export async function GET(
       }
     }
 
-    // Fetch content from S3
+    // Fetch content from Azure Blob Storage
     let content;
     try {
-      content = await S3Service.getContent(chapter.contentKey);
+      content = await AzureService.getContent(chapter.contentKey);
     } catch (error) {
-      console.error("Error fetching content from S3:", error);
+      console.error("Error fetching content from Azure Blob Storage:", error);
       content = "Content could not be loaded.";
     }
 
@@ -271,8 +271,8 @@ export async function PUT(
       const newWordCount = countWords(validatedData.content);
       wordCountDiff = newWordCount - chapter.wordCount;
 
-      // Update content in S3
-      await S3Service.uploadContent(chapter.contentKey, validatedData.content);
+      // Update content in Azure Blob Storage
+      await AzureService.uploadContent(chapter.contentKey, validatedData.content);
 
       // Remove content from data as it's not stored in DB
       const { content, ...dataForDb } = validatedData;
@@ -292,9 +292,9 @@ export async function PUT(
     let content;
     try {
       // Use the original content from validatedData if it exists
-      content = validatedData.content || await S3Service.getContent(chapter.contentKey);
+      content = validatedData.content || await AzureService.getContent(chapter.contentKey);
     } catch (error) {
-      console.error("Error fetching content from S3:", error);
+      console.error("Error fetching content from Azure Blob Storage:", error);
       content = "Content could not be loaded.";
     }
 
@@ -408,12 +408,12 @@ export async function DELETE(
       );
     }
 
-    // Delete content from S3
+    // Delete content from Azure Blob Storage
     try {
-      await S3Service.deleteContent(chapter.contentKey);
+      await AzureService.deleteContent(chapter.contentKey);
     } catch (error) {
-      console.error("Error deleting content from S3:", error);
-      // Continue with chapter deletion even if S3 deletion fails
+      console.error("Error deleting content from Azure Blob Storage:", error);
+      // Continue with chapter deletion even if Azure Blob Storage deletion fails
     }
 
     // Delete the chapter from database

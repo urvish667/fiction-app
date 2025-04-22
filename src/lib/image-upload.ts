@@ -1,4 +1,4 @@
-import { S3Service } from "./s3-service";
+import { AzureService } from "./azure-service";
 import { fetchWithCsrf } from "./client/csrf";
 
 /**
@@ -6,7 +6,7 @@ import { fetchWithCsrf } from "./client/csrf";
  */
 export const ImageUpload = {
   /**
-   * Upload a profile image to S3
+   * Upload a profile image to Azure Blob Storage
    * @param userId The user ID
    * @param file The image file
    * @returns The URL of the uploaded image
@@ -21,7 +21,7 @@ export const ImageUpload = {
       const fileExtension = file.name.split('.').pop() || 'jpg';
       const imageKey = `users/${userId}/profile-${timestamp}.${fileExtension}`;
 
-      // Upload to S3 via the API with CSRF token
+      // Upload to Azure Blob Storage via the API with CSRF token
       const response = await fetchWithCsrf('/api/upload-image', {
         method: 'POST',
         headers: {
@@ -48,7 +48,7 @@ export const ImageUpload = {
   },
 
   /**
-   * Upload a banner image to S3
+   * Upload a banner image to Azure Blob Storage
    * @param userId The user ID
    * @param file The image file
    * @returns The URL of the uploaded image
@@ -63,7 +63,7 @@ export const ImageUpload = {
       const fileExtension = file.name.split('.').pop() || 'jpg';
       const imageKey = `users/${userId}/banner-${timestamp}.${fileExtension}`;
 
-      // Upload to S3 via the API with CSRF token
+      // Upload to Azure Blob Storage via the API with CSRF token
       const response = await fetchWithCsrf('/api/upload-image', {
         method: 'POST',
         headers: {
@@ -168,7 +168,7 @@ export const ImageUpload = {
   },
 
   /**
-   * Upload an editor image to S3
+   * Upload an editor image to Azure Blob Storage
    * @param file The image file
    * @returns The URL of the uploaded image
    */
@@ -182,7 +182,7 @@ export const ImageUpload = {
       const fileExtension = file.name.split('.').pop() || 'jpg';
       const imageKey = `editor/images/${timestamp}-${Math.random().toString(36).substring(2, 10)}.${fileExtension}`;
 
-      // Upload to S3 via the API with CSRF token
+      // Upload to Azure Blob Storage via the API with CSRF token
       const response = await fetchWithCsrf('/api/upload-image', {
         method: 'POST',
         headers: {
