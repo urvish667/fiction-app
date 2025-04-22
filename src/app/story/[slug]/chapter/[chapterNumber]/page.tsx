@@ -10,6 +10,7 @@ import { useSession } from "next-auth/react"
 // UI Components
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/use-toast"
+import MatureContentDialog, { needsMatureContentConsent } from "@/components/mature-content-dialog"
 
 // App Components
 import Navbar from "@/components/navbar"
@@ -68,6 +69,10 @@ export default function ReadingPage() {
     fontSize: 16
   })
 
+  // Mature content consent state
+  const [showMatureDialog, setShowMatureDialog] = useState(false)
+  const [contentConsented, setContentConsented] = useState(true)
+
   // Destructure state for easier access
   const {
     story, chapter, chapters, isLoading, isContentLoading, error,
@@ -102,6 +107,13 @@ export default function ReadingPage() {
 
         // Set the story details
         const storyDetails = storyBySlug
+
+        // Check if we need to show the mature content dialog
+        const isLoggedIn = session ? true : false
+        if (storyDetails.isMature && needsMatureContentConsent(slug, storyDetails.isMature, isLoggedIn)) {
+          setContentConsented(false)
+          setShowMatureDialog(true)
+        }
 
         // Fetch chapters for this story
         const chaptersData = await StoryService.getChapters(storyDetails.id)
@@ -459,6 +471,12 @@ export default function ReadingPage() {
     )
   }
 
+  // Handle mature content consent
+  const handleMatureContentConsent = () => {
+    setContentConsented(true)
+    setShowMatureDialog(false)
+  }
+
   // Main content
   return (
     <div className="min-h-screen">
@@ -469,6 +487,14 @@ export default function ReadingPage() {
       />
 
       <Navbar />
+
+      {/* Mature Content Dialog */}
+      {showMatureDialog && !contentConsented && story && (
+        <MatureContentDialog
+          storySlug={slug}
+          onConsent={handleMatureContentConsent}
+        />
+      )}
 
       <main className="container mx-auto px-4 sm:px-8 py-6 sm:py-8">
         {/* Top Navigation */}

@@ -20,6 +20,7 @@ import { StoryService } from "@/services/story-service"
 import { Story as StoryType, Chapter as ChapterType } from "@/types/story"
 import { SupportButton } from "@/components/SupportButton"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import MatureContentDialog, { needsMatureContentConsent } from "@/components/mature-content-dialog"
 
 export default function StoryInfoPage() {
   const params = useParams()
@@ -38,6 +39,8 @@ export default function StoryInfoPage() {
   const [followLoading, setFollowLoading] = useState(false)
   const [likeLoading, setLikeLoading] = useState(false)
   const [bookmarkLoading, setBookmarkLoading] = useState(false)
+  const [showMatureDialog, setShowMatureDialog] = useState(false)
+  const [contentConsented, setContentConsented] = useState(true)
 
   // Fetch story data based on slug
   useEffect(() => {
@@ -58,9 +61,14 @@ export default function StoryInfoPage() {
         }
 
         // Set the story details
-        console.log('Story data from API:', storyBySlug)
-        console.log('Cover image URL:', storyBySlug.coverImage)
         setStory(storyBySlug)
+
+        // Check if we need to show the mature content dialog
+        const isLoggedIn = status === "authenticated"
+        if (storyBySlug.isMature && needsMatureContentConsent(slug, storyBySlug.isMature, isLoggedIn)) {
+          setContentConsented(false)
+          setShowMatureDialog(true)
+        }
 
         // Fetch tags for this story
         try {
@@ -297,9 +305,23 @@ export default function StoryInfoPage() {
   // Extract author details safely
   const author = story.author;
 
+  // Handle mature content consent
+  const handleMatureContentConsent = () => {
+    setContentConsented(true)
+    setShowMatureDialog(false)
+  }
+
   return (
     <div className="min-h-screen">
       <Navbar />
+
+      {/* Mature Content Dialog */}
+      {showMatureDialog && !contentConsented && story && (
+        <MatureContentDialog
+          storySlug={slug}
+          onConsent={handleMatureContentConsent}
+        />
+      )}
 
       <main className="container mx-auto px-8 py-8">
         {/* Back Button and Story Status */}
