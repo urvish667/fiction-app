@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Notification, NotificationResponse, mockNotifications } from "@/types/notification";
+import { fetchWithCsrf } from "@/lib/client/csrf";
 
 interface UseNotificationsProps {
   useMockData?: boolean;
@@ -64,7 +65,7 @@ export function useNotifications({ useMockData = true, initialType = "all" }: Us
     }
 
     try {
-      const response = await fetch("/api/notifications/mark-read", {
+      const response = await fetchWithCsrf("/api/notifications/mark-read", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -96,7 +97,7 @@ export function useNotifications({ useMockData = true, initialType = "all" }: Us
     }
 
     try {
-      const response = await fetch("/api/notifications/mark-read", {
+      const response = await fetchWithCsrf("/api/notifications/mark-read", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -124,7 +125,7 @@ export function useNotifications({ useMockData = true, initialType = "all" }: Us
     }
 
     try {
-      const response = await fetch(`/api/notifications/${id}`, {
+      const response = await fetchWithCsrf(`/api/notifications/${id}`, {
         method: "DELETE",
       });
 
