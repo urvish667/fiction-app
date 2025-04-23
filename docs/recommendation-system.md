@@ -10,8 +10,10 @@ The recommendation system consists of the following components:
 
 1. **Database Model**: `StoryRecommendation` model in Prisma schema
 2. **Similarity Utilities**: Functions for computing similarity between stories
-3. **Recommendation Generator**: Script to precompute and store recommendations
-4. **API Endpoint**: Endpoint to serve recommendations for a specific story
+3. **Recommendation Service**: Library for generating and storing recommendations
+4. **API Endpoints**:
+   - Endpoint to serve recommendations for a specific story
+   - Endpoint to generate recommendations (protected by API key)
 5. **Frontend Component**: React component to display recommendations on the chapter page
 
 ## Database Schema
@@ -46,16 +48,35 @@ The system supports two similarity algorithms:
 
 Stories are converted to binary vectors based on their genres and tags, and similarity is computed between these vectors.
 
-## How to Run the Recommendation Generator
+## How to Generate Recommendations
 
-The recommendation generator is a script that precomputes and stores recommendations for all stories in the database. It should be run periodically to keep recommendations up-to-date.
+Recommendations can be generated using either the API endpoint or the script. The API endpoint is the recommended method for production environments.
 
 ### Prerequisites
 
 - Node.js 18 or higher
 - Access to the FableSpace database
+- API key for the recommendation generation endpoint (for API method)
 
-### Running the Generator
+### Method 1: Using the API Endpoint (Recommended)
+
+The API endpoint allows you to generate recommendations for all stories or a specific story:
+
+```bash
+# Generate recommendations for all stories
+curl -X POST https://your-domain.com/api/recommendations/generate \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"config":{"excludeSameAuthor":true}}'
+
+# Generate recommendations for a specific story
+curl -X POST https://your-domain.com/api/recommendations/generate \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"storyId":"story-uuid-here","config":{"excludeSameAuthor":true}}'
+```
+
+### Method 2: Using the Script
 
 1. Navigate to the project root directory:
    ```bash
@@ -67,47 +88,120 @@ The recommendation generator is a script that precomputes and stores recommendat
    node scripts/generateRecommendations.js
    ```
 
-3. (Optional) Set up a scheduled task to run the script periodically:
-   
-   **For Linux/macOS (using cron):**
-   ```bash
-   # Edit crontab
-   crontab -e
-   
-   # Add a line to run the script daily at 2 AM
-   0 2 * * * cd /path/to/fiction-app && node scripts/generateRecommendations.js >> /path/to/logs/recommendations.log 2>&1
+### Setting Up Scheduled Generation
+
+#### Option 1: Using Vercel Cron Jobs (Recommended for Production)
+
+If your application is deployed on Vercel, you can use Vercel Cron Jobs to trigger the recommendation generation API endpoint at regular intervals:
+
+1. Add the following to your `vercel.json` file:
+   ```json
+   {
+     "crons": [
+       {
+         "path": "/api/recommendations/generate",
+         "schedule": "0 2 * * *"
+       }
+     ]
+   }
    ```
-   
-   **For Windows (using Task Scheduler):**
-   - Open Task Scheduler
-   - Create a new task
-   - Set the trigger to run daily at 2 AM
-   - Set the action to run `node scripts/generateRecommendations.js`
-   - Set the start in directory to the project root
+
+#### Option 2: Using Traditional Cron Jobs
+
+**For Linux/macOS (using cron):**
+```bash
+# Edit crontab
+crontab -e
+
+# Add a line to call the API endpoint daily at 2 AM
+0 2 * * * curl -X POST https://your-domain.com/api/recommendations/generate \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"config":{"excludeSameAuthor":true}}'
+```
+
+**For Windows (using Task Scheduler):**
+- Create a PowerShell script that calls the API endpoint
+- Set up a scheduled task to run the script daily
 
 ## Configuration Options
 
-The recommendation generator script has several configuration options that can be adjusted in `scripts/generateRecommendations.js`:
+The recommendation system has several configuration options that can be adjusted when calling the API endpoint or in the recommendation service:
 
 ```javascript
-// Configuration
-const MAX_RECOMMENDATIONS_PER_STORY = 10;  // Maximum number of recommendations per story
-const SIMILARITY_THRESHOLD = 0.1;          // Minimum similarity score to consider
-const EXCLUDE_SAME_AUTHOR = false;         // Whether to exclude stories by the same author
+// Default configuration
+const DEFAULT_RECOMMENDATION_CONFIG = {
+  maxRecommendationsPerStory: 10,  // Maximum number of recommendations per story
+  similarityThreshold: 0.1,        // Minimum similarity score to consider
+  excludeSameAuthor: true,         // Whether to exclude stories by the same author
+  batchSize: 50                    // Number of stories to process in each batch
+};
 ```
 
-## API Endpoint
+When calling the API endpoint, you can provide these options in the request body:
 
-The recommendation API endpoint serves recommendations for a specific story:
+```json
+{
+  "storyId": "optional-story-id",
+  "config": {
+    "maxRecommendationsPerStory": 10,
+    "similarityThreshold": 0.1,
+    "excludeSameAuthor": true,
+    "batchSize": 50
+  }
+}
+```
+
+## API Endpoints
+
+### Fetching Recommendations
+
+This endpoint serves recommendations for a specific story:
 
 ```
 GET /api/recommendations/:storyId
 ```
 
-### Query Parameters
+#### Query Parameters
 
 - `limit` (optional): Maximum number of recommendations to return (default: 5)
 - `excludeSameAuthor` (optional): Whether to exclude stories by the same author (default: false)
+
+### Generating Recommendations
+
+This endpoint generates recommendations for all stories or a specific story:
+
+```
+POST /api/recommendations/generate
+```
+
+#### Request Body
+
+```json
+{
+  "storyId": "optional-story-id",
+  "config": {
+    "maxRecommendationsPerStory": 10,
+    "similarityThreshold": 0.1,
+    "excludeSameAuthor": true,
+    "batchSize": 50
+  }
+}
+```
+
+#### Authentication
+
+This endpoint requires an API key for authentication:
+
+```
+Authorization: Bearer YOUR_API_KEY
+```
+
+The API key should be set in the environment variable `RECOMMENDATIONS_API_KEY`.
+
+#### CSRF Protection
+
+This endpoint is exempt from CSRF protection to allow it to be called by external services and cron jobs. It relies on the API key for security instead.
 
 ### Example Response
 
@@ -142,8 +236,8 @@ GET /api/recommendations/:storyId
 The `StoryRecommendations` component displays recommendations on the chapter page:
 
 ```jsx
-<StoryRecommendations 
-  storyId={story.id} 
+<StoryRecommendations
+  storyId={story.id}
   excludeSameAuthor={true}
   limit={6}
   className="mb-12"
@@ -193,3 +287,6 @@ Potential enhancements for the recommendation system:
 3. **Personalized Recommendations**: Tailor recommendations based on user reading history
 4. **Performance Optimization**: Add caching for recommendation API responses
 5. **A/B Testing**: Test different similarity algorithms and thresholds
+6. **Parallel Processing**: Implement true parallel processing for large datasets
+7. **Real-time Recommendations**: Generate recommendations in real-time when stories are published
+8. **Recommendation Analytics**: Track which recommendations lead to reads and engagement

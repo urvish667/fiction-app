@@ -23,6 +23,10 @@ CSRF protection prevents attackers from tricking users into performing unwanted 
 - **Middleware Protection**: Located in `src/middleware.ts`
   - Validates CSRF tokens for all non-GET API requests
   - Returns 403 Forbidden responses for invalid tokens
+  - Exempts specific endpoints that need to be called by external services:
+    - `/api/auth/*` - NextAuth endpoints
+    - `/api/scheduled-tasks` - For scheduled task execution
+    - `/api/recommendations/generate` - For recommendation generation
 
 - **Token Setup Endpoint**: Located in `src/app/api/csrf/setup/route.ts`
   - Sets a new CSRF token in an HTTP-only cookie
