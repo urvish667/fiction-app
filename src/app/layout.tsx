@@ -1,6 +1,7 @@
 import type React from "react"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
+import Script from "next/script"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import Providers from "./providers"
@@ -21,6 +22,18 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        {/* Google AdSense Script - Only included in production */}
+        {process.env.NODE_ENV === 'production' && (
+          <Script
+            id="google-adsense"
+            async
+            strategy="afterInteractive"
+            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_ID}`}
+            crossOrigin="anonymous"
+          />
+        )}
+      </head>
       <body className={inter.className}>
         <Providers>
           <ThemeProvider>

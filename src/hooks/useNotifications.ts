@@ -1,16 +1,26 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Notification, NotificationResponse, mockNotifications } from "@/types/notification";
 import { fetchWithCsrf } from "@/lib/client/csrf";
+import { getWebSocketClient, WebSocketStatus } from "@/lib/client/websocket-client";
+import { useSession } from "next-auth/react";
 
 interface UseNotificationsProps {
   useMockData?: boolean;
   initialType?: string;
+  useWebSocket?: boolean;
 }
 
 /**
  * Hook for managing notifications with real-time updates via WebSocket
  */
-export function useNotifications({ useMockData = true, initialType = "all" }: UseNotificationsProps = {}) {
+export function useNotifications({
+  useMockData = false,
+  initialType = "all",
+  useWebSocket = true
+}: UseNotificationsProps = {}) {
+  const { data: session } = useSession();
+  const [wsStatus, setWsStatus] = useState<WebSocketStatus>(WebSocketStatus.DISCONNECTED);
+  const wsConnectedRef = useRef(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -83,6 +93,15 @@ export function useNotifications({ useMockData = true, initialType = "all" }: Us
           notification.id === id ? { ...notification, read: true } : notification
         )
       );
+
+      // Send WebSocket message if connected
+      const wsClient = getWebSocketClient();
+      if (wsClient && wsClient.getStatus() === WebSocketStatus.CONNECTED) {
+        wsClient.send({
+          type: 'mark_read',
+          id,
+        });
+      }
     } catch (err) {
       console.error("Error marking notification as read:", err);
     }
@@ -111,6 +130,14 @@ export function useNotifications({ useMockData = true, initialType = "all" }: Us
 
       // Update local state
       setNotifications(notifications.map((notification) => ({ ...notification, read: true })));
+
+      // Send WebSocket message if connected
+      const wsClient = getWebSocketClient();
+      if (wsClient && wsClient.getStatus() === WebSocketStatus.CONNECTED) {
+        wsClient.send({
+          type: 'mark_all_read',
+        });
+      }
     } catch (err) {
       console.error("Error marking all notifications as read:", err);
     }
@@ -135,6 +162,15 @@ export function useNotifications({ useMockData = true, initialType = "all" }: Us
 
       // Update local state
       setNotifications(notifications.filter((notification) => notification.id !== id));
+
+      // Send WebSocket message if connected
+      const wsClient = getWebSocketClient();
+      if (wsClient && wsClient.getStatus() === WebSocketStatus.CONNECTED) {
+        wsClient.send({
+          type: 'delete',
+          id,
+        });
+      }
     } catch (err) {
       console.error("Error deleting notification:", err);
     }
@@ -145,13 +181,13 @@ export function useNotifications({ useMockData = true, initialType = "all" }: Us
     switch (activeTab) {
       case "unread":
         return notifications.filter((notification) => !notification.read);
-      case "likes":
+      case "like":
         return notifications.filter((notification) => notification.type === "like");
-      case "comments":
+      case "comment":
         return notifications.filter((notification) => notification.type === "comment");
-      case "follows":
+      case "follow":
         return notifications.filter((notification) => notification.type === "follow");
-      case "chapters":
+      case "chapter":
         return notifications.filter((notification) => notification.type === "chapter");
       case "donation":
         return notifications.filter((notification) => notification.type === "donation");
@@ -212,15 +248,116 @@ export function useNotifications({ useMockData = true, initialType = "all" }: Us
     return groups;
   }, [getFilteredNotificationsByType]);
 
+  // Handle WebSocket messages
+  const handleWebSocketMessage = useCallback((data: any) => {
+    if (!data || !data.type) return;
+
+    switch (data.type) {
+      case 'notification':
+        // Add new notification to the list
+        if (data.data) {
+          setNotifications(prev => [data.data, ...prev]);
+        }
+        break;
+
+      case 'mark_read':
+        // Update notification read status
+        if (data.ids) {
+          if (data.ids === 'all') {
+            setNotifications(prev =>
+              prev.map(notification => ({ ...notification, read: true }))
+            );
+          } else if (Array.isArray(data.ids)) {
+            setNotifications(prev =>
+              prev.map(notification =>
+                data.ids.includes(notification.id)
+                  ? { ...notification, read: true }
+                  : notification
+              )
+            );
+          }
+        }
+        break;
+
+      case 'delete':
+        // Remove notification from the list
+        if (data.id) {
+          setNotifications(prev =>
+            prev.filter(notification => notification.id !== data.id)
+          );
+        }
+        break;
+
+      case 'connection':
+        // Connection status update
+        console.log('WebSocket connection status:', data.status);
+        break;
+
+      case 'pong':
+        // Pong response (keep-alive)
+        break;
+
+      default:
+        console.log('Unknown WebSocket message type:', data.type);
+    }
+  }, []);
+
+  // Initialize WebSocket connection
+  useEffect(() => {
+    // Skip if using mock data or WebSocket is disabled
+    if (useMockData || !useWebSocket || !session?.user?.id) return;
+
+    // Get JWT token for WebSocket authentication
+    const getToken = async () => {
+      try {
+        // Get token from session or fetch from API
+        const response = await fetch('/api/auth/ws-token');
+        if (!response.ok) {
+          throw new Error('Failed to get WebSocket token');
+        }
+
+        const { token } = await response.json();
+
+        // Initialize WebSocket client
+        const wsClient = getWebSocketClient({
+          url: process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001/api/ws',
+          token,
+          onMessage: handleWebSocketMessage,
+          onStatusChange: setWsStatus,
+        });
+
+        // Connect to WebSocket server
+        if (wsClient) {
+          wsClient.connect();
+          wsConnectedRef.current = true;
+        }
+      } catch (error) {
+        console.error('Failed to initialize WebSocket:', error);
+        setError('Failed to connect to notification service');
+      }
+    };
+
+    getToken();
+
+    // Clean up on unmount
+    return () => {
+      const wsClient = getWebSocketClient();
+      if (wsClient && wsConnectedRef.current) {
+        wsClient.disconnect();
+        wsConnectedRef.current = false;
+      }
+    };
+  }, [session, useMockData, useWebSocket, handleWebSocketMessage]);
+
   // Fetch notifications on mount and when activeTab changes
   useEffect(() => {
     fetchNotifications();
   }, [fetchNotifications]);
 
-  // Set up polling for notifications
+  // Set up polling for notifications as fallback when WebSocket is not connected
   useEffect(() => {
-    // Skip polling if using mock data
-    if (useMockData) return;
+    // Skip polling if using mock data or WebSocket is connected
+    if (useMockData || (useWebSocket && wsStatus === WebSocketStatus.CONNECTED)) return;
 
     // Poll for new notifications every 15 seconds
     const pollInterval = setInterval(() => {
@@ -231,7 +368,7 @@ export function useNotifications({ useMockData = true, initialType = "all" }: Us
     return () => {
       clearInterval(pollInterval);
     };
-  }, [useMockData, fetchNotifications]);
+  }, [useMockData, useWebSocket, wsStatus, fetchNotifications]);
 
   // Get grouped notifications
   const groupedNotifications = groupNotificationsByDate();
@@ -257,5 +394,6 @@ export function useNotifications({ useMockData = true, initialType = "all" }: Us
     markAllAsRead,
     deleteNotification,
     refetch: fetchNotifications,
+    wsStatus,
   };
 }
