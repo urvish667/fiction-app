@@ -12,11 +12,11 @@ const updateCommentSchema = z.object({
 // GET endpoint to retrieve a specific comment
 export async function GET(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const params = await context.params;
   try {
-    const commentId = params.id;
+    const resolvedParams = await params;
+    const commentId = resolvedParams.id;
 
     // Find the comment
     const comment = await prisma.comment.findUnique({
@@ -65,11 +65,11 @@ export async function GET(
 // PUT endpoint to update a comment
 export async function PUT(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const params = await context.params;
   try {
-    const commentId = params.id;
+    const resolvedParams = await params;
+    const commentId = resolvedParams.id;
 
     // Check authentication
     const session = await getServerSession(authOptions);
@@ -143,11 +143,11 @@ export async function PUT(
 // DELETE endpoint to delete a comment
 export async function DELETE(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const params = await context.params;
   try {
-    const commentId = params.id;
+    const resolvedParams = await params;
+    const commentId = resolvedParams.id;
 
     // Check authentication
     const session = await getServerSession(authOptions);

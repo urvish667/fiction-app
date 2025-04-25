@@ -4,14 +4,17 @@ import { prisma } from "@/lib/auth/db-adapter";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { calculateStoryStatus, isStoryPublic } from "@/lib/story-helpers";
 
+// Define the params type for route handlers
+type RouteParams = { params: Promise<{ id: string }> };
+
 // POST endpoint to bookmark a story
 export async function POST(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: RouteParams
 ) {
-  const params = await context.params;
   try {
-    const storyId = params.id;
+    const resolvedParams = await params;
+    const storyId = resolvedParams.id;
 
     // Check authentication
     const session = await getServerSession(authOptions);
@@ -89,11 +92,11 @@ export async function POST(
 // DELETE endpoint to remove a bookmark
 export async function DELETE(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: RouteParams
 ) {
-  const params = await context.params;
   try {
-    const storyId = params.id;
+    const resolvedParams = await params;
+    const storyId = resolvedParams.id;
 
     // Check authentication
     const session = await getServerSession(authOptions);

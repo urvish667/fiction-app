@@ -3,36 +3,39 @@ import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/auth/db-adapter";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
+// Define the params type for route handlers
+type UserRouteParams = { params: Promise<{ username: string }> };
+
 // GET endpoint to retrieve users that a user is following
 export async function GET(
   request: NextRequest,
-  context: { params: { username: string } }
+  { params }: UserRouteParams
 ) {
   try {
-    const params = await context.params;
-    const username = params.username;
+    const resolvedParams = await params;
+    const username = resolvedParams.username;
     const { searchParams } = new URL(request.url);
-    
+
     // Parse query parameters
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "10");
-    
+
     // Find the user by username
     const user = await prisma.user.findUnique({
       where: { username },
       select: { id: true }
     });
-    
+
     if (!user) {
       return NextResponse.json(
         { error: "User not found" },
         { status: 404 }
       );
     }
-    
+
     // Calculate pagination
     const skip = (page - 1) * limit;
-    
+
     // Find following
     const [following, total] = await Promise.all([
       prisma.follow.findMany({
@@ -60,7 +63,7 @@ export async function GET(
         }
       })
     ]);
-    
+
     // Format the response
     const formattedFollowing = following.map(follow => ({
       id: follow.following.id,
@@ -70,7 +73,7 @@ export async function GET(
       bio: follow.following.bio,
       followedAt: follow.createdAt
     }));
-    
+
     // Return the following with pagination info
     return NextResponse.json({
       following: formattedFollowing,

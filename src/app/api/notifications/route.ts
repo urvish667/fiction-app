@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     // Parse query parameters
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "20");
-    const type = searchParams.get("type");
+    const type = searchParams.get("type") || undefined;
     const readStatus = searchParams.get("read");
 
     // Get notifications using the service

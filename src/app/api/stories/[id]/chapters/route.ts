@@ -24,11 +24,11 @@ const createChapterSchema = z.object({
 // GET endpoint to retrieve all chapters for a story
 export async function GET(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const params = await context.params;
   try {
-    const storyId = params.id;
+    const resolvedParams = await params;
+    const storyId = resolvedParams.id;
     const session = await getServerSession(authOptions);
 
     // Find the story to check permissions
@@ -119,11 +119,11 @@ export async function GET(
 // POST endpoint to create a new chapter
 export async function POST(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const params = await context.params;
   try {
-    const storyId = params.id;
+    const resolvedParams = await params;
+    const storyId = resolvedParams.id;
 
     // Check authentication
     const session = await getServerSession(authOptions);

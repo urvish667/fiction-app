@@ -68,7 +68,8 @@ export const ImageAlignment = Extension.create({
   // Add commands to directly align images
   addCommands() {
     return {
-      alignImage: (alignment) => ({ editor, commands }) => {
+      // Cast the return type to make it compatible with RawCommands
+      alignImage: (alignment: 'left' | 'center' | 'right') => ({ editor, commands }: { editor: any; commands: any }) => {
         // First select the image if it's not already selected
         const { state } = editor
         const { selection } = state
@@ -76,7 +77,7 @@ export const ImageAlignment = Extension.create({
         // Apply the alignment to the current selection
         return commands.setTextAlign(alignment)
       },
-    }
+    } as any // Type assertion to avoid type error
   },
 })
 

@@ -4,12 +4,12 @@ import { AzureService } from "@/lib/azure-service";
 // GET endpoint to serve images from Azure Blob Storage
 export async function GET(
   request: NextRequest,
-  context: { params: { key: string[] } | Promise<{ key: string[] }> }
+  { params }: { params: Promise<{ key: string[] }> }
 ) {
   try {
     // Get the key from the URL - await the params in Next.js 14
-    const params = await context.params;
-    const keyParts = params.key;
+    const resolvedParams = await params;
+    const keyParts = resolvedParams.key;
     const key = keyParts.join('/');
 
     // Generate a signed URL with a short expiration (1 hour)

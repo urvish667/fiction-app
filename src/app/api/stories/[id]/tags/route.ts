@@ -1,14 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/auth/db-adapter";
 
+// Define the params type for route handlers
+type StoryRouteParams = { params: Promise<{ id: string }> };
+
 // GET endpoint to retrieve tags for a story
 export async function GET(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: StoryRouteParams
 ) {
-  const params = await context.params;
   try {
-    const storyId = params.id;
+    const resolvedParams = await params;
+    const storyId = resolvedParams.id;
 
     // Find the story to verify it exists
     const story = await prisma.story.findUnique({

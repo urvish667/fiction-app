@@ -8,6 +8,9 @@ import { AzureService } from "@/lib/azure-service";
 import { calculateStoryStatus, isStoryPublic } from "@/lib/story-helpers";
 import { ViewService } from "@/services/view-service";
 
+// Define the params type for route handlers
+type ChapterRouteParams = { params: Promise<{ id: string; chapterId: string }> };
+
 // Validation schema for updating a chapter
 const updateChapterSchema = z.object({
   title: z.string().min(1, "Title is required").max(100, "Title must be less than 100 characters").optional(),
@@ -25,12 +28,12 @@ const updateChapterSchema = z.object({
 // GET endpoint to retrieve a specific chapter
 export async function GET(
   request: NextRequest,
-  context: { params: { id: string; chapterId: string } }
+  { params }: ChapterRouteParams
 ) {
-  const params = await context.params;
   try {
-    const storyId = params.id;
-    const chapterId = params.chapterId;
+    const resolvedParams = await params;
+    const storyId = resolvedParams.id;
+    const chapterId = resolvedParams.chapterId;
     const session = await getServerSession(authOptions);
 
     // Find the story to check permissions
@@ -100,6 +103,9 @@ export async function GET(
 
     // Get user's reading progress if logged in
     let readingProgress = null;
+    let chapterViewCount = undefined;
+    let storyViewCount = undefined;
+
     if (session?.user?.id && session.user.id !== story.authorId) {
       readingProgress = await prisma.readingProgress.findUnique({
         where: {
@@ -144,11 +150,11 @@ export async function GET(
 
         // Add view counts to the response
         if (viewResult?.chapterViewCount !== undefined) {
-          chapter.viewCount = viewResult.chapterViewCount;
+          chapterViewCount = viewResult.chapterViewCount;
         }
 
         if (viewResult?.storyViewCount !== undefined && story) {
-          story.viewCount = viewResult.storyViewCount;
+          storyViewCount = viewResult.storyViewCount;
         }
       } catch (viewError) {
         // Log the error but don't fail the request
@@ -169,11 +175,13 @@ export async function GET(
     return NextResponse.json({
       ...chapter,
       content,
+      viewCount: chapterViewCount,
       story: {
         id: story.id,
         title: story.title,
         slug: story.slug,
         author: story.author,
+        viewCount: storyViewCount,
       },
       readingProgress: readingProgress?.progress || 0,
     });
@@ -189,12 +197,12 @@ export async function GET(
 // PUT endpoint to update a chapter
 export async function PUT(
   request: NextRequest,
-  context: { params: { id: string; chapterId: string } }
+  { params }: ChapterRouteParams
 ) {
-  const params = await context.params;
   try {
-    const storyId = params.id;
-    const chapterId = params.chapterId;
+    const resolvedParams = await params;
+    const storyId = resolvedParams.id;
+    const chapterId = resolvedParams.chapterId;
 
     // Check authentication
     const session = await getServerSession(authOptions);
@@ -265,7 +273,7 @@ export async function PUT(
 
     // Calculate word count if content is updated
     let wordCountDiff = 0;
-    let dataToUpdate = { ...validatedData };
+    let dataToUpdate: any = { ...validatedData };
 
     if (validatedData.content) {
       const newWordCount = countWords(validatedData.content);
@@ -357,12 +365,12 @@ export async function PUT(
 // DELETE endpoint to delete a chapter
 export async function DELETE(
   request: NextRequest,
-  context: { params: { id: string; chapterId: string } }
+  { params }: ChapterRouteParams
 ) {
-  const params = await context.params;
   try {
-    const storyId = params.id;
-    const chapterId = params.chapterId;
+    const resolvedParams = await params;
+    const storyId = resolvedParams.id;
+    const chapterId = resolvedParams.chapterId;
 
     // Check authentication
     const session = await getServerSession(authOptions);

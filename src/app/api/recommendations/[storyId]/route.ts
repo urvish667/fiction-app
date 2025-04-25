@@ -38,17 +38,16 @@ type RecommendationWithRelations = Prisma.StoryRecommendationGetPayload<{
  * GET endpoint to retrieve recommendations for a story
  *
  * @param request The request object
- * @param context The context object containing the storyId parameter
+ * @param params The params object containing the storyId parameter
  * @returns A JSON response with the recommended stories
  */
 export async function GET(
   request: NextRequest,
-  context: { params: Promise<{ storyId: string }> | { storyId: string } }
+  { params }: { params: Promise<{ storyId: string }> }
 ) {
   try {
-    // In Next.js 14, params needs to be awaited
-    const params = await context.params;
-    const storyId = params.storyId;
+    const resolvedParams = await params;
+    const storyId = resolvedParams.storyId;
     const { searchParams } = new URL(request.url);
 
     // Optional parameters

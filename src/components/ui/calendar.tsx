@@ -53,10 +53,11 @@ function Calendar({
         day_hidden: "invisible",
         ...classNames,
       }}
+      // Use type assertion to fix the type error with custom components
       components={{
-        IconLeft: ({ ...props }) => <ChevronLeft className="h-4 w-4" />,
-        IconRight: ({ ...props }) => <ChevronRight className="h-4 w-4" />,
-      }}
+        IconLeft: (props: any) => <ChevronLeft className="h-4 w-4" />,
+        IconRight: (props: any) => <ChevronRight className="h-4 w-4" />,
+      } as any}
       {...props}
     />
   )

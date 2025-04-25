@@ -104,7 +104,7 @@ export const PATCH = withAuth(async (request: NextRequest, token) => {
         select: { username: true }
       })
 
-      if (currentUser) {
+      if (currentUser && currentUser.username) {
         validatedData.username = currentUser.username
       }
     }

@@ -29,11 +29,11 @@ const logRequestBody = (body: any) => {
 // GET endpoint to retrieve a specific story
 export async function GET(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const params = await context.params;
   try {
-    const storyId = params.id;
+    const resolvedParams = await params;
+    const storyId = resolvedParams.id;
     const session = await getServerSession(authOptions);
 
     // Find the story
@@ -124,7 +124,7 @@ export async function GET(
     }
 
     // Format the response
-    const formattedStory = {
+    const formattedStory: any = {
       ...story,
       author: story.author,
       // Extract tags safely
@@ -184,11 +184,11 @@ export async function GET(
 // PUT endpoint to update a story
 export async function PUT(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const params = await context.params;
   try {
-    const storyId = params.id;
+    const resolvedParams = await params;
+    const storyId = resolvedParams.id;
 
     // Check authentication
     const session = await getServerSession(authOptions);
@@ -365,11 +365,11 @@ export async function PUT(
 // DELETE endpoint to delete a story
 export async function DELETE(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const params = await context.params;
   try {
-    const storyId = params.id;
+    const resolvedParams = await params;
+    const storyId = resolvedParams.id;
 
     // Check authentication
     const session = await getServerSession(authOptions);

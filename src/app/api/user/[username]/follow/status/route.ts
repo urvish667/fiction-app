@@ -3,14 +3,17 @@ import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/auth/db-adapter";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
+// Define the params type for route handlers
+type UserRouteParams = { params: Promise<{ username: string }> };
+
 // GET endpoint to check if the current user is following a target user
 export async function GET(
   request: NextRequest,
-  context: { params: { username: string } }
+  { params }: UserRouteParams
 ) {
-  const params = await context.params;
   try {
-    const targetUsername = params.username;
+    const resolvedParams = await params;
+    const targetUsername = resolvedParams.username;
 
     // Check authentication
     const session = await getServerSession(authOptions);

@@ -21,11 +21,12 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import type { Story } from "@/types/story"
 
 // Extended story type with UI-specific properties
-interface WorkStory extends Story {
+interface WorkStory extends Omit<Story, 'genre'> {
   lastEdited: Date;
   draftChapters: number;
   scheduledChapters: number;
   publishedChapters: number;
+  genre?: string | { name: string } | null;
 }
 
 export default function MyWorksPage() {
@@ -167,9 +168,12 @@ export default function MyWorksPage() {
                       (activeTab === "ongoing" && work.status === "ongoing") ||
                       (activeTab === "completed" && work.status === "completed")
     // Extract genre name for search
-    const genreName = typeof work.genre === 'object' && work.genre !== null
-      ? work.genre.name
-      : (typeof work.genre === 'string' ? work.genre : 'General');
+    let genreName = 'General';
+    if (typeof work.genre === 'string') {
+      genreName = work.genre;
+    } else if (work.genre && typeof work.genre === 'object' && 'name' in work.genre) {
+      genreName = String(work.genre.name);
+    }
 
     const matchesSearch =
       !searchQuery ||
@@ -396,9 +400,14 @@ function WorksContent({ works, searchQuery, isLoading, onDeleteStory }: WorksCon
                 <div>
                   <h3 className="font-bold text-lg line-clamp-1">{work.title}</h3>
                   <p className="text-sm text-muted-foreground">
-                    {typeof work.genre === 'object' && work.genre !== null
-                      ? work.genre.name
-                      : (typeof work.genre === 'string' ? work.genre : 'General')}
+                    {(() => {
+                      if (typeof work.genre === 'string') {
+                        return work.genre;
+                      } else if (work.genre && typeof work.genre === 'object' && 'name' in work.genre) {
+                        return String(work.genre.name);
+                      }
+                      return 'General';
+                    })()}
                   </p>
                 </div>
                 <DropdownMenu>

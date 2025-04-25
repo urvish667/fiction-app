@@ -6,11 +6,11 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 // POST endpoint to like a comment
 export async function POST(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const params = await context.params;
   try {
-    const commentId = params.id;
+    const resolvedParams = await params;
+    const commentId = resolvedParams.id;
 
     // Check authentication
     const session = await getServerSession(authOptions);
@@ -105,11 +105,11 @@ export async function POST(
 // DELETE endpoint to unlike a comment
 export async function DELETE(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const params = await context.params;
   try {
-    const commentId = params.id;
+    const resolvedParams = await params;
+    const commentId = resolvedParams.id;
 
     // Check authentication
     const session = await getServerSession(authOptions);

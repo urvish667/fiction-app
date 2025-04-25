@@ -84,9 +84,10 @@ export default function ProfileActionButtons({ username, isCurrentUser }: Profil
 
     try {
       // Get the current URL or construct the profile URL
-      const profileUrl = typeof window !== 'undefined'
-        ? window.location.href
-        : `${window.location.origin}/user/${username}`
+      let profileUrl = '';
+      if (typeof window !== 'undefined') {
+        profileUrl = window.location.href;
+      }
 
       await navigator.clipboard.writeText(profileUrl)
       setCopied(true)

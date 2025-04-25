@@ -666,7 +666,7 @@ export default function CommentSection({ storyId }: CommentSectionProps) {
                 )}
 
                 {/* Show reply count and toggle button */}
-                {comment.replyCount > 0 && (
+                {(comment.replyCount ?? 0) > 0 && (
                   <div className="mt-2 ml-4">
                     <Button
                       variant="link"
@@ -680,9 +680,9 @@ export default function CommentSection({ storyId }: CommentSectionProps) {
                           Loading replies...
                         </>
                       ) : expandedReplies[comment.id] ? (
-                        `Hide ${comment.replyCount} ${comment.replyCount === 1 ? "reply" : "replies"}`
+                        `Hide ${comment.replyCount ?? 0} ${(comment.replyCount ?? 0) === 1 ? "reply" : "replies"}`
                       ) : (
-                        `View ${comment.replyCount} ${comment.replyCount === 1 ? "reply" : "replies"}`
+                        `View ${comment.replyCount ?? 0} ${(comment.replyCount ?? 0) === 1 ? "reply" : "replies"}`
                       )}
                     </Button>
                   </div>

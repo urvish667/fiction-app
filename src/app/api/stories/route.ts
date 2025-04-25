@@ -6,6 +6,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { slugify } from "@/lib/utils";
 import { calculateStoryStatus, isStoryPublic } from "@/lib/story-helpers";
 import { ViewService } from "@/services/view-service";
+import { Prisma } from "@prisma/client";
 
 // Validation schema for creating a story
 const createStorySchema = z.object({
@@ -19,16 +20,16 @@ const createStorySchema = z.object({
 });
 
 // Helper function to determine the order by clause based on sort option
-function getOrderByFromSortOption(sortBy: string) {
+function getOrderByFromSortOption(sortBy: string): Prisma.StoryOrderByWithRelationInput {
   switch (sortBy) {
     case 'newest':
-      return { createdAt: 'desc' };
+      return { createdAt: Prisma.SortOrder.desc };
     case 'popular':
-      return { likes: { _count: 'desc' } };
+      return { likes: { _count: Prisma.SortOrder.desc } };
     case 'mostRead':
-      return { readCount: 'desc' };
+      return { readCount: Prisma.SortOrder.desc };
     default:
-      return { createdAt: 'desc' };
+      return { createdAt: Prisma.SortOrder.desc };
   }
 }
 

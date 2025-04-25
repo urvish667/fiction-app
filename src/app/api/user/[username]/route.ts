@@ -12,14 +12,17 @@ type ExpectedSocialLinks = {
   instagram?: string | null;
 };
 
+// Define the params type for route handlers
+type UserRouteParams = { params: Promise<{ username: string }> };
+
 // GET method to retrieve user profile by username
 export async function GET(
   request: NextRequest,
-  context: { params: { username: string } }
+  { params }: UserRouteParams
 ) {
   try {
-    const params = await context.params;
-    const identifier = params.username;
+    const resolvedParams = await params;
+    const identifier = resolvedParams.username;
     const session = await getServerSession(authOptions);
 
     // Try to find user by username or ID
@@ -74,7 +77,7 @@ export async function GET(
         allowMessages: false
       }
     };
-    
+
     if (user.preferences) {
       try {
         preferences = typeof user.preferences === 'string'
@@ -96,10 +99,10 @@ export async function GET(
     let parsedSocialLinks: ExpectedSocialLinks | null = null;
     if (user.socialLinks) {
       try {
-        let tempLinks = typeof user.socialLinks === 'string' 
-          ? JSON.parse(user.socialLinks) 
+        let tempLinks = typeof user.socialLinks === 'string'
+          ? JSON.parse(user.socialLinks)
           : user.socialLinks;
-        
+
         if (tempLinks && typeof tempLinks === 'object' && !Array.isArray(tempLinks)) {
           if ('set' in tempLinks && typeof tempLinks.set === 'object' && tempLinks.set !== null) {
             parsedSocialLinks = tempLinks.set as ExpectedSocialLinks;
@@ -109,7 +112,7 @@ export async function GET(
         }
       } catch (error) {
         console.error("Error parsing socialLinks:", error);
-      }    
+      }
     }
 
     // Format the response with privacy checks

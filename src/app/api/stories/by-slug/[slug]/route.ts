@@ -8,11 +8,11 @@ import { ViewService } from "@/services/view-service";
 // GET endpoint to retrieve a story by slug
 export async function GET(
   request: NextRequest,
-  context: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
-  const params = await context.params;
   try {
-    const slug = params.slug;
+    const resolvedParams = await params;
+    const slug = resolvedParams.slug;
     const session = await getServerSession(authOptions);
 
     // Find the story by slug
@@ -101,7 +101,7 @@ export async function GET(
     }
 
     // Format the response
-    const formattedStory = {
+    const formattedStory: any = {
       ...story,
       author: story.author,
       // Extract tags safely

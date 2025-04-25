@@ -3,14 +3,17 @@ import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/auth/db-adapter";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
+// Define the params type for route handlers
+type UserRouteParams = { params: Promise<{ username: string }> };
+
 // POST endpoint to follow a user
 export async function POST(
   request: NextRequest,
-  context: { params: { username: string } }
+  { params }: UserRouteParams
 ) {
-  const params = await context.params;
   try {
-    const targetUsername = params.username;
+    const resolvedParams = await params;
+    const targetUsername = resolvedParams.username;
 
     // Check authentication
     const session = await getServerSession(authOptions);
@@ -99,11 +102,11 @@ export async function POST(
 // DELETE endpoint to unfollow a user
 export async function DELETE(
   request: NextRequest,
-  context: { params: { username: string } }
+  { params }: UserRouteParams
 ) {
-  const params = await context.params;
   try {
-    const targetUsername = params.username;
+    const resolvedParams = await params;
+    const targetUsername = resolvedParams.username;
 
     // Check authentication
     const session = await getServerSession(authOptions);

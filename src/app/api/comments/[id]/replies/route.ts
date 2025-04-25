@@ -6,11 +6,11 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 // GET endpoint to retrieve replies for a comment
 export async function GET(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const params = await context.params;
   try {
-    const commentId = params.id;
+    const resolvedParams = await params;
+    const commentId = resolvedParams.id;
     const { searchParams } = new URL(request.url);
     const session = await getServerSession(authOptions);
     const userId = session?.user?.id;

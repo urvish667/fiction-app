@@ -298,20 +298,23 @@ export function PayPalPaymentForm({
       ) : sdkError ? (
         renderFallbackUI()
       ) : (
-        <PayPalScriptProvider options={initialOptions}
-          deferLoading={false}
-          onError={(err) => {
-            logger.error('PayPal script error:', err);
-            // Set a timeout to ensure the state update happens after render
-            setTimeout(() => {
-              setSdkError(true);
-              toast({
-                title: "PayPal Error",
-                description: "There was an error loading PayPal. Please try again later.",
-                variant: "destructive",
-              });
-            }, 0);
-          }}>
+        <PayPalScriptProvider
+          options={{
+            ...initialOptions,
+            onError: (err: Error) => {
+              logger.error('PayPal script error:', err);
+              // Set a timeout to ensure the state update happens after render
+              setTimeout(() => {
+                setSdkError(true);
+                toast({
+                  title: "PayPal Error",
+                  description: "There was an error loading PayPal. Please try again later.",
+                  variant: "destructive",
+                });
+              }, 0);
+            }
+          }}
+          deferLoading={false}>
           <div className="py-4">
             <p className="text-center text-muted-foreground mb-4">
               Donate ${amountInDollars} with PayPal
@@ -330,6 +333,7 @@ export function PayPalPaymentForm({
                       // Create a PayPal order directly using the SDK
                       try {
                         return actions.order.create({
+                          intent: "CAPTURE",
                           purchase_units: [
                             {
                               amount: {

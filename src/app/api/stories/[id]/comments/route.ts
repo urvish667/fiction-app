@@ -13,11 +13,11 @@ const createCommentSchema = z.object({
 // GET endpoint to retrieve comments for a story
 export async function GET(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const params = await context.params;
-    const storyId = params.id;
+    const resolvedParams = await params;
+    const storyId = resolvedParams.id;
     const { searchParams } = new URL(request.url);
     const session = await getServerSession(authOptions);
     const userId = session?.user?.id;
@@ -119,12 +119,11 @@ export async function GET(
 // POST endpoint to create a new comment
 export async function POST(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const params = await context.params;
-  const storyId = params.id;
-
   try {
+    const resolvedParams = await params;
+    const storyId = resolvedParams.id;
 
     // Check authentication
     const session = await getServerSession(authOptions);

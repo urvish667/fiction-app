@@ -57,20 +57,8 @@ export function Editor({ content, onChange, readOnly = false }: EditorProps) {
         HTMLAttributes: {
           class: 'editor-image editor-image-centered',
         },
-        // Handle image resizing and default alignment
-        handleDOMAttributes: (node) => {
-          const attrs = {}
-
-          // Only add width attribute if it's specified in the node
-          if (node.attrs.width) {
-            attrs['width'] = node.attrs.width
-          }
-
-          // Add default center alignment class
-          attrs['class'] = 'editor-image editor-image-centered'
-
-          return attrs
-        },
+        // We'll handle image attributes in the HTMLAttributes
+        // and use the TextAlign extension for alignment
       }),
       Link.configure({
         openOnClick: false,
@@ -79,10 +67,8 @@ export function Editor({ content, onChange, readOnly = false }: EditorProps) {
         types: ['heading', 'paragraph', 'image'],
         alignments: ['left', 'center', 'right'],
         defaultAlignment: 'left',
-        // Set default alignment for specific node types
-        defaultAlignments: {
-          image: 'center',
-        },
+        // Note: defaultAlignments is not a valid option in TextAlign
+        // We'll handle image alignment separately
       }),
     ],
     content,
