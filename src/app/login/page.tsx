@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,7 +15,8 @@ import "../auth-background.css"
 import AuthLogo from "@/components/auth/logo"
 import { GoogleIcon, FacebookIcon } from "@/components/auth/social-icons"
 
-export default function LoginPage() {
+// Component that uses searchParams
+function LoginContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const callbackUrl = searchParams?.get("callbackUrl") || "/"
@@ -271,5 +272,25 @@ export default function LoginPage() {
         </Tabs>
       </motion.div>
     </div>
+  )
+}
+
+// Main component that wraps the LoginContent in a Suspense boundary
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen auth-background flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <div className="bg-card rounded-lg shadow-xl border border-border p-6 space-y-6 w-full max-w-md backdrop-blur-sm bg-opacity-95">
+          <div className="flex justify-center">
+            <AuthLogo />
+          </div>
+          <div className="space-y-2 text-center">
+            <h2 className="text-2xl font-bold">Loading...</h2>
+          </div>
+        </div>
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
   )
 }

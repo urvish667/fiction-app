@@ -19,7 +19,8 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const code = searchParams.get('code');
-  const state = searchParams.get('state');
+  // State parameter is used for CSRF protection but not implemented yet
+  // const state = searchParams.get('state');
 
   // TODO: Add state validation (CSRF protection)
   // Compare 'state' with a value stored in the user's session before redirecting
@@ -59,9 +60,9 @@ export async function GET(req: NextRequest) {
     // Redirect back to the settings page with a success message
     return NextResponse.redirect(new URL('/settings?tab=monetization&success=stripe_connected', req.url));
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('[STRIPE_CALLBACK_ERROR] Error during Stripe OAuth process:', error);
-    const errorMessage = error.message || 'stripe_connect_error';
+    const errorMessage = error instanceof Error ? error.message : 'stripe_connect_error';
     return NextResponse.redirect(new URL(`/settings?tab=monetization&error=${encodeURIComponent(errorMessage)}`, req.url));
   }
-} 
+}

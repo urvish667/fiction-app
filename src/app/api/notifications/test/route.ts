@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
         { status: 403 }
       );
     }
-    
+
     // Check authentication
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -35,17 +35,17 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
-    
+
     // Parse request body
     const body = await request.json();
     const validatedData = testNotificationSchema.parse(body);
-    
+
     const { type, delay = 0 } = validatedData;
-    
+
     // Generate title and message based on type if not provided
-    let title = validatedData.title || `Test ${type} Notification`;
-    let message = validatedData.message || `This is a test ${type} notification`;
-    
+    const title = validatedData.title || `Test ${type} Notification`;
+    const message = validatedData.message || `This is a test ${type} notification`;
+
     // Create notification
     if (delay > 0) {
       queueNotification({
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
         message,
         content: validatedData.content,
       }, delay);
-      
+
       return NextResponse.json({
         message: `Test notification queued with ${delay}ms delay`,
       });
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
         message,
         content: validatedData.content,
       });
-      
+
       return NextResponse.json({
         message: 'Test notification created',
         notification,
@@ -75,14 +75,14 @@ export async function POST(request: NextRequest) {
     }
   } catch (error) {
     console.error('Error creating test notification:', error);
-    
+
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Invalid request data', details: error.errors },
         { status: 400 }
       );
     }
-    
+
     return NextResponse.json(
       { error: 'Failed to create test notification' },
       { status: 500 }

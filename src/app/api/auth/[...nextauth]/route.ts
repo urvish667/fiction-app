@@ -52,9 +52,8 @@ export const authOptions: NextAuthOptions = {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || "",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
-      profile(profile, _tokens) {
+      profile(profile) {
         // Return a user object with required fields
-        // @ts-ignore - NextAuth types don't match our custom user model
         return {
           id: profile.sub,
           name: profile.name,
@@ -107,9 +106,8 @@ export const authOptions: NextAuthOptions = {
     FacebookProvider({
       clientId: process.env.FACEBOOK_CLIENT_ID || "",
       clientSecret: process.env.FACEBOOK_CLIENT_SECRET || "",
-      profile(profile, _tokens) {
+      profile(profile) {
         // Return a user object with required fields
-        // @ts-ignore - NextAuth types don't match our custom user model
         return {
           id: profile.id,
           name: profile.name,
@@ -165,8 +163,7 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      // @ts-ignore - NextAuth types don't match our custom user model
-      async authorize(credentials, _req) {
+      async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
           throw new Error("Invalid credentials");
         }
@@ -261,7 +258,6 @@ export const authOptions: NextAuthOptions = {
       return relativeUrl;
     },
     // Process new users from OAuth providers - optimized to reduce DB load
-    // @ts-ignore - NextAuth types don't match our implementation
     async signIn({ user, account }) {
       if (account?.provider === "credentials") {
         return true; // Skip for credentials login
@@ -287,7 +283,7 @@ export const authOptions: NextAuthOptions = {
 
           if (lastLoginTime > oneWeekAgo) {
             // User logged in recently, skip the update to reduce DB load
-            return;
+            return true;
           }
         }
 
@@ -303,9 +299,9 @@ export const authOptions: NextAuthOptions = {
             isProfileComplete: false,
             accounts: {
               create: {
-                type: account?.type!,
-                provider: account?.provider!,
-                providerAccountId: account?.providerAccountId!,
+                type: account?.type || '',
+                provider: account?.provider || '',
+                providerAccountId: account?.providerAccountId || '',
                 access_token: account?.access_token,
                 expires_at: account?.expires_at,
                 token_type: account?.token_type,
@@ -334,7 +330,8 @@ export const authOptions: NextAuthOptions = {
           });
 
           // Set a flag to redirect to profile completion page
-          (user as any).needsProfileCompletion = true;
+          // Use token.needsProfileCompletion in the jwt callback instead
+          // This avoids modifying the user object directly
         }
 
       } catch (error) {
@@ -344,22 +341,21 @@ export const authOptions: NextAuthOptions = {
       return true; // Always return true to allow sign in
     },
 
-    async createUser({ user }: { user: any }) {
-      authLogger.info("User created", {
-        email: user.email,
-        hasName: !!user.name,
-        hasImage: !!user.image
-      });
-    },
-
     // Add custom user data to session - optimized for performance
     async session({ session, token }) {
+      // Ensure id is a string
+      const userId = (token.id as string) || (token.sub as string);
+
+      if (!userId) {
+        throw new Error("User ID is missing in token");
+      }
+
       // Create a new session object with only the standard fields
-      const userSession: any = {
-        id: token.id as string || token.sub,
+      const userSession = {
+        id: userId,
         name: token.name,
         email: token.email,
-        image: token.image || token.picture,
+        image: (token.image || token.picture) as string | null | undefined,
         bannerImage: token.bannerImage,
         username: token.username || (token.name ? String(token.name).split(' ')[0].toLowerCase() : 'user'),
         isProfileComplete: token.isProfileComplete || false,
@@ -382,18 +378,24 @@ export const authOptions: NextAuthOptions = {
         }
       };
 
+      // Create a properly typed session user object with additional properties
+      const typedUserSession = userSession as typeof userSession & {
+        provider?: string;
+        marketingOptIn?: boolean;
+      };
+
       // Add provider if available (defined in Session interface in next-auth.d.ts)
       if (token.provider) {
-        userSession.provider = token.provider;
+        typedUserSession.provider = token.provider as string;
       }
 
       // Add marketingOptIn if available
       if (typeof token.marketingOptIn !== 'undefined') {
-        userSession.marketingOptIn = token.marketingOptIn;
+        typedUserSession.marketingOptIn = !!token.marketingOptIn;
       }
 
       // Assign to session
-      session.user = userSession;
+      session.user = typedUserSession;
 
       return session;
     },
@@ -409,7 +411,7 @@ export const authOptions: NextAuthOptions = {
       // If this is a sign-in event, set the initial token data
       if (user) {
         // Check if user needs profile completion (set in signIn event)
-        if ((user as any).needsProfileCompletion) {
+        if (user && 'needsProfileCompletion' in user && user.needsProfileCompletion) {
           token.needsProfileCompletion = true;
         }
         // Fetch the user from DB to ensure we have the database ID
@@ -437,7 +439,7 @@ export const authOptions: NextAuthOptions = {
         // Store data from the DB user in the token
         token.id = dbUser.id; // Use the actual database ID
         token.username = dbUser.username;
-        token.provider = dbUser.provider || account?.provider; // Keep provider logic
+        token.provider = dbUser.provider || (account ? account.provider : undefined); // Keep provider logic
         token.isProfileComplete = dbUser.isProfileComplete;
         token.image = dbUser.image;
         token.bannerImage = dbUser.bannerImage;
@@ -446,7 +448,7 @@ export const authOptions: NextAuthOptions = {
 
         // Add emailVerified status to token
         // For social logins, set emailVerified to current date if not already set
-        if (account?.provider && (account.provider === 'google' || account.provider === 'facebook')) {
+        if (account && account.provider && (account.provider === 'google' || account.provider === 'facebook')) {
           token.emailVerified = new Date();
         } else if (user.emailVerified) {
           token.emailVerified = user.emailVerified;
@@ -531,6 +533,17 @@ export const authOptions: NextAuthOptions = {
 
       authLogger.debug('JWT callback completed', { userId: token.id || token.sub });
       return token;
+    },
+  },
+
+  // Event handlers
+  events: {
+    createUser({ user }) {
+      authLogger.info("User created", {
+        email: user.email,
+        hasName: !!user.name,
+        hasImage: !!user.image
+      });
     },
   },
 };

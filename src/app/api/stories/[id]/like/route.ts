@@ -2,14 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/auth/db-adapter";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { calculateStoryStatus, isStoryPublic } from "@/lib/story-helpers";
+import { calculateStoryStatus } from "@/lib/story-helpers";
+import { Chapter } from "@/types/story";
 
 // Define the params type for route handlers
 type StoryRouteParams = { params: Promise<{ id: string }> };
 
 // POST endpoint to like a story
 export async function POST(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: StoryRouteParams
 ) {
   try {
@@ -44,7 +45,7 @@ export async function POST(
     });
 
     // Calculate story status
-    const storyStatus = calculateStoryStatus(chapters as any);
+    const storyStatus = calculateStoryStatus(chapters as unknown as Chapter[]);
 
     // Check if the story is a draft
     if (storyStatus === "draft") {
@@ -113,7 +114,7 @@ export async function POST(
 
 // DELETE endpoint to unlike a story
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: StoryRouteParams
 ) {
   try {

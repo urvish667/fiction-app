@@ -5,7 +5,8 @@ import { prisma } from "@/lib/auth/db-adapter";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { countWords } from "@/lib/utils";
 import { AzureService } from "@/lib/azure-service";
-import { calculateStoryStatus, isStoryPublic } from "@/lib/story-helpers";
+import { calculateStoryStatus } from "@/lib/story-helpers";
+import { Chapter } from "@/types/story";
 
 // Validation schema for creating a chapter
 const createChapterSchema = z.object({
@@ -23,7 +24,7 @@ const createChapterSchema = z.object({
 
 // GET endpoint to retrieve all chapters for a story
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -52,7 +53,7 @@ export async function GET(
     });
 
     // Calculate story status
-    const storyStatus = calculateStoryStatus(storyChapters as any);
+    const storyStatus = calculateStoryStatus(storyChapters as unknown as Chapter[]);
 
     // Check if the story is a draft and the user is not the author
     if (storyStatus === "draft" && (!session?.user?.id || session.user.id !== story.authorId)) {
@@ -288,7 +289,7 @@ export async function POST(
     });
 
     // Calculate the new story status
-    const newStoryStatus = calculateStoryStatus(storyChapters as any);
+    const newStoryStatus = calculateStoryStatus(storyChapters as unknown as Chapter[]);
 
     // Update the story status if it's different from the current status
     if (newStoryStatus !== story.status) {

@@ -5,8 +5,10 @@ import { prisma } from "@/lib/auth/db-adapter";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { countWords } from "@/lib/utils";
 import { AzureService } from "@/lib/azure-service";
-import { calculateStoryStatus, isStoryPublic } from "@/lib/story-helpers";
+import { calculateStoryStatus } from "@/lib/story-helpers";
 import { ViewService } from "@/services/view-service";
+import { Chapter } from "@/types/story";
+import { Prisma } from "@prisma/client";
 
 // Define the params type for route handlers
 type ChapterRouteParams = { params: Promise<{ id: string; chapterId: string }> };
@@ -65,7 +67,7 @@ export async function GET(
     });
 
     // Calculate story status
-    const storyStatus = calculateStoryStatus(storyChapters as any);
+    const storyStatus = calculateStoryStatus(storyChapters as unknown as Chapter[]);
 
     // Check if the story is a draft and the user is not the author
     if (storyStatus === "draft" && (!session?.user?.id || session.user.id !== story.authorId)) {
@@ -273,7 +275,7 @@ export async function PUT(
 
     // Calculate word count if content is updated
     let wordCountDiff = 0;
-    let dataToUpdate: any = { ...validatedData };
+    let dataToUpdate: Prisma.ChapterUpdateInput = { ...validatedData };
 
     if (validatedData.content) {
       const newWordCount = countWords(validatedData.content);
@@ -283,6 +285,7 @@ export async function PUT(
       await AzureService.uploadContent(chapter.contentKey, validatedData.content);
 
       // Remove content from data as it's not stored in DB
+      // Destructure to remove content property from the data going to DB
       const { content, ...dataForDb } = validatedData;
       dataToUpdate = {
         ...dataForDb,
@@ -297,18 +300,18 @@ export async function PUT(
     });
 
     // Add content to the response
-    let content;
+    let responseContent;
     try {
       // Use the original content from validatedData if it exists
-      content = validatedData.content || await AzureService.getContent(chapter.contentKey);
+      responseContent = validatedData.content || await AzureService.getContent(chapter.contentKey);
     } catch (error) {
       console.error("Error fetching content from Azure Blob Storage:", error);
-      content = "Content could not be loaded.";
+      responseContent = "Content could not be loaded.";
     }
 
     const chapterWithContent = {
       ...updatedChapter,
-      content
+      content: responseContent
     };
 
     // Update story word count if needed
@@ -334,7 +337,7 @@ export async function PUT(
       });
 
       // Calculate the new story status
-      const newStoryStatus = calculateStoryStatus(storyChapters as any);
+      const newStoryStatus = calculateStoryStatus(storyChapters as unknown as Chapter[]);
 
       // Update the story status if it's different from the current status
       if (newStoryStatus !== story.status) {
@@ -364,7 +367,7 @@ export async function PUT(
 
 // DELETE endpoint to delete a chapter
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: ChapterRouteParams
 ) {
   try {
@@ -446,7 +449,7 @@ export async function DELETE(
     });
 
     // Calculate the new story status
-    const newStoryStatus = calculateStoryStatus(remainingChapters as any);
+    const newStoryStatus = calculateStoryStatus(remainingChapters as unknown as Chapter[]);
 
     // Update the story status if it's different from the current status
     if (newStoryStatus !== story.status) {

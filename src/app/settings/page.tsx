@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { motion } from "framer-motion"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
@@ -11,7 +11,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import Navbar from "@/components/navbar"
 import { UserPreferences, defaultPreferences } from "@/types/user"
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { fetchWithCsrf } from "@/lib/client/csrf";
 
 // UI Imports needed for the main settings page
@@ -54,11 +54,67 @@ interface DonationSettingsData {
 }
 // --- End Donation Settings Types ---
 
+import { useSearchParams } from 'next/navigation';
+
+// Component to handle URL parameters with Suspense boundary
+function TabParamsHandler({
+  toast,
+  router,
+  setActiveTab,
+  setEnableDonations,
+  setDonationMethod,
+  donationSettings
+}: {
+  toast: any;
+  router: any;
+  setActiveTab: (tab: string) => void;
+  setEnableDonations: (enabled: boolean) => void;
+  setDonationMethod: (method: 'paypal' | 'stripe' | null) => void;
+  donationSettings: DonationSettingsData | null;
+}) {
+  const searchParams = useSearchParams();
+
+  // Handle URL parameters
+  useEffect(() => {
+    if (!searchParams) return;
+
+    const stripeSuccess = searchParams.get('success');
+    const stripeError = searchParams.get('error');
+    const currentTab = searchParams.get('tab');
+
+    if (stripeSuccess === 'stripe_connected' && currentTab === 'monetization') {
+      toast({
+        title: 'Success!',
+        description: 'Your Stripe account has been connected successfully.',
+      });
+      // Update state and clear query params
+      setEnableDonations(true);
+      setDonationMethod('stripe');
+      router.replace('/settings?tab=monetization', { scroll: false });
+    }
+
+    if (stripeError && currentTab === 'monetization') {
+      toast({
+        title: 'Stripe Connection Failed',
+        description: `Could not connect Stripe account: ${stripeError}. Please try again.`,
+        variant: 'destructive',
+      });
+      router.replace('/settings?tab=monetization', { scroll: false });
+    }
+
+    // Set the active tab from URL params
+    if (currentTab) {
+      setActiveTab(currentTab);
+    }
+  }, [searchParams, router, toast, setActiveTab, setEnableDonations, setDonationMethod]);
+
+  return null; // This component doesn't render anything
+}
+
 export default function SettingsPage() {
   const { toast } = useToast()
   const { data: session, update, status: sessionStatus } = useSession()
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   // Initialize activeTab correctly
   const [activeTab, setActiveTab] = useState('profile');
@@ -187,46 +243,7 @@ export default function SettingsPage() {
     }
     // No redirect needed here as main settings page handles auth
   }, [sessionStatus, toast]); // Depend on sessionStatus
-
-  // Handle messages from Stripe callback (for donations)
-  useEffect(() => {
-    if (!searchParams) return;
-
-    const stripeSuccess = searchParams.get('success');
-    const stripeError = searchParams.get('error');
-    const currentTab = searchParams.get('tab'); // Check if we landed on the right tab
-
-    if (stripeSuccess === 'stripe_connected' && currentTab === 'monetization') {
-      toast({
-        title: 'Success!',
-        description: 'Your Stripe account has been connected successfully.',
-      });
-      // Update state and clear query params
-      setEnableDonations(true);
-      setDonationMethod('stripe');
-      // TODO: Optionally re-fetch donation settings to get the Stripe ID for display
-      router.replace('/settings?tab=monetization', { scroll: false });
-    }
-
-    if (stripeError && currentTab === 'monetization') {
-      toast({
-        title: 'Stripe Connection Failed',
-        description: `Could not connect Stripe account: ${stripeError}. Please try again.` ,
-        variant: 'destructive',
-      });
-      router.replace('/settings?tab=monetization', { scroll: false });
-    }
-  }, [searchParams, router, toast]);
   // --- End Donation Settings Effects ---
-
-  useEffect(() => {
-    // Set the active tab from URL params only on client side
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const tab = params.get('tab') || 'profile';
-      setActiveTab(tab);
-    }
-  }, []);
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
@@ -713,6 +730,18 @@ export default function SettingsPage() {
       <Navbar />
       <div className="container mx-auto p-4 py-8 flex-grow">
         <h1 className="text-3xl font-bold mb-8">Settings</h1>
+
+        {/* Wrap the TabParamsHandler in a Suspense boundary */}
+        <Suspense fallback={null}>
+          <TabParamsHandler
+            toast={toast}
+            router={router}
+            setActiveTab={setActiveTab}
+            setEnableDonations={setEnableDonations}
+            setDonationMethod={setDonationMethod}
+            donationSettings={donationSettings}
+          />
+        </Suspense>
 
         <Tabs value={activeTab} onValueChange={handleTabChange} className="mt-6">
           <TabsList className="mb-8">

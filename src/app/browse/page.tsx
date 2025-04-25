@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useSearchParams } from "next/navigation"
 import Navbar from "@/components/navbar"
@@ -45,7 +45,8 @@ type BrowseStory = {
   tags?: string[] // Array of tag names
 }
 
-export default function BrowsePage() {
+// Component that uses searchParams
+function BrowseContent() {
   const { toast } = useToast()
   const [stories, setStories] = useState<BrowseStory[]>([])
   const [loading, setLoading] = useState(true)
@@ -587,6 +588,26 @@ export default function BrowsePage() {
       {/* Footer */}
       <SiteFooter />
     </div>
+  )
+}
+
+// Main component that wraps the BrowseContent in a Suspense boundary
+export default function BrowsePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        <main className="flex-1 container mx-auto px-8 py-8">
+          <h1 className="text-3xl font-bold mb-6">Browse Stories</h1>
+          <div className="text-center py-16">
+            <h3 className="text-xl font-semibold mb-2">Loading stories...</h3>
+          </div>
+        </main>
+        <SiteFooter />
+      </div>
+    }>
+      <BrowseContent />
+    </Suspense>
   )
 }
 

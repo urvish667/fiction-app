@@ -4,8 +4,10 @@ import { z } from "zod";
 import { prisma } from "@/lib/auth/db-adapter";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { slugify } from "@/lib/utils";
-import { calculateStoryStatus, isStoryPublic } from "@/lib/story-helpers";
+import { calculateStoryStatus } from "@/lib/story-helpers";
 import { ViewService } from "@/services/view-service";
+import { Chapter } from "@/types/story";
+import { Prisma } from "@prisma/client";
 
 // Validation schema for updating a story
 const updateStorySchema = z.object({
@@ -19,7 +21,7 @@ const updateStorySchema = z.object({
 });
 
 // Log the request body for debugging
-const logRequestBody = (body: any) => {
+const logRequestBody = (body: Record<string, unknown>) => {
   console.log('Update story request body:', body);
   console.log('Genre type:', typeof body.genre);
   console.log('Genre value:', body.genre);
@@ -85,7 +87,7 @@ export async function GET(
     });
 
     // Calculate story status
-    const storyStatus = calculateStoryStatus(chapters as any);
+    const storyStatus = calculateStoryStatus(chapters as unknown as Chapter[]);
 
     // Check if the story is a draft and the user is not the author
     if (storyStatus === "draft" && (!session?.user?.id || session.user.id !== story.authorId)) {
@@ -124,7 +126,7 @@ export async function GET(
     }
 
     // Format the response
-    const formattedStory: any = {
+    const formattedStory = {
       ...story,
       author: story.author,
       // Extract tags safely
@@ -138,6 +140,7 @@ export async function GET(
       isLiked,
       isBookmarked,
       _count: undefined,
+      viewCount: 0, // Default value, will be updated if view tracking succeeds
     };
 
     // Track view if not the author
@@ -281,7 +284,7 @@ export async function PUT(
     const { genre, language, ...otherData } = validatedData;
 
     // Prepare the data object for Prisma
-    const updateData: any = {
+    const updateData: Prisma.StoryUpdateInput = {
       ...otherData,
       slug,
     };
@@ -364,7 +367,7 @@ export async function PUT(
 
 // DELETE endpoint to delete a story
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {

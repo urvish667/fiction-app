@@ -31,10 +31,10 @@ export async function GET(
     const skip = (page - 1) * limit;
 
     // Build filter conditions
-    const where: any = {
+    const where = {
       storyId,
       parentId: parentId === "null" ? null : parentId,
-    };
+    } as const;
 
     // Execute query with count
     const [comments, total] = await Promise.all([

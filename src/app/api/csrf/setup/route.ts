@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { setCsrfCookie, CSRF_COOKIE_NAME } from '@/lib/security/csrf';
 
 /**
@@ -7,7 +7,7 @@ import { setCsrfCookie, CSRF_COOKIE_NAME } from '@/lib/security/csrf';
  * This endpoint generates a new CSRF token and sets it in a cookie.
  * It should be called when the application loads to ensure a CSRF token is available.
  */
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // Generate a new CSRF token and set it in a cookie
     const token = await setCsrfCookie();

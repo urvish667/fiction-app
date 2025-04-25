@@ -76,7 +76,48 @@ export async function GET(
     }
 
     // Build the query for recommendations
-    const query: any = {
+    const query: {
+      where: {
+        storyId: string;
+        recommendedStory?: {
+          authorId?: {
+            not: string;
+          };
+        };
+      };
+      orderBy: {
+        score: "desc";
+      };
+      take: number;
+      include: {
+        recommendedStory: {
+          include: {
+            author: {
+              select: {
+                id: true;
+                name: true;
+                username: true;
+                image: true;
+              };
+            };
+            genre: true;
+            tags: {
+              include: {
+                tag: true;
+              };
+            };
+            _count: {
+              select: {
+                likes: true;
+                comments: true;
+                bookmarks: true;
+                chapters: true;
+              };
+            };
+          };
+        };
+      };
+    } = {
       where: {
         storyId: storyId,
       },

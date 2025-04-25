@@ -12,7 +12,7 @@ export async function GET() {
   try {
     // Check authentication
     const session = await getServerSession(authOptions);
-    
+
     if (!session || !session.user) {
       return NextResponse.json<ApiResponse<null>>({
         success: false,
@@ -22,7 +22,7 @@ export async function GET() {
 
     // Get user ID from session
     const userId = session.user.id;
-    
+
     if (!userId) {
       return NextResponse.json<ApiResponse<null>>({
         success: false,
@@ -32,14 +32,24 @@ export async function GET() {
 
     // Fetch user stories
     const stories = await getUserStories(userId);
-    
-    return NextResponse.json<ApiResponse<any>>({
+
+    return NextResponse.json<ApiResponse<Array<{
+      id: string;
+      title: string;
+      status: string;
+      createdAt: Date;
+      updatedAt: Date;
+      reads: number;
+      likes: number;
+      comments: number;
+      chapters: number;
+    }>>>({
       success: true,
       data: stories,
     });
   } catch (error) {
     console.error("Error fetching user stories:", error);
-    
+
     return NextResponse.json<ApiResponse<null>>({
       success: false,
       error: "Failed to fetch user stories",

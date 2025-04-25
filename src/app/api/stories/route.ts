@@ -4,7 +4,6 @@ import { z } from "zod";
 import { prisma } from "@/lib/auth/db-adapter";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { slugify } from "@/lib/utils";
-import { calculateStoryStatus, isStoryPublic } from "@/lib/story-helpers";
 import { ViewService } from "@/services/view-service";
 import { Prisma } from "@prisma/client";
 
@@ -53,7 +52,7 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit;
 
     // Build filter conditions
-    const where: any = {};
+    const where: Prisma.StoryWhereInput = {};
 
     if (genre) {
       // Use case-insensitive matching for genre name
@@ -306,16 +305,16 @@ export async function POST(request: NextRequest) {
     const { genre, language, ...otherData } = validatedData;
 
     // Prepare data for Prisma with proper relation handling
-    const createData: any = {
+    const createData: Prisma.StoryCreateInput = {
       ...otherData,
       slug,
-      authorId: session.user.id,
+      author: { connect: { id: session.user.id } },
     };
 
     // Handle genre relation if provided - use genreId field directly
     if (genre) {
       console.log('Using genre ID:', genre);
-      createData.genreId = genre;
+      createData.genre = { connect: { id: genre } };
     }
 
     // Handle language relation if provided - use languageId field directly
@@ -325,7 +324,7 @@ export async function POST(request: NextRequest) {
       // Check if language is a name (like "English") or an ID
       if (language.length > 20 && language.startsWith('c')) {
         // Looks like an ID, use directly
-        createData.languageId = language;
+        createData.language = { connect: { id: language } };
       } else {
         // Looks like a name, try to find the language by name
         try {
@@ -337,7 +336,7 @@ export async function POST(request: NextRequest) {
 
           if (languageObj) {
             console.log('Found language by name:', languageObj.name, 'with ID:', languageObj.id);
-            createData.languageId = languageObj.id;
+            createData.language = { connect: { id: languageObj.id } };
           } else {
             console.log('Language not found by name:', language);
           }

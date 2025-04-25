@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/auth/db-adapter";
@@ -10,7 +10,7 @@ import { prisma } from "@/lib/auth/db-adapter";
  * Note: This endpoint is primarily for logged-in users to refresh their session.
  * For email verification, we handle the verification in the verify-email API endpoint.
  */
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
     // Get current session
     const session = await getServerSession(authOptions);
@@ -51,3 +51,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+

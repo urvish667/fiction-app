@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/auth/db-adapter";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { calculateStoryStatus, isStoryPublic } from "@/lib/story-helpers";
+import { calculateStoryStatus } from "@/lib/story-helpers";
 import { ViewService } from "@/services/view-service";
+import { Chapter, StoryResponse } from "@/types/story";
 
 // GET endpoint to retrieve a story by slug
 export async function GET(
@@ -62,7 +63,7 @@ export async function GET(
     });
 
     // Calculate story status
-    const storyStatus = calculateStoryStatus(chapters as any);
+    const storyStatus = calculateStoryStatus(chapters as Chapter[]);
 
     // Check if the story is a draft and the user is not the author
     if (storyStatus === "draft" && (!session?.user?.id || session.user.id !== story.authorId)) {
@@ -100,22 +101,49 @@ export async function GET(
       isBookmarked = !!bookmark;
     }
 
-    // Format the response
-    const formattedStory: any = {
-      ...story,
-      author: story.author,
-      // Extract tags safely
-      tags: Array.isArray(story.tags)
-        ? story.tags.map(storyTag => storyTag.tag?.name || '').filter(Boolean)
-        : [],
+    // Create a properly formatted story response
+    const formattedStory = {
+      id: story.id,
+      title: story.title,
+      slug: story.slug,
+      description: story.description || undefined, // Convert null to undefined
+      coverImage: story.coverImage || undefined,
+      genre: story.genre?.name || undefined,
+      language: story.language?.name || 'en',
+      isMature: story.isMature,
+      status: story.status,
+      wordCount: story.wordCount,
+      readCount: story.readCount,
+      authorId: story.authorId,
+      createdAt: story.createdAt,
+      updatedAt: story.updatedAt,
+
+      // Add author with correct type for donationMethod
+      author: story.author ? {
+        id: story.author.id,
+        name: story.author.name,
+        username: story.author.username,
+        image: story.author.image,
+        donationsEnabled: story.author.donationsEnabled,
+        donationMethod: story.author.donationMethod as 'paypal' | 'stripe' | null,
+        donationLink: story.author.donationLink,
+      } : undefined,
+
+      // Add counts from _count
       likeCount: story._count.likes,
       commentCount: story._count.comments,
       bookmarkCount: story._count.bookmarks,
       chapterCount: story._count.chapters,
+
+      // Add user interaction flags
       isLiked,
       isBookmarked,
-      _count: undefined,
-    };
+
+      // Add tags
+      tags: Array.isArray(story.tags)
+        ? story.tags.map(storyTag => storyTag.tag?.name || '').filter(Boolean)
+        : [],
+    } as StoryResponse & { tags: string[] };
 
     // Track view if not the author
     if (session?.user?.id !== story.authorId) {

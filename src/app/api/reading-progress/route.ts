@@ -100,7 +100,13 @@ export async function GET(request: NextRequest) {
     const storyId = searchParams.get("storyId");
 
     // Build query based on parameters
-    const where: any = {
+    const where: {
+      userId: string;
+      chapterId?: string;
+      chapter?: {
+        storyId: string;
+      };
+    } = {
       userId: session.user.id,
     };
 

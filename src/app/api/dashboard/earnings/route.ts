@@ -17,7 +17,7 @@ export async function GET(request: Request) {
   try {
     // Check authentication
     const session = await getServerSession(authOptions);
-    
+
     if (!session || !session.user) {
       return NextResponse.json<ApiResponse<null>>({
         success: false,
@@ -27,7 +27,7 @@ export async function GET(request: Request) {
 
     // Get user ID from session
     const userId = session.user.id;
-    
+
     if (!userId) {
       return NextResponse.json<ApiResponse<null>>({
         success: false,
@@ -37,14 +37,24 @@ export async function GET(request: Request) {
 
     // Fetch earnings data
     const earningsData = await getEarningsData(userId, timeRange);
-    
-    return NextResponse.json<ApiResponse<any>>({
+
+    return NextResponse.json<ApiResponse<{
+      total: number;
+      change: number;
+      recentDonations: Array<{
+        id: string;
+        amount: number;
+        donorName: string;
+        date: string;
+        storyTitle?: string;
+      }>;
+    }>>({
       success: true,
       data: earningsData,
     });
   } catch (error) {
     console.error("Error fetching earnings data:", error);
-    
+
     return NextResponse.json<ApiResponse<null>>({
       success: false,
       error: "Failed to fetch earnings data",

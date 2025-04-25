@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
       skipDuplicates: true,
     });
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Failed to upsert tags.' }, { status: 500 });
   }
 }
