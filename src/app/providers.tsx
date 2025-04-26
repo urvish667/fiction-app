@@ -10,7 +10,15 @@ type ProvidersProps = {
 
 export default function Providers({ children }: ProvidersProps) {
   return (
-    <SessionProvider refetchInterval={5 * 60} refetchOnWindowFocus={false}>
+    <SessionProvider
+      // Disable automatic polling completely to prevent Redis connection cycling
+      // Manual refreshes will be handled by useOptimizedSession hook
+      refetchInterval={0}
+      // Keep refetchOnWindowFocus disabled to prevent refreshes when window regains focus
+      refetchOnWindowFocus={false}
+      // Only refetch when the session is about to expire
+      refetchWhenOffline={false}
+    >
       <CsrfProvider>
         {children}
       </CsrfProvider>

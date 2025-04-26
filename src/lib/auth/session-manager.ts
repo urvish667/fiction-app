@@ -1,6 +1,6 @@
 /**
  * Session Manager
- * 
+ *
  * This module provides session management for the FableSpace application.
  * It includes utilities for tracking sessions, invalidating sessions,
  * and handling concurrent sessions.
@@ -35,49 +35,21 @@ export interface SessionInfo {
   status: SessionStatus;
 }
 
-// Redis client for session storage
-let redisClient: Redis | null = null;
+// Import the global Redis client
+import { getRedisClient } from '../redis';
 
 /**
  * Initialize the Redis client for session storage
+ * Uses the global Redis client singleton to prevent connection cycling
  */
 export function initSessionStorage(): Redis | null {
-  if (redisClient) {
-    return redisClient;
-  }
-  
-  // Check if Redis is enabled
+  // Check if Redis is enabled for sessions
   if (process.env.SESSION_REDIS_ENABLED !== 'true') {
     return null;
   }
-  
-  // Check if Redis URL is configured
-  const redisUrl = process.env.REDIS_URL;
-  if (!redisUrl) {
-    console.warn('Redis is enabled for session storage, but REDIS_URL is not set');
-    return null;
-  }
-  
-  try {
-    // Create Redis client
-    redisClient = new Redis(redisUrl, {
-      maxRetriesPerRequest: 3,
-      retryStrategy: (times) => {
-        // Exponential backoff with max 1 second
-        return Math.min(times * 100, 1000);
-      },
-    });
-    
-    // Handle connection errors
-    redisClient.on('error', (error) => {
-      console.error('Redis connection error:', error);
-    });
-    
-    return redisClient;
-  } catch (error) {
-    console.error('Failed to create Redis client:', error);
-    return null;
-  }
+
+  // Use the global Redis client instead of creating a new one
+  return getRedisClient();
 }
 
 /**
@@ -102,12 +74,12 @@ export async function createSession(
 ): Promise<SessionInfo> {
   // Generate session ID
   const sessionId = generateSessionId();
-  
+
   // Get client information
   const fingerprint = generateFingerprint(req);
   const userAgent = req.headers.get('user-agent') || 'unknown';
   const ip = req.ip || '127.0.0.1';
-  
+
   // Create session information
   const now = Date.now();
   const session: SessionInfo = {
@@ -121,7 +93,7 @@ export async function createSession(
     lastActivityAt: now,
     status: SessionStatus.ACTIVE,
   };
-  
+
   // Store session in Redis if available
   const redis = initSessionStorage();
   if (redis) {
@@ -133,17 +105,17 @@ export async function createSession(
         'EX',
         expiresIn
       );
-      
+
       // Add session to user's sessions
       await redis.sadd(`user:${userId}:sessions`, sessionId);
-      
+
       // Set expiration for user's sessions set
       await redis.expire(`user:${userId}:sessions`, expiresIn);
     } catch (error) {
       logError('Failed to store session in Redis', { error, userId, sessionId });
     }
   }
-  
+
   return session;
 }
 
@@ -161,13 +133,13 @@ export async function getSession(sessionId: string): Promise<SessionInfo | null>
       if (!sessionData) {
         return null;
       }
-      
+
       return JSON.parse(sessionData) as SessionInfo;
     } catch (error) {
       logError('Failed to get session from Redis', { error, sessionId });
     }
   }
-  
+
   return null;
 }
 
@@ -186,13 +158,13 @@ export async function updateSessionActivity(sessionId: string): Promise<boolean>
       if (!sessionData) {
         return false;
       }
-      
+
       // Parse session data
       const session = JSON.parse(sessionData) as SessionInfo;
-      
+
       // Update last activity time
       session.lastActivityAt = Date.now();
-      
+
       // Store updated session
       await redis.set(
         `session:${sessionId}`,
@@ -200,13 +172,13 @@ export async function updateSessionActivity(sessionId: string): Promise<boolean>
         'EX',
         Math.ceil((session.expiresAt - Date.now()) / 1000)
       );
-      
+
       return true;
     } catch (error) {
       logError('Failed to update session activity', { error, sessionId });
     }
   }
-  
+
   return false;
 }
 
@@ -225,13 +197,13 @@ export async function revokeSession(sessionId: string): Promise<boolean> {
       if (!sessionData) {
         return false;
       }
-      
+
       // Parse session data
       const session = JSON.parse(sessionData) as SessionInfo;
-      
+
       // Update session status
       session.status = SessionStatus.REVOKED;
-      
+
       // Store updated session
       await redis.set(
         `session:${sessionId}`,
@@ -239,16 +211,16 @@ export async function revokeSession(sessionId: string): Promise<boolean> {
         'EX',
         Math.ceil((session.expiresAt - Date.now()) / 1000)
       );
-      
+
       // Remove session from user's sessions
       await redis.srem(`user:${session.userId}:sessions`, sessionId);
-      
+
       return true;
     } catch (error) {
       logError('Failed to revoke session', { error, sessionId });
     }
   }
-  
+
   return false;
 }
 
@@ -268,12 +240,12 @@ export async function revokeAllSessions(
     try {
       // Get all session IDs for the user
       const sessionIds = await redis.smembers(`user:${userId}:sessions`);
-      
+
       // Filter out the excepted session ID
       const sessionsToRevoke = exceptSessionId
         ? sessionIds.filter(id => id !== exceptSessionId)
         : sessionIds;
-      
+
       // Revoke each session
       let revokedCount = 0;
       for (const sessionId of sessionsToRevoke) {
@@ -281,13 +253,13 @@ export async function revokeAllSessions(
           revokedCount++;
         }
       }
-      
+
       return revokedCount;
     } catch (error) {
       logError('Failed to revoke all sessions', { error, userId });
     }
   }
-  
+
   return 0;
 }
 
@@ -303,7 +275,7 @@ export async function getUserSessions(userId: string): Promise<SessionInfo[]> {
     try {
       // Get all session IDs for the user
       const sessionIds = await redis.smembers(`user:${userId}:sessions`);
-      
+
       // Get session information for each ID
       const sessions: SessionInfo[] = [];
       for (const sessionId of sessionIds) {
@@ -312,13 +284,13 @@ export async function getUserSessions(userId: string): Promise<SessionInfo[]> {
           sessions.push(JSON.parse(sessionData) as SessionInfo);
         }
       }
-      
+
       return sessions;
     } catch (error) {
       logError('Failed to get user sessions', { error, userId });
     }
   }
-  
+
   return [];
 }
 
@@ -334,24 +306,24 @@ export async function verifySession(req: NextRequest): Promise<SessionInfo | nul
       req,
       secret: process.env.NEXTAUTH_SECRET
     });
-    
+
     // If no token, return null
     if (!token) {
       return null;
     }
-    
+
     // Get session ID from token
     const sessionId = token.sessionId as string;
     if (!sessionId) {
       return null;
     }
-    
+
     // Get session information
     const session = await getSession(sessionId);
     if (!session) {
       return null;
     }
-    
+
     // Check session status
     if (session.status !== SessionStatus.ACTIVE) {
       logWarning('Session is not active', {
@@ -361,7 +333,7 @@ export async function verifySession(req: NextRequest): Promise<SessionInfo | nul
       });
       return null;
     }
-    
+
     // Check session expiration
     if (Date.now() >= session.expiresAt) {
       logWarning('Session has expired', {
@@ -371,7 +343,7 @@ export async function verifySession(req: NextRequest): Promise<SessionInfo | nul
       });
       return null;
     }
-    
+
     // Verify fingerprint
     const currentFingerprint = generateFingerprint(req);
     if (session.fingerprint !== currentFingerprint) {
@@ -383,10 +355,10 @@ export async function verifySession(req: NextRequest): Promise<SessionInfo | nul
       });
       return null;
     }
-    
+
     // Update session activity
     await updateSessionActivity(sessionId);
-    
+
     return session;
   } catch (error) {
     logError('Session verification error', { error });
@@ -402,7 +374,7 @@ export async function verifySession(req: NextRequest): Promise<SessionInfo | nul
 export async function verifySessionMiddleware(req: NextRequest): Promise<NextResponse | null> {
   // Verify the session
   const session = await verifySession(req);
-  
+
   // If no session or invalid session, return 401 Unauthorized
   if (!session) {
     return createErrorResponse(
@@ -410,7 +382,7 @@ export async function verifySessionMiddleware(req: NextRequest): Promise<NextRes
       'Authentication required'
     );
   }
-  
+
   return null;
 }
 
@@ -424,7 +396,7 @@ export function withSession(
   return async function sessionHandler(req: NextRequest) {
     // Verify the session
     const session = await verifySession(req);
-    
+
     // If no session or invalid session, return 401 Unauthorized
     if (!session) {
       return createErrorResponse(
@@ -432,7 +404,7 @@ export function withSession(
         'Authentication required'
       );
     }
-    
+
     // Call the original handler with the session
     return handler(req, session);
   };
@@ -449,32 +421,32 @@ export function limitConcurrentSessions(maxSessions: number = 5) {
       req,
       secret: process.env.NEXTAUTH_SECRET
     });
-    
+
     // If no token, continue (will be handled by authentication middleware)
     if (!token) {
       return null;
     }
-    
+
     // Get user ID from token
     const userId = token.sub as string;
     if (!userId) {
       return null;
     }
-    
+
     // Get session ID from token
     const sessionId = token.sessionId as string;
     if (!sessionId) {
       return null;
     }
-    
+
     // Get all sessions for the user
     const sessions = await getUserSessions(userId);
-    
+
     // If the number of sessions exceeds the limit, revoke the oldest sessions
     if (sessions.length > maxSessions) {
       // Sort sessions by creation time (oldest first)
       const sortedSessions = [...sessions].sort((a, b) => a.createdAt - b.createdAt);
-      
+
       // Keep the current session and the newest sessions up to the limit
       const sessionsToKeep = new Set([
         sessionId,
@@ -482,14 +454,14 @@ export function limitConcurrentSessions(maxSessions: number = 5) {
           .slice(-(maxSessions - 1))
           .map(s => s.id)
       ]);
-      
+
       // Revoke sessions that are not in the keep list
       for (const session of sortedSessions) {
         if (!sessionsToKeep.has(session.id)) {
           await revokeSession(session.id);
         }
       }
-      
+
       // Log the session limit enforcement
       logWarning('Enforced session limit for user', {
         userId,
@@ -499,7 +471,7 @@ export function limitConcurrentSessions(maxSessions: number = 5) {
         revokedSessions: sessions.length - maxSessions,
       });
     }
-    
+
     return null;
   };
 }

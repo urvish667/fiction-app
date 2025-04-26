@@ -1,6 +1,6 @@
 /**
  * Enhanced Rate Limiting Utility
- * 
+ *
  * This module provides enhanced rate limiting for the FableSpace application.
  * It extends the base rate limiting implementation with additional features
  * like IP allowlisting, distributed rate limiting with Redis, and more
@@ -71,6 +71,14 @@ export const rateLimitConfigs = {
     trackSuspiciousActivity: true,
   },
 
+  // Session endpoints (optimized to reduce polling load)
+  session: {
+    limit: 60,
+    windowMs: 60 * 60 * 1000, // 1 hour
+    useProgressiveBackoff: false,
+    trackSuspiciousActivity: false,
+  },
+
   // Credential login endpoints (more strict)
   credentialAuth: {
     limit: 5,
@@ -131,19 +139,19 @@ export async function getClientIp(req: NextRequest): Promise<string> {
   // Try to get the real IP from headers (if behind a proxy)
   try {
     const headersList = await headers();
-    
+
     // Check for Cloudflare headers first
     const cfConnectingIp = headersList.get('cf-connecting-ip');
     if (cfConnectingIp) {
       return cfConnectingIp.trim();
     }
-    
+
     // Then check for standard forwarded headers
     const forwardedFor = headersList.get('x-forwarded-for');
     if (forwardedFor) {
       return forwardedFor.split(',')[0].trim();
     }
-    
+
     // Check for Vercel-specific headers
     const vercelIp = headersList.get('x-vercel-forwarded-for');
     if (vercelIp) {
@@ -220,14 +228,14 @@ const suspiciousActivityStore = new Map<string, { count: number; lastSeen: numbe
 // Clean up expired entries periodically
 setInterval(() => {
   const now = Date.now();
-  
+
   // Clean up rate limit entries
   for (const [key, value] of inMemoryStore.entries()) {
     if (now > value.resetTime) {
       inMemoryStore.delete(key);
     }
   }
-  
+
   // Clean up suspicious activity entries (keep for 24 hours)
   for (const [key, value] of suspiciousActivityStore.entries()) {
     if (now - value.lastSeen > 24 * 60 * 60 * 1000) {
@@ -247,10 +255,10 @@ function trackSuspiciousActivity(ip: string, path: string, overLimitFactor: numb
   if (overLimitFactor < threshold) {
     return;
   }
-  
+
   const key = `${ip}:${path}`;
   const now = Date.now();
-  
+
   // Update or create entry
   if (suspiciousActivityStore.has(key)) {
     const entry = suspiciousActivityStore.get(key)!;
@@ -262,7 +270,7 @@ function trackSuspiciousActivity(ip: string, path: string, overLimitFactor: numb
       lastSeen: now,
     });
   }
-  
+
   // Log suspicious activity
   const entry = suspiciousActivityStore.get(key)!;
   if (entry.count === 1 || entry.count % 10 === 0) { // Log on first occurrence and every 10th after
@@ -287,7 +295,7 @@ function isIpAllowlisted(ip: string, allowlistedIps: string[] = []): boolean {
   if (allowlistedIps.includes(ip)) {
     return true;
   }
-  
+
   // Environment variable allowlist
   const envAllowlist = process.env.RATE_LIMIT_ALLOWLIST;
   if (envAllowlist) {
@@ -296,9 +304,9 @@ function isIpAllowlisted(ip: string, allowlistedIps: string[] = []): boolean {
       return true;
     }
   }
-  
+
   // TODO: Add CIDR range checking for more sophisticated allowlisting
-  
+
   return false;
 }
 
@@ -339,7 +347,7 @@ export async function rateLimit(
 
   // Get client IP
   const clientIp = await getClientIp(req);
-  
+
   // Check if IP is allowlisted
   if (isIpAllowlisted(clientIp, allowlistedIps)) {
     return {
@@ -391,17 +399,17 @@ export async function rateLimit(
       if (useProgressiveBackoff && count > limit) {
         // Calculate how many times over the limit
         const overLimitFactor = Math.ceil(count / limit);
-        
+
         // Track suspicious activity if enabled
         if (trackSuspicious) {
           trackSuspiciousActivity(
-            clientIp, 
-            req.nextUrl.pathname, 
+            clientIp,
+            req.nextUrl.pathname,
             overLimitFactor,
             suspiciousActivityThreshold || defaultConfig.suspiciousActivityThreshold!
           );
         }
-        
+
         // Apply progressive backoff, capped at maxBackoffFactor
         backoffFactor = Math.min(overLimitFactor, maxBackoffFactor || 10);
       }
@@ -460,17 +468,17 @@ export async function rateLimit(
   if (useProgressiveBackoff && record.count > limit) {
     // Calculate how many times over the limit
     const overLimitFactor = Math.ceil(record.count / limit);
-    
+
     // Track suspicious activity if enabled
     if (trackSuspicious) {
       trackSuspiciousActivity(
-        clientIp, 
-        req.nextUrl.pathname, 
+        clientIp,
+        req.nextUrl.pathname,
         overLimitFactor,
         suspiciousActivityThreshold || defaultConfig.suspiciousActivityThreshold!
       );
     }
-    
+
     // Apply progressive backoff, capped at maxBackoffFactor
     backoffFactor = Math.min(overLimitFactor, maxBackoffFactor || 10);
   }
@@ -558,43 +566,42 @@ export function createRateLimiter(config: Partial<RateLimitConfig> = {}) {
 }
 
 /**
- * Create a Redis client for rate limiting
+ * Get the Redis client for rate limiting
  * @returns A Redis client or null if not configured
  */
-export function createRedisClient(): Redis | null {
-  // Check if Redis is enabled
+export function getRateLimitRedisClient(): any | null {
+  // Check if we're in Edge Runtime
+  const isEdgeRuntime = typeof process !== 'undefined' &&
+    process.env.NEXT_RUNTIME === 'edge';
+
+  // Don't use Redis in Edge Runtime
+  if (isEdgeRuntime) {
+    return null;
+  }
+
+  // Check if Redis is enabled for rate limiting
   if (process.env.RATE_LIMIT_REDIS_ENABLED !== 'true') {
     return null;
   }
-  
-  // Check if Redis URL is configured
-  const redisUrl = process.env.REDIS_URL;
-  if (!redisUrl) {
-    console.warn('Redis is enabled for rate limiting, but REDIS_URL is not set');
-    return null;
-  }
-  
+
   try {
-    // Create Redis client
-    const redis = new Redis(redisUrl, {
-      maxRetriesPerRequest: 3,
-      retryStrategy: (times) => {
-        // Exponential backoff with max 1 second
-        return Math.min(times * 100, 1000);
-      },
-    });
-    
-    // Handle connection errors
-    redis.on('error', (error) => {
-      console.error('Redis connection error:', error);
-    });
-    
-    return redis;
+    // Import the shared Redis client from the main Redis module
+    const { getRedisClient } = require('../redis');
+    return getRedisClient();
   } catch (error) {
-    console.error('Failed to create Redis client:', error);
+    console.warn('Failed to get Redis client for rate limiting:', error);
     return null;
   }
 }
 
 // Export a singleton Redis client for rate limiting
-export const redisClient = typeof process !== 'undefined' ? createRedisClient() : null;
+// Only initialize if not in Edge Runtime
+let redisClient: any = null;
+if (typeof process !== 'undefined' && process.env.NEXT_RUNTIME !== 'edge') {
+  try {
+    redisClient = getRateLimitRedisClient();
+  } catch (error) {
+    console.warn('Failed to initialize Redis client for rate limiting:', error);
+  }
+}
+export { redisClient };

@@ -1,9 +1,8 @@
 import { prisma } from '@/lib/prisma';
 import { Notification } from '@prisma/client';
-import { redis, REDIS_CHANNELS } from './redis';
+import { REDIS_CHANNELS, getRedisClient } from './redis';
 import { logger } from '@/lib/logger';
-import { notificationQueue, inMemoryQueue } from './notification-queue';
-import { sendToUser } from './websocket';
+import { createNotification as createNotificationExternal, queueNotification as queueNotificationExternal } from './notification-service-client';
 
 /**
  * Parameters for creating a notification
@@ -14,23 +13,6 @@ export interface CreateNotificationParams {
   title: string;
   message: string;
   content?: Record<string, any>;
-}
-
-/**
- * Initialize the notification system
- */
-export function initNotificationSystem(): void {
-  // Initialize notification queue with processor
-  notificationQueue.initNotificationQueue(async (job) => {
-    return await createNotification(job.data);
-  });
-
-  // Set processor for in-memory queue (fallback)
-  inMemoryQueue.setProcessor(async (job) => {
-    return await createNotification(job.data);
-  });
-
-  logger.info('Notification system initialized');
 }
 
 /**
@@ -47,7 +29,6 @@ export async function createNotification(params: CreateNotificationParams): Prom
         type,
         title,
         message,
-        content: content ? JSON.stringify(content) : null,
       },
     });
 
@@ -59,15 +40,21 @@ export async function createNotification(params: CreateNotificationParams): Prom
       },
     });
 
-    // Publish notification to Redis for real-time delivery
-    if (redis) {
-      try {
-        const notificationData = {
-          ...notification,
-          content: content || null,
-        };
+    // Send to notification service via Redis
+    try {
+      // Add the content field for the external notification service
+      // This field is not stored in the database but is needed by the external service
+      const notificationData = {
+        ...notification,
+        content: content || null, // Add content for external service
+      };
 
-        await redis.publish(
+      // Get the Redis client from the global singleton
+      const redisClient = getRedisClient();
+
+      // Publish to Redis for the external notification service to pick up
+      if (redisClient) {
+        await redisClient.publish(
           REDIS_CHANNELS.NOTIFICATIONS,
           JSON.stringify({
             userId,
@@ -75,23 +62,23 @@ export async function createNotification(params: CreateNotificationParams): Prom
           })
         );
 
-        logger.debug(`Published notification to Redis channel: ${REDIS_CHANNELS.NOTIFICATIONS}`);
-      } catch (error) {
-        logger.error('Failed to publish notification to Redis:', error);
+        // Add detailed log for comment notifications to verify Redis usage
+        if (type === 'comment') {
+          logger.info(`REDIS PUB/SUB: Comment notification for user ${userId} published to Redis channel: ${REDIS_CHANNELS.NOTIFICATIONS}`);
+          logger.info(`REDIS PUB/SUB DATA: ${JSON.stringify({
+            userId,
+            notificationType: type,
+            title,
+            hasContent: !!content
+          })}`);
+        } else {
+          logger.debug(`Published notification to Redis channel: ${REDIS_CHANNELS.NOTIFICATIONS}`);
+        }
+      } else {
+        logger.warn('Redis client not available for notification delivery');
       }
-    } else {
-      // Fallback to direct WebSocket delivery if Redis is not available
-      try {
-        sendToUser(userId, {
-          type: 'notification',
-          data: {
-            ...notification,
-            content: content || null,
-          },
-        });
-      } catch (error) {
-        logger.error('Failed to send notification via WebSocket:', error);
-      }
+    } catch (error) {
+      logger.error('Failed to publish notification to Redis:', error);
     }
 
     return notification;
@@ -132,10 +119,13 @@ export async function markNotificationsAsRead(userId: string, notificationIds?: 
       data: { unreadNotifications: 0 },
     });
 
+    // Get the Redis client from the global singleton
+    const redisClient = getRedisClient();
+
     // Publish update to Redis for real-time delivery
-    if (redis) {
+    if (redisClient) {
       try {
-        await redis.publish(
+        await redisClient.publish(
           REDIS_CHANNELS.NOTIFICATIONS,
           JSON.stringify({
             userId,
@@ -165,10 +155,13 @@ export async function deleteNotification(userId: string, notificationId: string)
       },
     });
 
+    // Get the Redis client from the global singleton
+    const redisClient = getRedisClient();
+
     // Publish update to Redis for real-time delivery
-    if (redis) {
+    if (redisClient) {
       try {
-        await redis.publish(
+        await redisClient.publish(
           REDIS_CHANNELS.NOTIFICATIONS,
           JSON.stringify({
             userId,
@@ -224,21 +217,12 @@ export async function getNotifications(
       take: limit,
     });
 
-    // Process content field for each notification
+    // Return notifications without content processing
+    // since the content field is not stored in the database
     const processedNotifications = notifications.map(notification => {
-      let content = null;
-
-      if (notification.content) {
-        try {
-          content = JSON.parse(notification.content as string);
-        } catch (error) {
-          logger.error(`Failed to parse notification content for ID ${notification.id}:`, error);
-        }
-      }
-
       return {
         ...notification,
-        content,
+        content: null, // No content field in the database model
       };
     });
 
@@ -262,23 +246,12 @@ export async function getNotifications(
  */
 export async function queueNotification(params: CreateNotificationParams, delay: number = 0) {
   try {
-    // Try to use BullMQ queue
-    const jobId = await notificationQueue.addToQueue(params, delay);
-
-    // Fall back to in-memory queue if BullMQ is not available
-    if (!jobId) {
-      logger.warn('Using in-memory queue for notification');
-      inMemoryQueue.enqueue(params, delay);
-    }
+    // Use the external notification service client
+    await queueNotificationExternal(params, delay);
   } catch (error) {
     logger.error('Failed to queue notification:', error);
 
-    // Fall back to in-memory queue on error
-    inMemoryQueue.enqueue(params, delay);
+    // Create notification immediately as fallback
+    await createNotification(params);
   }
-}
-
-// Initialize notification system
-if (typeof window === 'undefined') {
-  initNotificationSystem();
 }

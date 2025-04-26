@@ -311,25 +311,41 @@ export function useNotifications({
     const getToken = async () => {
       try {
         // Get token from session or fetch from API
+        console.log('Fetching WebSocket token...');
         const response = await fetch('/api/auth/ws-token');
+
         if (!response.ok) {
-          throw new Error('Failed to get WebSocket token');
+          const errorText = await response.text();
+          console.error(`Failed to get WebSocket token: ${response.status} ${response.statusText}`, errorText);
+          throw new Error(`Failed to get WebSocket token: ${response.status} ${response.statusText}`);
         }
 
         const { token } = await response.json();
+        console.log('WebSocket token received successfully');
+
+        // Log WebSocket URL for debugging
+        const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001/api/ws';
+        console.log(`Connecting to WebSocket server at: ${wsUrl}`);
 
         // Initialize WebSocket client
         const wsClient = getWebSocketClient({
-          url: process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001/api/ws',
+          url: wsUrl,
           token,
           onMessage: handleWebSocketMessage,
-          onStatusChange: setWsStatus,
+          onStatusChange: (status) => {
+            console.log(`WebSocket status changed: ${status}`);
+            setWsStatus(status);
+          },
         });
 
         // Connect to WebSocket server
         if (wsClient) {
           wsClient.connect();
           wsConnectedRef.current = true;
+          console.log('WebSocket client connection initiated');
+        } else {
+          console.error('Failed to create WebSocket client');
+          setError('Failed to create WebSocket client');
         }
       } catch (error) {
         console.error('Failed to initialize WebSocket:', error);
@@ -359,14 +375,65 @@ export function useNotifications({
     // Skip polling if using mock data or WebSocket is connected
     if (useMockData || (useWebSocket && wsStatus === WebSocketStatus.CONNECTED)) return;
 
-    // Poll for new notifications every 15 seconds
-    const pollInterval = setInterval(() => {
-      fetchNotifications();
-    }, 15000); // 15 seconds
+    // Track page visibility
+    let isVisible = true;
+    let pollInterval: NodeJS.Timeout | null = null;
+
+    // Function to start polling
+    const startPolling = () => {
+      // Clear any existing interval
+      if (pollInterval) {
+        clearInterval(pollInterval);
+      }
+
+      // Poll for new notifications less frequently (60 seconds instead of 15)
+      // This reduces Redis connection cycling while still providing updates
+      pollInterval = setInterval(() => {
+        // Only poll if the page is visible
+        if (isVisible) {
+          console.log('Polling for notifications (fallback mode)');
+          fetchNotifications();
+        } else {
+          console.log('Skipping notification poll - page not visible');
+        }
+      }, 60000); // 60 seconds
+    };
+
+    // Handle visibility change
+    const handleVisibilityChange = () => {
+      isVisible = document.visibilityState === 'visible';
+
+      if (isVisible) {
+        console.log('Page became visible, fetching notifications');
+        // Fetch immediately when page becomes visible
+        fetchNotifications();
+        // Restart polling
+        startPolling();
+      } else {
+        console.log('Page hidden, pausing notification polling');
+        // Optionally clear the interval when page is hidden
+        // if (pollInterval) {
+        //   clearInterval(pollInterval);
+        //   pollInterval = null;
+        // }
+      }
+    };
+
+    // Initial fetch
+    fetchNotifications();
+
+    // Start polling
+    startPolling();
+
+    // Set up visibility change listener
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     // Clean up on unmount
     return () => {
-      clearInterval(pollInterval);
+      if (pollInterval) {
+        clearInterval(pollInterval);
+      }
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [useMockData, useWebSocket, wsStatus, fetchNotifications]);
 

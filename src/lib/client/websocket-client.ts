@@ -1,6 +1,6 @@
 /**
  * WebSocket client for real-time notifications
- * 
+ *
  * This module provides a WebSocket client for real-time notifications.
  * It handles connection management, reconnection, and message handling.
  */
@@ -48,25 +48,66 @@ export class WebSocketClient {
    */
   public connect(): void {
     if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
+      console.log('WebSocket already connected or connecting, skipping connection attempt');
+      return;
+    }
+
+    // Check if the page is visible
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+      console.log('Page is not visible, delaying WebSocket connection');
+      // Set up a visibility change listener to connect when the page becomes visible
+      const visibilityListener = () => {
+        if (document.visibilityState === 'visible') {
+          console.log('Page became visible, connecting WebSocket');
+          document.removeEventListener('visibilitychange', visibilityListener);
+          this.connect();
+        }
+      };
+      document.addEventListener('visibilitychange', visibilityListener);
       return;
     }
 
     this.setStatus(WebSocketStatus.CONNECTING);
+    console.log('Connecting to WebSocket server...');
 
     try {
       // Add token to URL as query parameter
       const url = new URL(this.options.url);
       url.searchParams.append('token', this.options.token);
 
+      // Log connection URL (without showing the full token for security)
+      const urlString = url.toString();
+      const tokenIndex = urlString.indexOf('token=');
+      const safeUrl = tokenIndex > 0
+        ? urlString.substring(0, tokenIndex + 6) + '***'
+        : urlString;
+      console.log(`Connecting to WebSocket URL: ${safeUrl}`);
+
       // Create WebSocket connection
       this.ws = new WebSocket(url.toString());
 
       // Set up event handlers
-      this.ws.onopen = this.handleOpen.bind(this);
-      this.ws.onmessage = this.handleMessage.bind(this);
-      this.ws.onclose = this.handleClose.bind(this);
-      this.ws.onerror = this.handleError.bind(this);
+      this.ws.onopen = (event) => {
+        console.log('WebSocket connection opened');
+        this.handleOpen(event);
+      };
+
+      this.ws.onmessage = (event) => {
+        // Don't log every message to avoid console spam
+        this.handleMessage(event);
+      };
+
+      this.ws.onclose = (event) => {
+        console.log(`WebSocket connection closed: code=${event.code}, reason=${event.reason}`);
+        this.handleClose(event);
+      };
+
+      this.ws.onerror = (event) => {
+        console.error('WebSocket connection error:', event);
+        this.handleError(event);
+      };
     } catch (error) {
+      console.error('Error creating WebSocket connection:', error);
       this.handleError(error as Event);
     }
   }
@@ -127,7 +168,12 @@ export class WebSocketClient {
 
     // Set up ping interval to keep connection alive
     this.pingInterval = setInterval(() => {
-      this.send({ type: 'ping', timestamp: Date.now() });
+      // Only send ping if the page is visible or if we're in a non-browser environment
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+        this.send({ type: 'ping', timestamp: Date.now() });
+      } else {
+        console.log('Skipping WebSocket ping - page not visible');
+      }
     }, 30000);
   }
 
@@ -138,7 +184,7 @@ export class WebSocketClient {
   private handleMessage(event: MessageEvent): void {
     try {
       const data = JSON.parse(event.data);
-      
+
       // Call onMessage callback if provided
       if (this.options.onMessage) {
         this.options.onMessage(data);
@@ -153,7 +199,7 @@ export class WebSocketClient {
    */
   private handleClose(): void {
     this.clearTimers();
-    
+
     // Attempt to reconnect if not explicitly disconnected
     if (this.status !== WebSocketStatus.DISCONNECTED) {
       this.reconnect();
@@ -165,9 +211,19 @@ export class WebSocketClient {
    * @param event The error event
    */
   private handleError(event: Event): void {
+    // Log more detailed error information
     console.error('WebSocket error:', event);
+
+    // Log connection details for debugging
+    console.error('WebSocket connection details:', {
+      url: this.options.url,
+      status: this.status,
+      readyState: this.ws ? this.ws.readyState : 'no-websocket',
+      reconnectAttempts: this.reconnectAttempts
+    });
+
     this.setStatus(WebSocketStatus.ERROR);
-    
+
     // Attempt to reconnect
     this.reconnect();
   }
@@ -177,18 +233,40 @@ export class WebSocketClient {
    */
   private reconnect(): void {
     this.clearTimers();
-    
-    if (this.reconnectAttempts >= (this.options.maxReconnectAttempts || 5)) {
+
+    const maxAttempts = this.options.maxReconnectAttempts || 5;
+
+    if (this.reconnectAttempts >= maxAttempts) {
+      console.error(`Maximum reconnect attempts (${maxAttempts}) reached. Giving up.`);
       this.setStatus(WebSocketStatus.DISCONNECTED);
       return;
     }
-    
+
     this.reconnectAttempts++;
     this.setStatus(WebSocketStatus.RECONNECTING);
-    
+
+    const delay = this.options.reconnectInterval || 2000;
+    console.log(`Attempting to reconnect (attempt ${this.reconnectAttempts}/${maxAttempts}) in ${delay}ms...`);
+
     this.reconnectTimeout = setTimeout(() => {
-      this.connect();
-    }, this.options.reconnectInterval);
+      // Check if the page is visible before reconnecting
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+        console.log(`Reconnecting now (attempt ${this.reconnectAttempts}/${maxAttempts})...`);
+        this.connect();
+      } else {
+        console.log(`Delaying reconnect (attempt ${this.reconnectAttempts}/${maxAttempts}) - page not visible`);
+
+        // Set up a visibility change listener to reconnect when the page becomes visible
+        const visibilityListener = () => {
+          if (document.visibilityState === 'visible') {
+            console.log('Page became visible, attempting reconnect');
+            document.removeEventListener('visibilitychange', visibilityListener);
+            this.connect();
+          }
+        };
+        document.addEventListener('visibilitychange', visibilityListener);
+      }
+    }, delay);
   }
 
   /**
@@ -199,7 +277,7 @@ export class WebSocketClient {
       clearInterval(this.pingInterval);
       this.pingInterval = null;
     }
-    
+
     if (this.reconnectTimeout) {
       clearTimeout(this.reconnectTimeout);
       this.reconnectTimeout = null;
@@ -212,7 +290,7 @@ export class WebSocketClient {
    */
   private setStatus(status: WebSocketStatus): void {
     this.status = status;
-    
+
     // Call onStatusChange callback if provided
     if (this.options.onStatusChange) {
       this.options.onStatusChange(status);
@@ -233,13 +311,13 @@ export function getWebSocketClient(options?: WebSocketClientOptions): WebSocketC
   if (wsClient) {
     return wsClient;
   }
-  
+
   // Create new client if options are provided
   if (options) {
     wsClient = new WebSocketClient(options);
     return wsClient;
   }
-  
+
   return null;
 }
 

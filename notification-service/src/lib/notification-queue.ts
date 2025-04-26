@@ -7,33 +7,50 @@
 
 import { Queue, Worker, QueueEvents } from 'bullmq';
 import { redis } from './redis';
-import { logger } from '@/lib/logger';
-import { CreateNotificationParams } from './notification-service';
+import { logger } from './logger';
+import { CreateNotificationParams } from './types';
 
 // Queue name
 const QUEUE_NAME = 'notifications';
 
-// Queue options
-const QUEUE_OPTIONS = {
-  connection: redis,
-  defaultJobOptions: {
-    attempts: 3,
-    backoff: {
-      type: 'exponential',
-      delay: 1000,
+// Queue options with connection configuration
+const getQueueOptions = () => {
+  // Ensure we have the required Redis configuration
+  const host = process.env.REDIS_HOST;
+  const port = process.env.REDIS_PORT ? parseInt(process.env.REDIS_PORT) : 6380;
+  const password = process.env.REDIS_PASSWORD;
+
+  if (!host || !password) {
+    logger.error('Redis configuration is incomplete. REDIS_HOST and REDIS_PASSWORD are required.');
+    throw new Error('Redis configuration is incomplete');
+  }
+
+  return {
+    connection: {
+      host,
+      port,
+      password,
+      tls: process.env.REDIS_TLS === 'true' ? {} : undefined
     },
-    removeOnComplete: true,
-    removeOnFail: 100, // Keep the last 100 failed jobs
-  },
+    defaultJobOptions: {
+      attempts: 3,
+      backoff: {
+        type: 'exponential',
+        delay: 1000,
+      },
+      removeOnComplete: true,
+      removeOnFail: 100, // Keep the last 100 failed jobs
+    },
+  };
 };
 
-// Create notification queue instance
+// Queue instance
 let queueInstance: Queue | null = null;
 
-// Create worker
+// Worker instance
 let worker: Worker | null = null;
 
-// Create queue events
+// Queue events instance
 let queueEvents: QueueEvents | null = null;
 
 /**
@@ -42,25 +59,23 @@ let queueEvents: QueueEvents | null = null;
  */
 export function initNotificationQueue(
   processor: (job: { data: CreateNotificationParams }) => Promise<any>
-): Queue | null {
-  if (!redis) {
-    logger.warn('Redis client not available for notification queue');
-    return null;
-  }
-
+): void {
   try {
-    // Create queue
-    queueInstance = new Queue(QUEUE_NAME, QUEUE_OPTIONS);
+    // Get queue options with proper connection configuration
+    const queueOptions = getQueueOptions();
 
-    // Create worker
+    // Create queue
+    queueInstance = new Queue(QUEUE_NAME, queueOptions);
+
+    // Create worker with the same connection options
     worker = new Worker(QUEUE_NAME, processor, {
-      connection: redis,
+      connection: queueOptions.connection,
       concurrency: 5,
     });
 
-    // Create queue events
+    // Create queue events with the same connection options
     queueEvents = new QueueEvents(QUEUE_NAME, {
-      connection: redis,
+      connection: queueOptions.connection,
     });
 
     // Handle worker events
@@ -85,41 +100,13 @@ export function initNotificationQueue(
       logger.error(`Notification job ${jobId} failed (event):`, failedReason);
     });
 
-    logger.info('Notification queue initialized');
-
-    return queueInstance;
-  } catch (error) {
-    logger.error('Failed to initialize notification queue:', error);
-    return null;
-  }
-}
-
-/**
- * Add a notification to the queue
- * @param params The notification parameters
- * @param delay The delay in milliseconds
- * @returns The job ID
- */
-export async function addToQueue(
-  params: CreateNotificationParams,
-  delay: number = 0
-): Promise<string | null> {
-  if (!queueInstance) {
-    logger.error('Notification queue not initialized');
-    return null;
-  }
-
-  try {
-    const job = await queueInstance.add('notification', params, {
-      delay,
+    queueEvents.on('error', (error) => {
+      logger.error('Notification queue events error:', error);
     });
 
-    logger.info(`Added notification to queue with ID ${job.id}`);
-
-    return job.id;
+    logger.info('Notification queue initialized');
   } catch (error) {
-    logger.error('Failed to add notification to queue:', error);
-    return null;
+    logger.error('Failed to initialize notification queue:', error);
   }
 }
 
@@ -146,6 +133,35 @@ export async function closeNotificationQueue(): Promise<void> {
     logger.info('Notification queue closed');
   } catch (error) {
     logger.error('Failed to close notification queue:', error);
+  }
+}
+
+/**
+ * Add a notification to the queue
+ * @param params The notification parameters
+ * @param delay The delay in milliseconds
+ * @returns The job ID
+ */
+export async function addToQueue(
+  params: CreateNotificationParams,
+  delay: number = 0
+): Promise<string | null> {
+  if (!queueInstance) {
+    logger.error('Notification queue not initialized');
+    return null;
+  }
+
+  try {
+    const job = await queueInstance.add('notification', params, {
+      delay,
+    });
+
+    logger.info(`Added notification to queue with ID ${job.id}`);
+
+    return job.id || null;
+  } catch (error) {
+    logger.error('Failed to add notification to queue:', error);
+    return null;
   }
 }
 

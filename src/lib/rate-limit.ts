@@ -1,7 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Redis } from 'ioredis';
 import { headers } from 'next/headers';
 import { ErrorCode, createErrorResponse } from './error-handling';
+
+// Only import Redis in a way that's safe for Edge Runtime
+let Redis: any;
+let getRedisClient: () => any | null;
+
+// Check if we're in Edge Runtime
+const isEdgeRuntime = typeof process !== 'undefined' &&
+  process.env.NEXT_RUNTIME === 'edge';
+
+// Only import Redis if we're not in Edge Runtime
+if (!isEdgeRuntime) {
+  try {
+    // Dynamic import to avoid Edge Runtime errors
+    const ioredis = require('ioredis');
+    Redis = ioredis.Redis;
+    const redisModule = require('./redis');
+    getRedisClient = redisModule.getRedisClient;
+  } catch (error) {
+    console.warn('Redis import failed, using in-memory store only:', error);
+  }
+}
 
 // Configuration options
 interface RateLimitConfig {
@@ -10,7 +30,7 @@ interface RateLimitConfig {
   // Time window in seconds
   windowMs: number;
   // Optional Redis client for distributed rate limiting
-  redis?: Redis;
+  redis?: any;
   // Key prefix for Redis
   keyPrefix?: string;
   // Whether to include user ID in the rate limit key (if authenticated)
@@ -176,7 +196,7 @@ export async function rateLimit(
   const {
     limit,
     windowMs,
-    redis,
+    redis: configRedis,
     keyPrefix,
     includeUserContext,
     useProgressiveBackoff,
@@ -193,56 +213,63 @@ export async function rateLimit(
   // Current timestamp
   const now = Date.now();
 
-  // If using Redis
-  if (redis) {
-    try {
-      // Increment counter and set expiry
-      const multi = redis.multi();
-      multi.incr(key);
-      multi.pttl(key);
+  // If we're not in Edge Runtime and Redis is available
+  if (!isEdgeRuntime && typeof getRedisClient === 'function') {
+    // Use the provided Redis client or get the shared one
+    const redis = configRedis || getRedisClient();
 
-      // If key is new, set expiry
-      multi.setnx(key, '1');
-      multi.pexpire(key, windowMs);
+    if (redis) {
+      try {
+        // Increment counter and set expiry
+        const multi = redis.multi();
+        multi.incr(key);
+        multi.pttl(key);
 
-      const results = await multi.exec();
-      if (!results) {
-        throw new Error('Redis transaction failed');
+        // If key is new, set expiry
+        multi.setnx(key, '1');
+        multi.pexpire(key, windowMs);
+
+        const results = await multi.exec();
+        if (!results) {
+          throw new Error('Redis transaction failed');
+        }
+
+        const count = results[0][1] as number;
+        let ttl = results[1][1] as number;
+
+        // If TTL is -1 (no expiry set), set it now
+        if (ttl === -1) {
+          await redis.pexpire(key, windowMs);
+          ttl = windowMs;
+        }
+
+        const resetTime = now + ttl;
+        const remaining = Math.max(0, limit - count);
+
+        // Calculate backoff factor if progressive backoff is enabled
+        let backoffFactor = 1;
+        if (useProgressiveBackoff && count > limit) {
+          // Calculate how many times over the limit
+          const overLimitFactor = Math.ceil(count / limit);
+          // Apply progressive backoff, capped at maxBackoffFactor
+          backoffFactor = Math.min(overLimitFactor, maxBackoffFactor || 10);
+        }
+
+        return {
+          success: count <= limit,
+          limit,
+          remaining,
+          reset: Math.ceil(resetTime / 1000), // Reset time in seconds
+          ...(useProgressiveBackoff && { backoffFactor }),
+        };
+      } catch (error) {
+        console.error('Redis rate limiting error:', error);
+        // Fallback to in-memory store on Redis error
       }
-
-      const count = results[0][1] as number;
-      let ttl = results[1][1] as number;
-
-      // If TTL is -1 (no expiry set), set it now
-      if (ttl === -1) {
-        await redis.pexpire(key, windowMs);
-        ttl = windowMs;
-      }
-
-      const resetTime = now + ttl;
-      const remaining = Math.max(0, limit - count);
-
-      // Calculate backoff factor if progressive backoff is enabled
-      let backoffFactor = 1;
-      if (useProgressiveBackoff && count > limit) {
-        // Calculate how many times over the limit
-        const overLimitFactor = Math.ceil(count / limit);
-        // Apply progressive backoff, capped at maxBackoffFactor
-        backoffFactor = Math.min(overLimitFactor, maxBackoffFactor || 10);
-      }
-
-      return {
-        success: count <= limit,
-        limit,
-        remaining,
-        reset: Math.ceil(resetTime / 1000), // Reset time in seconds
-        ...(useProgressiveBackoff && { backoffFactor }),
-      };
-    } catch (error) {
-      console.error('Redis rate limiting error:', error);
-      // Fallback to in-memory store on Redis error
     }
   }
+
+  // If we're in Edge Runtime or Redis is not available, use in-memory store
 
   // In-memory rate limiting
   if (!inMemoryStore.has(key)) {

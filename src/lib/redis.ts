@@ -4,13 +4,19 @@
  * This module provides a Redis client for use across the application.
  * It handles connection management, error handling, and provides
  * utility functions for common Redis operations.
+ *
+ * IMPORTANT: This is a singleton that should be used throughout the application.
+ * Do not create new Redis instances elsewhere.
  */
 
-import { Redis } from 'ioredis';
+import { Redis, RedisOptions } from 'ioredis';
 import { logger } from '@/lib/logger';
 
+// Global variable to track connection status to prevent excessive logging
+let connectionWarningLogged = false;
+
 // Redis client options
-const REDIS_OPTIONS = {
+export const REDIS_OPTIONS: RedisOptions = {
   maxRetriesPerRequest: 3,
   retryStrategy: (times: number) => {
     // Exponential backoff with max 1 second
@@ -25,10 +31,25 @@ const REDIS_OPTIONS = {
     }
     return false;
   },
+  // Add connection stability options
+  connectTimeout: 10000, // 10 seconds
+  keepAlive: 10000, // 10 seconds
+  // Disable auto-reconnect cycling
+  autoResubscribe: false,
+  autoResendUnfulfilledCommands: false,
+  // Add connection pool options
+  connectionName: 'fablespace-main'
 };
 
-// Redis client singleton
-let redisClient: Redis | null = null;
+// Redis client singleton - use a WeakMap to ensure garbage collection
+const globalRedisClient = global as unknown as {
+  redisClient: Redis | null;
+};
+
+// Initialize the global Redis client if it doesn't exist
+if (!globalRedisClient.redisClient) {
+  globalRedisClient.redisClient = null;
+}
 
 /**
  * Create a Redis client
@@ -37,6 +58,7 @@ let redisClient: Redis | null = null;
 export function createRedisClient(): Redis | null {
   // Check if Redis URL is configured
   const redisUrl = process.env.REDIS_URL;
+  let client: Redis | null = null;
 
   // If no Redis URL, try to construct one from individual components
   if (!redisUrl) {
@@ -49,33 +71,46 @@ export function createRedisClient(): Redis | null {
       // Construct Redis URL
       const protocol = tls ? 'rediss' : 'redis';
       const constructedUrl = `${protocol}://:${password}@${host}:${port}`;
-      logger.info(`Constructed Redis URL from components: ${host}:${port}`);
+
+      if (!connectionWarningLogged) {
+        logger.info(`Constructed Redis URL from components: ${host}:${port}`);
+        connectionWarningLogged = true;
+      }
 
       try {
         // Create Redis client with constructed URL
-        const client = new Redis(constructedUrl, REDIS_OPTIONS);
-        setupRedisEventHandlers(client);
-        return client;
+        client = new Redis(constructedUrl, REDIS_OPTIONS);
       } catch (error) {
         logger.error('Failed to create Redis client with constructed URL:', error);
         return null;
       }
     } else {
-      logger.warn('Redis configuration is incomplete. REDIS_HOST, REDIS_PORT, and REDIS_PASSWORD are required.');
+      if (!connectionWarningLogged) {
+        logger.warn('Redis configuration is incomplete. REDIS_HOST, REDIS_PORT, and REDIS_PASSWORD are required.');
+        connectionWarningLogged = true;
+      }
+      return null;
+    }
+  } else {
+    try {
+      // Create Redis client with provided URL
+      if (!connectionWarningLogged) {
+        logger.info(`Creating Redis client with URL: ${redisUrl.split('@').pop()}`); // Log only the host part for security
+        connectionWarningLogged = true;
+      }
+      client = new Redis(redisUrl, REDIS_OPTIONS);
+    } catch (error) {
+      logger.error('Failed to create Redis client:', error);
       return null;
     }
   }
 
-  try {
-    // Create Redis client with provided URL
-    logger.info(`Creating Redis client with URL: ${redisUrl.split('@').pop()}`); // Log only the host part for security
-    const client = new Redis(redisUrl, REDIS_OPTIONS);
+  // Set up event handlers if client was created
+  if (client) {
     setupRedisEventHandlers(client);
-    return client;
-  } catch (error) {
-    logger.error('Failed to create Redis client:', error);
-    return null;
   }
+
+  return client;
 }
 
 /**
@@ -86,6 +121,7 @@ function setupRedisEventHandlers(client: Redis): void {
   // Handle connection events
   client.on('connect', () => {
     logger.info('Redis client connected');
+    connectionWarningLogged = false; // Reset warning flag on successful connection
   });
 
   client.on('ready', () => {
@@ -101,7 +137,19 @@ function setupRedisEventHandlers(client: Redis): void {
   });
 
   client.on('reconnecting', () => {
-    logger.info('Redis client reconnecting');
+    // Only log reconnection attempts if we haven't logged too many
+    if (!connectionWarningLogged) {
+      logger.info('Redis client reconnecting');
+      connectionWarningLogged = true;
+    }
+  });
+
+  client.on('end', () => {
+    logger.warn('Redis client connection ended');
+    // Reset the global client when the connection ends
+    if (globalRedisClient.redisClient === client) {
+      globalRedisClient.redisClient = null;
+    }
   });
 }
 
@@ -110,10 +158,18 @@ function setupRedisEventHandlers(client: Redis): void {
  * @returns The Redis client instance or null if not configured
  */
 export function getRedisClient(): Redis | null {
-  if (!redisClient) {
-    redisClient = createRedisClient();
+  if (!globalRedisClient.redisClient) {
+    globalRedisClient.redisClient = createRedisClient();
   }
-  return redisClient;
+
+  // Check if the client is still connected
+  if (globalRedisClient.redisClient && !globalRedisClient.redisClient.status.includes('connect')) {
+    // If the client is disconnected, create a new one
+    closeRedisConnection().catch(err => logger.error('Error closing Redis connection:', err));
+    globalRedisClient.redisClient = createRedisClient();
+  }
+
+  return globalRedisClient.redisClient;
 }
 
 /**
@@ -145,9 +201,14 @@ export function createRedisKey(prefix: string, id: string): string {
  * Close the Redis client connection
  */
 export async function closeRedisConnection(): Promise<void> {
-  if (redisClient) {
-    await redisClient.quit();
-    redisClient = null;
+  if (globalRedisClient.redisClient) {
+    try {
+      await globalRedisClient.redisClient.quit();
+    } catch (error) {
+      logger.error('Error quitting Redis client:', error);
+    } finally {
+      globalRedisClient.redisClient = null;
+    }
   }
 }
 

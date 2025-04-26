@@ -10,17 +10,7 @@
     "lint": "next lint",
     "test": "node --max_old_space_size=4096 node_modules/.bin/jest",
     "test:watch": "node --max_old_space_size=4096 node_modules/.bin/jest --watch",
-    "test:coverage": "node --max_old_space_size=4096 node_modules/.bin/jest --coverage",
-    "scheduled-tasks": "node scripts/process-scheduled-chapters.js",
-    "scheduler:start": "node --experimental-modules scripts/test-scheduler.js",
-    "cleanup-reading-progress": "node scripts/cleanup-reading-progress.js",
-    "test:azure": "node scripts/test-azure-connection.js",
-    "migrate:s3-to-azure": "node scripts/migrate-s3-to-azure.js",
-    "test:db-connection": "node scripts/test-database-connection.js",
-    "migrate:database": "node scripts/migrate-database.js",
-    "migrate:comments": "node scripts/migrate-comments.js",
-    "verify:migration": "node scripts/verify-migration.js",
-    "ws:start": "node scripts/start-websocket-server.js"
+    "test:coverage": "node --max_old_space_size=4096 node_modules/.bin/jest --coverage"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.8.0",

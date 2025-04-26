@@ -95,9 +95,18 @@ Request body:
 - `content` - Additional content (optional)
 - `delay` - Delay in milliseconds (optional)
 
-## Polling for Updates
+## Real-Time Updates
 
-The system automatically polls for new notifications every 15 seconds. This provides a near-real-time experience without requiring WebSockets.
+The system uses a hybrid approach for real-time updates with page visibility awareness:
+
+1. **WebSockets (Primary)**: When available, WebSockets provide true real-time updates
+2. **Polling (Fallback)**: If WebSockets are not connected, the system falls back to polling every 60 seconds
+3. **Page Visibility**: Both WebSockets and polling respect page visibility:
+   - When the page is hidden (tab not active), polling is paused
+   - When the page becomes visible again, notifications are fetched immediately
+   - WebSocket connections and reconnections are managed based on page visibility
+
+This approach balances real-time updates with server performance, connection stability, and battery life.
 
 ## React Hook
 

@@ -5,6 +5,9 @@ import { rateLimit, rateLimitConfigs } from '@/lib/rate-limit';
 import { csrfProtection } from '@/lib/security/csrf';
 import { applySecurityHeaders } from '@/lib/security/headers';
 
+// Note: In Edge Runtime, we can't use Redis directly
+// The rate limiting will fall back to in-memory storage
+
 // Protected routes that require authentication
 const protectedRoutes = [
   '/write',

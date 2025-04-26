@@ -41,28 +41,59 @@ We'll enhance the existing API endpoints:
 - `DELETE /api/notifications/:id` - Delete a notification
 - `POST /api/notifications/test` - Create a test notification (for development)
 
-## 3. Client-Side Polling
+## 3. Client-Side Polling with WebSocket Fallback and Page Visibility
 
-Since WebSockets are not directly supported in Next.js App Router, we'll use polling for updates:
+The system uses WebSockets for real-time updates with a polling fallback, and respects page visibility:
 
 ```typescript
 // src/hooks/useNotifications.ts (excerpt)
 
-// Set up polling for notifications
+// Set up polling for notifications as fallback when WebSocket is not connected
 useEffect(() => {
-  // Skip polling if using mock data
-  if (useMockData) return;
+  // Skip polling if using mock data or WebSocket is connected
+  if (useMockData || (useWebSocket && wsStatus === WebSocketStatus.CONNECTED)) return;
 
-  // Poll for new notifications every 15 seconds
-  const pollInterval = setInterval(() => {
-    fetchNotifications();
-  }, 15000); // 15 seconds
+  // Track page visibility
+  let isVisible = true;
+  let pollInterval: NodeJS.Timeout | null = null;
+
+  // Function to start polling
+  const startPolling = () => {
+    // Poll for new notifications less frequently (60 seconds instead of 15)
+    pollInterval = setInterval(() => {
+      // Only poll if the page is visible
+      if (isVisible) {
+        console.log('Polling for notifications (fallback mode)');
+        fetchNotifications();
+      } else {
+        console.log('Skipping notification poll - page not visible');
+      }
+    }, 60000); // 60 seconds
+  };
+
+  // Handle visibility change
+  const handleVisibilityChange = () => {
+    isVisible = document.visibilityState === 'visible';
+
+    if (isVisible) {
+      // Fetch immediately when page becomes visible
+      fetchNotifications();
+      // Restart polling
+      startPolling();
+    }
+  };
+
+  // Set up visibility change listener
+  document.addEventListener('visibilitychange', handleVisibilityChange);
 
   // Clean up on unmount
   return () => {
-    clearInterval(pollInterval);
+    if (pollInterval) {
+      clearInterval(pollInterval);
+    }
+    document.removeEventListener('visibilitychange', handleVisibilityChange);
   };
-}, [useMockData, fetchNotifications]);
+}, [useMockData, useWebSocket, wsStatus, fetchNotifications]);
 ```
 
 ### Real-Time Options for Production
