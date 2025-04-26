@@ -20,10 +20,10 @@ export default function Home() {
     async function fetchMostViewedStories() {
       try {
         console.log('Fetching most viewed stories from home page')
-        const response = await fetch('/api/stories/most-viewed?limit=4')
+        const response = await fetch('/api/stories/most-viewed?limit=4&timeRange=all')
         if (response.ok) {
           const data = await response.json()
-          console.log('Received stories:', data.stories?.length || 0)
+          console.log('Most viewed API response:', data)
           setStories(data.stories || [])
         } else {
           console.error('Failed to fetch most viewed stories:', await response.text())
@@ -179,7 +179,7 @@ function StoryCard({ story, isTopStory = false }: { story: any, isTopStory?: boo
     <motion.div
       whileHover={{ y: -5 }}
       transition={{ duration: 0.2 }}
-      onClick={() => router.push(`/story/${story.id}`)}
+      onClick={() => router.push(`/story/${story.slug || story.id}`)}
       className="cursor-pointer"
     >
       <Card className={`h-full overflow-hidden flex flex-col ${isTopStory ? 'ring-2 ring-primary' : ''}`}>
@@ -189,6 +189,11 @@ function StoryCard({ story, isTopStory = false }: { story: any, isTopStory?: boo
             alt={story.title}
             fill
             className="object-cover transition-transform hover:scale-105"
+            unoptimized={true}
+            onError={(e) => {
+              // @ts-ignore - setting src on error
+              e.target.src = "/placeholder.svg";
+            }}
           />
           <Badge className="absolute top-2 right-2">
             {typeof story.genre === 'object' && story.genre !== null
@@ -214,9 +219,9 @@ function StoryCard({ story, isTopStory = false }: { story: any, isTopStory?: boo
         <CardFooter className="pt-0 flex justify-between">
           <div className="flex items-center gap-1 text-sm text-muted-foreground">
             <Heart size={16} className="text-muted-foreground" />
-            <span>{story.likeCount || story.likes || 0}</span>
+            <span>{(story.likeCount || story.likes || 0).toLocaleString()}</span>
           </div>
-          <span className="text-sm text-muted-foreground">{story.viewCount || story.readCount || 0} views</span>
+          <span className="text-sm text-muted-foreground">{(typeof story.viewCount === 'number' ? story.viewCount : story.readCount || 0).toLocaleString()} views</span>
         </CardFooter>
       </Card>
     </motion.div>

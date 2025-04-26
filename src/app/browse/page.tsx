@@ -207,6 +207,7 @@ function BrowseContent() {
       commentCount: story.commentCount,
       reads: story.readCount,
       readCount: story.readCount,
+      viewCount: story.viewCount, // Include the combined view count from the API
       readTime: Math.ceil(story.wordCount / 200), // Estimate read time based on word count
       date: story.createdAt ? new Date(story.createdAt) : new Date(),
       createdAt: story.createdAt ? new Date(story.createdAt) : new Date(),
@@ -315,9 +316,9 @@ function BrowseContent() {
         });
       case 'mostRead':
         return storiesCopy.sort((a, b) => {
-          const readsA = a.readCount || a.reads || 0;
-          const readsB = b.readCount || b.reads || 0;
-          return readsB - readsA;
+          const viewsA = a.viewCount || a.readCount || a.reads || 0;
+          const viewsB = b.viewCount || b.readCount || b.reads || 0;
+          return viewsB - viewsA;
         });
       default:
         return storiesCopy;

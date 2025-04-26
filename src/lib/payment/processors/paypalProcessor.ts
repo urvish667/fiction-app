@@ -39,9 +39,6 @@ export class PayPalPaymentProcessor implements PaymentProcessor {
         success: true,
         processorType: 'paypal',
         donationId: '',
-        // We're not using paypalLink anymore, but we need to include it for backward compatibility
-        // The UnifiedPaymentForm will check the processorType and render the appropriate form
-        paypalLink: null,
       };
     } catch (error) {
       logger.error('PayPal payment processing error:', error);

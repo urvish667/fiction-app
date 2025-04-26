@@ -3,20 +3,23 @@ import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
 import { deleteNotification } from "@/lib/notification-service";
+import { logger } from "@/lib/logger";
+import { withApiLogging } from "@/lib/monitoring/api-logger";
 
 /**
  * DELETE endpoint to delete a notification
  */
-export async function DELETE(
+export const DELETE = withApiLogging(async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
+  let session;
   try {
     const resolvedParams = await params;
     const notificationId = resolvedParams.id;
 
     // Check authentication
-    const session = await getServerSession(authOptions);
+    session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json(
         { error: "Unauthorized" },
@@ -38,6 +41,12 @@ export async function DELETE(
 
     // Check if the notification belongs to the user
     if (notification.userId !== session.user.id) {
+      logger.warn("Unauthorized notification deletion attempt", {
+        userId: session.user.id,
+        notificationId,
+        notificationOwnerId: notification.userId
+      });
+
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 403 }
@@ -51,10 +60,15 @@ export async function DELETE(
       message: "Notification deleted successfully",
     });
   } catch (error) {
-    console.error("Error deleting notification:", error);
+    logger.error("Error deleting notification:", {
+      error,
+      userId: session?.user?.id,
+      params
+    });
+
     return NextResponse.json(
       { error: "Failed to delete notification" },
       { status: 500 }
     );
   }
-}
+});

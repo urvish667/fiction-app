@@ -27,8 +27,6 @@ export interface PaymentResponse {
   donationId: string;
   // For Stripe
   clientSecret?: string;
-  // For PayPal
-  paypalLink?: string;
   // Error information
   error?: string;
   errorCode?: string;

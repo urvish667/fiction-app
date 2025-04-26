@@ -402,6 +402,10 @@ export class ViewService {
     endDate?: Date
   ): Promise<Map<string, number>> {
     try {
+      if (storyIds.length === 0) {
+        return new Map();
+      }
+
       const whereClause: any = {
         storyId: { in: storyIds },
       };
@@ -424,22 +428,21 @@ export class ViewService {
         }
       }
 
-      // Use a simpler approach with count
-      const viewCountMap = new Map<string, number>();
+      // Use a more efficient approach with groupBy
+      const viewCounts = await prisma.storyView.groupBy({
+        by: ['storyId'],
+        where: whereClause,
+        _count: true,
+      });
 
-      // Initialize all requested story IDs with 0 views
+      // Create a map with all story IDs initialized to 0
+      const viewCountMap = new Map<string, number>();
       storyIds.forEach(id => viewCountMap.set(id, 0));
 
-      // For each story ID, get the count directly
-      for (const storyId of storyIds) {
-        const count = await prisma.storyView.count({
-          where: {
-            ...whereClause,
-            storyId
-          }
-        });
-        viewCountMap.set(storyId, count);
-      }
+      // Update the map with actual counts
+      viewCounts.forEach(item => {
+        viewCountMap.set(item.storyId, item._count);
+      });
 
       return viewCountMap;
     } catch (error) {
@@ -464,16 +467,79 @@ export class ViewService {
     endDate?: Date
   ): Promise<Map<string, number>> {
     try {
-      // Get story view counts
-      const storyViewCountMap = await this.getBatchStoryViewCounts(storyIds, timeRange, startDate, endDate);
+      if (storyIds.length === 0) {
+        return new Map();
+      }
 
-      // Create a map for the combined counts, starting with story views
-      const combinedViewCountMap = new Map<string, number>(storyViewCountMap);
+      // Create time range filter
+      let createdAtFilter = {};
+      if (timeRange === 'custom' && (startDate || endDate)) {
+        // Use custom date range
+        createdAtFilter = {};
+        if (startDate) {
+          createdAtFilter = { ...createdAtFilter, gte: startDate };
+        }
+        if (endDate) {
+          createdAtFilter = { ...createdAtFilter, lt: endDate };
+        }
+      } else if (timeRange) {
+        // Use predefined time range
+        const rangeStartDate = this.getStartDateFromTimeRange(timeRange);
+        if (rangeStartDate) {
+          createdAtFilter = { gte: rangeStartDate };
+        }
+      }
 
-      // Get all chapters for these stories
-      const chapters = await prisma.chapter.findMany({
-        where: { storyId: { in: storyIds } },
-        select: { id: true, storyId: true }
+      // Run both queries in parallel for better performance
+      const [storyViewCounts, chapters] = await Promise.all([
+        // Get story view counts
+        prisma.storyView.groupBy({
+          by: ['storyId'],
+          where: {
+            storyId: { in: storyIds },
+            ...(Object.keys(createdAtFilter).length > 0 ? { createdAt: createdAtFilter } : {})
+          },
+          _count: true,
+        }),
+
+        // Get all chapters for these stories
+        prisma.chapter.findMany({
+          where: { storyId: { in: storyIds } },
+          select: { id: true, storyId: true }
+        })
+      ]);
+
+      // Create a map with all story IDs initialized to 0
+      const combinedViewCountMap = new Map<string, number>();
+      storyIds.forEach(id => combinedViewCountMap.set(id, 0));
+
+      // Add story view counts
+      storyViewCounts.forEach(item => {
+        combinedViewCountMap.set(item.storyId, item._count);
+      });
+
+      // If no chapters, return just story views
+      if (chapters.length === 0) {
+        return combinedViewCountMap;
+      }
+
+      // Get all chapter IDs
+      const allChapterIds = chapters.map(chapter => chapter.id);
+
+      // Get chapter view counts in a single query
+      const chapterViewCounts = await prisma.chapterView.groupBy({
+        by: ['chapterId'],
+        where: {
+          chapterId: { in: allChapterIds },
+          ...(Object.keys(createdAtFilter).length > 0 ? { createdAt: createdAtFilter } : {})
+        },
+        _count: true,
+      });
+
+      // Create a map of chapter ID to view count
+      const chapterViewCountMap = new Map<string, number>();
+      chapterViewCounts.forEach(item => {
+        chapterViewCountMap.set(item.chapterId, item._count);
       });
 
       // Group chapters by story ID
@@ -485,22 +551,17 @@ export class ViewService {
         return acc;
       }, {} as Record<string, string[]>);
 
-      // For each story with chapters, get chapter view counts
-      for (const storyId of Object.keys(chaptersByStory)) {
-        const chapterIds = chaptersByStory[storyId];
+      // For each story with chapters, add chapter views to story views
+      Object.entries(chaptersByStory).forEach(([storyId, chapterIds]) => {
+        // Sum up all chapter views for this story
+        const totalChapterViews = chapterIds.reduce((sum, chapterId) => {
+          return sum + (chapterViewCountMap.get(chapterId) || 0);
+        }, 0);
 
-        if (chapterIds.length > 0) {
-          // Get chapter view counts
-          const chapterViewCountMap = await this.getBatchChapterViewCounts(chapterIds, timeRange, startDate, endDate);
-
-          // Sum up all chapter views for this story
-          const totalChapterViews = Array.from(chapterViewCountMap.values()).reduce((sum, count) => sum + count, 0);
-
-          // Add chapter views to story views
-          const currentStoryViews = combinedViewCountMap.get(storyId) || 0;
-          combinedViewCountMap.set(storyId, currentStoryViews + totalChapterViews);
-        }
-      }
+        // Add chapter views to story views
+        const currentStoryViews = combinedViewCountMap.get(storyId) || 0;
+        combinedViewCountMap.set(storyId, currentStoryViews + totalChapterViews);
+      });
 
       return combinedViewCountMap;
     } catch (error) {
@@ -525,6 +586,10 @@ export class ViewService {
     endDate?: Date
   ): Promise<Map<string, number>> {
     try {
+      if (chapterIds.length === 0) {
+        return new Map();
+      }
+
       const whereClause: any = {
         chapterId: { in: chapterIds },
       };
@@ -547,22 +612,21 @@ export class ViewService {
         }
       }
 
-      // Use a simpler approach with count
-      const viewCountMap = new Map<string, number>();
+      // Use a more efficient approach with groupBy
+      const viewCounts = await prisma.chapterView.groupBy({
+        by: ['chapterId'],
+        where: whereClause,
+        _count: true,
+      });
 
-      // Initialize all requested chapter IDs with 0 views
+      // Create a map with all chapter IDs initialized to 0
+      const viewCountMap = new Map<string, number>();
       chapterIds.forEach(id => viewCountMap.set(id, 0));
 
-      // For each chapter ID, get the count directly
-      for (const chapterId of chapterIds) {
-        const count = await prisma.chapterView.count({
-          where: {
-            ...whereClause,
-            chapterId
-          }
-        });
-        viewCountMap.set(chapterId, count);
-      }
+      // Update the map with actual counts
+      viewCounts.forEach(item => {
+        viewCountMap.set(item.chapterId, item._count);
+      });
 
       return viewCountMap;
     } catch (error) {
@@ -587,29 +651,123 @@ export class ViewService {
     endDate?: Date
   ): Promise<string[]> {
     try {
-      // Simple approach: Get all published stories
+      // Create time range filter
+      let createdAtFilter = {};
+      if (timeRange === 'custom' && (startDate || endDate)) {
+        // Use custom date range
+        createdAtFilter = {};
+        if (startDate) {
+          createdAtFilter = { ...createdAtFilter, gte: startDate };
+        }
+        if (endDate) {
+          createdAtFilter = { ...createdAtFilter, lt: endDate };
+        }
+      } else if (timeRange) {
+        // Use predefined time range
+        const rangeStartDate = this.getStartDateFromTimeRange(timeRange);
+        if (rangeStartDate) {
+          createdAtFilter = { gte: rangeStartDate };
+        }
+      }
+
+      // Get all stories with their IDs (for debugging, include all statuses)
       const stories = await prisma.story.findMany({
-        where: { status: "published" },
-        select: { id: true },
+        // Include all stories regardless of status for debugging
+        select: { id: true, status: true },
       });
+
+      console.log('Found stories:', stories.length);
+      console.log('Story statuses:', stories.map(s => s.status));
 
       if (stories.length === 0) {
         return [];
       }
 
-      // Get the story IDs
       const storyIds = stories.map(story => story.id);
 
-      // Get view counts for all stories
-      const viewCountMap = await this.getBatchCombinedViewCounts(
-        storyIds,
-        timeRange,
-        startDate,
-        endDate
-      );
+      // Get story view counts
+      const storyViewCounts = await prisma.storyView.groupBy({
+        by: ['storyId'],
+        where: {
+          storyId: { in: storyIds },
+          ...(Object.keys(createdAtFilter).length > 0 ? { createdAt: createdAtFilter } : {})
+        },
+        _count: true,
+      });
 
-      // Convert to array, sort by count, and take top N
-      const sortedStories = Array.from(viewCountMap.entries())
+      // Get all chapters for these stories
+      const chapters = await prisma.chapter.findMany({
+        where: { storyId: { in: storyIds } },
+        select: { id: true, storyId: true }
+      });
+
+      // If no chapters, just use story views
+      if (chapters.length === 0) {
+        // Create a map of story ID to view count
+        const viewCountMap = new Map<string, number>();
+        storyIds.forEach(id => viewCountMap.set(id, 0));
+
+        // Add story view counts
+        storyViewCounts.forEach(item => {
+          viewCountMap.set(item.storyId, item._count);
+        });
+
+        // Sort and return top N
+        return Array.from(viewCountMap.entries())
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, limit)
+          .map(entry => entry[0]);
+      }
+
+      // Get all chapter IDs
+      const allChapterIds = chapters.map(chapter => chapter.id);
+
+      // Get chapter view counts
+      const chapterViewCounts = await prisma.chapterView.groupBy({
+        by: ['chapterId'],
+        where: {
+          chapterId: { in: allChapterIds },
+          ...(Object.keys(createdAtFilter).length > 0 ? { createdAt: createdAtFilter } : {})
+        },
+        _count: true,
+      });
+
+      // Create a map of chapter ID to view count
+      const chapterViewCountMap = new Map<string, number>();
+      chapterViewCounts.forEach(item => {
+        chapterViewCountMap.set(item.chapterId, item._count);
+      });
+
+      // Group chapters by story ID
+      const chaptersByStory = chapters.reduce((acc, chapter) => {
+        if (!acc[chapter.storyId]) {
+          acc[chapter.storyId] = [];
+        }
+        acc[chapter.storyId].push(chapter.id);
+        return acc;
+      }, {} as Record<string, string[]>);
+
+      // Create a map for combined view counts
+      const combinedViewCountMap = new Map<string, number>();
+      storyIds.forEach(id => combinedViewCountMap.set(id, 0));
+
+      // Add story view counts
+      storyViewCounts.forEach(item => {
+        combinedViewCountMap.set(item.storyId, item._count);
+      });
+
+      // Add chapter view counts
+      Object.entries(chaptersByStory).forEach(([storyId, chapterIds]) => {
+        const totalChapterViews = chapterIds.reduce((sum, chapterId) => {
+          return sum + (chapterViewCountMap.get(chapterId) || 0);
+        }, 0);
+
+        const currentStoryViews = combinedViewCountMap.get(storyId) || 0;
+        combinedViewCountMap.set(storyId, currentStoryViews + totalChapterViews);
+      });
+
+      // Sort by view count and take top N
+      const sortedStories = Array.from(combinedViewCountMap.entries())
         .sort((a, b) => b[1] - a[1])
         .slice(0, limit)
         .map(entry => entry[0]);

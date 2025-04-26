@@ -3,6 +3,10 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { prisma } from "@/lib/auth/db-adapter";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { logger } from "@/lib/logger";
+
+// Create a dedicated logger for the reading progress API
+const readingProgressLogger = logger.child('reading-progress-api');
 
 // Validation schema for updating reading progress
 const updateProgressSchema = z.object({
@@ -12,18 +16,24 @@ const updateProgressSchema = z.object({
 
 // PUT endpoint to update reading progress
 export async function PUT(request: NextRequest) {
+  let session;
+  let body;
+
   try {
     // Check authentication
-    const session = await getServerSession(authOptions);
+    session = await getServerSession(authOptions);
     if (!session?.user?.id) {
+      readingProgressLogger.warn("Unauthorized attempt to update reading progress");
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
       );
     }
 
+    readingProgressLogger.debug("Processing reading progress update", { userId: session.user.id });
+
     // Parse and validate request body
-    const body = await request.json();
+    body = await request.json();
     const validatedData = updateProgressSchema.parse(body);
 
     // Find the chapter to ensure it exists
@@ -33,6 +43,12 @@ export async function PUT(request: NextRequest) {
     });
 
     if (!chapter) {
+      readingProgressLogger.warn("Chapter not found for reading progress update", {
+        userId: session.user.id,
+        chapterId: validatedData.chapterId,
+        operation: 'updateReadingProgress'
+      });
+
       return NextResponse.json(
         { error: "Chapter not found" },
         { status: 404 }
@@ -41,6 +57,13 @@ export async function PUT(request: NextRequest) {
 
     // Don't track reading progress for the author
     if (chapter.story.authorId === session.user.id) {
+      readingProgressLogger.debug("Reading progress not tracked for author", {
+        userId: session.user.id,
+        chapterId: validatedData.chapterId,
+        storyId: chapter.story.id,
+        operation: 'updateReadingProgress'
+      });
+
       return NextResponse.json({
         message: "Reading progress not tracked for the author",
       });
@@ -66,16 +89,46 @@ export async function PUT(request: NextRequest) {
       },
     });
 
+    readingProgressLogger.debug("Reading progress updated successfully", {
+      userId: session.user.id,
+      chapterId: validatedData.chapterId,
+      progress: validatedData.progress,
+      operation: 'updateReadingProgress'
+    });
+
     return NextResponse.json(progress);
   } catch (error) {
     if (error instanceof z.ZodError) {
+      readingProgressLogger.warn("Validation error in reading progress update", {
+        userId: session?.user?.id,
+        errors: error.errors,
+        operation: 'updateReadingProgress'
+      });
+
       return NextResponse.json(
         { error: "Validation error", details: error.errors },
         { status: 400 }
       );
     }
 
-    console.error("Error updating reading progress:", error);
+    // Use structured logging
+    if (error instanceof Error) {
+      readingProgressLogger.error(error.message, {
+        userId: session?.user?.id,
+        chapterId: body?.chapterId,
+        operation: 'updateReadingProgress',
+        errorName: error.name,
+        stack: error.stack
+      });
+    } else {
+      readingProgressLogger.error("Error updating reading progress", {
+        error: String(error),
+        userId: session?.user?.id,
+        chapterId: body?.chapterId,
+        operation: 'updateReadingProgress'
+      });
+    }
+
     return NextResponse.json(
       { error: "Failed to update reading progress" },
       { status: 500 }
@@ -85,15 +138,20 @@ export async function PUT(request: NextRequest) {
 
 // GET endpoint to retrieve reading progress for a user
 export async function GET(request: NextRequest) {
+  let session;
+
   try {
     // Check authentication
-    const session = await getServerSession(authOptions);
+    session = await getServerSession(authOptions);
     if (!session?.user?.id) {
+      readingProgressLogger.warn("Unauthorized attempt to retrieve reading progress");
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
       );
     }
+
+    readingProgressLogger.debug("Retrieving reading progress", { userId: session.user.id });
 
     const { searchParams } = new URL(request.url);
     const chapterId = searchParams.get("chapterId");
@@ -156,6 +214,15 @@ export async function GET(request: NextRequest) {
     // Get total count for pagination
     const total = await prisma.readingProgress.count({ where });
 
+    readingProgressLogger.debug("Reading progress retrieved successfully", {
+      userId: session.user.id,
+      count: progress.length,
+      total,
+      page,
+      limit: safeLimit,
+      operation: 'getReadingProgress'
+    });
+
     return NextResponse.json({
       data: progress,
       pagination: {
@@ -166,7 +233,22 @@ export async function GET(request: NextRequest) {
       }
     });
   } catch (error) {
-    console.error("Error fetching reading progress:", error);
+    // Use structured logging
+    if (error instanceof Error) {
+      readingProgressLogger.error(error.message, {
+        userId: session?.user?.id,
+        operation: 'getReadingProgress',
+        errorName: error.name,
+        stack: error.stack
+      });
+    } else {
+      readingProgressLogger.error("Error fetching reading progress", {
+        error: String(error),
+        userId: session?.user?.id,
+        operation: 'getReadingProgress'
+      });
+    }
+
     return NextResponse.json(
       { error: "Failed to fetch reading progress" },
       { status: 500 }

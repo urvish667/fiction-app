@@ -11,12 +11,9 @@ type ProvidersProps = {
 export default function Providers({ children }: ProvidersProps) {
   return (
     <SessionProvider
-      // Disable automatic polling completely to prevent Redis connection cycling
-      // Manual refreshes will be handled by useOptimizedSession hook
-      refetchInterval={0}
-      // Keep refetchOnWindowFocus disabled to prevent refreshes when window regains focus
-      refetchOnWindowFocus={false}
-      // Only refetch when the session is about to expire
+      // Use default NextAuth polling behavior for better compatibility
+      // This is more reliable in production environments
+      // Don't refetch when offline
       refetchWhenOffline={false}
     >
       <CsrfProvider>

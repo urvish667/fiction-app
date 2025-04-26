@@ -11,7 +11,7 @@ export default function StoryMetadata({ story, className = "" }: StoryMetadataPr
     <div className={`flex flex-wrap gap-4 text-sm ${className}`}>
       <div className="flex items-center gap-1">
         <Eye size={16} className="text-muted-foreground" />
-        <span>{story.viewCount?.toLocaleString() || story.readCount?.toLocaleString() || 0} Views</span>
+        <span>{(typeof story.viewCount === 'number' ? story.viewCount : story.readCount || 0).toLocaleString()} Views</span>
       </div>
       <div className="flex items-center gap-1">
         <Heart size={16} className="text-muted-foreground" />

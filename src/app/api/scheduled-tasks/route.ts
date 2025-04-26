@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { processScheduledChapters } from "@/lib/scheduled-tasks";
+import { logger } from "@/lib/logger"; // Using Pino logger instead of console
 
 /**
  * API route to trigger scheduled tasks
@@ -14,8 +15,9 @@ export async function POST(request: NextRequest) {
     // Check for API key authorization
     const authHeader = request.headers.get("authorization");
     const apiKey = process.env.SCHEDULED_TASKS_API_KEY;
+
     if (!apiKey) {
-      console.warn("SCHEDULED_TASKS_API_KEY is not set in environment variables");
+      logger.warn("SCHEDULED_TASKS_API_KEY is not set in environment variables");
       return NextResponse.json(
         { error: "Server configuration error" },
         { status: 500 }
@@ -23,6 +25,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!authHeader || authHeader !== `Bearer ${apiKey}`) {
+      logger.warn("Unauthorized attempt to access scheduled tasks API");
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
@@ -34,7 +37,6 @@ export async function POST(request: NextRequest) {
     const tasks = body.tasks || ["all"];
 
     const results: Record<string, {
-      success: boolean;
       message: string;
       count?: number;
       details?: unknown;
@@ -44,11 +46,15 @@ export async function POST(request: NextRequest) {
     if (tasks.includes("all") || tasks.includes("publishScheduledChapters")) {
       const publishResult = await processScheduledChapters();
       results.publishScheduledChapters = {
-        success: true,
         message: "Processed scheduled chapters",
         count: publishResult.publishedChapters,
         details: publishResult
       };
+
+      logger.info("Processed scheduled chapters", {
+        publishedChapters: publishResult.publishedChapters,
+        updatedStories: publishResult.updatedStories
+      });
     }
 
     // Add more scheduled tasks here as needed
@@ -62,7 +68,11 @@ export async function POST(request: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error in scheduled tasks:", error);
+    logger.error("Error in scheduled tasks", {
+      error: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined
+    });
+
     return NextResponse.json(
       {
         error: "Failed to process scheduled tasks",

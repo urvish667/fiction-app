@@ -7,14 +7,26 @@ import { logger } from '@/lib/logger';
 /**
  * Unified Payment Service that orchestrates payment processing
  * regardless of the underlying payment processor
+ * Implemented as a singleton for better resource management
  */
 export class PaymentService {
+  private static instance: PaymentService;
   private stripeProcessor: StripePaymentProcessor;
   private paypalProcessor: PayPalPaymentProcessor;
 
-  constructor() {
+  private constructor() {
     this.stripeProcessor = new StripePaymentProcessor();
     this.paypalProcessor = new PayPalPaymentProcessor();
+  }
+
+  /**
+   * Get the singleton instance of PaymentService
+   */
+  public static getInstance(): PaymentService {
+    if (!PaymentService.instance) {
+      PaymentService.instance = new PaymentService();
+    }
+    return PaymentService.instance;
   }
 
   /**
@@ -109,7 +121,14 @@ export class PaymentService {
    * Update donation record with payment details
    */
   private async updateDonationRecord(donationId: string, response: PaymentResponse) {
-    const updateData: any = {};
+    // Define a properly typed update data object
+    const updateData: {
+      stripePaymentIntentId?: string;
+      status?: 'failed';
+      updatedAt?: Date;
+    } = {
+      updatedAt: new Date() // Always update the timestamp
+    };
 
     if (response.processorType === 'stripe' && response.clientSecret) {
       // Extract payment intent ID from client secret

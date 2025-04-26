@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getNotifications } from "@/lib/notification-service";
+import { logger } from "@/lib/logger";
+import { withApiLogging } from "@/lib/monitoring/api-logger";
 
 /**
  * GET endpoint to retrieve notifications for the current user
@@ -12,10 +14,11 @@ import { getNotifications } from "@/lib/notification-service";
  * - type: Filter by notification type
  * - read: Filter by read status (true/false)
  */
-export async function GET(request: NextRequest) {
+export const GET = withApiLogging(async (request: NextRequest) => {
+  let session;
   try {
     // Check authentication
-    const session = await getServerSession(authOptions);
+    session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json(
         { error: "Unauthorized" },
@@ -27,7 +30,7 @@ export async function GET(request: NextRequest) {
 
     // Parse query parameters
     const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "20");
+    const limit = Math.min(parseInt(searchParams.get("limit") || "20"), 100); // Add upper limit for safety
     const type = searchParams.get("type") || undefined;
     const readStatus = searchParams.get("read");
 
@@ -41,10 +44,14 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error("Error fetching notifications:", error);
+    logger.error("Error fetching notifications:", {
+      error,
+      userId: session?.user?.id
+    });
+
     return NextResponse.json(
       { error: "Failed to fetch notifications" },
       { status: 500 }
     );
   }
-}
+});

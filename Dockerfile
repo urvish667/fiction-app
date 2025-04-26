@@ -7,8 +7,8 @@ WORKDIR /app
 # Copy package.json and package-lock.json
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci
+# Install dependencies with legacy peer deps to resolve conflicts
+RUN npm ci --legacy-peer-deps
 
 # Rebuild the source code only when needed
 FROM base AS builder
@@ -18,8 +18,14 @@ COPY . .
 
 # Next.js collects anonymous telemetry data about general usage.
 # Learn more here: https://nextjs.org/telemetry
-# Uncomment the following line to disable telemetry during the build.
-ENV NEXT_TELEMETRY_DISABLED 1
+# Disable telemetry during the build.
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Copy .env.docker to .env for build
+COPY .env.docker .env
+
+# Generate Prisma client
+RUN npx prisma generate
 
 # Build the application
 RUN npm run build
@@ -28,8 +34,12 @@ RUN npm run build
 FROM base AS runner
 WORKDIR /app
 
-ENV NODE_ENV production
-ENV NEXT_TELEMETRY_DISABLED 1
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Clear any cached environment variables
+ENV NEXTAUTH_SECRET=""
+ENV JWT_ENCRYPTION_KEY=""
 
 # Create a non-root user
 RUN addgroup --system --gid 1001 nodejs

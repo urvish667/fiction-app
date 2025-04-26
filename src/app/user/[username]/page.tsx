@@ -134,6 +134,7 @@ export default function UserProfilePage() {
             likes: story.likeCount,
             comments: story.commentCount,
             reads: story.readCount,
+            viewCount: story.viewCount, // Include the combined view count from the API
             createdAt,
             updatedAt
           };
@@ -159,6 +160,7 @@ export default function UserProfilePage() {
               likes: story.likeCount,
               comments: story.commentCount,
               reads: story.readCount,
+              viewCount: story.viewCount, // Include the combined view count from the API
               createdAt,
               updatedAt
             };

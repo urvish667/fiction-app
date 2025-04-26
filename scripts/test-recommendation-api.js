@@ -1,9 +1,9 @@
 /**
  * Test script for the recommendation generation API endpoint
- * 
+ *
  * This script sends a request to the recommendation generation API endpoint
  * to test its functionality.
- * 
+ *
  * Usage:
  * node scripts/test-recommendation-api.js
  */
@@ -31,29 +31,18 @@ const config = {
   batchSize: 50
 };
 
-// Optional story ID (uncomment to generate recommendations for a specific story)
-// const storyId = 'your-story-id-here';
-
 async function testRecommendationApi() {
   console.log('Testing recommendation generation API endpoint...');
   console.log(`API URL: ${API_URL}`);
-  
+
   try {
     // Prepare request body
     const requestBody = {
       config
     };
-    
-    // Add story ID if specified
-    // if (storyId) {
-    //   requestBody.storyId = storyId;
-    //   console.log(`Generating recommendations for story: ${storyId}`);
-    // } else {
-    //   console.log('Generating recommendations for all stories');
-    // }
-    
+
     console.log('Generating recommendations for all stories');
-    
+
     // Send request to API endpoint
     const response = await fetch(API_URL, {
       method: 'POST',
@@ -63,16 +52,16 @@ async function testRecommendationApi() {
       },
       body: JSON.stringify(requestBody)
     });
-    
+
     // Parse response
     const data = await response.json();
-    
+
     // Check if request was successful
     if (response.ok) {
       console.log('\n✅ Success!');
       console.log('Response:');
       console.log(JSON.stringify(data, null, 2));
-      
+
       // Log summary
       if (data.result) {
         if (data.result.storyId) {
@@ -85,7 +74,7 @@ async function testRecommendationApi() {
           }
         }
       }
-      
+
       console.log(`\nTotal duration: ${data.duration}`);
     } else {
       console.error('\n❌ Error:');

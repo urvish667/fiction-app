@@ -60,11 +60,20 @@ export default function StoryInfoPage() {
           return
         }
 
-        // Set the story details
-        setStory(storyBySlug)
+        // Get the combined view count before setting the story
+        try {
+          // Fetch the story with view count directly from the API
+          const storyWithViewCount = await StoryService.getStory(storyBySlug.id)
+          // Set the story with view count already loaded
+          setStory(storyWithViewCount)
+        } catch (err) {
+          // If there's an error, fall back to the original story data
+          console.error("Error fetching story with view count:", err)
+          setStory(storyBySlug)
+        }
 
         // Check if we need to show the mature content dialog
-        const isLoggedIn = status === "authenticated"
+        const isLoggedIn = session?.status === "authenticated"
         if (storyBySlug.isMature && needsMatureContentConsent(slug, storyBySlug.isMature, isLoggedIn)) {
           setContentConsented(false)
           setShowMatureDialog(true)
@@ -99,26 +108,8 @@ export default function StoryInfoPage() {
     fetchStory()
   }, [slug])
 
-  // Refresh story data to get updated view count
-  useEffect(() => {
-    if (!story) return
-
-    // Create a timer to refresh the story data after a short delay
-    // This ensures the view count is updated after the view is tracked
-    const timer = setTimeout(async () => {
-      try {
-        // Fetch the latest story data to get updated view count
-        const updatedStory = await StoryService.getStory(story.id)
-        if (updatedStory) {
-          setStory(updatedStory)
-        }
-      } catch (err) {
-        console.error("Error refreshing story data:", err)
-      }
-    }, 1000) // 1 second delay
-
-    return () => clearTimeout(timer)
-  }, [story?.id])
+  // We no longer need to refresh the story data just for view count
+  // as we're pre-loading it when fetching the story initially
 
   // Check if the user is following the author
   useEffect(() => {

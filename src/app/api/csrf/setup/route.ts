@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
-import { setCsrfCookie, CSRF_COOKIE_NAME } from '@/lib/security/csrf';
+import { setCsrfCookie } from '@/lib/security/csrf';
+import { logger } from '@/lib/logger';
+
+// Create a dedicated logger for the CSRF setup endpoint
+const csrfSetupLogger = logger.child('csrf-setup');
 
 /**
  * API endpoint to set up CSRF token
@@ -18,16 +22,10 @@ export async function GET() {
         success: true,
         token: token // Include the token in the response for client-side use
       },
-      {
-        status: 200,
-        headers: {
-          // Set the cookie in the response as well for better compatibility
-          'Set-Cookie': `${CSRF_COOKIE_NAME}=${token}; Path=/; SameSite=Lax; ${process.env.NODE_ENV === 'production' ? 'Secure;' : ''}`
-        }
-      }
+      { status: 200 }
     );
   } catch (error) {
-    console.error('Error setting up CSRF token:', error);
+    csrfSetupLogger.error('Error setting up CSRF token', { error });
 
     // Return an error response
     return NextResponse.json(

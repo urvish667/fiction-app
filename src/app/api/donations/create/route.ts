@@ -43,8 +43,8 @@ export async function POST(req: Request) {
     // 3. Extract validated data
     const { recipientId, amount, message, storyId } = validation.data;
 
-    // 4. Process payment using the unified payment service
-    const paymentService = new PaymentService();
+    // 4. Process payment using the unified payment service (singleton)
+    const paymentService = PaymentService.getInstance();
     const paymentResponse = await paymentService.processPayment({
       recipientId,
       amount,

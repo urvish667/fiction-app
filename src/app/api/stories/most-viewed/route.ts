@@ -26,11 +26,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ stories: [] });
     }
 
-    // Find stories by IDs
+    // Find stories by IDs (for debugging, include all statuses)
     const stories = await prisma.story.findMany({
       where: {
         id: { in: mostViewedStoryIds },
-        status: "published",
+        // Include all stories regardless of status for debugging
       },
       include: {
         author: {

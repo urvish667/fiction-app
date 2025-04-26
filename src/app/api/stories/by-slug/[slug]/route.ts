@@ -101,6 +101,14 @@ export async function GET(
       isBookmarked = !!bookmark;
     }
 
+    // Get the combined view count before formatting the response
+    let viewCount = 0;
+    try {
+      viewCount = await ViewService.getCombinedViewCount(story.id);
+    } catch (viewCountError) {
+      console.error("Error getting combined view count:", viewCountError);
+    }
+
     // Create a properly formatted story response
     const formattedStory = {
       id: story.id,
@@ -117,6 +125,7 @@ export async function GET(
       authorId: story.authorId,
       createdAt: story.createdAt,
       updatedAt: story.updatedAt,
+      viewCount, // Set the view count from the combined count
 
       // Add author with correct type for donationMethod
       author: story.author ? {

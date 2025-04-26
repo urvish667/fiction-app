@@ -1,7 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: ['localhost'],
     remotePatterns: [
       {
         protocol: 'https',
@@ -10,6 +9,10 @@ const nextConfig = {
       {
         protocol: 'http',
         hostname: '**',
+      },
+      {
+        protocol: 'http',
+        hostname: 'localhost',
       },
     ],
   },
@@ -27,6 +30,8 @@ const nextConfig = {
     // your project has ESLint errors.
     ignoreDuringBuilds: true,
   },
+  // Enable standalone output mode for Docker
+  output: 'standalone',
 }
 
 module.exports = nextConfig

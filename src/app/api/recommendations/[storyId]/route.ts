@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/auth/db-adapter";
 import { Prisma } from "@prisma/client";
+import { logger } from "@/lib/logger";
+
+// Create a dedicated logger for the API endpoint
+const apiLogger = logger.child("api-recommendations-fetch");
 
 // Define the type for the recommendation with included relations
 type RecommendationWithRelations = Prisma.StoryRecommendationGetPayload<{
@@ -9,24 +13,24 @@ type RecommendationWithRelations = Prisma.StoryRecommendationGetPayload<{
       include: {
         author: {
           select: {
-            id: boolean;
-            name: boolean;
-            username: boolean;
-            image: boolean;
+            id: true;
+            name: true;
+            username: true;
+            image: true;
           };
         };
-        genre: boolean;
+        genre: true;
         tags: {
           include: {
-            tag: boolean;
+            tag: true;
           };
         };
         _count: {
           select: {
-            likes: boolean;
-            comments: boolean;
-            bookmarks: boolean;
-            chapters: boolean;
+            likes: true;
+            comments: true;
+            bookmarks: true;
+            chapters: true;
           };
         };
       };
@@ -156,28 +160,28 @@ export async function GET(
     };
 
     // Get recommendations
-    console.log(`Fetching recommendations for story ID: ${storyId}`);
+    apiLogger.info(`Fetching recommendations for story ID: ${storyId}`);
 
     // First check if any recommendations exist for this story (without all the includes)
     const recommendationCount = await prisma.storyRecommendation.count({
       where: { storyId: storyId }
     });
 
-    console.log(`Found ${recommendationCount} raw recommendations for story ${storyId}`);
+    apiLogger.debug(`Found ${recommendationCount} raw recommendations for story ${storyId}`);
 
     // If no recommendations exist at all, return early
     if (recommendationCount === 0) {
-      console.log(`No recommendations found in database for story ${storyId}`);
+      apiLogger.info(`No recommendations found in database for story ${storyId}`);
       return NextResponse.json([]);
     }
 
     // Get recommendations with all the includes
     let recommendations = await prisma.storyRecommendation.findMany(query) as RecommendationWithRelations[];
-    console.log(`Found ${recommendations.length} recommendations with includes for story ${storyId}`);
+    apiLogger.debug(`Found ${recommendations.length} recommendations with includes for story ${storyId}`);
 
     // If no recommendations found after includes, return empty array
     if (recommendations.length === 0) {
-      console.log(`No recommendations found after applying includes for story ${storyId}`);
+      apiLogger.info(`No recommendations found after applying includes for story ${storyId}`);
       return NextResponse.json([]);
     }
 
@@ -218,7 +222,11 @@ export async function GET(
 
     return NextResponse.json(formattedRecommendations);
   } catch (error) {
-    console.error("Error fetching recommendations:", error);
+    apiLogger.error("Error fetching recommendations", {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
+
     return NextResponse.json(
       { error: "Failed to fetch recommendations" },
       { status: 500 }

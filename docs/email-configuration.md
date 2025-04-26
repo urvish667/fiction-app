@@ -2,32 +2,13 @@
 
 This document explains how to configure email sending for the FableSpace application.
 
-## Development Environment
+## Email Configuration
 
-For development, the application uses [Ethereal](https://ethereal.email/) - a fake SMTP service that captures emails instead of sending them. This allows you to test email functionality without actually sending emails.
-
-### Setting Up Ethereal Email
-
-1. Run the setup script:
-   ```bash
-   npx ts-node src/scripts/setup-test-email.ts
-   ```
-
-2. Add the generated credentials to your `.env.local` file:
-   ```
-   ETHEREAL_EMAIL=your_generated_email@ethereal.email
-   ETHEREAL_PASSWORD=your_generated_password
-   ```
-
-3. When emails are "sent" during development, you'll see a preview URL in the console that you can use to view the email.
-
-## Production Environment
-
-For production, you'll need to configure a real email service. The application supports any SMTP service.
+FableSpace uses a real SMTP server for sending emails in both development and production environments. This ensures consistent behavior across all environments and simplifies the configuration process.
 
 ### SMTP Configuration
 
-Add the following variables to your production environment:
+Add the following variables to your environment:
 
 ```
 EMAIL_SERVER_HOST=smtp.example.com
@@ -72,9 +53,31 @@ The application includes templates for:
 
 These templates can be customized in `src/lib/email/email-templates.ts`.
 
+## Development Testing with Ethereal
+
+For development and testing, you can use [Ethereal](https://ethereal.email/) - a fake SMTP service that captures emails instead of sending them.
+
+### Setting Up Ethereal Email
+
+1. Run the setup script:
+   ```bash
+   node scripts/setup-email.js
+   ```
+
+2. Add the generated credentials to your `.env.local` file:
+   ```
+   ETHEREAL_EMAIL=your_generated_email@ethereal.email
+   ETHEREAL_PASSWORD=your_generated_password
+   ```
+
+3. When emails are "sent" during development, you'll see a preview URL in the console that you can use to view the email.
+
 ## Troubleshooting
 
-- If emails aren't being sent in development, check the console for the Ethereal preview URL
-- If emails aren't being sent in production, check your SMTP configuration
+- If emails aren't being sent, check your SMTP configuration in the environment variables
+- Verify that your email service is operational and accessible from your server
 - Ensure your email service allows sending from the domain specified in `EMAIL_FROM`
 - Some email services require domain verification before sending emails
+- Check server logs for any error messages related to email sending
+- For ProtonMail specifically, make sure you're using the correct authentication settings and port
+- If using Ethereal for testing, make sure the credentials are correct and check the console for preview URLs

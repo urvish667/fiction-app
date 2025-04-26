@@ -145,7 +145,9 @@ export default function StoryCard({ story, viewMode = "grid" }: StoryCardProps) 
               {/* Views/Reads Stats */}
               <div className="flex items-center gap-1">
                 <Eye size={16} className="text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">{story.viewCount || story.reads || story.readCount || 0}</span>
+                <span className="text-sm text-muted-foreground">
+                  {(typeof story.viewCount === 'number' ? story.viewCount : story.readCount || 0).toLocaleString()}
+                </span>
               </div>
 
               {/* Likes Stats */}

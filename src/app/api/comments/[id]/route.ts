@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { prisma } from "@/lib/auth/db-adapter";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { logError } from "@/lib/error-logger";
 
 // Validation schema for updating a comment
 const updateCommentSchema = z.object({
@@ -11,7 +12,7 @@ const updateCommentSchema = z.object({
 
 // GET endpoint to retrieve a specific comment
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -46,15 +47,15 @@ export async function GET(
     }
 
     // Format the comment
+    const { _count, ...commentData } = comment;
     const formattedComment = {
-      ...comment,
-      replyCount: comment._count.replies,
-      _count: undefined,
+      ...commentData,
+      replyCount: _count.replies,
     };
 
     return NextResponse.json(formattedComment);
   } catch (error) {
-    console.error("Error fetching comment:", error);
+    logError(error, { context: "Error fetching comment" });
     return NextResponse.json(
       { error: "Failed to fetch comment" },
       { status: 500 }
@@ -132,7 +133,7 @@ export async function PUT(
       );
     }
 
-    console.error("Error updating comment:", error);
+    logError(error, { context: "Error updating comment" });
     return NextResponse.json(
       { error: "Failed to update comment" },
       { status: 500 }
@@ -142,7 +143,7 @@ export async function PUT(
 
 // DELETE endpoint to delete a comment
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -198,7 +199,7 @@ export async function DELETE(
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error deleting comment:", error);
+    logError(error, { context: "Error deleting comment" });
     return NextResponse.json(
       { error: "Failed to delete comment" },
       { status: 500 }

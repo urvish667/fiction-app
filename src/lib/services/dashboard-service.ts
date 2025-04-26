@@ -399,6 +399,8 @@ export async function getDashboardOverviewData(userId: string, timeRange: string
  * @returns Array of data points for reads chart
  */
 export async function getReadsChartData(userId: string, timeRange: string = '30days'): Promise<ReadsDataPoint[]> {
+  console.log(`Generating reads chart data for user ${userId} with timeRange ${timeRange}`);
+
   const months = [];
   const today = new Date();
 
@@ -412,9 +414,6 @@ export async function getReadsChartData(userId: string, timeRange: string = '30d
     });
   }
 
-  // Get reads data for each month
-  const readsData: ReadsDataPoint[] = [];
-
   // Get all user's stories
   const userStories = await prisma.story.findMany({
     where: {
@@ -426,19 +425,89 @@ export async function getReadsChartData(userId: string, timeRange: string = '30d
   });
 
   const userStoryIds = userStories.map(story => story.id);
+  console.log(`Found ${userStoryIds.length} stories for user ${userId}`);
+
+  if (userStoryIds.length === 0) {
+    // Return empty data if user has no stories
+    return months.map(month => ({
+      name: month.name,
+      reads: 0,
+    }));
+  }
+
+  // Get reads data for each month
+  const readsData: ReadsDataPoint[] = [];
+
+  // Get all story views for this user's stories
+  const storyViews = await prisma.storyView.findMany({
+    where: {
+      storyId: { in: userStoryIds },
+    },
+    select: {
+      storyId: true,
+      createdAt: true,
+    },
+  });
+
+  console.log(`Found ${storyViews.length} story views for user's stories`);
+
+  // Get all chapter views for this user's stories
+  const chapters = await prisma.chapter.findMany({
+    where: {
+      storyId: { in: userStoryIds },
+    },
+    select: {
+      id: true,
+      storyId: true,
+    },
+  });
+
+  const chapterIds = chapters.map(chapter => chapter.id);
+  console.log(`Found ${chapterIds.length} chapters for user's stories`);
+
+  let chapterViews: { chapterId: string, createdAt: Date }[] = [];
+
+  if (chapterIds.length > 0) {
+    chapterViews = await prisma.chapterView.findMany({
+      where: {
+        chapterId: { in: chapterIds },
+      },
+      select: {
+        chapterId: true,
+        createdAt: true,
+      },
+    });
+    console.log(`Found ${chapterViews.length} chapter views for user's stories`);
+  }
+
+  // Create a map of chapter ID to story ID
+  const chapterToStoryMap = new Map<string, string>();
+  chapters.forEach(chapter => {
+    chapterToStoryMap.set(chapter.id, chapter.storyId);
+  });
 
   // Process each month
   for (const month of months) {
-    // Get view counts for this month using the optimized ViewService with combined story + chapter views
-    const viewCountMap = await ViewService.getBatchCombinedViewCounts(
-      userStoryIds,
-      'custom',
-      month.date,
-      month.nextMonth
+    // Filter story views for this month
+    const monthStoryViews = storyViews.filter(view =>
+      view.createdAt >= month.date && view.createdAt < month.nextMonth
     );
 
-    // Sum up all views
-    const reads = Array.from(viewCountMap.values()).reduce((sum, count) => sum + count, 0);
+    // Filter chapter views for this month
+    const monthChapterViews = chapterViews.filter(view =>
+      view.createdAt >= month.date && view.createdAt < month.nextMonth
+    );
+
+    // Count story views
+    const storyViewCount = monthStoryViews.length;
+
+    // Count chapter views
+    const chapterViewCount = monthChapterViews.length;
+
+    // Total reads for this month
+    const reads = storyViewCount + chapterViewCount;
+
+    console.log(`Month ${month.name}: ${storyViewCount} story views + ${chapterViewCount} chapter views = ${reads} total reads`);
 
     readsData.push({
       name: month.name,
@@ -456,6 +525,8 @@ export async function getReadsChartData(userId: string, timeRange: string = '30d
  * @returns Array of data points for engagement chart
  */
 export async function getEngagementChartData(userId: string, timeRange: string = '30days'): Promise<EngagementDataPoint[]> {
+  console.log(`Generating engagement chart data for user ${userId} with timeRange ${timeRange}`);
+
   const months = [];
   const today = new Date();
 
@@ -469,50 +540,81 @@ export async function getEngagementChartData(userId: string, timeRange: string =
     });
   }
 
+  // Get all user's stories first to check if they have any
+  const userStories = await prisma.story.findMany({
+    where: {
+      authorId: userId,
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  const userStoryIds = userStories.map(story => story.id);
+  console.log(`Found ${userStoryIds.length} stories for user ${userId}`);
+
+  if (userStoryIds.length === 0) {
+    // Return empty data if user has no stories
+    return months.map(month => ({
+      name: month.name,
+      likes: 0,
+      comments: 0,
+    }));
+  }
+
+  // Get all likes for this user's stories
+  const likes = await prisma.like.findMany({
+    where: {
+      storyId: { in: userStoryIds },
+    },
+    select: {
+      createdAt: true,
+    },
+  });
+
+  console.log(`Found ${likes.length} total likes for user's stories`);
+
+  // Get all comments for this user's stories
+  const comments = await prisma.comment.findMany({
+    where: {
+      storyId: { in: userStoryIds },
+    },
+    select: {
+      createdAt: true,
+    },
+  });
+
+  console.log(`Found ${comments.length} total comments for user's stories`);
+
   // Get engagement data for each month
   const engagementData: EngagementDataPoint[] = [];
 
   for (const month of months) {
-    const likes = await prisma.like.count({
-      where: {
-        story: {
-          authorId: userId,
-        },
-        createdAt: {
-          gte: month.date,
-          lt: month.nextMonth,
-        },
-      },
-    });
+    // Filter likes for this month
+    const monthLikes = likes.filter(like =>
+      like.createdAt >= month.date && like.createdAt < month.nextMonth
+    );
 
-    const comments = await prisma.comment.count({
-      where: {
-        story: {
-          authorId: userId,
-        },
-        createdAt: {
-          gte: month.date,
-          lt: month.nextMonth,
-        },
-      },
-    });
+    // Filter comments for this month
+    const monthComments = comments.filter(comment =>
+      comment.createdAt >= month.date && comment.createdAt < month.nextMonth
+    );
+
+    const likesCount = monthLikes.length;
+    const commentsCount = monthComments.length;
+
+    console.log(`Month ${month.name}: ${likesCount} likes, ${commentsCount} comments`);
 
     engagementData.push({
       name: month.name,
-      likes,
-      comments,
+      likes: likesCount,
+      comments: commentsCount,
     });
   }
 
   return engagementData;
 }
 
-/**
- * Get earnings data for chart
- * @param userId The ID of the user
- * @param timeRange The time range for the data
- * @returns Array of data points for earnings chart
- */
 /**
  * Get all stories for a user with detailed information
  * @param userId The ID of the user
@@ -549,7 +651,8 @@ export async function getUserStories(userId: string) {
       title: story.title,
       genre: story.genre || "",
       status: story.status,
-      reads: viewCountMap.get(story.id) || 0,
+      viewCount: viewCountMap.get(story.id) || 0,
+      reads: viewCountMap.get(story.id) || 0, // Keep reads for backward compatibility
       likes: story._count.likes,
       comments: story._count.comments,
       chaptersCount: story._count.chapters,
@@ -660,7 +763,8 @@ export async function getEarningsData(userId: string, timeRange: string = '30day
       id: story.id,
       title: story.title,
       genre: story.genre || "",
-      reads: viewCountMap.get(story.id) || 0,
+      viewCount: viewCountMap.get(story.id) || 0,
+      reads: viewCountMap.get(story.id) || 0, // Keep reads for backward compatibility
       earnings: storyEarnings,
     };
   });
@@ -681,6 +785,8 @@ export async function getEarningsData(userId: string, timeRange: string = '30day
 }
 
 export async function getEarningsChartData(userId: string, timeRange: string = '30days'): Promise<EarningsDataPoint[]> {
+  console.log(`Generating earnings chart data for user ${userId} with timeRange ${timeRange}`);
+
   const months = [];
   const today = new Date();
 
@@ -694,27 +800,56 @@ export async function getEarningsChartData(userId: string, timeRange: string = '
     });
   }
 
+  // Get all user's stories first to check if they have any
+  const userStories = await prisma.story.findMany({
+    where: {
+      authorId: userId,
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  const userStoryIds = userStories.map(story => story.id);
+  console.log(`Found ${userStoryIds.length} stories for user ${userId}`);
+
+  if (userStoryIds.length === 0) {
+    // Return empty data if user has no stories
+    return months.map(month => ({
+      name: month.name,
+      earnings: 0,
+    }));
+  }
+
+  // Get all donations for this user's stories
+  const donations = await prisma.donation.findMany({
+    where: {
+      storyId: { in: userStoryIds },
+    },
+    select: {
+      amount: true,
+      createdAt: true,
+    },
+  });
+
+  console.log(`Found ${donations.length} total donations for user's stories`);
+
   // Get earnings data for each month
   const earningsData: EarningsDataPoint[] = [];
 
   for (const month of months) {
-    const result = await prisma.donation.aggregate({
-      where: {
-        story: {
-          authorId: userId,
-        },
-        createdAt: {
-          gte: month.date,
-          lt: month.nextMonth,
-        },
-      },
-      _sum: {
-        amount: true,
-      },
-    });
+    // Filter donations for this month
+    const monthDonations = donations.filter(donation =>
+      donation.createdAt >= month.date && donation.createdAt < month.nextMonth
+    );
 
-    // Convert cents to dollars for earnings chart
-    const earningsInDollars = (result._sum.amount || 0) / 100;
+    // Sum up donation amounts for this month (in cents)
+    const totalAmountInCents = monthDonations.reduce((sum, donation) => sum + donation.amount, 0);
+
+    // Convert cents to dollars
+    const earningsInDollars = totalAmountInCents / 100;
+
+    console.log(`Month ${month.name}: ${monthDonations.length} donations, $${earningsInDollars.toFixed(2)} earnings`);
 
     earningsData.push({
       name: month.name,

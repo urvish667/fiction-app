@@ -20,13 +20,7 @@ const updateStorySchema = z.object({
   status: z.enum(["draft", "ongoing", "completed"]).optional(),
 });
 
-// Log the request body for debugging
-const logRequestBody = (body: Record<string, unknown>) => {
-  console.log('Update story request body:', body);
-  console.log('Genre type:', typeof body.genre);
-  console.log('Genre value:', body.genre);
-  return body;
-};
+
 
 // GET endpoint to retrieve a specific story
 export async function GET(
@@ -125,6 +119,14 @@ export async function GET(
       isBookmarked = !!bookmark;
     }
 
+    // Get the combined view count before formatting the response
+    let viewCount = 0;
+    try {
+      viewCount = await ViewService.getCombinedViewCount(story.id);
+    } catch (viewCountError) {
+      console.error("Error getting combined view count:", viewCountError);
+    }
+
     // Format the response
     const formattedStory = {
       ...story,
@@ -140,7 +142,7 @@ export async function GET(
       isLiked,
       isBookmarked,
       _count: undefined,
-      viewCount: 0, // Default value, will be updated if view tracking succeeds
+      viewCount, // Set the view count from the combined count
     };
 
     // Track view if not the author
@@ -157,12 +159,7 @@ export async function GET(
           { ip: clientIp || undefined, userAgent: userAgent || undefined }
         );
 
-        // Log if this is a first view (for debugging)
-        if (viewResult?.isFirstView) {
-          console.log(`First view recorded for story ${story.id} by user ${session?.user?.id || 'anonymous'}`);
-        }
 
-        console.log('View tracking result:', viewResult);
 
         // Update the view count in the response if available
         if (viewResult?.viewCount !== undefined) {
@@ -224,20 +221,16 @@ export async function PUT(
 
     // Parse and validate request body
     const body = await request.json();
-    logRequestBody(body);
 
     let validatedData;
     try {
       // If the genre is an object, extract the ID before validation
       if (body.genre && typeof body.genre === 'object' && body.genre.id) {
-        console.log('Converting genre object to ID string:', body.genre);
         body.genre = body.genre.id;
       }
 
       validatedData = updateStorySchema.parse(body);
-      console.log('Validated data:', validatedData);
     } catch (validationError) {
-      console.error('Validation error:', validationError);
       return NextResponse.json(
         { error: "Validation error", details: (validationError as z.ZodError).errors },
         { status: 400 }
@@ -291,31 +284,12 @@ export async function PUT(
 
     // Handle genre relation if provided
     if (genre !== undefined) {
-      console.log('Processing genre update:', { genre, type: typeof genre });
-
       if (genre === null) {
         // If genre is null, disconnect the relation
-        console.log('Disconnecting genre relation');
         updateData.genre = { disconnect: true };
       } else {
         // If genre is a string ID, connect to that genre
-        console.log('Connecting to genre with ID:', genre);
         updateData.genre = { connect: { id: genre } };
-
-        // Verify the genre exists
-        try {
-          const genreExists = await prisma.genre.findUnique({
-            where: { id: genre }
-          });
-
-          if (!genreExists) {
-            console.error('Genre not found with ID:', genre);
-          } else {
-            console.log('Genre found:', genreExists);
-          }
-        } catch (error) {
-          console.error('Error checking genre existence:', error);
-        }
       }
     }
 

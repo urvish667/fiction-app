@@ -31,17 +31,15 @@ export const authOptions: NextAuthOptions = {
     maxAge: 14 * 24 * 60 * 60, // 14 days
   },
 
-  // Cookie configuration
+  // Cookie configuration - simplified for better compatibility
   cookies: {
     sessionToken: {
-      name: process.env.NODE_ENV === 'production'
-        ? `__Secure-next-auth.session-token`
-        : `next-auth.session-token`,
+      name: `next-auth.session-token`,
       options: {
         httpOnly: true,
         sameSite: 'lax',
         path: '/',
-        secure: process.env.NODE_ENV === 'production',
+        secure: false, // Set to false for http localhost
       },
     },
   },
