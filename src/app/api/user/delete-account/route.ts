@@ -19,15 +19,15 @@ export async function DELETE(request: NextRequest) {
   try {
     // Get the session
     const session = await getServerSession(authOptions)
-    
+
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
-    
+
     // Parse and validate request body
     const body = await request.json()
     const validatedData = deleteAccountSchema.parse(body)
-    
+
     // Get the user
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
@@ -37,11 +37,11 @@ export async function DELETE(request: NextRequest) {
         provider: true,
       }
     })
-    
+
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
-    
+
     // For credentials users, verify password
     if (user.provider === "credentials" && user.password) {
       // Password is required for credentials users
@@ -51,13 +51,13 @@ export async function DELETE(request: NextRequest) {
           { status: 400 }
         )
       }
-      
+
       // Verify password
       const isPasswordValid = await verifyPassword(
         validatedData.password,
         user.password
       )
-      
+
       if (!isPasswordValid) {
         return NextResponse.json(
           { error: "Incorrect password" },
@@ -65,48 +65,46 @@ export async function DELETE(request: NextRequest) {
         )
       }
     }
-    
+
     // Delete user's sessions first
     await prisma.session.deleteMany({
       where: { userId: user.id },
     })
-    
+
     // Delete user's accounts (OAuth connections)
     await prisma.account.deleteMany({
       where: { userId: user.id },
     })
-    
+
     // Delete user's notifications
     await prisma.notification.deleteMany({
       where: { userId: user.id },
     })
-    
+
     // Delete the user
     await prisma.user.delete({
       where: { id: user.id },
     })
-    
+
     return NextResponse.json({ message: "Account deleted successfully" })
-    
+
   } catch (error) {
-    console.error("Account deletion error:", error)
-    
     if (error instanceof z.ZodError) {
       const fieldErrors = {} as Record<string, string>
-      
+
       error.errors.forEach((err) => {
         if (err.path && err.path.length > 0) {
           const field = String(err.path[0])
           fieldErrors[field] = err.message
         }
       })
-      
+
       return NextResponse.json(
         { error: "Validation error", fields: fieldErrors },
         { status: 400 }
       )
     }
-    
+
     return NextResponse.json(
       { error: "An error occurred while deleting your account" },
       { status: 500 }

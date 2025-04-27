@@ -62,7 +62,6 @@ export const GET = withAuth(async (req: NextRequest, token) => {
     return NextResponse.json(user)
 
   } catch (error) {
-    console.error("Profile retrieval error:", error)
     return NextResponse.json(
       { error: "An error occurred while retrieving your profile" },
       { status: 500 }
@@ -145,8 +144,6 @@ export const PATCH = withAuth(async (request: NextRequest, token) => {
     return NextResponse.json(updatedUser)
 
   } catch (error) {
-    console.error("Profile update error:", error)
-
     if (error instanceof z.ZodError) {
       const fieldErrors: Record<string, string> = {}
       error.errors.forEach((err) => {

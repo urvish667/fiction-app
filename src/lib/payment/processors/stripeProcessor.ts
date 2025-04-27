@@ -1,6 +1,7 @@
 import Stripe from 'stripe';
 import { PaymentProcessor, PaymentRequest, PaymentResponse, PaymentRecipient } from '../types';
 import { logger } from '@/lib/logger';
+import { getStripeClient } from '@/lib/stripe';
 
 /**
  * Stripe payment processor implementation
@@ -9,13 +10,8 @@ export class StripePaymentProcessor implements PaymentProcessor {
   private stripe: Stripe;
 
   constructor() {
-    if (!process.env.STRIPE_SECRET_KEY) {
-      throw new Error('STRIPE_SECRET_KEY environment variable is not set');
-    }
-
-    this.stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-      apiVersion: '2023-10-16',
-    });
+    // Use the singleton Stripe client
+    this.stripe = getStripeClient();
   }
 
   /**

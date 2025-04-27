@@ -94,9 +94,8 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Error fetching bookmarked stories:", error);
     return NextResponse.json(
-      { error: "Failed to fetch bookmarked stories" },
+      { error: "An error occurred while fetching bookmarked stories" },
       { status: 500 }
     );
   }

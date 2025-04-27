@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
+import { getServerSession } from 'next-auth';
 import { z } from 'zod';
-import { authOptions } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { prisma } from '@/lib/auth/db-adapter';
 
 // Define the expected request body schema using Zod
 const enableDonationsSchema = z.object({
@@ -26,7 +26,7 @@ export async function POST(req: Request) {
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.id) {
-      return new NextResponse('Unauthorized', { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await req.json();
@@ -65,11 +65,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: 'Donations enabled successfully.' }, { status: 200 });
 
   } catch (error) {
-    console.error('[ENABLE_DONATIONS_ERROR]', error);
     // Handle potential Prisma errors or other issues
     if (error instanceof z.ZodError) {
       return NextResponse.json({ errors: error.errors }, { status: 400 });
     }
-    return new NextResponse('Internal Server Error', { status: 500 });
+    return NextResponse.json(
+      { error: "An error occurred while enabling donations" },
+      { status: 500 }
+    );
   }
 }

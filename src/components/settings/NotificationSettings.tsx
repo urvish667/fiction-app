@@ -57,10 +57,12 @@ ToggleSwitch.displayName = 'ToggleSwitch';
 // Main component with performance optimizations
 const NotificationSettings: React.FC<NotificationSettingsProps> = ({
   session,
-  handleNotificationToggle,
+  // handleNotificationToggle is not used since notifications are disabled
+  // but kept in props for future implementation
+  handleNotificationToggle: _handleNotificationToggle,
   savingPreferences,
-  update,
-  toast,
+  update: _update,
+  toast: _toast,
 }) => {
   // Local state for immediate UI feedback
   const [localPreferences, setLocalPreferences] = useState<{
@@ -86,7 +88,8 @@ const NotificationSettings: React.FC<NotificationSettingsProps> = ({
   }, [session?.user?.preferences]);
 
   // Helper function to get preference value safely - memoized
-  const getPreference = useCallback(<K extends keyof UserPreferences['emailNotifications']>(key: K): boolean => {
+  // Not used since notifications are disabled, but kept for future implementation
+  const _getPreference = useCallback(<K extends keyof UserPreferences['emailNotifications']>(key: K): boolean => {
     // First check local state (for immediate UI feedback)
     if (typeof localPreferences[key] === 'boolean') {
       return localPreferences[key];
@@ -102,68 +105,8 @@ const NotificationSettings: React.FC<NotificationSettingsProps> = ({
     return defaultPreferences.emailNotifications[key];
   }, [localPreferences, session?.user?.preferences?.emailNotifications]);
 
-  // Local state for marketing opt-in
-  const [localMarketingOptIn, setLocalMarketingOptIn] = useState(false);
-
-  // Update local marketing state when session changes
-  useEffect(() => {
-    setLocalMarketingOptIn(!!(session?.user as any)?.marketingOptIn);
-  }, [session?.user]);
-
-  // Marketing opt-in toggle handler (moved here as it's a notification type)
-  const handleMarketingToggle = async () => {
-    if (!session?.user) return; // Guard clause
-
-    // Update local state immediately for UI feedback
-    setLocalMarketingOptIn(prev => !prev);
-
-    // Use type assertion to handle potentially missing fields like username/marketingOptIn
-    const userData = session.user as any;
-    if (!userData.username) {
-      console.error("Username is missing from session data");
-      toast({
-        title: "Error",
-        description: "Cannot update preferences: User information incomplete.",
-        variant: "destructive",
-      });
-      // Revert local state if there's an error
-      setLocalMarketingOptIn(!!(session?.user as any)?.marketingOptIn);
-      return;
-    }
-
-    try {
-      const response = await fetch('/api/user/profile', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username: userData.username,
-          marketingOptIn: !userData.marketingOptIn, // Toggle the current value
-        }),
-      });
-
-      if (!response.ok) {
-        const result = await response.json();
-        throw new Error(result.error || 'Failed to update marketing preferences');
-      }
-
-      toast({
-        title: "Success",
-        description: "Your marketing preferences have been updated.",
-      });
-
-      // Refresh the session to get updated preferences
-      await update();
-    } catch (error) {
-      console.error('Error updating marketing preferences:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to update marketing preferences. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
+  // Not used since marketing emails are disabled, but kept for future implementation
+  const [_localMarketingOptIn, _setLocalMarketingOptIn] = useState(false);
 
   return (
     <Card>
@@ -177,27 +120,20 @@ const NotificationSettings: React.FC<NotificationSettingsProps> = ({
           <div className="space-y-0.5">
             <Label htmlFor="newFollower">New Follower</Label>
             <p className="text-sm text-muted-foreground">Receive an email when someone follows you</p>
+            <p className="text-sm text-yellow-500 mt-1">This feature will be available in the next release</p>
           </div>
           <div className="flex items-center gap-2">
             <ToggleSwitch
               id="newFollower"
               label=""
-              checked={getPreference("newFollower")}
+              checked={false}
               loading={savingPreferences === 'notification-newFollower'}
               onToggle={() => {
-                // Update local state immediately for UI feedback
-                setLocalPreferences(prev => ({
-                  ...prev,
-                  newFollower: !getPreference("newFollower") // Use the getter to ensure we have the latest value
-                }));
-                // Then call the actual handler
-                handleNotificationToggle("newFollower");
+                // Disabled - will be available in next release
               }}
             />
             <span className="text-sm font-medium">
-              {getPreference("newFollower") ?
-                <span className="text-green-500">On</span> :
-                <span className="text-muted-foreground">Off</span>}
+              <span className="text-muted-foreground">Off</span>
             </span>
           </div>
         </div>
@@ -209,6 +145,7 @@ const NotificationSettings: React.FC<NotificationSettingsProps> = ({
           <div className="space-y-0.5">
             <Label htmlFor="newComment">New Comment</Label>
             <p className="text-sm text-muted-foreground">Receive an email when someone comments on your story</p>
+            <p className="text-sm text-yellow-500 mt-1">This feature will be available in the next release</p>
           </div>
           <div className="flex items-center gap-2">
             <div className="relative">
@@ -219,23 +156,15 @@ const NotificationSettings: React.FC<NotificationSettingsProps> = ({
               )}
               <Switch
                 id="newComment"
-                checked={getPreference("newComment")}
+                checked={false}
                 onCheckedChange={() => {
-                  // Update local state immediately for UI feedback
-                  setLocalPreferences(prev => ({
-                    ...prev,
-                    newComment: !prev.newComment
-                  }));
-                  // Then call the actual handler
-                  handleNotificationToggle("newComment");
+                  // Disabled - will be available in next release
                 }}
-                disabled={savingPreferences !== null}
+                disabled={true}
               />
             </div>
             <span className="text-sm font-medium">
-              {getPreference("newComment") ?
-                <span className="text-green-500">On</span> :
-                <span className="text-muted-foreground">Off</span>}
+              <span className="text-muted-foreground">Off</span>
             </span>
           </div>
         </div>
@@ -247,6 +176,7 @@ const NotificationSettings: React.FC<NotificationSettingsProps> = ({
           <div className="space-y-0.5">
             <Label htmlFor="newLike">New Like</Label>
             <p className="text-sm text-muted-foreground">Receive an email when someone likes your story</p>
+            <p className="text-sm text-yellow-500 mt-1">This feature will be available in the next release</p>
           </div>
           <div className="flex items-center gap-2">
             <div className="relative">
@@ -257,23 +187,15 @@ const NotificationSettings: React.FC<NotificationSettingsProps> = ({
               )}
               <Switch
                 id="newLike"
-                checked={getPreference("newLike")}
+                checked={false}
                 onCheckedChange={() => {
-                  // Update local state immediately for UI feedback
-                  setLocalPreferences(prev => ({
-                    ...prev,
-                    newLike: !prev.newLike
-                  }));
-                  // Then call the actual handler
-                  handleNotificationToggle("newLike");
+                  // Disabled - will be available in next release
                 }}
-                disabled={savingPreferences !== null}
+                disabled={true}
               />
             </div>
             <span className="text-sm font-medium">
-              {getPreference("newLike") ?
-                <span className="text-green-500">On</span> :
-                <span className="text-muted-foreground">Off</span>}
+              <span className="text-muted-foreground">Off</span>
             </span>
           </div>
         </div>
@@ -285,6 +207,7 @@ const NotificationSettings: React.FC<NotificationSettingsProps> = ({
           <div className="space-y-0.5">
             <Label htmlFor="newChapter">New Chapter</Label>
             <p className="text-sm text-muted-foreground">Receive an email when an author you follow publishes a new chapter</p>
+            <p className="text-sm text-yellow-500 mt-1">This feature will be available in the next release</p>
           </div>
           <div className="flex items-center gap-2">
             <div className="relative">
@@ -295,23 +218,15 @@ const NotificationSettings: React.FC<NotificationSettingsProps> = ({
               )}
               <Switch
                 id="newChapter"
-                checked={getPreference("newChapter")}
+                checked={false}
                 onCheckedChange={() => {
-                  // Update local state immediately for UI feedback
-                  setLocalPreferences(prev => ({
-                    ...prev,
-                    newChapter: !prev.newChapter
-                  }));
-                  // Then call the actual handler
-                  handleNotificationToggle("newChapter");
+                  // Disabled - will be available in next release
                 }}
-                disabled={savingPreferences !== null}
+                disabled={true}
               />
             </div>
             <span className="text-sm font-medium">
-              {getPreference("newChapter") ?
-                <span className="text-green-500">On</span> :
-                <span className="text-muted-foreground">Off</span>}
+              <span className="text-muted-foreground">Off</span>
             </span>
           </div>
         </div>
@@ -323,21 +238,21 @@ const NotificationSettings: React.FC<NotificationSettingsProps> = ({
           <div className="space-y-0.5">
             <Label htmlFor="marketing">Marketing Emails</Label>
             <p className="text-sm text-muted-foreground">Receive emails about new features, tips, and promotions</p>
+            <p className="text-sm text-yellow-500 mt-1">This feature will be available in the next release</p>
           </div>
           <div className="flex items-center gap-2">
             <div className="relative">
-              {/* Consider adding a loading indicator specific to marketing toggle if needed */}
               <Switch
                 id="marketing"
-                checked={localMarketingOptIn} // Use local state for immediate feedback
-                onCheckedChange={handleMarketingToggle}
-              // disabled={/* Add loading state if implementing */}
+                checked={false}
+                onCheckedChange={() => {
+                  // Disabled - will be available in next release
+                }}
+                disabled={true}
               />
             </div>
             <span className="text-sm font-medium">
-              {localMarketingOptIn ?
-                <span className="text-green-500">On</span> :
-                <span className="text-muted-foreground">Off</span>}
+              <span className="text-muted-foreground">Off</span>
             </span>
           </div>
         </div>

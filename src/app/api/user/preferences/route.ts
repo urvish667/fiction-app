@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { prisma } from '@/lib/auth/db-adapter'
 import { z } from 'zod'
 import { UserPreferences, defaultPreferences } from '@/types/user'
-import { Prisma } from '@prisma/client'
 
 const preferencesSchema = z.object({
   emailNotifications: z.object({
@@ -60,15 +59,14 @@ export async function GET() {
           ...prefsData
         };
       } catch (error) {
-        console.error('Error parsing preferences:', error);
+        // Silently fall back to default preferences if parsing fails
       }
     }
 
     return NextResponse.json({ preferences });
   } catch (error) {
-    console.error('Error fetching preferences:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'An error occurred while fetching preferences' },
       { status: 500 }
     );
   }
@@ -113,9 +111,8 @@ export async function PUT(request: Request) {
       )
     }
 
-    console.error('Error updating preferences:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'An error occurred while updating preferences' },
       { status: 500 }
     )
   }

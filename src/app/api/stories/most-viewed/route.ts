@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/auth/db-adapter";
 import { ViewService } from "@/services/view-service";
+import { logger } from "@/lib/logger";
+
+// Cache control constants
+const CACHE_CONTROL_HEADER = 'Cache-Control';
+const CACHE_VALUE = 'public, max-age=300, stale-while-revalidate=60'; // 5 minutes cache, 1 minute stale
 
 /**
  * GET endpoint to retrieve most viewed stories
@@ -13,24 +18,32 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "8");
     const timeRange = searchParams.get("timeRange") || "30days";
 
-    console.log(`Fetching most viewed stories with limit=${limit}, timeRange=${timeRange}`);
+    logger.debug('Fetching most viewed stories', { limit, timeRange });
 
     // Get most viewed story IDs using the optimized ViewService
     const mostViewedStoryIds = await ViewService.getMostViewedStories(limit, timeRange);
 
-    console.log(`Found ${mostViewedStoryIds.length} most viewed story IDs:`, mostViewedStoryIds);
+    logger.debug('Found most viewed story IDs', {
+      count: mostViewedStoryIds.length,
+      ids: mostViewedStoryIds
+    });
 
     // If no stories found, return empty array
     if (mostViewedStoryIds.length === 0) {
-      console.log('No most viewed stories found, returning empty array');
-      return NextResponse.json({ stories: [] });
+      logger.info('No most viewed stories found for the given time range', { timeRange });
+
+      // Create response with cache headers
+      const response = NextResponse.json({ stories: [] });
+      response.headers.set(CACHE_CONTROL_HEADER, CACHE_VALUE);
+
+      return response;
     }
 
-    // Find stories by IDs (for debugging, include all statuses)
+    // Find stories by IDs
     const stories = await prisma.story.findMany({
       where: {
         id: { in: mostViewedStoryIds },
-        // Include all stories regardless of status for debugging
+        status: { not: 'draft' } // Only include published stories
       },
       include: {
         author: {
@@ -93,14 +106,22 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    console.log(`Returning ${formattedStories.length} formatted stories`);
+    logger.debug('Returning formatted stories', { count: formattedStories.length });
 
-    return NextResponse.json({
+    // Create response with cache headers
+    const response = NextResponse.json({
       stories: formattedStories,
       timeRange
     });
+    response.headers.set(CACHE_CONTROL_HEADER, CACHE_VALUE);
+
+    return response;
   } catch (error) {
-    console.error("Error fetching most viewed stories:", error);
+    // Log the error for server-side debugging
+    logger.error('Failed to fetch most viewed stories', {
+      error: error instanceof Error ? error.message : String(error)
+    });
+
     return NextResponse.json(
       { error: "Failed to fetch most viewed stories" },
       { status: 500 }

@@ -3,7 +3,6 @@ import { getServerSession } from "next-auth"
 import { prisma } from "@/lib/auth/db-adapter"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 import { formatDistanceToNow } from "date-fns"
-import { Prisma } from "@prisma/client"
 
 // Define a basic type for expected social links structure
 type ExpectedSocialLinks = {
@@ -84,7 +83,7 @@ export async function GET(
           ? JSON.parse(user.preferences)
           : user.preferences;
       } catch (error) {
-        console.error("Error parsing preferences:", error);
+        // Silently fall back to default preferences if parsing fails
       }
     }
 
@@ -111,7 +110,7 @@ export async function GET(
           }
         }
       } catch (error) {
-        console.error("Error parsing socialLinks:", error);
+        // Silently fall back to null if parsing fails
       }
     }
 
@@ -141,7 +140,6 @@ export async function GET(
     return NextResponse.json(formattedUser);
 
   } catch (error) {
-    console.error("Profile retrieval error:", error);
     return NextResponse.json(
       { error: "An error occurred while retrieving the profile" },
       { status: 500 }
