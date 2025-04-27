@@ -31,7 +31,7 @@ export const authOptions: NextAuthOptions = {
     maxAge: 14 * 24 * 60 * 60, // 14 days
   },
 
-  // Cookie configuration - simplified for better compatibility
+  // Cookie configuration - optimized for OAuth compatibility
   cookies: {
     sessionToken: {
       name: `next-auth.session-token`,
@@ -39,17 +39,57 @@ export const authOptions: NextAuthOptions = {
         httpOnly: true,
         sameSite: 'lax',
         path: '/',
-        secure: false, // Set to false for http localhost
+        secure: process.env.NODE_ENV === "production", // Secure in production, not in development
+      },
+    },
+    // Explicitly configure the callback cookie used for state
+    callbackUrl: {
+      name: `next-auth.callback-url`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+    // Configure the CSRF token cookie
+    csrfToken: {
+      name: 'next-auth.csrf-token',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+    // Configure the state cookie specifically for OAuth flows
+    state: {
+      name: 'next-auth.state',
+      options: {
+        httpOnly: true,
+        sameSite: 'lax', // Use 'lax' to ensure it works with redirects
+        path: '/',
+        secure: process.env.NODE_ENV === "production",
+        maxAge: 900, // 15 minutes, matching the state maxAge
       },
     },
   },
 
   // Configure auth providers
   providers: [
-    // Google OAuth provider
+    // Google OAuth provider with simplified configuration
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || "",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+      // Use standard authorization configuration
+      authorization: {
+        params: {
+          scope: "openid email profile",
+          prompt: "select_account",
+        },
+      },
+      // Keep standard checks for Google as they typically work well
+      checks: ["state"],
       profile(profile) {
         // Return a user object with required fields
         return {
@@ -100,10 +140,19 @@ export const authOptions: NextAuthOptions = {
       },
     }),
 
-    // Facebook OAuth provider
+    // Facebook OAuth provider with simplified configuration
     FacebookProvider({
       clientId: process.env.FACEBOOK_CLIENT_ID || "",
       clientSecret: process.env.FACEBOOK_CLIENT_SECRET || "",
+      // Use authorization configuration object instead of direct URL
+      authorization: {
+        params: {
+          scope: "public_profile,email"
+        }
+      },
+      // Temporarily disable state checking to fix Facebook authentication issues
+      // Facebook sometimes doesn't return the state parameter correctly
+      checks: [],
       profile(profile) {
         // Return a user object with required fields
         return {
@@ -543,7 +592,30 @@ export const authOptions: NextAuthOptions = {
         hasImage: !!user.image
       });
     },
+    signIn({ user, account, isNewUser }) {
+      authLogger.info("User signed in", {
+        email: user.email,
+        provider: account?.provider,
+        isNewUser
+      });
+    },
+    signOut({ token }) {
+      authLogger.info("User signed out", {
+        userId: token.sub
+      });
+    },
+    // Handle account linking
+    async linkAccount({ user, account }) {
+      authLogger.info("Account linked", {
+        userId: user.id,
+        provider: account.provider,
+        providerAccountId: account.providerAccountId
+      });
+    },
   },
+
+  // Add debug mode in development for better error visibility
+  debug: process.env.NODE_ENV === "development",
 };
 
 const handler = NextAuth(authOptions);

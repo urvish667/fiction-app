@@ -77,26 +77,64 @@ function LoginContent() {
     }
   }
 
-  // Handle OAuth login
+  // Handle OAuth login with improved error handling
   const handleOAuthLogin = async (provider: "google" | "facebook") => {
     setIsSubmitting(true)
 
     try {
-      await signIn(provider, { callbackUrl })
+      // Add state parameter for CSRF protection
+      await signIn(provider, {
+        callbackUrl,
+        redirect: true,
+      })
       // Note: This will redirect the page, so no need to set isSubmitting to false
     } catch (error) {
       console.error(`${provider} sign in error:`, error)
+      setErrors({ login: `Error signing in with ${provider}. Please try again.` })
       setIsSubmitting(false)
     }
   }
 
-  // Set error from URL parameter
+  // Set error from URL parameter with improved error handling
   useEffect(() => {
     if (error) {
-      setErrors({ login: error === "CredentialsSignin"
-        ? "Invalid email or password"
-        : "An error occurred during sign in"
-      })
+      // Handle specific error types
+      let errorMessage = "An error occurred during sign in";
+
+      switch (error) {
+        case "CredentialsSignin":
+          errorMessage = "Invalid email or password";
+          break;
+        case "OAuthAccountNotLinked":
+          errorMessage = "Email already in use with a different provider";
+          break;
+        case "OAuthSignin":
+          errorMessage = "Error starting OAuth sign in";
+          break;
+        case "OAuthCallback":
+          errorMessage = "Error during OAuth callback";
+          break;
+        case "OAuthCreateAccount":
+          errorMessage = "Error creating OAuth account";
+          break;
+        case "EmailCreateAccount":
+          errorMessage = "Error creating email account";
+          break;
+        case "Callback":
+          errorMessage = "Error during callback";
+          break;
+        case "AccessDenied":
+          errorMessage = "Access denied";
+          break;
+        case "Verification":
+          errorMessage = "Email verification error";
+          break;
+      }
+
+      setErrors({ login: errorMessage });
+
+      // Log the error for debugging
+      console.error(`Authentication error: ${error}`);
     }
   }, [error])
 

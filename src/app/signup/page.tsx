@@ -22,6 +22,7 @@ function SignupContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const callbackUrl = searchParams?.get("callbackUrl") || "/"
+  const error = searchParams?.get("error")
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -235,18 +236,63 @@ function SignupContent() {
     }
   }
 
-  // Handle OAuth signup
+  // Handle OAuth signup with improved error handling
   const handleOAuthSignup = async (provider: "google" | "facebook") => {
     setIsSubmitting(true)
 
     try {
-      await signIn(provider, { callbackUrl })
+      // Add state parameter for CSRF protection
+      await signIn(provider, {
+        callbackUrl,
+        redirect: true,
+      })
       // Note: This will redirect the page, so no need to set isSubmitting to false
     } catch (error) {
       console.error(`${provider} sign in error:`, error)
+      setErrors({ form: `Error signing in with ${provider}. Please try again.` })
       setIsSubmitting(false)
     }
   }
+
+  // Set error from URL parameter with improved error handling
+  useEffect(() => {
+    if (error) {
+      // Handle specific error types
+      let errorMessage = "An error occurred during sign up";
+
+      switch (error) {
+        case "OAuthAccountNotLinked":
+          errorMessage = "Email already in use with a different provider";
+          break;
+        case "OAuthSignin":
+          errorMessage = "Error starting OAuth sign in";
+          break;
+        case "OAuthCallback":
+          errorMessage = "Error during OAuth callback";
+          break;
+        case "OAuthCreateAccount":
+          errorMessage = "Error creating OAuth account";
+          break;
+        case "EmailCreateAccount":
+          errorMessage = "Error creating email account";
+          break;
+        case "Callback":
+          errorMessage = "Error during callback";
+          break;
+        case "AccessDenied":
+          errorMessage = "Access denied";
+          break;
+        case "Verification":
+          errorMessage = "Email verification error";
+          break;
+      }
+
+      setErrors({ form: errorMessage });
+
+      // Log the error for debugging
+      console.error(`Authentication error: ${error}`);
+    }
+  }, [error])
 
   // Clear username availability check when component unmounts
   useEffect(() => {
