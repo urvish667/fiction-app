@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { authOptions } from "../../auth/[...nextauth]/route";
 import { getEarningsData } from "@/lib/services/dashboard-service";
 import { ApiResponse } from "@/types/dashboard";
 import { logger } from "@/lib/logger";
+import { prisma } from "@/lib/prisma";
 
 // Valid time range options
 const VALID_TIME_RANGES = ['7days', '30days', '90days', 'year', 'all'];
@@ -64,6 +65,46 @@ export async function GET(request: Request) {
     // Fetch earnings data
     const earningsData = await getEarningsData(userId, timeRange);
 
+    // Fetch recent donations for this user
+    const recentDonations = await prisma.donation.findMany({
+      where: {
+        recipientId: userId,
+        status: 'succeeded', // Only include successful donations
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: 5, // Limit to 5 most recent donations
+      include: {
+        donor: {
+          select: {
+            name: true,
+          },
+        },
+        story: {
+          select: {
+            title: true,
+          },
+        },
+      },
+    });
+
+    // Format the donations for the response
+    const formattedDonations = recentDonations.map((donation) => ({
+      id: donation.id,
+      amount: donation.amount / 100, // Convert cents to dollars
+      donorName: donation.donor.name || 'Anonymous',
+      date: donation.createdAt.toISOString(),
+      storyTitle: donation.story?.title,
+    }));
+
+    // Transform the data to match the expected format
+    const transformedData = {
+      total: earningsData.totalEarnings,
+      change: earningsData.monthlyChange,
+      recentDonations: formattedDonations,
+    };
+
     earningsLogger.debug('Earnings data retrieved successfully', { userId });
 
     // Set cache headers for better performance
@@ -84,7 +125,7 @@ export async function GET(request: Request) {
     }>>(
       {
         success: true,
-        data: earningsData,
+        data: transformedData,
       },
       { headers }
     );

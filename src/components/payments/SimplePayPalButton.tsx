@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { logger } from '@/lib/logger';
 import { Loader2 } from 'lucide-react';
+import { fetchWithCsrf } from '@/lib/client/csrf';
 
 interface SimplePayPalButtonProps {
   recipientId: string;
@@ -59,7 +60,7 @@ export function SimplePayPalButton({
       });
 
       // Record the donation in our database before redirecting
-      const response = await fetch('/api/donations/record-paypal', {
+      const response = await fetchWithCsrf('/api/donations/record-paypal', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

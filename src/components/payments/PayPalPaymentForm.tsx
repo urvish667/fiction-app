@@ -5,6 +5,7 @@ import { Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { logger } from "@/lib/logger";
 import { SimplePayPalButton } from "./SimplePayPalButton";
+import { fetchWithCsrf } from "@/lib/client/csrf";
 
 // Helper function to get more user-friendly error descriptions
 function getPayPalErrorDescription(errorMessage: string): string {
@@ -95,8 +96,31 @@ export function PayPalPaymentForm({
 
     fetchPayPalLink();
 
-    return () => {};
-  }, [recipientId]);
+    // Set up error event listener for script loading errors
+    const handleScriptError = (event: ErrorEvent) => {
+      // Check if this is a PayPal script error
+      if (event.filename && event.filename.includes('paypal.com/sdk/js')) {
+        logger.error('PayPal script error:', event);
+        // Set a timeout to ensure the state update happens after render
+        setTimeout(() => {
+          setSdkError(true);
+          toast({
+            title: "PayPal Error",
+            description: "There was an error loading PayPal. Please try again later.",
+            variant: "destructive",
+          });
+        }, 0);
+      }
+    };
+
+    // Add global error event listener
+    window.addEventListener('error', handleScriptError);
+
+    return () => {
+      // Clean up the event listener when component unmounts
+      window.removeEventListener('error', handleScriptError);
+    };
+  }, [recipientId, toast]);
 
   // Production-ready approach for handling PayPal orders
   useEffect(() => {
@@ -111,7 +135,7 @@ export function PayPalPaymentForm({
       logger.warn('PayPal order not completed after timeout:', createdOrderId);
 
       // Verify the order status server-side
-      fetch('/api/payments/paypal/verify-order', {
+      fetchWithCsrf('/api/payments/paypal/verify-order', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -123,7 +147,7 @@ export function PayPalPaymentForm({
         .then(data => {
           if (data.status === 'COMPLETED') {
             // The order was actually completed, record it and show success
-            fetch('/api/donations/record-paypal', {
+            fetchWithCsrf('/api/donations/record-paypal', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -171,6 +195,7 @@ export function PayPalPaymentForm({
 
   if (!process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID) {
     logger.error('PayPal client ID is not configured');
+    console.log('PayPal client ID is not configured ');
     return null;
   }
 
@@ -205,7 +230,7 @@ export function PayPalPaymentForm({
 
       if (details?.status === "COMPLETED") {
         // Create a record of the donation in our database
-        const response = await fetch('/api/donations/record-paypal', {
+        const response = await fetchWithCsrf('/api/donations/record-paypal', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -299,21 +324,7 @@ export function PayPalPaymentForm({
         renderFallbackUI()
       ) : (
         <PayPalScriptProvider
-          options={{
-            ...initialOptions,
-            onError: (err: Error) => {
-              logger.error('PayPal script error:', err);
-              // Set a timeout to ensure the state update happens after render
-              setTimeout(() => {
-                setSdkError(true);
-                toast({
-                  title: "PayPal Error",
-                  description: "There was an error loading PayPal. Please try again later.",
-                  variant: "destructive",
-                });
-              }, 0);
-            }
-          }}
+          options={initialOptions}
           deferLoading={false}>
           <div className="py-4">
             <p className="text-center text-muted-foreground mb-4">
@@ -328,7 +339,7 @@ export function PayPalPaymentForm({
                     style={{ layout: "vertical", shape: "rect" }}
                     disabled={isProcessing}
                     forceReRender={[amountInDollars]}
-                    createOrder={(data, actions) => {
+                    createOrder={(_data, actions) => {
                       logger.info('Creating PayPal order');
                       // Create a PayPal order directly using the SDK
                       try {

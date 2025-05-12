@@ -2,11 +2,53 @@
 
 import { useState, useEffect } from "react"
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js"
-import { loadStripe } from "@stripe/stripe-js"
+import { loadStripe, StripeError } from "@stripe/stripe-js"
 import { Button } from "@/components/ui/button"
 import { Loader2 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 import { logger } from "@/lib/logger"
+
+/**
+ * Get a user-friendly error message for Stripe errors
+ * @param error The Stripe error object
+ * @returns A user-friendly error message
+ */
+function getStripeErrorMessage(error: StripeError | any): string {
+  // Default message if we can't provide a more specific one
+  let message = error.message || 'Payment could not be processed';
+
+  // Special case for the India destination charges error - check this first
+  // regardless of error code structure
+  if (typeof message === 'string' && message.includes("destination charges with accounts in IN")) {
+    return "This creator's payment account is in India, which doesn't currently support direct payments. Please contact the creator for alternative payment methods.";
+  }
+
+  // Check for specific error codes and provide helpful messages
+  if (error.code) {
+    switch (error.code) {
+      case 'charge_invalid_parameter':
+        return "There was an issue with the payment parameters. Please try again or contact support.";
+      case 'card_declined':
+        return "Your card was declined. Please check your card details or try another payment method.";
+      case 'expired_card':
+        return "Your card has expired. Please use a different card.";
+      case 'incorrect_cvc':
+        return "The security code (CVC) is incorrect. Please check and try again.";
+      case 'processing_error':
+        return "An error occurred while processing your card. Please try again or use a different payment method.";
+      case 'rate_limit':
+        return "Too many payment attempts. Please wait a moment before trying again.";
+      case 'invalid_request_error':
+        if (message.includes("country")) {
+          return "There's an issue with the country settings for this payment. Please contact support.";
+        }
+        break;
+    }
+  }
+
+  // If we get here, return the original message
+  return message;
+}
 
 // Initialize Stripe
 let stripePromise: Promise<any> | null = null;
@@ -65,11 +107,14 @@ function PaymentForm({ onSuccess, onError, storyTitle }: Omit<StripePaymentFormP
       const { error: submitError } = await elements.submit();
       if (submitError) {
         logger.error('Form submission error:', submitError);
-        const errorMessage = submitError.message || 'Please check your payment details';
-        setError(errorMessage);
+
+        // Get user-friendly error message
+        const friendlyErrorMessage = getStripeErrorMessage(submitError);
+
+        setError(friendlyErrorMessage);
         toast({
           title: "Payment Error",
-          description: errorMessage,
+          description: friendlyErrorMessage,
           variant: "destructive",
         });
         setIsProcessing(false);
@@ -90,14 +135,32 @@ function PaymentForm({ onSuccess, onError, storyTitle }: Omit<StripePaymentFormP
       if (result.error) {
         // Show error to your customer
         logger.error('Payment confirmation error:', result.error);
-        const errorMessage = result.error.message || 'Payment could not be processed';
-        setError(errorMessage);
+
+        // Log the full error object for debugging
+        console.error('Payment confirmation error details:', result.error);
+
+        // Special check for India destination charges error
+        let friendlyErrorMessage = '';
+        if (result.error.message && result.error.message.includes("destination charges with accounts in IN")) {
+          friendlyErrorMessage = "This creator's payment account is in India, which doesn't currently support direct payments. Please contact the creator for alternative payment methods.";
+        } else {
+          // Get user-friendly error message for other errors
+          friendlyErrorMessage = getStripeErrorMessage(result.error);
+        }
+
+        // Set the error message in the form
+        setError(friendlyErrorMessage);
+
+        // Show toast with user-friendly error message
         toast({
           title: "Payment Failed",
-          description: errorMessage,
+          description: friendlyErrorMessage,
           variant: "destructive",
+          duration: 10000, // 10 seconds
         });
-        onError(new Error(errorMessage));
+
+        // Pass the error to the parent component
+        onError(new Error(friendlyErrorMessage));
       } else if (result.paymentIntent && result.paymentIntent.status === 'succeeded') {
         // Payment succeeded
         toast({
@@ -115,13 +178,37 @@ function PaymentForm({ onSuccess, onError, storyTitle }: Omit<StripePaymentFormP
       // Handle unexpected errors
       const error = err as Error;
       logger.error('Unexpected error:', error);
-      const errorMessage = error.message || 'An unexpected error occurred';
+
+      // Log the full error object for debugging
+      console.error('Payment error details:', err);
+
+      // Check if this is a Stripe error that we can parse
+      let errorMessage = 'An unexpected error occurred';
+
+      // First check for the specific India destination charges error
+      if (error.message && error.message.includes("destination charges with accounts in IN")) {
+        errorMessage = "This creator's payment account is in India, which doesn't currently support direct payments. Please contact the creator for alternative payment methods.";
+      }
+      // Then check if it's a Stripe error object
+      else if (err && typeof err === 'object' && 'code' in err && 'message' in err) {
+        // This might be a Stripe error object
+        errorMessage = getStripeErrorMessage(err as unknown as StripeError);
+      } else {
+        errorMessage = error.message || 'An unexpected error occurred';
+      }
+
+      // Set the error in the form
       setError(errorMessage);
+
+      // Show a toast with the error message
       toast({
-        title: "Error",
+        title: "Payment Failed",
         description: errorMessage,
         variant: "destructive",
+        duration: 10000, // 10 seconds
       });
+
+      // Pass the error to the parent component
       onError(new Error(errorMessage));
     } finally {
       setIsProcessing(false);

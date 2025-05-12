@@ -5,7 +5,7 @@ import { StripePaymentForm } from "./StripePaymentForm"
 import { PayPalPaymentForm } from "./PayPalPaymentForm"
 import { Button } from "@/components/ui/button"
 import { Loader2 } from "lucide-react"
-import { useToast } from "@/components/ui/use-toast"
+import { fetchWithCsrf } from "@/lib/client/csrf"
 
 interface UnifiedPaymentFormProps {
   recipientId: string
@@ -34,41 +34,31 @@ export function UnifiedPaymentForm({
 }: UnifiedPaymentFormProps) {
   const [isProcessing, setIsProcessing] = useState(false)
   const [clientSecret, setClientSecret] = useState<string | null>(null)
-  const [paypalLink, setPaypalLink] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const { toast } = useToast()
 
   const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'paypal' | null>(null)
 
   const processPayment = async () => {
-    console.log('[UNIFIED_PAYMENT_PROCESS] Starting payment process');
     try {
       setIsProcessing(true)
       setError(null)
-      console.log('[UNIFIED_PAYMENT_STATE] Set processing to true')
-
-      console.log('[UNIFIED_PAYMENT_METHOD_FETCH] Fetching recipient payment method');
       // First, get the recipient's preferred payment method
       const response = await fetch(`/api/user/payment-method?userId=${recipientId}`, {
         method: 'GET',
       })
 
       const data = await response.json()
-      console.log('[UNIFIED_PAYMENT_METHOD_RESPONSE]', data)
 
       if (!response.ok) {
-        console.log('[UNIFIED_PAYMENT_METHOD_ERROR]', data.message)
         throw new Error(data.message || 'Failed to get payment method')
       }
 
-      console.log('[UNIFIED_PAYMENT_METHOD_SET]', data.paymentMethod)
       // Set the payment method
       setPaymentMethod(data.paymentMethod)
 
       // For Stripe, we need to create a payment intent
       if (data.paymentMethod === 'stripe') {
-        console.log('[UNIFIED_PAYMENT_STRIPE] Creating Stripe payment intent');
-        const stripeResponse = await fetch('/api/donations/create', {
+        const stripeResponse = await fetchWithCsrf('/api/donations/create', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -82,34 +72,30 @@ export function UnifiedPaymentForm({
         })
 
         const stripeData = await stripeResponse.json()
-        console.log('[UNIFIED_PAYMENT_STRIPE_RESPONSE]', stripeData)
 
         if (!stripeResponse.ok) {
-          console.log('[UNIFIED_PAYMENT_STRIPE_ERROR]', stripeData.message)
           throw new Error(stripeData.message || 'Failed to process payment')
         }
 
         // Set the client secret for the Stripe form
         if (stripeData.clientSecret) {
-          console.log('[UNIFIED_PAYMENT_STRIPE_SUCCESS] Got client secret')
           setClientSecret(stripeData.clientSecret)
         } else {
-          console.log('[UNIFIED_PAYMENT_STRIPE_ERROR] No client secret in response')
           throw new Error('Invalid payment response')
         }
       }
-
-      // For PayPal, the PayPalPaymentForm component will handle the API calls
-      if (data.paymentMethod === 'paypal') {
-        console.log('[UNIFIED_PAYMENT_PAYPAL] Using PayPal payment method');
-      }
     } catch (error) {
-      console.log('[UNIFIED_PAYMENT_ERROR]', error)
-      console.error('Payment processing error:', error)
-      setError(error instanceof Error ? error.message : 'An unexpected error occurred')
-      onError(error instanceof Error ? error : new Error('Payment processing failed'))
+      // Get the error message
+      let errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+
+      // Check for specific error messages and provide more helpful information
+      if (errorMessage.includes("destination charges with accounts in IN")) {
+        errorMessage = "This creator's payment account is in India, which doesn't currently support direct payments. Please contact the creator for alternative payment methods.";
+      }
+
+      setError(errorMessage);
+      onError(error instanceof Error ? new Error(errorMessage) : new Error('Payment processing failed'));
     } finally {
-      console.log('[UNIFIED_PAYMENT_COMPLETE] Payment process completed')
       setIsProcessing(false)
     }
   }

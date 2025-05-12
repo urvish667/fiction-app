@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { prisma } from "@/lib/auth/db-adapter";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { logger } from "@/lib/logger";
 
 // Validation schema
 const profileSchema = z.object({
@@ -23,44 +24,43 @@ const profileSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    console.log("Profile completion request received");
-    
+    logger.info("Profile completion request received");
+
     // Get the session
     const session = await getServerSession(authOptions);
-    
+
     if (!session?.user?.id) {
-      console.error("Unauthorized profile completion attempt");
+      logger.error("Unauthorized profile completion attempt");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    
-    console.log(`Processing profile completion for user ID: ${session.user.id}`);
-    
+
+    logger.info(`Processing profile completion for user ID: ${session.user.id}`);
+
     // Parse and validate request
     const body = await request.json();
-    console.log("Profile completion data:", body);
-    
+
     try {
       // Validate the data
       const validatedData = profileSchema.parse(body);
-      
+
       // Check username availability
       const existingUser = await prisma.user.findUnique({
-        where: { 
+        where: {
           username: validatedData.username,
           NOT: {
             id: session.user.id
           }
         },
       });
-      
+
       if (existingUser) {
-        console.log(`Username '${validatedData.username}' is already taken`);
+        logger.info(`Username '${validatedData.username}' is already taken`);
         return NextResponse.json(
           { fields: { username: "Username is already taken" } },
           { status: 400 }
         );
       }
-      
+
       // Update user profile
       const updatedUser = await prisma.user.update({
         where: { id: session.user.id },
@@ -73,9 +73,9 @@ export async function POST(request: NextRequest) {
           updatedAt: new Date(),
         },
       });
-      
-      console.log(`Profile completed successfully for user ID: ${session.user.id}`);
-      return NextResponse.json({ 
+
+      logger.info(`Profile completed successfully for user ID: ${session.user.id}`);
+      return NextResponse.json({
         success: true,
         user: {
           username: updatedUser.username,
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
           isProfileComplete: updatedUser.isProfileComplete
         }
       });
-      
+
     } catch (validationError) {
       if (validationError instanceof z.ZodError) {
         const fieldErrors: Record<string, string> = {};
@@ -94,22 +94,22 @@ export async function POST(request: NextRequest) {
             fieldErrors[field] = err.message;
           }
         });
-        
-        console.log("Validation errors:", fieldErrors);
+
+        logger.warn("Validation errors:", fieldErrors);
         return NextResponse.json(
           { error: "Validation error", fields: fieldErrors },
           { status: 400 }
         );
       }
-      
+
       throw validationError; // Re-throw if it's not a ZodError
     }
-    
+
   } catch (error) {
-    console.error("Profile completion error:", error);
+    logger.error("Profile completion error:", error);
     return NextResponse.json(
       { error: "An error occurred while completing your profile" },
       { status: 500 }
     );
   }
-} 
+}

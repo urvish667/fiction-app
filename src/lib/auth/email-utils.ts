@@ -59,7 +59,7 @@ export async function sendVerificationEmail(email: string, token: string) {
 
   // Get email template
   const template = getVerificationEmailTemplate({
-    username: user?.username,
+    username: user?.username ?? undefined,
     verificationUrl
   });
 
@@ -94,7 +94,7 @@ export async function sendPasswordResetEmail(email: string, token: string) {
 
   // Get email template
   const template = getPasswordResetEmailTemplate({
-    username: user?.username,
+    username: user?.username ?? undefined,
     resetUrl
   });
 
@@ -124,7 +124,7 @@ export async function sendWelcomeEmail(email: string) {
 
   // Get email template
   const template = getWelcomeEmailTemplate({
-    username: user?.username,
+    username: user?.username ?? undefined,
     loginUrl
   });
 

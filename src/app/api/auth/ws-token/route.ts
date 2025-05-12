@@ -7,7 +7,7 @@
 
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { authOptions } from '../[...nextauth]/route';
 import { generateWebSocketToken } from '@/lib/auth/ws-auth';
 import { logger } from '@/lib/logger';
 

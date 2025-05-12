@@ -19,6 +19,7 @@ COPY . .
 # Next.js collects anonymous telemetry data about general usage.
 # Learn more here: https://nextjs.org/telemetry
 # Disable telemetry during the build.
+ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Copy .env.docker to .env for build
@@ -33,13 +34,6 @@ RUN npm run build
 # Production image, copy all the files and run next
 FROM base AS runner
 WORKDIR /app
-
-ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
-
-# Clear any cached environment variables
-ENV NEXTAUTH_SECRET=""
-ENV JWT_ENCRYPTION_KEY=""
 
 # Create a non-root user
 RUN addgroup --system --gid 1001 nodejs

@@ -90,11 +90,20 @@ export class StripePaymentProcessor implements PaymentProcessor {
 
       // Handle specific Stripe errors
       if (error instanceof Stripe.errors.StripeError) {
+        // Check for specific error types and provide more helpful messages
+        let errorMessage = error.message;
+
+        // Handle country-specific errors
+        if (error.code === 'charge_invalid_parameter' &&
+            error.message.includes("destination charges with accounts in IN")) {
+          errorMessage = "This creator's payment account is in India, which doesn't currently support direct payments. Please contact the creator for alternative payment methods.";
+        }
+
         return {
           success: false,
           processorType: 'stripe',
           donationId: '',
-          error: error.message,
+          error: errorMessage,
           errorCode: error.code || 'STRIPE_ERROR'
         };
       }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { authOptions } from "../auth/[...nextauth]/route";
 import { getNotifications } from "@/lib/notification-service";
 import { logger } from "@/lib/logger";
 import { withApiLogging } from "@/lib/monitoring/api-logger";

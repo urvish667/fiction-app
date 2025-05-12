@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
-import { authOptions } from "@/lib/auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { deleteNotification } from "@/lib/notification-service";
 import { logger } from "@/lib/logger";
 import { withApiLogging } from "@/lib/monitoring/api-logger";
@@ -9,10 +9,11 @@ import { withApiLogging } from "@/lib/monitoring/api-logger";
 /**
  * DELETE endpoint to delete a notification
  */
-export const DELETE = withApiLogging(async (
+// Define the handler function that will be wrapped
+async function deleteNotificationHandler(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) => {
+  { params }: { params: { id: string } | Promise<{ id: string }> }
+) {
   let session;
   try {
     const resolvedParams = await params;
@@ -71,4 +72,15 @@ export const DELETE = withApiLogging(async (
       { status: 500 }
     );
   }
+}
+
+// Export the DELETE handler with API logging
+export const DELETE = withApiLogging((request: NextRequest) => {
+  // Extract params from the URL
+  const url = new URL(request.url);
+  const pathParts = url.pathname.split('/');
+  const id = pathParts[pathParts.length - 1];
+
+  // Call the handler with the request and params
+  return deleteNotificationHandler(request, { params: { id } });
 });

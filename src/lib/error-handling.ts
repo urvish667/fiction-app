@@ -1,11 +1,12 @@
 /**
  * Error Handling Utility
- * 
+ *
  * This module provides standardized error handling for the FableSpace application.
  * It includes utilities for creating consistent error responses and logging errors.
  */
 
 import { NextResponse } from 'next/server';
+import { logger } from './logger';
 
 // Error codes for different types of errors
 export enum ErrorCode {
@@ -16,25 +17,25 @@ export enum ErrorCode {
   TOKEN_EXPIRED = 'TOKEN_EXPIRED',
   EMAIL_VERIFICATION_REQUIRED = 'EMAIL_VERIFICATION_REQUIRED',
   INSUFFICIENT_PERMISSIONS = 'INSUFFICIENT_PERMISSIONS',
-  
+
   // Validation errors
   VALIDATION_ERROR = 'VALIDATION_ERROR',
   INVALID_INPUT = 'INVALID_INPUT',
   MISSING_REQUIRED_FIELD = 'MISSING_REQUIRED_FIELD',
-  
+
   // Resource errors
   RESOURCE_NOT_FOUND = 'RESOURCE_NOT_FOUND',
   RESOURCE_ALREADY_EXISTS = 'RESOURCE_ALREADY_EXISTS',
   NOT_RESOURCE_OWNER = 'NOT_RESOURCE_OWNER',
-  
+
   // Rate limiting errors
   RATE_LIMIT_EXCEEDED = 'RATE_LIMIT_EXCEEDED',
-  
+
   // Server errors
   INTERNAL_SERVER_ERROR = 'INTERNAL_SERVER_ERROR',
   DATABASE_ERROR = 'DATABASE_ERROR',
   EXTERNAL_SERVICE_ERROR = 'EXTERNAL_SERVICE_ERROR',
-  
+
   // CSRF errors
   CSRF_TOKEN_MISSING = 'CSRF_TOKEN_MISSING',
   CSRF_TOKEN_INVALID = 'CSRF_TOKEN_INVALID',
@@ -49,25 +50,25 @@ export const ErrorStatusCodes: Record<ErrorCode, number> = {
   [ErrorCode.TOKEN_EXPIRED]: 401,
   [ErrorCode.EMAIL_VERIFICATION_REQUIRED]: 403,
   [ErrorCode.INSUFFICIENT_PERMISSIONS]: 403,
-  
+
   // Validation errors
   [ErrorCode.VALIDATION_ERROR]: 400,
   [ErrorCode.INVALID_INPUT]: 400,
   [ErrorCode.MISSING_REQUIRED_FIELD]: 400,
-  
+
   // Resource errors
   [ErrorCode.RESOURCE_NOT_FOUND]: 404,
   [ErrorCode.RESOURCE_ALREADY_EXISTS]: 409,
   [ErrorCode.NOT_RESOURCE_OWNER]: 403,
-  
+
   // Rate limiting errors
   [ErrorCode.RATE_LIMIT_EXCEEDED]: 429,
-  
+
   // Server errors
   [ErrorCode.INTERNAL_SERVER_ERROR]: 500,
   [ErrorCode.DATABASE_ERROR]: 500,
   [ErrorCode.EXTERNAL_SERVICE_ERROR]: 502,
-  
+
   // CSRF errors
   [ErrorCode.CSRF_TOKEN_MISSING]: 403,
   [ErrorCode.CSRF_TOKEN_INVALID]: 403,
@@ -95,7 +96,7 @@ export function createErrorResponse(
 ): NextResponse {
   // Get the HTTP status code for this error
   const status = ErrorStatusCodes[code];
-  
+
   // Create the error response
   const errorResponse: ErrorResponse = {
     error: code.replace(/_/g, ' ').toLowerCase(),
@@ -103,12 +104,12 @@ export function createErrorResponse(
     code,
     ...(details && { details }),
   };
-  
+
   // Log the error if it's a server error
   if (status >= 500) {
-    console.error(`[ERROR] ${code}: ${errorResponse.message}`, details);
+    logger.error(`${code}: ${errorResponse.message}`, details);
   }
-  
+
   // Return the error response
   return NextResponse.json(errorResponse, { status });
 }
@@ -133,7 +134,7 @@ function getDefaultErrorMessage(code: ErrorCode): string {
       return 'Email verification is required to access this resource';
     case ErrorCode.INSUFFICIENT_PERMISSIONS:
       return 'You do not have sufficient permissions to perform this action';
-    
+
     // Validation errors
     case ErrorCode.VALIDATION_ERROR:
       return 'The request contains invalid data';
@@ -141,7 +142,7 @@ function getDefaultErrorMessage(code: ErrorCode): string {
       return 'The input data is invalid';
     case ErrorCode.MISSING_REQUIRED_FIELD:
       return 'A required field is missing';
-    
+
     // Resource errors
     case ErrorCode.RESOURCE_NOT_FOUND:
       return 'The requested resource was not found';
@@ -149,11 +150,11 @@ function getDefaultErrorMessage(code: ErrorCode): string {
       return 'The resource already exists';
     case ErrorCode.NOT_RESOURCE_OWNER:
       return 'You do not have permission to access this resource';
-    
+
     // Rate limiting errors
     case ErrorCode.RATE_LIMIT_EXCEEDED:
       return 'You have exceeded the rate limit for this endpoint';
-    
+
     // Server errors
     case ErrorCode.INTERNAL_SERVER_ERROR:
       return 'An internal server error occurred';
@@ -161,13 +162,13 @@ function getDefaultErrorMessage(code: ErrorCode): string {
       return 'A database error occurred';
     case ErrorCode.EXTERNAL_SERVICE_ERROR:
       return 'An error occurred while communicating with an external service';
-    
+
     // CSRF errors
     case ErrorCode.CSRF_TOKEN_MISSING:
       return 'CSRF token is missing';
     case ErrorCode.CSRF_TOKEN_INVALID:
       return 'CSRF token is invalid';
-    
+
     default:
       return 'An error occurred';
   }
@@ -187,13 +188,13 @@ export function withErrorHandling<T extends any[], R>(
     try {
       return await fn(...args);
     } catch (error) {
-      console.error('Error in withErrorHandling:', error);
-      
+      logger.error('Error in withErrorHandling:', error);
+
       // If the error is already a NextResponse, return it
       if (error instanceof NextResponse) {
         return error;
       }
-      
+
       // Create a standardized error response
       return createErrorResponse(
         defaultErrorCode,

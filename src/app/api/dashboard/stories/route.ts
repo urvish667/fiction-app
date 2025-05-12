@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { authOptions } from "../../auth/[...nextauth]/route";
 import { getTopStories } from "@/lib/services/dashboard-service";
 import { ApiResponse, DashboardStory } from "@/types/dashboard";
 import { logger } from "@/lib/logger";

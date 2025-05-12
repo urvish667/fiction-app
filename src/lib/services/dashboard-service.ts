@@ -655,7 +655,8 @@ export async function getUserStories(userId: string) {
       reads: viewCountMap.get(story.id) || 0, // Keep reads for backward compatibility
       likes: story._count.likes,
       comments: story._count.comments,
-      chaptersCount: story._count.chapters,
+      chapters: story._count.chapters, // Renamed from chaptersCount to match API expectation
+      chaptersCount: story._count.chapters, // Keep for backward compatibility
       updatedAt: story.updatedAt,
       createdAt: story.createdAt,
       coverImage: story.coverImage,

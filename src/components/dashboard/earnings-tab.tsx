@@ -48,7 +48,7 @@ export function EarningsTab({ timeRange = '30days' }: { timeRange?: string }) {
             {isLoading ? (
               <Skeleton className="h-8 w-24 mb-2" />
             ) : (
-              <div className="text-2xl font-bold">${data?.totalEarnings.toLocaleString() || '0'}</div>
+              <div className="text-2xl font-bold">${(data?.totalEarnings || 0).toLocaleString()}</div>
             )}
             <p className="text-xs text-muted-foreground">Lifetime earnings from all stories</p>
           </CardContent>
@@ -67,17 +67,17 @@ export function EarningsTab({ timeRange = '30days' }: { timeRange?: string }) {
               </>
             ) : (
               <>
-                <div className="text-2xl font-bold">${data?.thisMonthEarnings.toLocaleString() || '0'}</div>
+                <div className="text-2xl font-bold">${(data?.thisMonthEarnings || 0).toLocaleString()}</div>
                 <div className="flex items-center mt-1">
-                  {data?.monthlyChange >= 0 ? (
+                  {(data?.monthlyChange || 0) >= 0 ? (
                     <>
                       <ArrowUpRight className="h-4 w-4 text-green-500 mr-1" />
-                      <span className="text-xs text-green-500 font-medium">+{data?.monthlyChange}%</span>
+                      <span className="text-xs text-green-500 font-medium">+{data?.monthlyChange || 0}%</span>
                     </>
                   ) : (
                     <>
                       <ArrowDownRight className="h-4 w-4 text-red-500 mr-1" />
-                      <span className="text-xs text-red-500 font-medium">{data?.monthlyChange}%</span>
+                      <span className="text-xs text-red-500 font-medium">{data?.monthlyChange || 0}%</span>
                     </>
                   )}
                   <span className="text-xs text-muted-foreground ml-1">from last month</span>
@@ -162,8 +162,8 @@ export function EarningsTab({ timeRange = '30days' }: { timeRange?: string }) {
                         </Link>
                         <div className="text-xs text-muted-foreground">{story.genre}</div>
                       </td>
-                      <td className="text-right py-3 px-2">{story.reads.toLocaleString()}</td>
-                      <td className="text-right py-3 px-2">${story.earnings.toLocaleString()}</td>
+                      <td className="text-right py-3 px-2">{(story.reads || 0).toLocaleString()}</td>
+                      <td className="text-right py-3 px-2">${(story.earnings || 0).toLocaleString()}</td>
                     </tr>
                   ))}
                 </tbody>

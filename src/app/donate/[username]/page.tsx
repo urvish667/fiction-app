@@ -18,6 +18,7 @@ import { BookOpen, Heart, Users, DollarSign, AlertCircle, Loader2 } from "lucide
 import Navbar from "@/components/navbar"
 import { useToast } from "@/components/ui/use-toast"
 import { UnifiedPaymentForm } from "@/components/payments/UnifiedPaymentForm"
+import { fetchWithCsrf } from "@/lib/client/csrf"
 
 // Predefined donation amounts
 const donationAmounts = [
@@ -162,7 +163,7 @@ export default function DonatePage() {
       setIsProcessing(true)
 
       // 2. Process payment through unified payment gateway
-      const response = await fetch('/api/donations/create', {
+      const response = await fetchWithCsrf('/api/donations/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -258,11 +259,27 @@ export default function DonatePage() {
   // Handle payment error
   const handlePaymentError = (error: Error) => {
     console.error('Payment error:', error)
+
+    // Check for specific error messages and provide more helpful information
+    let errorMessage = error.message || "An unexpected error occurred";
+
+    // Handle the specific case of Indian accounts not supporting destination charges
+    if (errorMessage.includes("destination charges with accounts in IN")) {
+      errorMessage = "This creator's payment account is in India, which doesn't currently support direct payments. Please contact the creator for alternative payment methods.";
+    }
+
+    // Set error state to display in the UI
+    setError(errorMessage);
+
+    // Show toast notification with the error message
     toast({
       title: "Payment Failed",
-      description: error.message || "An unexpected error occurred",
+      description: errorMessage,
       variant: "destructive",
+      duration: 10000, // 10 seconds
     })
+
+    // Reset processing state and client secret
     setIsProcessing(false)
     setClientSecret(null)
   }

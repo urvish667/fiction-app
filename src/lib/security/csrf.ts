@@ -127,8 +127,8 @@ export async function setCsrfCookie(): Promise<string> {
 
   // Set the cookie
   // Await the cookies() function to prevent synchronous access error
-  const cookieStore = cookies();
-  await cookieStore.set({
+  const cookieStore = await cookies();
+  cookieStore.set({
     name: CSRF_COOKIE_NAME,
     value: token,
     httpOnly: false, // Allow JavaScript access for client-side CSRF protection
@@ -146,10 +146,11 @@ export async function setCsrfCookie(): Promise<string> {
  * @returns The CSRF token or null if not found
  */
 export async function getCsrfToken(): Promise<string | null> {
-  const cookieStore = cookies();
-  const token = await cookieStore.get(CSRF_COOKIE_NAME)?.value;
+  const cookieStore = await cookies();
+  const cookie = cookieStore.get(CSRF_COOKIE_NAME);
+  const token = cookie?.value || null;
 
-  return token || null;
+  return token;
 }
 
 /**
@@ -168,9 +169,9 @@ export async function csrfProtection(req: NextRequest): Promise<NextResponse | n
   const csrfToken = req.headers.get(CSRF_HEADER_NAME);
 
   // Get the CSRF token from the cookies
-  const cookieStore = cookies();
-  // Await the cookie access to prevent synchronous access error
-  const cookieToken = await cookieStore.get(CSRF_COOKIE_NAME)?.value;
+  const cookieStore = await cookies();
+  const cookie = cookieStore.get(CSRF_COOKIE_NAME);
+  const cookieToken = cookie?.value;
 
   // If no token is found, return an error
   if (!csrfToken || !cookieToken) {
