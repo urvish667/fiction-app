@@ -6,46 +6,50 @@ import { useSession } from "next-auth/react"
 import { useToast } from "@/components/ui/use-toast"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Heart, MessageSquare, Share2, Bell } from "lucide-react"
+import { Heart, Share2, Bell, MessageCircle } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import CommentSection from "@/components/comment-section"
 import { SupportButton } from "@/components/SupportButton"
 import StoryRecommendations from "@/components/StoryRecommendations"
 import { StoryService } from "@/services/story-service"
-import { Story } from "@/types/story"
+import { Story, Chapter } from "@/types/story"
 
 interface EngagementSectionProps {
   story: Story
+  chapter?: Chapter
   slug: string
   chapterNumber: number
-  isLiked: boolean
+  isChapterLiked?: boolean
   isFollowing: boolean
-  setIsLiked: (value: boolean) => void
+  setIsChapterLiked?: (value: boolean) => void
   setIsFollowing: (value: boolean) => void
 }
 
 export function EngagementSection({
   story,
+  chapter,
   slug,
   chapterNumber,
-  isLiked,
+  isChapterLiked = false,
   isFollowing,
-  setIsLiked,
+  setIsChapterLiked,
   setIsFollowing
 }: EngagementSectionProps) {
   const router = useRouter()
   const { data: session } = useSession()
   const { toast } = useToast()
-  const [showComments, setShowComments] = useState(false)
-  const [likeLoading, setLikeLoading] = useState(false)
+  const [showChapterComments, setShowChapterComments] = useState(false)
+  const [chapterLikeLoading, setChapterLikeLoading] = useState(false)
   const [followLoading, setFollowLoading] = useState(false)
 
-  // Handle like/unlike story
-  const handleLike = async () => {
+
+
+  // Handle like/unlike chapter
+  const handleChapterLike = async () => {
     if (!session) {
       toast({
         title: "Sign in required",
-        description: "Please sign in to like this story",
+        description: "Please sign in to like this chapter",
         variant: "default",
         action: (
           <Button variant="default" size="sm" onClick={() => router.push(`/login?callbackUrl=/story/${slug}/chapter/${chapterNumber}`)}>
@@ -56,28 +60,37 @@ export function EngagementSection({
       return
     }
 
-    if (!story) return;
+    if (!story || !chapter) return;
 
     try {
-      setLikeLoading(true)
+      setChapterLikeLoading(true)
 
-      if (isLiked) {
-        await StoryService.unlikeStory(story.id)
+      if (isChapterLiked) {
+        await StoryService.unlikeChapter(story.id, chapter.id)
       } else {
-        await StoryService.likeStory(story.id)
+        await StoryService.likeChapter(story.id, chapter.id)
       }
 
       // Toggle like status locally
-      setIsLiked(!isLiked)
+      if (setIsChapterLiked) {
+        setIsChapterLiked(!isChapterLiked)
+      }
     } catch (err) {
-      console.error("Error updating like status:", err)
+      console.error("Error updating chapter like status:", err)
+
+      // Extract error message if available
+      let errorMessage = "Failed to update chapter like status";
+      if (err instanceof Error) {
+        errorMessage = err.message || errorMessage;
+      }
+
       toast({
         title: "Error",
-        description: "Failed to update like status",
+        description: errorMessage,
         variant: "destructive"
       })
     } finally {
-      setLikeLoading(false)
+      setChapterLikeLoading(false)
     }
   }
 
@@ -164,31 +177,43 @@ export function EngagementSection({
     <div className="border-t pt-8 mb-12">
       <div className="flex flex-wrap justify-between items-center gap-4 mb-8">
         <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-          <Button
-            variant={isLiked ? "default" : "outline"}
-            size="sm"
-            onClick={handleLike}
-            disabled={likeLoading}
-            className="flex items-center gap-2"
-            title={!session ? "Sign in to like this story" : undefined}
-          >
-            {likeLoading ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-current mr-1"></div>
-            ) : (
-              <Heart size={16} className={isLiked ? "fill-current" : ""} />
-            )}
-            {isLiked ? "Liked" : "Like"}
-          </Button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowComments(!showComments)}
-            className="flex items-center gap-2"
-          >
-            <MessageSquare size={16} />
-            Story Comments ({story.commentCount || 0})
-          </Button>
+
+          {/* Chapter Like Button - Only show if chapter is provided */}
+          {chapter && (
+            <Button
+              variant={isChapterLiked ? "default" : "outline"}
+              size="sm"
+              onClick={handleChapterLike}
+              disabled={chapterLikeLoading}
+              className="flex items-center gap-2"
+              title={!session ? "Sign in to like this chapter" : undefined}
+            >
+              {chapterLikeLoading ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-current mr-1"></div>
+              ) : (
+                <Heart size={16} className={isChapterLiked ? "fill-current" : ""} />
+              )}
+              {isChapterLiked ? "Liked Chapter" : "Like Chapter"}
+            </Button>
+          )}
+
+
+
+          {/* Chapter Comments Button - Only show if chapter is provided */}
+          {chapter && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setShowChapterComments(!showChapterComments)
+              }}
+              className="flex items-center gap-2"
+            >
+              <MessageCircle size={16} />
+              Chapter Comments
+            </Button>
+          )}
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -241,9 +266,11 @@ export function EngagementSection({
         ) : null}
       </div>
 
-      {/* Comments Section (Conditionally Rendered) */}
+
+
+      {/* Chapter Comments Section (Conditionally Rendered) */}
       <AnimatePresence>
-        {showComments && (
+        {showChapterComments && chapter && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
@@ -251,8 +278,12 @@ export function EngagementSection({
             transition={{ duration: 0.3 }}
             className="mb-12"
           >
-            <h2 className="text-2xl font-bold mb-6">Story Comments</h2>
-            <CommentSection storyId={story.id} />
+            <h2 className="text-2xl font-bold mb-6">Chapter Comments</h2>
+            <CommentSection
+              storyId={story.id}
+              chapterId={chapter.id}
+              isChapterComment={true}
+            />
           </motion.div>
         )}
       </AnimatePresence>

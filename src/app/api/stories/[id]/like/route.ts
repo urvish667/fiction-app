@@ -56,12 +56,11 @@ export async function POST(
     }
 
     // Check if already liked
-    const existingLike = await prisma.like.findUnique({
+    const existingLike = await prisma.like.findFirst({
       where: {
-        userId_storyId: {
-          userId: session.user.id,
-          storyId,
-        },
+        userId: session.user.id,
+        storyId,
+        chapterId: null,
       },
     });
 
@@ -131,12 +130,11 @@ export async function DELETE(
     }
 
     // Find the like
-    const like = await prisma.like.findUnique({
+    const like = await prisma.like.findFirst({
       where: {
-        userId_storyId: {
-          userId: session.user.id,
-          storyId,
-        },
+        userId: session.user.id,
+        storyId,
+        chapterId: null,
       },
     });
 
@@ -148,12 +146,11 @@ export async function DELETE(
     }
 
     // Delete the like
-    await prisma.like.delete({
+    await prisma.like.deleteMany({
       where: {
-        userId_storyId: {
-          userId: session.user.id,
-          storyId,
-        },
+        userId: session.user.id,
+        storyId,
+        chapterId: null,
       },
     });
 

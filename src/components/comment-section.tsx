@@ -14,9 +14,11 @@ import { Comment } from "@/types/story"
 
 interface CommentSectionProps {
   storyId: string
+  chapterId?: string
+  isChapterComment?: boolean
 }
 
-export default function CommentSection({ storyId }: CommentSectionProps) {
+export default function CommentSection({ storyId, chapterId, isChapterComment = false }: CommentSectionProps) {
   const { data: session } = useSession()
   const router = useRouter()
   const { toast } = useToast()
@@ -38,6 +40,9 @@ export default function CommentSection({ storyId }: CommentSectionProps) {
   const [editReplyContent, setEditReplyContent] = useState("")
   const [likingComment, setLikingComment] = useState<{[key: string]: boolean}>({})
 
+  // Determine if we're in chapter comment mode
+  const isChapter = isChapterComment && !!chapterId
+
   // Fetch comments
   useEffect(() => {
     const fetchComments = async () => {
@@ -45,25 +50,37 @@ export default function CommentSection({ storyId }: CommentSectionProps) {
       setError(null)
 
       try {
-        const response = await CommentService.getComments(storyId, {
-          page: 1,
-          limit: 10,
-          parentId: null // Only fetch top-level comments
-        })
+        let response;
+
+        if (isChapter && chapterId) {
+          // Fetch chapter comments
+          response = await CommentService.getChapterComments(storyId, chapterId, {
+            page: 1,
+            limit: 10,
+            parentId: null // Only fetch top-level comments
+          });
+        } else {
+          // Fetch story comments
+          response = await CommentService.getComments(storyId, {
+            page: 1,
+            limit: 10,
+            parentId: null // Only fetch top-level comments
+          });
+        }
 
         setComments(response.comments)
         setHasMore(response.pagination.hasMore)
         setPage(1)
       } catch (err) {
-        console.error("Error fetching comments:", err)
-        setError("Failed to load comments")
+        console.error(`Error fetching ${isChapter ? 'chapter' : 'story'} comments:`, err)
+        setError(`Failed to load ${isChapter ? 'chapter' : 'story'} comments`)
       } finally {
         setIsLoading(false)
       }
     }
 
     fetchComments()
-  }, [storyId])
+  }, [storyId, chapterId, isChapter])
 
   // Load more comments
   const loadMoreComments = async () => {
@@ -73,20 +90,32 @@ export default function CommentSection({ storyId }: CommentSectionProps) {
       setIsLoading(true)
       const nextPage = page + 1
 
-      const response = await CommentService.getComments(storyId, {
-        page: nextPage,
-        limit: 10,
-        parentId: null
-      })
+      let response;
+
+      if (isChapter && chapterId) {
+        // Load more chapter comments
+        response = await CommentService.getChapterComments(storyId, chapterId, {
+          page: nextPage,
+          limit: 10,
+          parentId: null
+        });
+      } else {
+        // Load more story comments
+        response = await CommentService.getComments(storyId, {
+          page: nextPage,
+          limit: 10,
+          parentId: null
+        });
+      }
 
       setComments([...comments, ...response.comments])
       setHasMore(response.pagination.hasMore)
       setPage(nextPage)
     } catch (err) {
-      console.error("Error loading more comments:", err)
+      console.error(`Error loading more ${isChapter ? 'chapter' : 'story'} comments:`, err)
       toast({
         title: "Error",
-        description: "Failed to load more comments",
+        description: `Failed to load more ${isChapter ? 'chapter' : 'story'} comments`,
         variant: "destructive"
       })
     } finally {
@@ -98,16 +127,26 @@ export default function CommentSection({ storyId }: CommentSectionProps) {
   const handleSubmitComment = async () => {
     if (!newComment.trim()) return
     if (!session) {
-      router.push(`/login?callbackUrl=/story/${storyId}`)
+      router.push(`/login?callbackUrl=/story/${storyId}${isChapter ? `/chapter/${chapterId}` : ''}`)
       return
     }
 
     try {
       setIsSubmitting(true)
 
-      const createdComment = await CommentService.createComment(storyId, {
-        content: newComment
-      })
+      let createdComment;
+
+      if (isChapter && chapterId) {
+        // Create chapter comment
+        createdComment = await CommentService.createChapterComment(storyId, chapterId, {
+          content: newComment
+        });
+      } else {
+        // Create story comment
+        createdComment = await CommentService.createComment(storyId, {
+          content: newComment
+        });
+      }
 
       // Add the new comment to the top of the list
       setComments([createdComment, ...comments])
@@ -115,13 +154,13 @@ export default function CommentSection({ storyId }: CommentSectionProps) {
 
       toast({
         title: "Comment posted",
-        description: "Your comment has been posted successfully"
+        description: `Your ${isChapter ? 'chapter' : 'story'} comment has been posted successfully`
       })
     } catch (err) {
-      console.error("Error posting comment:", err)
+      console.error(`Error posting ${isChapter ? 'chapter' : 'story'} comment:`, err)
       toast({
         title: "Error",
-        description: "Failed to post your comment",
+        description: `Failed to post your ${isChapter ? 'chapter' : 'story'} comment`,
         variant: "destructive"
       })
     } finally {
@@ -196,10 +235,21 @@ export default function CommentSection({ storyId }: CommentSectionProps) {
     try {
       setIsSubmitting(true)
 
-      const createdReply = await CommentService.createComment(storyId, {
-        content: replyContent,
-        parentId
-      })
+      let createdReply;
+
+      if (isChapter && chapterId) {
+        // Create chapter comment reply
+        createdReply = await CommentService.createChapterComment(storyId, chapterId, {
+          content: replyContent,
+          parentId
+        });
+      } else {
+        // Create story comment reply
+        createdReply = await CommentService.createComment(storyId, {
+          content: replyContent,
+          parentId
+        });
+      }
 
       // Update the parent comment's reply count
       setComments(comments.map(comment => {

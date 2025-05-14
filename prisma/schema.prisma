@@ -174,6 +174,8 @@ model Chapter {
   story             Story             @relation(fields: [storyId], references: [id], onDelete: Cascade)
   views             ChapterView[]
   readingProgresses ReadingProgress[]
+  comments          Comment[]
+  likes             Like[]
 
   @@unique([storyId, number])
   @@index([storyId])
@@ -182,21 +184,24 @@ model Chapter {
 }
 
 model Comment {
-  id        String       @id @default(cuid())
+  id        String        @id @default(cuid())
   content   String
   userId    String
   storyId   String
+  chapterId String?
   parentId  String?
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
-  parent    Comment?     @relation("CommentToReply", fields: [parentId], references: [id])
-  replies   Comment[]    @relation("CommentToReply")
-  story     Story        @relation(fields: [storyId], references: [id], onDelete: Cascade)
-  user      User         @relation(fields: [userId], references: [id])
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  parent    Comment?      @relation("CommentToReply", fields: [parentId], references: [id])
+  replies   Comment[]     @relation("CommentToReply")
+  story     Story         @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  chapter   Chapter?      @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  user      User          @relation(fields: [userId], references: [id])
   likes     CommentLike[]
 
   @@index([userId])
   @@index([storyId])
+  @@index([chapterId])
   @@index([parentId])
 }
 
@@ -204,13 +209,17 @@ model Like {
   id        String   @id @default(cuid())
   userId    String
   storyId   String
+  chapterId String?
   createdAt DateTime @default(now())
   story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  chapter   Chapter? @relation(fields: [chapterId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id])
 
-  @@unique([userId, storyId])
+  // Add unique constraint for userId and storyId when chapterId is null
+  @@unique([userId, storyId, chapterId], name: "userId_storyId_chapterId_unique")
   @@index([userId])
   @@index([storyId])
+  @@index([chapterId])
 }
 
 model Bookmark {
@@ -324,15 +333,15 @@ model StoryRecommendation {
 }
 
 model StoryView {
-  id         String   @id @default(cuid())
-  userId     String?
-  storyId    String
-  clientIp   String?
-  userAgent  String?
+  id          String   @id @default(cuid())
+  userId      String?
+  storyId     String
+  clientIp    String?
+  userAgent   String?
   isFirstView Boolean  @default(false)
-  createdAt  DateTime @default(now())
-  story      Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
-  user       User?    @relation(fields: [userId], references: [id])
+  createdAt   DateTime @default(now())
+  story       Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  user        User?    @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([storyId])
@@ -341,15 +350,15 @@ model StoryView {
 }
 
 model ChapterView {
-  id         String   @id @default(cuid())
-  userId     String?
-  chapterId  String
-  clientIp   String?
-  userAgent  String?
+  id          String   @id @default(cuid())
+  userId      String?
+  chapterId   String
+  clientIp    String?
+  userAgent   String?
   isFirstView Boolean  @default(false)
-  createdAt  DateTime @default(now())
-  chapter    Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
-  user       User?    @relation(fields: [userId], references: [id])
+  createdAt   DateTime @default(now())
+  chapter     Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  user        User?    @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([chapterId])

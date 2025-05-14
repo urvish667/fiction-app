@@ -97,12 +97,11 @@ export async function GET(
 
     if (session?.user?.id) {
       const [like, bookmark] = await Promise.all([
-        prisma.like.findUnique({
+        prisma.like.findFirst({
           where: {
-            userId_storyId: {
-              userId: session.user.id,
-              storyId: story.id,
-            },
+            userId: session.user.id,
+            storyId: story.id,
+            chapterId: null,
           },
         }),
         prisma.bookmark.findUnique({

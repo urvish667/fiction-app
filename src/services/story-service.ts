@@ -294,6 +294,96 @@ export const StoryService = {
   },
 
   /**
+   * Like a chapter
+   */
+  async likeChapter(storyId: string, chapterId: string): Promise<{ like: any; likeCount: number }> {
+    try {
+      const response = await fetchWithCsrf(`/api/stories/${storyId}/chapters/${chapterId}/like`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        // Check if the response has content before trying to parse it
+        const text = await response.text();
+        let errorData = { error: `Failed to like chapter: ${response.status} ${response.statusText}` };
+
+        if (text) {
+          try {
+            errorData = JSON.parse(text);
+          } catch (parseError) {
+            console.error("Failed to parse error response:", parseError);
+            // Keep the default error message
+          }
+        }
+
+        console.error("Chapter like error response:", errorData);
+        throw new Error(errorData.error || `Failed to like chapter: ${response.status} ${response.statusText}`);
+      }
+
+      // Check if the response has content before trying to parse it
+      const text = await response.text();
+      if (!text) {
+        return { like: null, likeCount: 0 };
+      }
+
+      try {
+        return JSON.parse(text);
+      } catch (parseError) {
+        console.error("Failed to parse success response:", parseError);
+        throw new Error("Invalid response format from server");
+      }
+    } catch (error) {
+      console.error("Error in likeChapter:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Unlike a chapter
+   */
+  async unlikeChapter(storyId: string, chapterId: string): Promise<{ likeCount: number }> {
+    try {
+      const response = await fetchWithCsrf(`/api/stories/${storyId}/chapters/${chapterId}/like`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        // Check if the response has content before trying to parse it
+        const text = await response.text();
+        let errorData = { error: `Failed to unlike chapter: ${response.status} ${response.statusText}` };
+
+        if (text) {
+          try {
+            errorData = JSON.parse(text);
+          } catch (parseError) {
+            console.error("Failed to parse error response:", parseError);
+            // Keep the default error message
+          }
+        }
+
+        console.error("Chapter unlike error response:", errorData);
+        throw new Error(errorData.error || `Failed to unlike chapter: ${response.status} ${response.statusText}`);
+      }
+
+      // Check if the response has content before trying to parse it
+      const text = await response.text();
+      if (!text) {
+        return { likeCount: 0 };
+      }
+
+      try {
+        return JSON.parse(text);
+      } catch (parseError) {
+        console.error("Failed to parse success response:", parseError);
+        throw new Error("Invalid response format from server");
+      }
+    } catch (error) {
+      console.error("Error in unlikeChapter:", error);
+      throw error;
+    }
+  },
+
+  /**
    * Bookmark a story
    */
   async bookmarkStory(storyId: string): Promise<any> {

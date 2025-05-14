@@ -37,7 +37,7 @@ interface ChapterState {
   isContentLoading: boolean; // For content-only refreshes
   error: string | null;
   readingProgress: number;
-  isLiked: boolean;
+  isChapterLiked: boolean;
   isFollowing: boolean;
   contentLength: 'short' | 'medium' | 'long';
   fontSize: number;
@@ -63,7 +63,7 @@ export default function ReadingPage() {
     isContentLoading: false,
     error: null,
     readingProgress: 0,
-    isLiked: false,
+    isChapterLiked: false,
     isFollowing: false,
     contentLength: 'medium',
     fontSize: 16
@@ -76,7 +76,7 @@ export default function ReadingPage() {
   // Destructure state for easier access
   const {
     story, chapter, chapters, isLoading, isContentLoading, error,
-    readingProgress, isLiked, isFollowing, contentLength, fontSize
+    readingProgress, isChapterLiked, isFollowing, contentLength, fontSize
   } = state
 
   // Fetch story and chapter data
@@ -215,24 +215,40 @@ export default function ReadingPage() {
     return () => clearTimeout(timer)
   }, [story?.id, chapter?.id])
 
-  // Check if the user is following the author and if the story is liked
+  // Check if the user is following the author and if the story/chapter is liked
   useEffect(() => {
     const checkUserInteractions = async () => {
       if (!session || !story || !story.author || typeof story.author !== 'object') return
 
       try {
         let newIsFollowing = isFollowing;
+        let newIsChapterLiked = isChapterLiked;
 
         // Don't check follow status if the author is the current user
         if (story.author.id !== session.user.id && story.author.username) {
           newIsFollowing = await StoryService.isFollowingUser(story.author.username)
         }
 
+        // Check if chapter is liked (if chapter exists)
+        if (chapter && session.user.id) {
+          try {
+            // We need to implement this API endpoint to check if a chapter is liked
+            const response = await fetch(`/api/stories/${story.id}/chapters/${chapter.id}/like/check`);
+            if (response.ok) {
+              const data = await response.json();
+              newIsChapterLiked = data.isLiked;
+            }
+          } catch (chapterLikeError) {
+            console.error("Error checking chapter like status:", chapterLikeError);
+          }
+        }
+
         // Update state with user interactions
         setState(prev => ({
           ...prev,
           isFollowing: newIsFollowing,
-          isLiked: story.isLiked || false
+          isLiked: story.isLiked || false,
+          isChapterLiked: newIsChapterLiked
         }))
       } catch (err) {
         console.error("Error checking user interactions:", err)
@@ -240,7 +256,7 @@ export default function ReadingPage() {
     }
 
     checkUserInteractions()
-  }, [session, story, isFollowing])
+  }, [session, story, chapter, isFollowing, isChapterLiked])
 
   // Track reading progress with debouncing
   const updateProgressDebounced = useCallback(
@@ -537,11 +553,12 @@ export default function ReadingPage() {
           {/* Engagement Section */}
           <EngagementSection
             story={story}
+            chapter={chapter}
             slug={slug}
             chapterNumber={chapterNumber}
-            isLiked={isLiked}
+            isChapterLiked={isChapterLiked}
             isFollowing={isFollowing}
-            setIsLiked={(value) => setState(prev => ({ ...prev, isLiked: value }))}
+            setIsChapterLiked={(value) => setState(prev => ({ ...prev, isChapterLiked: value }))}
             setIsFollowing={(value) => setState(prev => ({ ...prev, isFollowing: value }))}
           />
         </div>

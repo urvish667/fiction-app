@@ -34,6 +34,34 @@ export const CommentService = {
   },
 
   /**
+   * Get comments for a chapter
+   */
+  async getChapterComments(storyId: string, chapterId: string, params?: {
+    page?: number;
+    limit?: number;
+    parentId?: string | null;
+  }): Promise<{ comments: Comment[]; pagination: any }> {
+    // Build query string from params
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) {
+          queryParams.append(key, String(value));
+        }
+      });
+    }
+
+    const response = await fetch(`/api/stories/${storyId}/chapters/${chapterId}/comments?${queryParams.toString()}`);
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to fetch chapter comments");
+    }
+
+    return response.json();
+  },
+
+  /**
    * Get a specific comment
    */
   async getComment(commentId: string): Promise<Comment> {
@@ -62,6 +90,26 @@ export const CommentService = {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || "Failed to create comment");
+    }
+
+    return response.json();
+  },
+
+  /**
+   * Create a new chapter comment
+   */
+  async createChapterComment(storyId: string, chapterId: string, data: { content: string; parentId?: string }): Promise<Comment> {
+    const response = await fetchWithCsrf(`/api/stories/${storyId}/chapters/${chapterId}/comments`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to create chapter comment");
     }
 
     return response.json();
