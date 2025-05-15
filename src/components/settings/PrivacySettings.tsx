@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
 import { Loader2, AlertCircle, Info } from "lucide-react"
 import { UserPreferences, defaultPreferences } from "@/types/user"
+import Link from "next/link"
 import {
   Tooltip,
   TooltipContent,
@@ -148,8 +149,8 @@ const PrivacySettings: React.FC<PrivacySettingsProps> = ({
               By using FableSpace, you agree to our Privacy Policy. We respect your privacy and are committed to
               protecting your personal information.
             </p>
-            <Button variant="link" className="px-0 h-auto text-sm">
-              Read our Privacy Policy
+            <Button variant="link" className="px-0 h-auto text-sm" asChild>
+              <Link href="/privacy" target="_blank">Read our Privacy Policy</Link>
             </Button>
           </div>
         </div>

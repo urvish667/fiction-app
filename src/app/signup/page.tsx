@@ -478,8 +478,8 @@ function SignupContent() {
                   />
                   <Label htmlFor="terms" className="text-sm">
                     I agree to the{" "}
-                    <Button variant="link" className="p-0 h-auto text-xs">
-                      terms and conditions
+                    <Button variant="link" className="p-0 h-auto text-xs" asChild>
+                      <Link href="/terms" target="_blank">terms and conditions</Link>
                     </Button>
                   </Label>
                 </div>

@@ -26,7 +26,7 @@ export function SiteFooter(props: SiteFooterProps) {
                   </Link>
                 </li>
                 <li>
-                  <Link href="/write/story-info" className="text-muted-foreground hover:text-foreground">        
+                  <Link href="/write/story-info" className="text-muted-foreground hover:text-foreground">
                     Write
                   </Link>
                 </li>
@@ -53,6 +53,21 @@ export function SiteFooter(props: SiteFooterProps) {
                 <li>
                   <Link href="/contact" className="text-muted-foreground hover:text-foreground">
                     Contact
+                  </Link>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="font-medium mb-2">Legal</h3>
+              <ul className="space-y-1">
+                <li>
+                  <Link href="/terms" className="text-muted-foreground hover:text-foreground">
+                    Terms & Conditions
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/privacy" className="text-muted-foreground hover:text-foreground">
+                    Privacy Policy
                   </Link>
                 </li>
               </ul>

@@ -12,6 +12,7 @@ import { format } from "date-fns"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { debounce } from "lodash"
+import Link from "next/link"
 import "../auth-background.css"
 import AuthLogo from "@/components/auth/logo"
 
@@ -321,8 +322,8 @@ export default function CompleteProfilePage() {
                 />
                 <Label htmlFor="terms" className="text-sm">
                   I agree to the{" "}
-                  <Button variant="link" className="p-0 h-auto text-xs">
-                    terms and conditions
+                  <Button variant="link" className="p-0 h-auto text-xs" asChild>
+                    <Link href="/terms" target="_blank">terms and conditions</Link>
                   </Button>
                 </Label>
               </div>
