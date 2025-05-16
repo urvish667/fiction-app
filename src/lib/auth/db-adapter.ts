@@ -1,35 +1,29 @@
-import { PrismaClient } from "@prisma/client";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { handleOAuthUser } from "./auth-utils";
+import { prisma } from "../prisma";
+import { logger } from "../logger";
 
-// Create a single Prisma instance that can be shared
-export const prisma = new PrismaClient();
+// Create a dedicated logger for auth operations
+const authLogger = logger.child('auth-db-adapter');
 
-// Log database queries in development
-if (process.env.NODE_ENV === 'development') {
-  prisma.$use(async (params, next) => {
-    const before = Date.now();
-    const result = await next(params);
-    const after = Date.now();
-    console.log(`${params.model}.${params.action} took ${after - before}ms`);
-    return result;
-  });
-}
+// Re-export the prisma client for backward compatibility
+// This ensures existing imports from @/lib/auth/db-adapter still work
+export { prisma };
 
 export function getPrismaAdapter() {
   const adapter = PrismaAdapter(prisma);
-  
+
   // Create a type-safe version by casting
   const typedAdapter = adapter as any;
-  
+
   // Store original function before overriding
   const originalCreateUser = typedAdapter.createUser;
-  
+
   // Override the createUser function to handle OAuth users
   typedAdapter.createUser = async (data: any) => {
     // For OAuth users (check for provider in account data)
     const accountData = data._profile?.account || data._profile || {};
-    
+
     if (accountData.provider) {
       return handleOAuthUser({
         email: data.email || "",
@@ -46,10 +40,10 @@ export function getPrismaAdapter() {
         session_state: accountData.session_state,
       });
     }
-    
+
     // For regular email/password signup, use the original function
     return originalCreateUser(data);
   };
-  
+
   return typedAdapter;
-} 
+}

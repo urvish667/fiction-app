@@ -1,3 +1,4 @@
+import { logError } from '@/lib/error-logger';
 import { PrismaClient } from '@prisma/client';
 
 // Initialize Prisma client
@@ -13,14 +14,10 @@ async function addViewsToStories() {
       },
     });
 
-    console.log(`Found ${stories.length} stories`);
-
     // Add views to each story
     for (const story of stories) {
       // Generate a random number of views between 5 and 50
       const viewCount = Math.floor(Math.random() * 46) + 5;
-      
-      console.log(`Adding ${viewCount} views to story "${story.title}" (${story.id})`);
       
       // Create view records
       const viewPromises = [];
@@ -44,13 +41,10 @@ async function addViewsToStories() {
         where: { id: story.id },
         data: { readCount: viewCount },
       });
-      
-      console.log(`Successfully added ${viewCount} views to story "${story.title}"`);
     }
 
-    console.log('Finished adding views to all stories');
   } catch (error) {
-    console.error('Error adding views to stories:', error);
+    logError(error, { context: 'Adding views to stories' });
   } finally {
     await prisma.$disconnect();
   }

@@ -9,6 +9,7 @@ import {
   ChapterResponse
 } from "@/types/story";
 import { fetchWithCsrf } from "@/lib/client/csrf";
+import { logError } from "@/lib/error-logger";
 
 /**
  * Service for interacting with the story API endpoints
@@ -93,7 +94,7 @@ export const StoryService = {
 
       return response.json();
     } catch (error) {
-      console.error("Error fetching story by slug:", error);
+      logError(error, { context: 'Fetching story by slug', slug })
       return null;
     }
   },
@@ -102,7 +103,6 @@ export const StoryService = {
    * Create a new story
    */
   async createStory(data: CreateStoryRequest): Promise<Story> {
-    console.log('StoryService.createStory called with data:', data);
     const response = await fetchWithCsrf("/api/stories", {
       method: "POST",
       headers: {
@@ -113,12 +113,11 @@ export const StoryService = {
 
     if (!response.ok) {
       const error = await response.json();
-      console.error('Create story failed:', error);
+      logError(error, { context: 'Creating story' })
       throw new Error(error.error || "Failed to create story");
     }
 
     const result = await response.json();
-    console.log('Create story succeeded, result:', result);
     return result;
   },
 
@@ -126,7 +125,6 @@ export const StoryService = {
    * Update a story
    */
   async updateStory(id: string, data: UpdateStoryRequest): Promise<Story> {
-    console.log('StoryService.updateStory called with id:', id, 'data:', data);
     const response = await fetchWithCsrf(`/api/stories/${id}`, {
       method: "PUT",
       headers: {
@@ -137,12 +135,11 @@ export const StoryService = {
 
     if (!response.ok) {
       const error = await response.json();
-      console.error('Update story failed:', error);
+      logError(error, { context: 'Updating story', storyId: id })
       throw new Error(error.error || "Failed to update story");
     }
 
     const result = await response.json();
-    console.log('Update story succeeded, result:', result);
     return result;
   },
 
@@ -311,12 +308,12 @@ export const StoryService = {
           try {
             errorData = JSON.parse(text);
           } catch (parseError) {
-            console.error("Failed to parse error response:", parseError);
+            logError(parseError, { context: 'Parsing error response', responseText: text })
             // Keep the default error message
           }
         }
 
-        console.error("Chapter like error response:", errorData);
+        logError(errorData, { context: 'Liking chapter', storyId, chapterId })
         throw new Error(errorData.error || `Failed to like chapter: ${response.status} ${response.statusText}`);
       }
 
@@ -329,11 +326,11 @@ export const StoryService = {
       try {
         return JSON.parse(text);
       } catch (parseError) {
-        console.error("Failed to parse success response:", parseError);
+        logError(parseError, { context: 'Parsing success response', responseText: text })
         throw new Error("Invalid response format from server");
       }
     } catch (error) {
-      console.error("Error in likeChapter:", error);
+      logError(error, { context: 'Liking chapter', storyId, chapterId })
       throw error;
     }
   },
@@ -356,12 +353,12 @@ export const StoryService = {
           try {
             errorData = JSON.parse(text);
           } catch (parseError) {
-            console.error("Failed to parse error response:", parseError);
+            logError(parseError, { context: 'Parsing error response', responseText: text })
             // Keep the default error message
           }
         }
 
-        console.error("Chapter unlike error response:", errorData);
+        logError(errorData, { context: 'Unliking chapter', storyId, chapterId })
         throw new Error(errorData.error || `Failed to unlike chapter: ${response.status} ${response.statusText}`);
       }
 
@@ -374,11 +371,11 @@ export const StoryService = {
       try {
         return JSON.parse(text);
       } catch (parseError) {
-        console.error("Failed to parse success response:", parseError);
+        logError(parseError, { context: 'Parsing success response', responseText: text })
         throw new Error("Invalid response format from server");
       }
     } catch (error) {
-      console.error("Error in unlikeChapter:", error);
+      logError(error, { context: 'Unliking chapter', storyId, chapterId })
       throw error;
     }
   },
@@ -485,7 +482,7 @@ export const StoryService = {
       const data = await response.json();
       return data.isFollowing;
     } catch (error) {
-      console.error("Error checking follow status:", error);
+      logError(error, { context: 'Checking follow status', username })
       return false;
     }
   },

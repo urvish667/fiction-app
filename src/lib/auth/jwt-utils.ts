@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { createCipheriv, createDecipheriv, createHmac, randomBytes } from 'crypto';
-import { headers } from 'next/headers';
+import { logError, logWarning } from '../error-logger';
 
 /**
  * Generate a fingerprint for the client based on headers and IP
@@ -11,7 +11,7 @@ import { headers } from 'next/headers';
 export function generateFingerprint(req: NextRequest): string {
   // Get client information
   const userAgent = req.headers.get('user-agent') || '';
-  const ip = req.ip || '127.0.0.1';
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0] || '127.0.0.1';
   const acceptLanguage = req.headers.get('accept-language') || '';
 
   // Create a fingerprint using HMAC
@@ -70,7 +70,7 @@ export function decryptTokenData(encryptedData: string, iv: string): string {
 
     return decryptedData;
   } catch (error) {
-    console.error('Token decryption error:', error);
+    logError(error, { context: 'Decrypting token data' })
     throw new Error('Failed to decrypt token data');
   }
 }
@@ -94,8 +94,8 @@ export async function verifyJWT(req: NextRequest) {
     }
 
     // Verify token expiration
-    if (token.exp && Date.now() >= token.exp * 1000) {
-      console.warn('JWT token has expired');
+    if (token.exp && Date.now() >= (token.exp as number) * 1000) {
+      logWarning('JWT token has expired', { context: 'Verifying JWT' })
       return null;
     }
 
@@ -105,14 +105,14 @@ export async function verifyJWT(req: NextRequest) {
 
       // If fingerprints don't match, token might be stolen
       if (token.fingerprint !== currentFingerprint) {
-        console.warn('JWT fingerprint mismatch - possible token theft');
+        logWarning('JWT fingerprint mismatch - possible token theft', { context: 'Verifying JWT' })
         return null;
       }
     }
 
     return token;
   } catch (error) {
-    console.error('JWT verification error:', error);
+    logError(error, { context: 'Verifying JWT' })
     return null;
   }
 }
@@ -210,7 +210,7 @@ export function withAuthAndRoles(
     if (requiredRoles.length > 0) {
       const userRole = token.role || 'user';
 
-      if (!requiredRoles.includes(userRole)) {
+      if (!requiredRoles.includes(userRole as string)) {
         return new NextResponse(
           JSON.stringify({
             error: 'Forbidden',
@@ -307,7 +307,7 @@ export function withResourceOwnership<T>(
       // Call the original handler with the token and resource
       return handler(req, token, resource);
     } catch (error) {
-      console.error('Resource ownership verification error:', error);
+      logError(error, { context: 'Verifying resource ownership' })
 
       return new NextResponse(
         JSON.stringify({

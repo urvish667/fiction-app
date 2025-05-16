@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHash, timingSafeEqual } from 'crypto';
 import { ErrorCode, createErrorResponse } from '../error-handling';
+import { logError, logWarning } from '../error-logger';
 
 // API key types for different services
 export enum ApiKeyType {
@@ -63,7 +64,7 @@ export function getApiKey(type: ApiKeyType): string | null {
 
   // If key is not set and we're in development, use a fallback
   if (!key && process.env.NODE_ENV === 'development' && config.allowDevFallback) {
-    console.warn(`${config.envName} is not set, using fallback key in development`);
+    logWarning(`${config.envName} is not set, using fallback key in development`, { context: 'API Key Validation' });
     return `dev-${type}-key`;
   }
 
@@ -95,7 +96,7 @@ export function validateApiKey(providedKey: string, expectedKey: string): boolea
     return providedBuffer.length === expectedBuffer.length && 
            timingSafeEqual(providedBuffer, expectedBuffer);
   } catch (error) {
-    console.error('API key validation error:', error);
+    logError(error, { context: 'Validating API Key' });
     return false;
   }
 }
@@ -134,7 +135,7 @@ export async function validateApiKeyMiddleware(
   // Get the expected API key
   const expectedKey = getApiKey(type);
   if (!expectedKey) {
-    console.error(`API key for ${type} is not configured`);
+    logError(`API key for ${type} is not configured`, { context: 'Validating API Key' });
     return createErrorResponse(
       ErrorCode.INTERNAL_SERVER_ERROR,
       'API key is not configured'
@@ -154,7 +155,7 @@ export async function validateApiKeyMiddleware(
   const isValid = validateApiKey(providedKey, expectedKey);
   if (!isValid) {
     // Log the attempt with a hashed version of the provided key
-    console.warn(`Invalid API key attempt: ${hashApiKey(providedKey)}`);
+    logWarning(`Invalid API key attempt: ${hashApiKey(providedKey)}`, { context: 'Validating API Key' });
     
     return createErrorResponse(
       ErrorCode.UNAUTHORIZED,

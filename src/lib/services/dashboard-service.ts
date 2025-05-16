@@ -347,7 +347,7 @@ export async function getTopStories(userId: string, limit: number = 5, sortBy: s
     return {
       id: story.id,
       title: story.title,
-      genre: story.genre || "",
+      genre: story.genreId || "",
       reads: viewCountMap.get(story.id) || 0,
       likes: story._count.likes,
       comments: story._count.comments,
@@ -399,7 +399,6 @@ export async function getDashboardOverviewData(userId: string, timeRange: string
  * @returns Array of data points for reads chart
  */
 export async function getReadsChartData(userId: string, timeRange: string = '30days'): Promise<ReadsDataPoint[]> {
-  console.log(`Generating reads chart data for user ${userId} with timeRange ${timeRange}`);
 
   const months = [];
   const today = new Date();
@@ -425,7 +424,6 @@ export async function getReadsChartData(userId: string, timeRange: string = '30d
   });
 
   const userStoryIds = userStories.map(story => story.id);
-  console.log(`Found ${userStoryIds.length} stories for user ${userId}`);
 
   if (userStoryIds.length === 0) {
     // Return empty data if user has no stories
@@ -449,8 +447,6 @@ export async function getReadsChartData(userId: string, timeRange: string = '30d
     },
   });
 
-  console.log(`Found ${storyViews.length} story views for user's stories`);
-
   // Get all chapter views for this user's stories
   const chapters = await prisma.chapter.findMany({
     where: {
@@ -463,7 +459,6 @@ export async function getReadsChartData(userId: string, timeRange: string = '30d
   });
 
   const chapterIds = chapters.map(chapter => chapter.id);
-  console.log(`Found ${chapterIds.length} chapters for user's stories`);
 
   let chapterViews: { chapterId: string, createdAt: Date }[] = [];
 
@@ -477,7 +472,7 @@ export async function getReadsChartData(userId: string, timeRange: string = '30d
         createdAt: true,
       },
     });
-    console.log(`Found ${chapterViews.length} chapter views for user's stories`);
+
   }
 
   // Create a map of chapter ID to story ID
@@ -507,8 +502,6 @@ export async function getReadsChartData(userId: string, timeRange: string = '30d
     // Total reads for this month
     const reads = storyViewCount + chapterViewCount;
 
-    console.log(`Month ${month.name}: ${storyViewCount} story views + ${chapterViewCount} chapter views = ${reads} total reads`);
-
     readsData.push({
       name: month.name,
       reads,
@@ -525,7 +518,7 @@ export async function getReadsChartData(userId: string, timeRange: string = '30d
  * @returns Array of data points for engagement chart
  */
 export async function getEngagementChartData(userId: string, timeRange: string = '30days'): Promise<EngagementDataPoint[]> {
-  console.log(`Generating engagement chart data for user ${userId} with timeRange ${timeRange}`);
+  // timeRange parameter is kept for API consistency but not used in this implementation
 
   const months = [];
   const today = new Date();
@@ -551,7 +544,7 @@ export async function getEngagementChartData(userId: string, timeRange: string =
   });
 
   const userStoryIds = userStories.map(story => story.id);
-  console.log(`Found ${userStoryIds.length} stories for user ${userId}`);
+
 
   if (userStoryIds.length === 0) {
     // Return empty data if user has no stories
@@ -572,8 +565,6 @@ export async function getEngagementChartData(userId: string, timeRange: string =
     },
   });
 
-  console.log(`Found ${likes.length} total likes for user's stories`);
-
   // Get all comments for this user's stories
   const comments = await prisma.comment.findMany({
     where: {
@@ -583,8 +574,6 @@ export async function getEngagementChartData(userId: string, timeRange: string =
       createdAt: true,
     },
   });
-
-  console.log(`Found ${comments.length} total comments for user's stories`);
 
   // Get engagement data for each month
   const engagementData: EngagementDataPoint[] = [];
@@ -602,8 +591,6 @@ export async function getEngagementChartData(userId: string, timeRange: string =
 
     const likesCount = monthLikes.length;
     const commentsCount = monthComments.length;
-
-    console.log(`Month ${month.name}: ${likesCount} likes, ${commentsCount} comments`);
 
     engagementData.push({
       name: month.name,
@@ -649,7 +636,7 @@ export async function getUserStories(userId: string) {
     return {
       id: story.id,
       title: story.title,
-      genre: story.genre || "",
+      genre: story.genreId || "",
       status: story.status,
       viewCount: viewCountMap.get(story.id) || 0,
       reads: viewCountMap.get(story.id) || 0, // Keep reads for backward compatibility
@@ -675,7 +662,7 @@ export async function getUserStories(userId: string) {
  */
 export async function getEarningsData(userId: string, timeRange: string = '30days') {
   // Calculate date ranges based on the timeRange parameter
-  const { startDate } = calculateDateRanges(timeRange);
+  calculateDateRanges(timeRange); // Not used directly but kept for consistency
 
   // Get the user's stories
   const stories = await prisma.story.findMany({
@@ -763,7 +750,7 @@ export async function getEarningsData(userId: string, timeRange: string = '30day
     return {
       id: story.id,
       title: story.title,
-      genre: story.genre || "",
+      genre: story.genreId || "",
       viewCount: viewCountMap.get(story.id) || 0,
       reads: viewCountMap.get(story.id) || 0, // Keep reads for backward compatibility
       earnings: storyEarnings,
@@ -786,7 +773,8 @@ export async function getEarningsData(userId: string, timeRange: string = '30day
 }
 
 export async function getEarningsChartData(userId: string, timeRange: string = '30days'): Promise<EarningsDataPoint[]> {
-  console.log(`Generating earnings chart data for user ${userId} with timeRange ${timeRange}`);
+  // timeRange parameter is kept for API consistency but not used in this implementation
+
 
   const months = [];
   const today = new Date();
@@ -812,7 +800,7 @@ export async function getEarningsChartData(userId: string, timeRange: string = '
   });
 
   const userStoryIds = userStories.map(story => story.id);
-  console.log(`Found ${userStoryIds.length} stories for user ${userId}`);
+
 
   if (userStoryIds.length === 0) {
     // Return empty data if user has no stories
@@ -833,7 +821,7 @@ export async function getEarningsChartData(userId: string, timeRange: string = '
     },
   });
 
-  console.log(`Found ${donations.length} total donations for user's stories`);
+
 
   // Get earnings data for each month
   const earningsData: EarningsDataPoint[] = [];
@@ -849,8 +837,6 @@ export async function getEarningsChartData(userId: string, timeRange: string = '
 
     // Convert cents to dollars
     const earningsInDollars = totalAmountInCents / 100;
-
-    console.log(`Month ${month.name}: ${monthDonations.length} donations, $${earningsInDollars.toFixed(2)} earnings`);
 
     earningsData.push({
       name: month.name,

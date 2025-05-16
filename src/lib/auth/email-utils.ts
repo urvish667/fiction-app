@@ -2,6 +2,7 @@ import { randomBytes } from "crypto";
 import { prisma } from "./db-adapter";
 import { sendEmail } from "../email/email-service";
 import { getVerificationEmailTemplate, getPasswordResetEmailTemplate, getWelcomeEmailTemplate } from "../email/email-templates";
+import { logError, logInfo } from "../error-logger";
 
 /**
  * Generate a verification token for email verification
@@ -48,7 +49,7 @@ export async function sendVerificationEmail(email: string, token: string) {
 
   // Log the verification URL in development
   if (process.env.NODE_ENV !== "production") {
-    console.log(`Verification URL for ${email}: ${verificationUrl}`);
+    logError(`Verification URL for ${email}: ${verificationUrl}`, { context: 'Sending verification email' })
   }
 
   // Get user info if available
@@ -83,7 +84,7 @@ export async function sendPasswordResetEmail(email: string, token: string) {
 
   // Log the reset URL in development
   if (process.env.NODE_ENV !== "production") {
-    console.log(`Password reset URL for ${email}: ${resetUrl}`);
+    logInfo(`Password reset URL for ${email}: ${resetUrl}`, { context: 'Sending password reset email' })
   }
 
   // Get user info if available

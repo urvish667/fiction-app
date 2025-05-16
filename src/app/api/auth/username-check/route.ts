@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/auth/db-adapter";
-import { rateLimit } from "@/lib/rate-limit";
+import { rateLimit } from "@/lib/security/rate-limit";
 
 export async function GET(request: NextRequest) {
   // Apply rate limiting - 20 username checks per IP per minute

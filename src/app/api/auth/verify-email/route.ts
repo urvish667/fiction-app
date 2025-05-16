@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/auth/db-adapter";
 import { sendWelcomeEmail } from "@/lib/auth/email-utils";
-import { rateLimit } from "@/lib/rate-limit";
+import { rateLimit } from "@/lib/security/rate-limit";
 
 export async function GET(request: NextRequest) {
   // Apply rate limiting - 10 verification attempts per IP per hour

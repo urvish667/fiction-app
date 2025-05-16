@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z, ZodError, ZodSchema } from 'zod';
 import DOMPurify from 'isomorphic-dompurify';
+import { logError } from '../error-logger';
 
 /**
  * Sanitize HTML content to prevent XSS attacks
@@ -120,7 +121,7 @@ export function withBodyValidation<T>(
       }
       
       // Handle other errors
-      console.error('Request validation error:', error);
+      logError(error, { context: 'Validating request body' })
       return new NextResponse(
         JSON.stringify({
           error: 'Internal Server Error',
@@ -181,7 +182,7 @@ export function withQueryValidation<T>(
       }
       
       // Handle other errors
-      console.error('Query validation error:', error);
+      logError(error, { context: 'Validating query parameters' })
       return new NextResponse(
         JSON.stringify({
           error: 'Internal Server Error',

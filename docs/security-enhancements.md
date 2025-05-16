@@ -114,7 +114,9 @@ Rate limiting has been enhanced with:
 - User context for more accurate rate limiting
 - IP-based and user-based combined rate limiting
 - Progressive backoff mechanism
-- Implementation in `src/lib/rate-limit.ts`
+- IP allowlisting for trusted sources
+- Suspicious activity tracking and logging
+- Implementation in `src/lib/security/rate-limit.ts`
 
 ### Separate Rate Limit Configurations
 
@@ -127,7 +129,11 @@ Different rate limit configurations have been created for different endpoint typ
 - Editor endpoints
 - Content creation endpoints
 - Search endpoints
-- Implementation in `src/lib/rate-limit.ts`
+- Session endpoints (optimized to reduce polling load)
+- Admin endpoints
+- Public API endpoints
+- Webhook endpoints
+- Implementation in `src/lib/security/rate-limit.ts`
 
 ## Data Security
 

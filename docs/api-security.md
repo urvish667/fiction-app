@@ -13,7 +13,12 @@ Rate limiting is implemented using a combination of:
 1. **In-memory store**: For development and small deployments
 2. **Redis store** (optional): For production and distributed deployments
 
-The rate limiter tracks requests by IP address and applies limits based on the endpoint being accessed.
+The rate limiter tracks requests by IP address and applies limits based on the endpoint being accessed. Additional security features include:
+
+1. **IP Allowlisting**: Trusted IPs can be exempted from rate limiting
+2. **Suspicious Activity Tracking**: Monitors and logs suspicious patterns
+3. **Progressive Backoff**: Increases wait times for repeated violations
+4. **Development Mode Skipping**: Option to disable rate limiting in development
 
 ### Rate Limits by Endpoint
 
@@ -27,6 +32,11 @@ The rate limiter tracks requests by IP address and applies limits based on the e
 | `/api/auth/username-check` | 20 requests | 1 minute | Allow reasonable username checking during signup |
 | `/api/auth/verify-email` | 10 requests | 60 minutes | Prevent verification token abuse |
 | Editor endpoints (stories/chapters) | 120 requests | 5 minutes | Support autosave functionality |
+| Session endpoints | 60 requests | 60 minutes | Optimize session polling |
+| Admin endpoints | 200 requests | 1 minute | Support admin operations |
+| Public API endpoints | 50 requests | 1 minute | General public access |
+| Webhook endpoints | 30 requests | 1 minute | External service integration |
+| Search endpoints | 60 requests | 1 minute | Support search functionality |
 
 ### Response Headers
 
@@ -65,15 +75,24 @@ The story editor in FableSpace uses an autosave feature that periodically saves 
 
 This approach balances security (preventing abuse) with user experience (ensuring content is saved reliably).
 
+## Implemented Security Enhancements
+
+The following security enhancements have been implemented:
+
+1. **API Keys**: For service-to-service authentication and third-party integrations
+2. **JWT Scope Validation**: To ensure tokens are only used for their intended purpose
+3. **IP Allowlisting**: For admin endpoints and rate limiting exemptions
+4. **Request Logging and Monitoring**: For detecting and responding to suspicious activity
+5. **Suspicious Activity Tracking**: Monitoring and alerting for potential attacks
+
 ## Future Security Enhancements
 
 The following security enhancements are planned for future implementation:
 
-1. **API Keys**: For service-to-service authentication and third-party integrations
-2. **JWT Scope Validation**: To ensure tokens are only used for their intended purpose
-3. **IP Allowlisting**: For admin endpoints
-4. **Request Logging and Monitoring**: For detecting and responding to suspicious activity
-5. **CAPTCHA Integration**: For high-risk operations
+1. **CAPTCHA Integration**: For high-risk operations
+2. **Geo-based Rate Limiting**: Different limits based on geographic regions
+3. **Machine Learning for Anomaly Detection**: To identify unusual patterns
+4. **Enhanced Monitoring Dashboard**: For real-time security insights
 
 ## Redis Configuration (Production)
 
@@ -87,7 +106,7 @@ To enable Redis for rate limiting:
    RATE_LIMIT_REDIS_ENABLED=true
    ```
 
-2. Update the rate limiter configuration in `src/lib/rate-limit.ts` to use the Redis client.
+2. The rate limiter in `src/lib/security/rate-limit.ts` will automatically use the Redis client when available.
 
 ## Monitoring and Alerts
 

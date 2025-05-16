@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import { logError, logInfo } from '../error-logger';
 
 interface EmailOptions {
   to: string;
@@ -11,7 +12,7 @@ interface EmailOptions {
 async function createTransporter() {
   // Check if required email configuration is available
   if (!process.env.EMAIL_SERVER_HOST || !process.env.EMAIL_SERVER_USER || !process.env.EMAIL_SERVER_PASSWORD) {
-    console.error('Email server configuration is missing. Please check your environment variables.');
+    logError('Email server configuration is missing', { context: 'Creating email transporter' })
     throw new Error('Email server configuration is missing');
   }
 
@@ -44,12 +45,12 @@ export async function sendEmail(options: EmailOptions) {
 
     // Log email info in development
     if (process.env.NODE_ENV !== 'production') {
-      console.log('Email sent:', info);
+      logInfo('Email sent', { context: 'Sending email', info })
     }
 
     return { success: true, messageId: info.messageId };
   } catch (error) {
-    console.error('Error sending email:', error);
+    logError('Error sending email', { context: 'Sending email', error })
     return { success: false, error };
   }
 }

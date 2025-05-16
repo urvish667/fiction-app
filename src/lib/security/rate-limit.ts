@@ -11,7 +11,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Redis } from 'ioredis';
 import { headers } from 'next/headers';
 import { ErrorCode, createErrorResponse } from '../error-handling';
-import { logWarning } from '../error-logger';
+import { logWarning, logError } from '../error-logger';
 
 // Configuration options
 export interface RateLimitConfig {
@@ -158,7 +158,7 @@ export async function getClientIp(req: NextRequest): Promise<string> {
       return vercelIp.split(',')[0].trim();
     }
   } catch (error) {
-    console.error('Error getting headers:', error);
+    logError(error, { context: 'Failed to get client IP from headers' });
     // Continue with fallback
   }
 
@@ -211,7 +211,7 @@ export async function generateRateLimitKey(req: NextRequest, includeUserContext:
         key = `${key}:user:${Math.abs(hash).toString(16)}`;
       }
     } catch (error) {
-      console.error('Error getting user context for rate limiting:', error);
+      logError(error, { context: 'Generating rate limit key' })
       // Continue without user context if there's an error
     }
   }
@@ -422,7 +422,7 @@ export async function rateLimit(
         ...(useProgressiveBackoff && { backoffFactor }),
       };
     } catch (error) {
-      console.error('Redis rate limiting error:', error);
+      logError(error, { context: 'Redis rate limiting error' })
       // Fallback to in-memory store on Redis error
     }
   }
@@ -589,7 +589,7 @@ export function getRateLimitRedisClient(): any | null {
     const { getRedisClient } = require('../redis');
     return getRedisClient();
   } catch (error) {
-    console.warn('Failed to get Redis client for rate limiting:', error);
+    logWarning('Failed to get Redis client for rate limiting', { context: 'Rate Limiting' })
     return null;
   }
 }
@@ -601,7 +601,7 @@ if (typeof process !== 'undefined' && process.env.NEXT_RUNTIME !== 'edge') {
   try {
     redisClient = getRateLimitRedisClient();
   } catch (error) {
-    console.warn('Failed to initialize Redis client for rate limiting:', error);
+    logWarning('Failed to initialize Redis client for rate limiting', { context: 'Rate Limiting' })
   }
 }
 export { redisClient };

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
-import { rateLimit, rateLimitConfigs } from '@/lib/rate-limit';
+import { rateLimit, rateLimitConfigs } from '@/lib/security/rate-limit';
 import { csrfProtection } from '@/lib/security/csrf';
 import { applySecurityHeaders } from '@/lib/security/headers';
 

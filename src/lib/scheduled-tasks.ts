@@ -2,6 +2,7 @@ import { prisma } from "@/lib/auth/db-adapter";
 import { calculateStoryStatus } from "./story-helpers";
 import { Chapter, Story } from "@/types/story";
 import { PrismaClient } from "@prisma/client";
+import { logError } from "./error-logger";
 
 /**
  * Process scheduled chapters that are due for publishing
@@ -30,8 +31,6 @@ export async function processScheduledChapters() {
       },
     });
 
-    console.log(`Found ${scheduledChapters.length} scheduled chapters to publish`);
-
     // Process each chapter
     for (const chapter of scheduledChapters) {
       try {
@@ -50,7 +49,7 @@ export async function processScheduledChapters() {
           updatedStoryIds.add(chapter.storyId);
         }
       } catch (error) {
-        console.error(`Error publishing chapter ${chapter.id}:`, error);
+        logError(error, { context: 'Publishing scheduled chapter', chapterId: chapter.id })
       }
     }
 
@@ -63,7 +62,7 @@ export async function processScheduledChapters() {
         });
 
         if (!story) {
-          console.error(`Story with ID ${storyId} not found`);
+          logError(`Story with ID ${storyId} not found`, { context: 'Updating story status' })
           continue;
         }
 
@@ -88,7 +87,7 @@ export async function processScheduledChapters() {
           updatedStoriesCount++;
         }
       } catch (error) {
-        console.error(`Error updating story status for story ${storyId}:`, error);
+        logError(error, { context: 'Updating story status', storyId })
       }
     }
 
@@ -97,7 +96,7 @@ export async function processScheduledChapters() {
       updatedStories: updatedStoriesCount,
     };
   } catch (error) {
-    console.error("Error processing scheduled chapters:", error);
+    logError(error, { context: 'Processing scheduled chapters' })
     throw error;
   }
 }

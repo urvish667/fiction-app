@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createUser, isEmailAvailable, isUsernameAvailable } from "@/lib/auth/auth-utils";
 import { generateVerificationToken, sendVerificationEmail } from "@/lib/auth/email-utils";
 import { ZodError, z } from "zod";
-import { rateLimit } from "@/lib/rate-limit";
+import { rateLimit } from "@/lib/security/rate-limit";
 
 // Signup request validation schema
 const signupSchema = z.object({

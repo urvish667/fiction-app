@@ -4,6 +4,8 @@
  * This module provides client-side functions for working with CSRF tokens.
  */
 
+import { logError, logWarning } from "../error-logger";
+
 // Constants
 export const CSRF_COOKIE_NAME = 'fablespace_csrf';
 export const CSRF_HEADER_NAME = 'x-csrf-token';
@@ -83,7 +85,7 @@ export async function ensureCsrfToken(): Promise<string> {
 
     return data.token;
   } catch (error) {
-    console.error('Error ensuring CSRF token:', error);
+    logError(error, { context: 'Ensuring CSRF token' })
     throw error;
   }
 }
@@ -103,7 +105,7 @@ export function addCsrfToken(options: RequestInit = {}): RequestInit {
   // Get the CSRF token
   const csrfToken = getCsrfToken();
   if (!csrfToken) {
-    console.warn('CSRF token not found in cookies');
+    logWarning('CSRF token not found in cookies', { context: 'Adding CSRF token' })
     return options;
   }
 

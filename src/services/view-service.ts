@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/auth/db-adapter";
+import { logError } from "@/lib/error-logger";
 
 export class ViewService {
   /**
@@ -120,7 +121,7 @@ export class ViewService {
 
       return { view, isFirstView, viewCount: updatedViewCount };
     } catch (error) {
-      console.error("Error tracking story view:", error);
+      logError(error, { context: 'Tracking story view', storyId, userId })
       return null;
     }
   }
@@ -258,7 +259,7 @@ export class ViewService {
         try {
           storyViewResult = await this.trackStoryView(storyId, userId, clientInfo);
         } catch (storyViewError) {
-          console.error("Error tracking story view after chapter view:", storyViewError);
+          logError(storyViewError, { context: 'Tracking story view after chapter view', storyId, userId })
           // Continue execution even if story view tracking fails
         }
       }
@@ -274,7 +275,7 @@ export class ViewService {
         storyViewCount
       };
     } catch (error) {
-      console.error("Error tracking chapter view:", error);
+      logError(error, { context: 'Tracking chapter view', chapterId, userId })
       return null;
     }
   }
@@ -302,7 +303,7 @@ export class ViewService {
       });
       return count;
     } catch (error) {
-      console.error("Error getting story view count:", error);
+      logError(error, { context: 'Getting story view count', storyId })
       return 0;
     }
   }
@@ -354,7 +355,7 @@ export class ViewService {
       // Return combined count
       return storyViews + chapterViews;
     } catch (error) {
-      console.error("Error getting combined view count:", error);
+      logError(error, { context: 'Getting combined view count', storyId })
       return 0;
     }
   }
@@ -382,7 +383,7 @@ export class ViewService {
       });
       return count;
     } catch (error) {
-      console.error("Error getting chapter view count:", error);
+      logError(error, { context: 'Getting chapter view count', chapterId })
       return 0;
     }
   }
@@ -446,7 +447,7 @@ export class ViewService {
 
       return viewCountMap;
     } catch (error) {
-      console.error("Error getting batch story view counts:", error);
+      logError(error, { context: 'Getting batch story view counts', storyIds })
       // Return empty map with 0 counts for all requested stories
       return new Map(storyIds.map(id => [id, 0]));
     }
@@ -565,7 +566,7 @@ export class ViewService {
 
       return combinedViewCountMap;
     } catch (error) {
-      console.error("Error getting batch combined view counts:", error);
+      logError(error, { context: 'Getting batch combined view counts', storyIds })
       // Return empty map with 0 counts for all requested stories
       return new Map(storyIds.map(id => [id, 0]));
     }
@@ -630,7 +631,7 @@ export class ViewService {
 
       return viewCountMap;
     } catch (error) {
-      console.error("Error getting batch chapter view counts:", error);
+      logError(error, { context: 'Getting batch chapter view counts', chapterIds })
       // Return empty map with 0 counts for all requested chapters
       return new Map(chapterIds.map(id => [id, 0]));
     }
@@ -675,9 +676,6 @@ export class ViewService {
         // Include all stories regardless of status for debugging
         select: { id: true, status: true },
       });
-
-      console.log('Found stories:', stories.length);
-      console.log('Story statuses:', stories.map(s => s.status));
 
       if (stories.length === 0) {
         return [];
@@ -774,7 +772,7 @@ export class ViewService {
 
       return sortedStories;
     } catch (error) {
-      console.error("Error getting most viewed stories:", error);
+      logError(error, { context: 'Getting most viewed stories' })
       return [];
     }
   }
