@@ -4,6 +4,7 @@ import { prisma } from "@/lib/auth/db-adapter";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { calculateStoryStatus } from "@/lib/story-helpers";
 import { Chapter } from "@/types/story";
+import { logError } from "@/lib/error-logger";
 
 // Define the params type for route handlers
 type RouteParams = { params: Promise<{ id: string }> };
@@ -82,7 +83,7 @@ export async function POST(
 
     return NextResponse.json(bookmark, { status: 201 });
   } catch (error) {
-    console.error("Error bookmarking story:", error);
+    logError(error, { context: 'Bookmarking story' });
     return NextResponse.json(
       { error: "Failed to bookmark story" },
       { status: 500 }
@@ -140,7 +141,7 @@ export async function DELETE(
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error removing bookmark:", error);
+    logError(error, { context: 'Removing bookmark' });
     return NextResponse.json(
       { error: "Failed to remove bookmark" },
       { status: 500 }

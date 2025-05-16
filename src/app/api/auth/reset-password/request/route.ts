@@ -45,7 +45,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Password reset request error:", error);
     return NextResponse.json(
       { error: "An error occurred while sending reset email" },
       { status: 500 }

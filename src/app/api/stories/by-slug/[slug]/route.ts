@@ -5,6 +5,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { calculateStoryStatus } from "@/lib/story-helpers";
 import { ViewService } from "@/services/view-service";
 import { Chapter, StoryResponse } from "@/types/story";
+import { logError } from "@/lib/error-logger";
 
 // GET endpoint to retrieve a story by slug
 export async function GET(
@@ -105,7 +106,7 @@ export async function GET(
     try {
       viewCount = await ViewService.getCombinedViewCount(story.id);
     } catch (viewCountError) {
-      console.error("Error getting combined view count:", viewCountError);
+      logError(viewCountError, { context: 'Getting combined view count', storyId: story.id });
     }
 
     // Create a properly formatted story response
@@ -173,13 +174,13 @@ export async function GET(
         }
       } catch (viewError) {
         // Log the error but don't fail the request
-        console.error("Error tracking story view:", viewError);
+        logError(viewError, { context: 'Tracking story view', storyId: story.id, userId: session?.user?.id });
       }
     }
 
     return NextResponse.json(formattedStory);
   } catch (error) {
-    console.error("Error fetching story by slug:", error);
+    logError(error, { context: 'Fetching story by slug' });
     return NextResponse.json(
       { error: "Failed to fetch story" },
       { status: 500 }

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ApiResponse } from '@/types/dashboard';
+import { logError } from "@/lib/error-logger"
 
 /**
  * Custom hook for fetching user stories
@@ -25,7 +26,7 @@ export function useUserStories() {
 
         setData(result.data);
       } catch (err) {
-        console.error('Error fetching user stories:', err);
+        logError(err, { context: 'Error fetching user stories' }); 
         setError(err instanceof Error ? err.message : 'An unknown error occurred');
         setData([]);
       } finally {

@@ -25,6 +25,7 @@ import { SiteFooter } from "@/components/site-footer"
 // import { sampleStories } from "@/lib/sample-data" - not needed
 import { StoryService } from "@/services/story-service"
 import { SupportButton } from "@/components/SupportButton"
+import { logError } from "@/lib/error-logger"
 
 // Define user profile type
 type UserProfile = {
@@ -82,10 +83,9 @@ export default function UserProfilePage() {
         }
 
         const userData = await response.json()
-        console.log('User data from API:', userData) // Log the user data
         setUser(userData)
       } catch (err) {
-        console.error("Error fetching user data:", err)
+        logError(err, { context: "Error fetching user data", username })
         setError(err instanceof Error ? err.message : "An error occurred")
       } finally {
         setLoading(false)
@@ -118,7 +118,6 @@ export default function UserProfilePage() {
         }
 
         const storiesData = await storiesResponse.json()
-        console.log('User stories from API:', storiesData)
 
         // Format the stories to ensure they have all required fields
         const formattedStories = storiesData.stories.map((story: any) => {
@@ -145,7 +144,6 @@ export default function UserProfilePage() {
         // Process bookmarked stories if the request was successful
         if (bookmarksResponse.ok) {
           const bookmarksData = await bookmarksResponse.json()
-          console.log('User bookmarks from API:', bookmarksData)
 
           // Format the bookmarked stories
           const formattedBookmarks = bookmarksData.stories.map((story: any) => {
@@ -168,11 +166,11 @@ export default function UserProfilePage() {
 
           setLibraryStories(formattedBookmarks || [])
         } else {
-          console.error("Failed to fetch bookmarked stories")
+          logError(bookmarksResponse, { context: "Failed to fetch bookmarked stories", userId: user.id })
           setLibraryStories([])
         }
       } catch (err) {
-        console.error("Error fetching user data:", err)
+        logError(err, { context: "Error fetching user stories", userId: user.id })
       } finally {
         setStoriesLoading(false)
       }
@@ -209,7 +207,7 @@ export default function UserProfilePage() {
         const followingData = await StoryService.getFollowing(user.username)
         setFollowing(followingData.following || [])
       } catch (err) {
-        console.error("Error fetching follow data:", err)
+        logError(err, { context: "Error fetching follow data", userId: user.id })
       } finally {
         setFollowersLoading(false)
         setFollowingLoading(false)
@@ -243,7 +241,7 @@ export default function UserProfilePage() {
                     alt="Profile banner"
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      console.error('Error loading banner image:', e);
+                      logError(`Image loading failed`, { context: 'Banner image error', imageUrl: user.bannerImage });
                       e.currentTarget.src = '/placeholder.svg';
                     }}
                   />

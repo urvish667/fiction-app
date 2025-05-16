@@ -28,6 +28,8 @@ import { TopNavigation } from "@/components/chapter/TopNavigation"
 import { StoryService } from "@/services/story-service"
 import { Story as StoryType, Chapter as ChapterType } from "@/types/story"
 
+import { logError } from "@/lib/error-logger"
+
 // Define types for state management
 interface ChapterState {
   story: StoryType | null;
@@ -175,7 +177,7 @@ export default function ReadingPage() {
           }))
         }
       } catch (err) {
-        console.error("Error fetching chapter data:", err)
+        logError(err, { context: "Error fetching chapter data", chapterNumber })
         setState(prev => ({
           ...prev,
           error: "Failed to load chapter. Please try again.",
@@ -208,7 +210,7 @@ export default function ReadingPage() {
           }))
         }
       } catch (err) {
-        console.error("Error refreshing data:", err)
+        logError(err, { context: "Error refreshing data", chapterId: chapter?.id, storyId: story?.id })
       }
     }, 1000) // 1 second delay
 
@@ -239,7 +241,7 @@ export default function ReadingPage() {
               newIsChapterLiked = data.isLiked;
             }
           } catch (chapterLikeError) {
-            console.error("Error checking chapter like status:", chapterLikeError);
+            logError(chapterLikeError, { context: "Error checking chapter like status", chapterId: chapter?.id, userId: session?.user?.id })
           }
         }
 
@@ -251,7 +253,7 @@ export default function ReadingPage() {
           isChapterLiked: newIsChapterLiked
         }))
       } catch (err) {
-        console.error("Error checking user interactions:", err)
+        logError(err, { context: "Error checking user interactions", storyId: story?.id, userId: session?.user?.id })
       }
     }
 
@@ -273,7 +275,7 @@ export default function ReadingPage() {
       if (Math.abs(debounceProgress - readingProgress) >= 10) {
         // Update reading progress in the API
         StoryService.updateReadingProgress(chapter.id, debounceProgress)
-          .catch(err => console.error("Error updating reading progress:", err));
+          .catch(err => logError(err, { context: "Error updating reading progress", chapterId: chapter?.id, userId: session?.user?.id }));
 
         // Update local state
         setState(prev => ({ ...prev, readingProgress: debounceProgress }));
@@ -371,7 +373,7 @@ export default function ReadingPage() {
 
       return true
     } catch (err) {
-      console.error("Error fetching chapter data:", err)
+      logError(err, { context: "Error fetching chapter data", chapterNumber })
       toast({
         title: "Error",
         description: "Failed to load chapter. Please try again.",
@@ -448,7 +450,7 @@ export default function ReadingPage() {
         year: "numeric",
       }).format(date)
     } catch (error) {
-      console.error("Error formatting date:", error)
+      logError(error, { context: "Error formatting date", dateInput })
       return "Unknown date"
     }
   }, [])

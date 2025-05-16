@@ -6,6 +6,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { slugify } from "@/lib/utils";
 import { ViewService } from "@/services/view-service";
 import { Prisma } from "@prisma/client";
+import { logError } from "@/lib/error-logger";
 
 // Validation schema for creating a story
 const createStorySchema = z.object({
@@ -53,10 +54,11 @@ export async function GET(request: NextRequest) {
 
     // Build filter conditions
     const where: Prisma.StoryWhereInput = {};
+    // Initialize AND as an array to fix type issues
+    where.AND = [];
 
     if (genre) {
       // Use case-insensitive matching for genre name
-      where.AND = where.AND || [];
       where.AND.push({
         genre: {
           name: {
@@ -68,7 +70,6 @@ export async function GET(request: NextRequest) {
     }
     if (language) {
       // Use case-insensitive matching for language name
-      where.AND = where.AND || [];
       where.AND.push({
         language: {
           name: {
@@ -79,14 +80,12 @@ export async function GET(request: NextRequest) {
       });
     }
     if (authorId) {
-      where.AND = where.AND || [];
       where.AND.push({ authorId });
     }
 
     // Handle tags parameter - can be a comma-separated list
     if (tags) {
       const tagValues = tags.split(',').map(t => t.trim().toLowerCase());
-      where.AND = where.AND || [];
       where.AND.push({
         tags: {
           some: {
@@ -102,8 +101,6 @@ export async function GET(request: NextRequest) {
 
     // Handle status parameter - can be a comma-separated list
     if (status) {
-      where.AND = where.AND || [];
-
       if (status.includes(',')) {
         // If comma-separated, use 'in' operator
         const statusValues = status.split(',').map(s => s.trim());
@@ -146,10 +143,11 @@ export async function GET(request: NextRequest) {
     if (!session?.user?.id || (authorId !== session.user.id)) {
       // Use AND condition to combine with existing status filter if it exists
       if (where.status) {
-        // If status is already an object with 'in' property, modify it to exclude 'draft'
-        if (where.status.in) {
+        // Check if status is an object with 'in' property
+        const statusObj = where.status as any;
+        if (statusObj.in) {
           where.status = {
-            in: where.status.in.filter((s: string) => s !== 'draft')
+            in: statusObj.in.filter((s: string) => s !== 'draft')
           };
         }
         // If status is a simple string, convert to an object
@@ -162,7 +160,6 @@ export async function GET(request: NextRequest) {
         }
       } else {
         // If no status filter yet, just exclude drafts
-        where.AND = where.AND || [];
         where.AND.push({ status: { not: "draft" } });
       }
     }
@@ -248,7 +245,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Error fetching stories:", error);
+    logError(error, { context: 'Fetching stories' });
     return NextResponse.json(
       { error: "Failed to fetch stories" },
       { status: 500 }
@@ -270,14 +267,11 @@ export async function POST(request: NextRequest) {
 
     // Parse and validate request body
     const body = await request.json();
-    console.log('Create story request body:', body);
 
     let validatedData;
     try {
       validatedData = createStorySchema.parse(body);
-      console.log('Validated data:', validatedData);
     } catch (validationError) {
-      console.error('Validation error:', validationError);
       throw validationError;
     }
 
@@ -313,13 +307,11 @@ export async function POST(request: NextRequest) {
 
     // Handle genre relation if provided - use genreId field directly
     if (genre) {
-      console.log('Using genre ID:', genre);
       createData.genre = { connect: { id: genre } };
     }
 
     // Handle language relation if provided - use languageId field directly
     if (language) {
-      console.log('Using language ID or name:', language);
 
       // Check if language is a name (like "English") or an ID
       if (language.length > 20 && language.startsWith('c')) {
@@ -335,13 +327,12 @@ export async function POST(request: NextRequest) {
           });
 
           if (languageObj) {
-            console.log('Found language by name:', languageObj.name, 'with ID:', languageObj.id);
             createData.language = { connect: { id: languageObj.id } };
           } else {
-            console.log('Language not found by name:', language);
+            logError(`Language not found by name: ${language}`);
           }
         } catch (langError) {
-          console.error('Error looking up language by name:', langError);
+          logError(langError, { context: 'Looking up language by name', language });
         }
       }
     }
@@ -372,8 +363,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.error("Error creating story:", error);
-
     // Provide more detailed error message
     let errorMessage = "Unknown error";
     let errorDetails = null;
@@ -385,15 +374,25 @@ export async function POST(request: NextRequest) {
       if (error.name === 'PrismaClientValidationError' ||
           error.name === 'PrismaClientKnownRequestError') {
         // Log the full error for debugging
-        console.error('Prisma error details:', JSON.stringify(error, null, 2));
+        logError(error, {
+          context: 'Creating story',
+          errorType: error.name,
+          details: JSON.stringify(error, null, 2)
+        });
 
         // Extract useful information from the error
         if (error.message.includes('Unknown argument')) {
-          errorDetails = 'Invalid field in story data. Check the console for details.';
+          errorDetails = 'Invalid field in story data. Check the logs for details.';
         } else if (error.message.includes('Foreign key constraint failed')) {
           errorDetails = 'Referenced record (like genre or language) does not exist.';
         }
+      } else {
+        // Log other errors
+        logError(error, { context: 'Creating story' });
       }
+    } else {
+      // Log non-Error objects
+      logError(String(error), { context: 'Creating story', errorType: typeof error });
     }
 
     return NextResponse.json(

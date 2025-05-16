@@ -1,4 +1,5 @@
 import { BlobServiceClient, StorageSharedKeyCredential } from "@azure/storage-blob";
+import { logError } from "./error-logger";
 
 // Function to create BlobServiceClient from connection string
 function createBlobServiceClient(connectionString: string): BlobServiceClient {
@@ -32,7 +33,7 @@ function createBlobServiceClient(connectionString: string): BlobServiceClient {
       const blobServiceUrl = `https://${accountName}.blob.${endpointSuffix}`;
       return new BlobServiceClient(blobServiceUrl, sharedKeyCredential);
     } catch (error) {
-      console.error('Error parsing connection string:', error);
+      logError(error, { context: 'Parsing Azure connection string' });
       throw error;
     }
   } else {
@@ -46,7 +47,6 @@ let blobServiceClient: BlobServiceClient;
 
 try {
   if (!process.env.AZURE_STORAGE_CONNECTION_STRING) {
-    console.error("AZURE_STORAGE_CONNECTION_STRING is not set in environment variables");
     // Create a dummy client that will throw errors when used
     blobServiceClient = new BlobServiceClient("https://example.com");
   } else {
@@ -54,7 +54,7 @@ try {
     blobServiceClient = createBlobServiceClient(process.env.AZURE_STORAGE_CONNECTION_STRING);
   }
 } catch (error) {
-  console.error("Error initializing Azure Blob Storage:", error);
+  logError(error, { context: 'Creating Azure Blob Service Client' });
   // Create a dummy client that will throw errors when used
   blobServiceClient = new BlobServiceClient("https://example.com");
 }

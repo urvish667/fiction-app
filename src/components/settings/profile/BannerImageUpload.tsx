@@ -5,6 +5,7 @@ import { Upload, Trash2, Loader2, ImageIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ImageUpload } from "@/lib/image-upload";
 import type { ExtendedSession } from "../ProfileSettings";
+import { logError } from "@/lib/error-logger";
 
 interface BannerImageUploadProps {
   session: ExtendedSession | null;
@@ -56,7 +57,7 @@ export const BannerImageUpload = ({
         });
       }
     } catch (error) {
-      console.error("Error uploading banner image:", error);
+      logError(error, { context: "Error uploading banner image" })
       toast({
         title: "Upload failed",
         description: "Failed to upload banner image. Please try again.",
@@ -82,7 +83,7 @@ export const BannerImageUpload = ({
         description: "Your profile banner has been removed",
       });
     } catch (error) {
-      console.error("Error removing banner image:", error);
+      logError(error, { context: "Error removing banner image" })
       toast({
         title: "Error",
         description: "Failed to remove banner image. Please try again.",

@@ -7,6 +7,7 @@ import { UserPlus, UserCheck, Share2, Check, Loader2 } from "lucide-react"
 import { StoryService } from "@/services/story-service"
 import { useToast } from "@/components/ui/use-toast"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { logError } from "@/lib/error-logger"
 
 interface ProfileActionButtonsProps {
   username: string
@@ -30,7 +31,7 @@ export default function ProfileActionButtons({ username, isCurrentUser }: Profil
         const isFollowing = await StoryService.isFollowingUser(username)
         setIsFollowing(isFollowing)
       } catch (err) {
-        console.error("Error checking follow status:", err)
+        logError(err, { context: "Error checking follow status", username })
       }
     }
 
@@ -67,7 +68,7 @@ export default function ProfileActionButtons({ username, isCurrentUser }: Profil
         })
       }
     } catch (err) {
-      console.error("Error updating follow status:", err)
+      logError(err, { context: "Error updating follow status", username })
       toast({
         title: "Error",
         description: "Failed to update follow status. Please try again.",
@@ -100,7 +101,7 @@ export default function ProfileActionButtons({ username, isCurrentUser }: Profil
       // Reset copied state after 2 seconds
       setTimeout(() => setCopied(false), 2000)
     } catch (err) {
-      console.error("Error sharing profile:", err)
+      logError(err, { context: "Error sharing profile", username })
       toast({
         title: "Error",
         description: "Failed to copy link. Please try again.",

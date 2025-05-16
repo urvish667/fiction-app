@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/auth/db-adapter";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { logError } from "@/lib/error-logger";
 
 // Define the params type for route handlers
 type UserRouteParams = { params: Promise<{ username: string }> };
@@ -48,7 +49,7 @@ export async function GET(
 
     return NextResponse.json({ isFollowing: !!follow }, { status: 200 });
   } catch (error) {
-    console.error("Error checking follow status:", error);
+    logError(error, { context: 'Checking follow status' });
     return NextResponse.json(
       { isFollowing: false, error: "Failed to check follow status" },
       { status: 500 }

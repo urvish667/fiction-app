@@ -3,22 +3,19 @@
 import type React from "react"
 import { useState, useEffect } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
-import Image from "next/image"
-import Link from "next/link"
 import { motion } from "framer-motion"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Textarea } from "@/components/ui/textarea"
-import { Separator } from "@/components/ui/separator"
-import { BookOpen, Heart, Users, DollarSign, AlertCircle, Loader2 } from "lucide-react"
+import { Heart, AlertCircle, Loader2 } from "lucide-react"
 import Navbar from "@/components/navbar"
 import { useToast } from "@/components/ui/use-toast"
 import { UnifiedPaymentForm } from "@/components/payments/UnifiedPaymentForm"
 import { fetchWithCsrf } from "@/lib/client/csrf"
+import { logError } from "@/lib/error-logger"
 
 // Predefined donation amounts
 const donationAmounts = [
@@ -114,12 +111,12 @@ export default function DonatePage() {
               }
             }
           } catch (error) {
-            console.error('Error fetching story details:', error)
+            logError(error, { context: 'Fetching story details', storyId: urlStoryId })
             // Non-critical error, we can continue without the slug
           }
         }
       } catch (error) {
-        console.error('Error fetching writer:', error)
+        logError(error, { context: 'Fetching writer', username: params.username })
         toast({
           title: "Error",
           description: "Could not load writer information",
@@ -196,7 +193,7 @@ export default function DonatePage() {
       }
 
     } catch (error) {
-      console.error('Donation error:', error)
+      logError(error, { context: 'Processing donation' })
       toast({
         title: "Donation Failed",
         description: error instanceof Error ? error.message : "An unexpected error occurred",
@@ -258,7 +255,7 @@ export default function DonatePage() {
 
   // Handle payment error
   const handlePaymentError = (error: Error) => {
-    console.error('Payment error:', error)
+    logError(error, { context: 'Payment error' })
 
     // Check for specific error messages and provide more helpful information
     let errorMessage = error.message || "An unexpected error occurred";

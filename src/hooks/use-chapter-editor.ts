@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useCancellableDebounce } from './use-cancellable-debounce'
 import { StoryService } from '@/services/story-service'
-import { Chapter } from '@/types/story'
+import { Chapter, CreateChapterRequest, UpdateChapterRequest } from '@/types/story'
 import { logError, logInfo, logWarning } from '@/lib/error-logger'
 import { useToast } from '@/components/ui/use-toast'
 
@@ -303,7 +303,7 @@ export function useChapterEditor({
       // For manual saves (showToast=true), set status based on forceDraft parameter
       // If forceDraft is true, always save as draft
       // If forceDraft is false and no changes, preserve original status
-      const status = forceDraft || (hasChanges && initialIsDraft) ? 'draft' : 'published'
+      const status: 'draft' | 'published' = forceDraft || (hasChanges && initialIsDraft) ? 'draft' : 'published'
 
       // Only include status in the API request if we're explicitly changing it
       // or if this is a new chapter (which should default to draft)
@@ -312,7 +312,7 @@ export function useChapterEditor({
         : {}
 
       // Prepare chapter data for API
-      const chapterData = {
+      const chapterData: CreateChapterRequest = {
         title: chapter.title,
         content: chapter.content,
         number: chapter.number,
@@ -401,12 +401,12 @@ export function useChapterEditor({
       }
 
       // Save chapter with publishing status
-      const chapterData = {
+      const chapterData: UpdateChapterRequest = {
         title: chapter.title,
         content: chapter.content,
         number: chapter.number,
         status: publishSettings.schedulePublish ? 'scheduled' : 'published', // Set appropriate status
-        publishDate: formattedDate
+        publishDate: formattedDate ? new Date(formattedDate) : undefined
       }
 
       logInfo('Publishing chapter', {
@@ -415,9 +415,6 @@ export function useChapterEditor({
         schedulePublish: publishSettings.schedulePublish,
         publishDate: formattedDate
       })
-
-      // Log the data being sent to the API for debugging
-      console.log('Publishing chapter with data:', chapterData)
 
       const savedChapter = await StoryService.updateChapter(storyId, chapter.id, chapterData)
 

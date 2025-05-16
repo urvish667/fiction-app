@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { ImageUpload } from "@/lib/image-upload";
+import { logError } from "@/lib/error-logger";
 
 export function useImageUpload() {
   const { toast } = useToast();
@@ -57,7 +58,7 @@ export function useImageUpload() {
         });
       }
     } catch (error) {
-      console.error("Error uploading image:", error);
+      logError(error, { context: "Error uploading image" })
       toast({
         title: "Upload failed",
         description: "Failed to upload image. Please try again.",
@@ -95,7 +96,7 @@ export function useImageUpload() {
         description: successMessage,
       });
     } catch (error) {
-      console.error("Error removing image:", error);
+      logError(error, { context: "Error removing image" })
       toast({
         title: "Error",
         description: "Failed to remove image. Please try again.",

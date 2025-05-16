@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ReadsDataPoint, EngagementDataPoint, EarningsDataPoint, ApiResponse } from '@/types/dashboard';
+import { logError } from '@/lib/error-logger';
 
 /**
  * Custom hook for fetching reads chart data
@@ -26,7 +27,7 @@ export function useReadsChartData(timeRange: string) {
 
         setData(result.data);
       } catch (err) {
-        console.error('Error fetching reads chart data:', err);
+        logError(err, { context: 'Error fetching reads chart data' });
         setError(err instanceof Error ? err.message : 'An unknown error occurred');
 
         // Fallback to empty array to prevent UI errors
@@ -67,7 +68,7 @@ export function useEngagementChartData(timeRange: string) {
 
         setData(result.data);
       } catch (err) {
-        console.error('Error fetching engagement chart data:', err);
+        logError(err, { context: 'Error fetching engagement chart data' });
         setError(err instanceof Error ? err.message : 'An unknown error occurred');
 
         // Fallback to empty array to prevent UI errors
@@ -108,7 +109,7 @@ export function useEarningsChartData(timeRange: string) {
 
         setData(result.data);
       } catch (err) {
-        console.error('Error fetching earnings chart data:', err);
+        logError(err, { context: 'Error fetching earnings chart data' });
         setError(err instanceof Error ? err.message : 'An unknown error occurred');
 
         // Fallback to empty array to prevent UI errors

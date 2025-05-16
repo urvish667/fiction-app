@@ -1,6 +1,12 @@
 import { PrismaClient } from '@prisma/client'
-import { calculateStoryStatus } from './story-helpers'
 
+// Note: The following imports are commented out since the middleware
+// that would use them is currently disabled
+// import { logger } from './logger'
+// import { calculateStoryStatus } from './story-helpers'
+// const prismaLogger = logger.child('prisma')
+
+// Define global type for Prisma singleton
 const globalForPrisma = global as unknown as { prisma: PrismaClient }
 
 // Create a new Prisma client instance
@@ -9,14 +15,15 @@ const prismaClientSingleton = () => {
     log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
   })
 
-  // Add middleware
+  // Add a simple middleware that just passes through operations
+  // The commented-out chapter-specific logic can be re-enabled when needed
   client.$use(async (params, next) => {
-    
-    // *** Execute the actual operation FIRST ***
-    const result = await next(params);
+    // Execute the operation
+    const result = await next(params)
 
+    // The following code is commented out but kept for future reference
+    // It would update story status when chapters are modified
     /*
-    // Temporarily comment out chapter-specific logic to isolate the error
     if (params.model === 'Chapter') {
       if (['create', 'update', 'delete'].includes(params.action)) {
         try {
@@ -44,18 +51,18 @@ const prismaClientSingleton = () => {
                 });
               }
             } else {
-               console.warn(`[Prisma Middleware] Story with ID ${storyId} not found after chapter operation.`);
+              prismaLogger.warn(`Story with ID ${storyId} not found after chapter operation.`);
             }
           }
         } catch (error) {
-          console.error('[Prisma Middleware] Error updating story status:', error);
+          prismaLogger.error('Error updating story status:', { error });
         }
       }
-    } 
+    }
     */
 
-    // *** Return the result of the original operation ***
-    return result;
+    // Return the result
+    return result
   })
 
   return client

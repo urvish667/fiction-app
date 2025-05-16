@@ -4,7 +4,7 @@
  */
 
 import { logger } from './logger';
-import type { LogContext } from './logger';
+import type { LogContext } from './logger/index';
 
 // Define a more specific type for context with common fields
 type ErrorContext = LogContext & {
@@ -33,7 +33,14 @@ const errorLogger = logger.child('error-logger');
  * @param context Additional context information about where/why the error occurred
  */
 export const logError = (error: unknown, context: ErrorContext = {}): void => {
-  errorLogger.error(error instanceof Error ? error : String(error), context);
+  // Convert to string to ensure compatibility with the legacy logger
+  errorLogger.error(String(error instanceof Error ? error.message : error), {
+    ...context,
+    ...(error instanceof Error && {
+      stack: error.stack,
+      errorName: error.name
+    })
+  });
 };
 
 /**

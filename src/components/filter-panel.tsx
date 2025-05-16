@@ -7,6 +7,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { X, Loader2 } from "lucide-react"
+import { logError } from "@/lib/error-logger"
 
 // Default genres to use while loading or if API fails
 const defaultGenres = [
@@ -103,7 +104,7 @@ export default function FilterPanel({
           setGenres(defaultGenres)
         }
       } catch (error) {
-        console.error("Error fetching genres:", error)
+        logError(error, { context: 'Fetching genres' });
         // Fall back to default genres if API fails
         setGenres(defaultGenres)
       } finally {
@@ -131,7 +132,7 @@ export default function FilterPanel({
           setTags(defaultTags)
         }
       } catch (error) {
-        console.error("Error fetching tags:", error)
+        logError(error, { context: 'Fetching tags' })
         // Fall back to default tags if API fails
         setTags(defaultTags)
       } finally {
@@ -159,7 +160,7 @@ export default function FilterPanel({
           setLanguages(defaultLanguages)
         }
       } catch (error) {
-        console.error("Error fetching languages:", error)
+        logError(error, { context: 'Fetching languages' })
         // Fall back to default languages if API fails
         setLanguages(defaultLanguages)
       } finally {

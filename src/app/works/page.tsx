@@ -19,6 +19,7 @@ import { StoryService } from "@/services/story-service"
 import { useSession } from "next-auth/react"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import type { Story } from "@/types/story"
+import { logError } from "@/lib/error-logger"
 
 // Extended story type with UI-specific properties
 interface WorkStory extends Omit<Story, 'genre'> {
@@ -77,7 +78,7 @@ export default function MyWorksPage() {
               publishedChapters
             };
           } catch (error) {
-            console.error(`Failed to fetch chapters for story ${story.id}:`, error);
+            logError(error, { context: 'Fetching chapters for story', storyId: story.id })
             // Return the story without chapter counts if fetching chapters fails
             return {
               ...story,
@@ -100,7 +101,7 @@ export default function MyWorksPage() {
           setIsLoading(false)
         }
       } catch (error) {
-        console.error("Failed to fetch stories:", error)
+        logError(error, { context: 'Fetching user stories' })
         if (isMounted) {
           toast({
             title: "Error",
@@ -146,7 +147,7 @@ export default function MyWorksPage() {
       setDeleteDialogOpen(false)
       setStoryToDelete(null)
     } catch (error) {
-      console.error("Failed to delete story:", error)
+      logError(error, { context: 'Deleting story', storyId: storyToDelete.id })
       toast({
         title: "Delete failed",
         description: error instanceof Error ? error.message : "Failed to delete the story. Please try again.",

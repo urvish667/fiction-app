@@ -1,6 +1,7 @@
 import { blobServiceClient, CONTAINER_NAME } from "./azure-config";
 import { BlobSASPermissions, generateBlobSASQueryParameters, SASProtocol, StorageSharedKeyCredential } from "@azure/storage-blob";
 import { Buffer } from "buffer";
+import { logError } from "./error-logger";
 
 /**
  * Service for interacting with Azure Blob Storage
@@ -25,7 +26,7 @@ export const AzureService = {
 
       return key;
     } catch (error) {
-      console.error("Error uploading to Azure Blob Storage:", error);
+      logError(error, { context: 'Uploading content to Azure Blob Storage' });
       throw new Error("Failed to upload content");
     }
   },
@@ -50,7 +51,7 @@ export const AzureService = {
       // Return a URL that will be handled by our own API
       return `/api/images/${encodeURIComponent(key)}`;
     } catch (error) {
-      console.error("Error uploading image to Azure Blob Storage:", error);
+      logError(error, { context: 'Uploading image to Azure Blob Storage' });
       throw new Error("Failed to upload image");
     }
   },
@@ -73,7 +74,7 @@ export const AzureService = {
 
       return content;
     } catch (error) {
-      console.error("Error getting content from Azure Blob Storage:", error);
+      logError(error, { context: 'Fetching content from Azure Blob Storage' });
       throw new Error("Failed to retrieve content");
     }
   },
@@ -89,7 +90,7 @@ export const AzureService = {
 
       await blockBlobClient.delete();
     } catch (error) {
-      console.error("Error deleting content from Azure Blob Storage:", error);
+      logError(error, { context: 'Deleting content from Azure Blob Storage' });
       throw new Error("Failed to delete content");
     }
   },
@@ -110,7 +111,7 @@ export const AzureService = {
       try {
         // Check if credential is available for SAS generation
         if (!blockBlobClient.credential || !(blockBlobClient.credential instanceof StorageSharedKeyCredential)) {
-          console.error("No valid credential available for SAS token generation");
+          logError("No valid credential available for SAS token generation", { context: 'Generating signed URL' });
           // Return a direct URL to our API endpoint as fallback
           return `/api/images/${encodeURIComponent(key)}`;
         }
@@ -134,12 +135,12 @@ export const AzureService = {
         // Return the full URL with SAS token
         return `${blockBlobClient.url}?${sasToken}`;
       } catch (sasError) {
-        console.error("Error generating SAS token:", sasError);
+        logError(sasError, { context: 'Generating SAS token for signed URL' });
         // Return a direct URL to our API endpoint as fallback
         return `/api/images/${encodeURIComponent(key)}`;
       }
     } catch (error) {
-      console.error("Error generating signed URL:", error);
+      logError(error, { context: 'Generating signed URL' });
       throw new Error("Failed to generate signed URL");
     }
   }

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ApiResponse } from '@/types/dashboard';
+import { logError } from '@/lib/error-logger';
 
 // Define the types for the earnings data
 interface EarningsData {
@@ -82,7 +83,7 @@ export function useEarningsData(timeRange: string) {
 
         setData(transformedData);
       } catch (err) {
-        console.error('Error fetching earnings data:', err);
+        logError(err, { context: 'Error fetching earnings data' });
         setError(err instanceof Error ? err.message : 'An unknown error occurred');
         setData(null);
       } finally {

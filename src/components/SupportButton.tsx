@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
 import { Loader2, Heart } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { logError } from '@/lib/error-logger';
 
 interface SupportButtonProps {
   authorId: string;
@@ -57,7 +58,7 @@ export function SupportButton({
 
       router.push(donationUrl);
     } catch (error) {
-      console.error('[DONATION_ERROR]', error);
+      logError(error, { context: 'Processing donation' })
       toast({
         title: 'Donation Error',
         description: error instanceof Error ? error.message : 'An unexpected error occurred.',

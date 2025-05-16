@@ -9,6 +9,7 @@ import { calculateStoryStatus } from "@/lib/story-helpers";
 import { ViewService } from "@/services/view-service";
 import { Chapter } from "@/types/story";
 import { Prisma } from "@prisma/client";
+import { logError } from "@/lib/error-logger";
 
 // Define the params type for route handlers
 type ChapterRouteParams = { params: Promise<{ id: string; chapterId: string }> };
@@ -146,9 +147,9 @@ export async function GET(
         );
 
         // Log if this is a first view (for debugging)
-        if (viewResult?.isFirstView) {
-          console.log(`First view recorded for chapter ${chapter.id} by user ${session?.user?.id || 'anonymous'}`);
-        }
+        // if (viewResult?.isFirstView) {
+        //   console.log(`First view recorded for chapter ${chapter.id} by user ${session?.user?.id || 'anonymous'}`);
+        // }
 
         // Add view counts to the response
         if (viewResult?.chapterViewCount !== undefined) {
@@ -160,7 +161,7 @@ export async function GET(
         }
       } catch (viewError) {
         // Log the error but don't fail the request
-        console.error("Error tracking chapter view:", viewError);
+        logError(viewError, { context: 'Tracking chapter view', chapterId: chapter.id, userId: session?.user?.id });
       }
     }
 
@@ -169,7 +170,7 @@ export async function GET(
     try {
       content = await AzureService.getContent(chapter.contentKey);
     } catch (error) {
-      console.error("Error fetching content from Azure Blob Storage:", error);
+      logError(error, { context: 'Fetching chapter content from storage', chapterId: chapter.id });
       content = "Content could not be loaded.";
     }
 
@@ -188,7 +189,7 @@ export async function GET(
       readingProgress: readingProgress?.progress || 0,
     });
   } catch (error) {
-    console.error("Error fetching chapter:", error);
+    logError(error, { context: 'Fetching chapter' });
     return NextResponse.json(
       { error: "Failed to fetch chapter" },
       { status: 500 }
@@ -305,7 +306,7 @@ export async function PUT(
       // Use the original content from validatedData if it exists
       responseContent = validatedData.content || await AzureService.getContent(chapter.contentKey);
     } catch (error) {
-      console.error("Error fetching content from Azure Blob Storage:", error);
+      logError(error, { context: 'Fetching chapter content from storage', chapterId: chapter.id });
       responseContent = "Content could not be loaded.";
     }
 
@@ -357,7 +358,7 @@ export async function PUT(
       );
     }
 
-    console.error("Error updating chapter:", error);
+    logError(error, { context: 'Updating chapter' });
     return NextResponse.json(
       { error: "Failed to update chapter" },
       { status: 500 }
@@ -423,7 +424,7 @@ export async function DELETE(
     try {
       await AzureService.deleteContent(chapter.contentKey);
     } catch (error) {
-      console.error("Error deleting content from Azure Blob Storage:", error);
+      logError(error, { context: 'Deleting chapter content from storage', chapterId: chapter.id });
       // Continue with chapter deletion even if Azure Blob Storage deletion fails
     }
 
@@ -464,7 +465,7 @@ export async function DELETE(
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error deleting chapter:", error);
+    logError(error, { context: 'Deleting chapter' });
     return NextResponse.json(
       { error: "Failed to delete chapter" },
       { status: 500 }

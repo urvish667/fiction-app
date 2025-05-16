@@ -7,6 +7,7 @@ import { countWords } from "@/lib/utils";
 import { AzureService } from "@/lib/azure-service";
 import { calculateStoryStatus } from "@/lib/story-helpers";
 import { Chapter } from "@/types/story";
+import { logError } from "@/lib/error-logger";
 
 // Validation schema for creating a chapter
 const createChapterSchema = z.object({
@@ -109,7 +110,7 @@ export async function GET(
 
     return NextResponse.json(chaptersWithProgress);
   } catch (error) {
-    console.error("Error fetching chapters:", error);
+    logError(error, { context: 'Fetching chapters' });
     return NextResponse.json(
       { error: "Failed to fetch chapters" },
       { status: 500 }
@@ -188,7 +189,6 @@ export async function POST(
         validatedData.title = `Chapter ${nextNumber}`;
       }
 
-      console.log(`Chapter number conflict resolved. Using number ${nextNumber} instead.`);
     }
 
     // Calculate word count
@@ -201,7 +201,7 @@ export async function POST(
     try {
       await AzureService.uploadContent(contentKey, validatedData.content);
     } catch (storageError) {
-      console.error("Azure Blob Storage upload error:", storageError);
+      logError(storageError, { context: 'Uploading chapter content to storage', storyId, chapterNumber: validatedData.number });
       return NextResponse.json(
         { error: "Failed to upload chapter content to storage", message: storageError instanceof Error ? storageError.message : "Unknown storage error" },
         { status: 400 }
@@ -226,7 +226,6 @@ export async function POST(
     } catch (error) {
       // If we still get a unique constraint error, try one more time with a guaranteed unique number
       if (error instanceof Error && error.message.includes('Unique constraint failed')) {
-        console.log('Still got a unique constraint error, trying with a guaranteed unique number');
 
         // Find the highest chapter number for this story
         const highestChapter = await prisma.chapter.findFirst({
@@ -308,7 +307,7 @@ export async function POST(
       );
     }
 
-    console.error("Error creating chapter:", error);
+    logError(error, { context: 'Creating chapter' });
 
     // Provide more detailed error message
     const errorMessage = error instanceof Error ? error.message : "Unknown error";

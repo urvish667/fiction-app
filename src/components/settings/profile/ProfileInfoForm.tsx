@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { AlertCircle, Loader2, AtSign, Link, MessageSquare } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ProfileFormValuesSubset } from "../ProfileSettings";
+import { logError } from "@/lib/error-logger";
 
 interface ProfileInfoFormProps {
   form: UseFormReturn<ProfileFormValuesSubset>;
@@ -68,7 +69,7 @@ export const ProfileInfoForm = ({ form, isUpdating, saveProfileInfo }: ProfileIn
           });
         }
       } catch (error) {
-        console.error("Manual profile validation failed:", error);
+        logError(error, { context: "Profile info validation failed" })
         // Update the form's error state with the validation errors
         if (error instanceof z.ZodError) {
           error.errors.forEach(err => {
@@ -84,7 +85,7 @@ export const ProfileInfoForm = ({ form, isUpdating, saveProfileInfo }: ProfileIn
         });
       }
     } catch (error) {
-      console.error("Error saving profile info:", error);
+      logError(error, { context: "Error saving profile info" })
       toast({
         title: "Error",
         description: "Failed to save profile information. Please try again.",

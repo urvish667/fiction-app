@@ -19,15 +19,15 @@ import { SiteFooter } from "@/components/site-footer"
 import { StoryService } from "@/services/story-service"
 import { Story as StoryType, Chapter as ChapterType } from "@/types/story"
 import { SupportButton } from "@/components/SupportButton"
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import MatureContentDialog, { needsMatureContentConsent } from "@/components/mature-content-dialog"
+import { logError } from "@/lib/error-logger"
 
 export default function StoryInfoPage() {
   const params = useParams()
   const router = useRouter()
   const slug = params?.slug as string
 
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
   const { toast } = useToast()
   const [story, setStory] = useState<StoryType | null>(null)
   const [chapters, setChapters] = useState<ChapterType[]>([])
@@ -68,12 +68,12 @@ export default function StoryInfoPage() {
           setStory(storyWithViewCount)
         } catch (err) {
           // If there's an error, fall back to the original story data
-          console.error("Error fetching story with view count:", err)
+          logError(err, { context: "Error fetching story with view count", storyId: storyBySlug.id })
           setStory(storyBySlug)
         }
 
         // Check if we need to show the mature content dialog
-        const isLoggedIn = session?.status === "authenticated"
+        const isLoggedIn = status === "authenticated"
         if (storyBySlug.isMature && needsMatureContentConsent(slug, storyBySlug.isMature, isLoggedIn)) {
           setContentConsented(false)
           setShowMatureDialog(true)
@@ -86,7 +86,7 @@ export default function StoryInfoPage() {
             setStoryTags(tagsData)
           }
         } catch (err) {
-          console.error("Error fetching story tags:", err)
+          logError(err, { context: "Error fetching story tags", storyId: storyBySlug.id })
         }
 
         // Fetch chapters for this story
@@ -98,7 +98,7 @@ export default function StoryInfoPage() {
         );
         setChapters(publishedChapters)
       } catch (err) {
-        console.error("Error fetching story:", err)
+        logError(err, { context: "Error fetching story", slug })
         setError("Failed to load story. Please try again.")
       } finally {
         setIsLoading(false)
@@ -126,7 +126,7 @@ export default function StoryInfoPage() {
           setIsFollowing(isFollowing)
         }
       } catch (err) {
-        console.error("Error checking follow status:", err)
+        logError(err, { context: "Error checking follow status", authorId: story.author.id, userId: session?.user?.id })
       }
     }
 
@@ -178,7 +178,7 @@ export default function StoryInfoPage() {
       const updatedStory = await StoryService.getStory(story!.id)
       setStory(updatedStory)
     } catch (err) {
-      console.error("Error updating like status:", err)
+      logError(err, { context: "Error updating like status", storyId: story?.id, userId: session?.user?.id })
       toast({
         title: "Error",
         description: "Failed to update like status",
@@ -220,7 +220,7 @@ export default function StoryInfoPage() {
       const updatedStory = await StoryService.getStory(story!.id)
       setStory(updatedStory)
     } catch (err) {
-      console.error("Error updating bookmark status:", err)
+      logError(err, { context: "Error updating bookmark status", storyId: story?.id, userId: session?.user?.id })
       toast({
         title: "Error",
         description: "Failed to update bookmark status",
@@ -257,7 +257,7 @@ export default function StoryInfoPage() {
         setIsFollowing(true)
       }
     } catch (err) {
-      console.error("Error updating follow status:", err)
+      logError(err, { context: "Error updating follow status", authorId: story?.author?.id, userId: session?.user?.id })
     } finally {
       setFollowLoading(false)
     }
@@ -348,7 +348,7 @@ export default function StoryInfoPage() {
                 sizes="(max-width: 768px) 100vw, 33vw"
                 className="object-cover"
                 onError={() => {
-                    console.error('Image onError triggered for:', story.coverImage);
+                    logError(`Image loading failed`, { context: 'Cover image error', imageUrl: story.coverImage });
                     setImageFallback(true);
                 }}
                 unoptimized={true}

@@ -10,6 +10,7 @@ import { useRouter, useParams } from "next/navigation"
 import Link from "next/link"
 import "../../auth-background.css"
 import AuthLogo from "@/components/auth/logo"
+import { logError } from "@/lib/error-logger"
 
 export default function ResetPasswordPage() {
   const router = useRouter()
@@ -34,7 +35,7 @@ export default function ResetPasswordPage() {
           setError("Invalid or expired reset link. Please request a new one.")
         }
       } catch (error) {
-        console.error("Token verification error:", error)
+        logError(error, { context: 'Verifying reset password token' })
         setIsValidToken(false)
         setError("An error occurred. Please try again.")
       }
@@ -91,7 +92,7 @@ export default function ResetPasswordPage() {
         setError(data.error || "Failed to reset password. Please try again.")
       }
     } catch (error) {
-      console.error("Password reset error:", error)
+      logError(error, { context: 'Resetting password' })
       setError("An error occurred. Please try again.")
     } finally {
       setIsSubmitting(false)

@@ -76,7 +76,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Email verification error:", error);
     return NextResponse.json(
       { error: "An error occurred during verification" },
       { status: 500 }

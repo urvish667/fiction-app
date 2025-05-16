@@ -30,6 +30,7 @@ import {
   AlignCenter,
   AlignRight,
 } from "lucide-react"
+import { logError } from "@/lib/error-logger"
 
 interface EditorProps {
   content: string
@@ -172,7 +173,7 @@ export function Editor({ content, onChange, readOnly = false }: EditorProps) {
         }
       }
     } catch (error) {
-      console.error("Error uploading image:", error)
+      logError(error, { context: 'Uploading image' });
       toast({
         title: "Upload failed",
         description: "Failed to upload image. Please try again.",

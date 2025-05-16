@@ -44,7 +44,6 @@ export async function POST() {
       emailVerified: user.emailVerified
     });
   } catch (error) {
-    console.error("Error updating session:", error);
     return NextResponse.json(
       { error: "Failed to update session" },
       { status: 500 }

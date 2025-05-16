@@ -3,6 +3,7 @@ import { Notification, NotificationResponse, mockNotifications } from "@/types/n
 import { fetchWithCsrf } from "@/lib/client/csrf";
 import { getWebSocketClient, WebSocketStatus } from "@/lib/client/websocket-client";
 import { useSession } from "next-auth/react";
+import { logError, logInfo } from "@/lib/error-logger";
 
 interface UseNotificationsProps {
   useMockData?: boolean;
@@ -56,7 +57,7 @@ export function useNotifications({
       setNotifications(data.notifications);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
-      console.error("Error fetching notifications:", err);
+      logError(err, { context: 'Error fetching notifications' });
     } finally {
       setLoading(false);
     }
@@ -103,7 +104,7 @@ export function useNotifications({
         });
       }
     } catch (err) {
-      console.error("Error marking notification as read:", err);
+      logError(err, { context: 'Error marking notification as read' });
     }
   }, [notifications, useMockData]);
 
@@ -139,7 +140,7 @@ export function useNotifications({
         });
       }
     } catch (err) {
-      console.error("Error marking all notifications as read:", err);
+      logError(err, { context: 'Error marking all notifications as read' });
     }
   }, [notifications, useMockData]);
 
@@ -172,7 +173,7 @@ export function useNotifications({
         });
       }
     } catch (err) {
-      console.error("Error deleting notification:", err);
+      logError(err, { context: 'Error deleting notification' });
     }
   }, [notifications, useMockData]);
 
@@ -290,7 +291,7 @@ export function useNotifications({
 
       case 'connection':
         // Connection status update
-        console.log('WebSocket connection status:', data.status);
+        logInfo(`WebSocket connection status: ${data.status}`, { context: 'useNotifications' });
         break;
 
       case 'pong':
@@ -298,7 +299,7 @@ export function useNotifications({
         break;
 
       default:
-        console.log('Unknown WebSocket message type:', data.type);
+        logInfo(`Unknown WebSocket message type: ${data.type}`, { context: 'useNotifications' });
     }
   }, []);
 
@@ -311,21 +312,19 @@ export function useNotifications({
     const getToken = async () => {
       try {
         // Get token from session or fetch from API
-        console.log('Fetching WebSocket token...');
         const response = await fetch('/api/auth/ws-token');
 
         if (!response.ok) {
           const errorText = await response.text();
-          console.error(`Failed to get WebSocket token: ${response.status} ${response.statusText}`, errorText);
+          logError(`Failed to get WebSocket token: ${response.status} ${response.statusText}`, { context: 'useNotifications', errorText });
           throw new Error(`Failed to get WebSocket token: ${response.status} ${response.statusText}`);
         }
 
         const { token } = await response.json();
-        console.log('WebSocket token received successfully');
 
         // Log WebSocket URL for debugging
         const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001/api/ws';
-        console.log(`Connecting to WebSocket server at: ${wsUrl}`);
+        logInfo(`Connecting to WebSocket server at: ${wsUrl}`, { context: 'useNotifications' });
 
         // Initialize WebSocket client
         const wsClient = getWebSocketClient({
@@ -333,7 +332,7 @@ export function useNotifications({
           token,
           onMessage: handleWebSocketMessage,
           onStatusChange: (status) => {
-            console.log(`WebSocket status changed: ${status}`);
+            logInfo(`WebSocket status changed: ${status}`, { context: 'useNotifications' });
             setWsStatus(status);
           },
         });
@@ -342,13 +341,12 @@ export function useNotifications({
         if (wsClient) {
           wsClient.connect();
           wsConnectedRef.current = true;
-          console.log('WebSocket client connection initiated');
         } else {
-          console.error('Failed to create WebSocket client');
+          logError('Failed to create WebSocket client', { context: 'useNotifications' });
           setError('Failed to create WebSocket client');
         }
       } catch (error) {
-        console.error('Failed to initialize WebSocket:', error);
+        logError(error, { context: 'Failed to initialize WebSocket' });
         setError('Failed to connect to notification service');
       }
     };
@@ -391,10 +389,10 @@ export function useNotifications({
       pollInterval = setInterval(() => {
         // Only poll if the page is visible
         if (isVisible) {
-          console.log('Polling for notifications (fallback mode)');
+          logInfo('Polling for notifications (fallback mode)', { context: 'useNotifications' });
           fetchNotifications();
         } else {
-          console.log('Skipping notification poll - page not visible');
+          logInfo('Skipping notification poll - page not visible', { context: 'useNotifications' });
         }
       }, 60000); // 60 seconds
     };
@@ -404,13 +402,13 @@ export function useNotifications({
       isVisible = document.visibilityState === 'visible';
 
       if (isVisible) {
-        console.log('Page became visible, fetching notifications');
+        logInfo('Page became visible, fetching notifications', { context: 'useNotifications' });
         // Fetch immediately when page becomes visible
         fetchNotifications();
         // Restart polling
         startPolling();
       } else {
-        console.log('Page hidden, pausing notification polling');
+        logInfo('Page hidden, pausing notification polling', { context: 'useNotifications' });
         // Optionally clear the interval when page is hidden
         // if (pollInterval) {
         //   clearInterval(pollInterval);

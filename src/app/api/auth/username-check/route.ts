@@ -64,7 +64,6 @@ export async function GET(request: NextRequest) {
       error: existingUser ? "Username is already taken" : null,
     });
   } catch (error) {
-    console.error("Error checking username availability:", error);
     return NextResponse.json(
       { available: false, error: "Error checking username availability" },
       { status: 500 }

@@ -9,6 +9,7 @@ import { AlertCircle, MailIcon } from "lucide-react"
 import Link from "next/link"
 import "../../auth-background.css"
 import AuthLogo from "@/components/auth/logo"
+import { logError } from "@/lib/error-logger"
 
 export default function RequestPasswordResetPage() {
   const [email, setEmail] = useState("")
@@ -44,7 +45,7 @@ export default function RequestPasswordResetPage() {
         setError(data.error || "Failed to send reset email. Please try again.")
       }
     } catch (error) {
-      console.error("Password reset request error:", error)
+      logError(error, { context: 'Requesting password reset' })
       setError("An error occurred. Please try again.")
     } finally {
       setIsSubmitting(false)

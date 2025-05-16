@@ -6,6 +6,7 @@ import { Upload, Trash2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ImageUpload } from "@/lib/image-upload";
 import type { ExtendedSession } from "../ProfileSettings";
+import { logError } from "@/lib/error-logger";
 
 interface ProfileImageUploadProps {
   session: ExtendedSession | null;
@@ -55,7 +56,7 @@ export const ProfileImageUpload = ({
         });
       }
     } catch (error) {
-      console.error("Error uploading profile image:", error);
+      logError(error, { context: "Error uploading profile image" })
       toast({
         title: "Upload failed",
         description: "Failed to upload profile picture. Please try again.",
@@ -81,7 +82,7 @@ export const ProfileImageUpload = ({
         description: "Your profile picture has been removed",
       });
     } catch (error) {
-      console.error("Error removing profile image:", error);
+      logError(error, { context: "Error removing profile image" })
       toast({
         title: "Error",
         description: "Failed to remove profile picture. Please try again.",

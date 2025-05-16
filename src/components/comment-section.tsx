@@ -11,6 +11,7 @@ import { Heart, MoreVertical, Flag, Trash, Reply, Edit, AlertCircle } from "luci
 import { useToast } from "@/components/ui/use-toast"
 import { CommentService } from "@/services/comment-service"
 import { Comment } from "@/types/story"
+import { logError } from "@/lib/error-logger"
 
 interface CommentSectionProps {
   storyId: string
@@ -72,7 +73,7 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
         setHasMore(response.pagination.hasMore)
         setPage(1)
       } catch (err) {
-        console.error(`Error fetching ${isChapter ? 'chapter' : 'story'} comments:`, err)
+        logError(err, { context: 'Fetching comments', storyId, chapterId })
         setError(`Failed to load ${isChapter ? 'chapter' : 'story'} comments`)
       } finally {
         setIsLoading(false)
@@ -112,7 +113,7 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
       setHasMore(response.pagination.hasMore)
       setPage(nextPage)
     } catch (err) {
-      console.error(`Error loading more ${isChapter ? 'chapter' : 'story'} comments:`, err)
+      logError(err, { context: 'Loading more comments', storyId, chapterId })
       toast({
         title: "Error",
         description: `Failed to load more ${isChapter ? 'chapter' : 'story'} comments`,
@@ -157,7 +158,7 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
         description: `Your ${isChapter ? 'chapter' : 'story'} comment has been posted successfully`
       })
     } catch (err) {
-      console.error(`Error posting ${isChapter ? 'chapter' : 'story'} comment:`, err)
+      logError(err, { context: 'Submitting comment', storyId, chapterId })
       toast({
         title: "Error",
         description: `Failed to post your ${isChapter ? 'chapter' : 'story'} comment`,
@@ -193,7 +194,7 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
         description: "Your comment has been updated successfully"
       })
     } catch (err) {
-      console.error("Error updating comment:", err)
+      logError(err, { context: 'Editing comment', storyId, chapterId })
       toast({
         title: "Error",
         description: "Failed to update your comment",
@@ -219,7 +220,7 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
         description: "Your comment has been deleted successfully"
       })
     } catch (err) {
-      console.error("Error deleting comment:", err)
+      logError(err, { context: 'Deleting comment', storyId, chapterId });
       toast({
         title: "Error",
         description: "Failed to delete your comment",
@@ -279,7 +280,7 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
         description: "Your reply has been posted successfully"
       })
     } catch (err) {
-      console.error("Error posting reply:", err)
+      logError(err, { context: 'Replying to comment', storyId, chapterId });
       toast({
         title: "Error",
         description: "Failed to post your reply",
@@ -357,7 +358,7 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
         }))
       }
     } catch (err) {
-      console.error("Error liking comment/reply:", err)
+      logError(err, { context: 'Liking comment', storyId, chapterId });
       toast({
         title: "Error",
         description: "Failed to like comment",
@@ -411,7 +412,7 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
         description: "Your reply has been updated successfully"
       })
     } catch (err) {
-      console.error("Error updating reply:", err)
+      logError(err, { context: 'Editing reply', storyId, chapterId });
       toast({
         title: "Error",
         description: "Failed to update your reply",
@@ -460,7 +461,7 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
         description: "Your reply has been deleted successfully"
       })
     } catch (err) {
-      console.error("Error deleting reply:", err)
+      logError(err, { context: 'Deleting reply', storyId, chapterId })
       toast({
         title: "Error",
         description: "Failed to delete your reply",
@@ -496,7 +497,7 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
         [commentId]: response.replies
       }))
     } catch (err) {
-      console.error("Error loading replies:", err)
+      logError(err, { context: 'Loading replies', storyId, chapterId })
       toast({
         title: "Error",
         description: "Failed to load replies",

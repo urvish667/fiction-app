@@ -11,9 +11,10 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import Navbar from "@/components/navbar"
 import { UserPreferences, defaultPreferences } from "@/types/user"
+import { ExtendedUser, ExtendedSession } from "@/components/settings/ProfileSettings"
 import { useRouter } from 'next/navigation';
 import { fetchWithCsrf } from "@/lib/client/csrf";
-import { logger } from "@/lib/logger";
+import { logError } from "@/lib/error-logger"
 
 // UI Imports needed for the main settings page
 import { Button } from '@/components/ui/button';
@@ -167,7 +168,6 @@ export default function SettingsPage() {
             throw new Error('Failed to fetch profile data')
           }
           const userData = await response.json()
-          console.log("Fetched User Data for Reset:", userData); // Keep console log for checking
 
           // Reset main fields
           form.reset({
@@ -185,18 +185,25 @@ export default function SettingsPage() {
           form.setValue('socialLinks.facebook', links.facebook || "");
 
           // Update session preferences if needed
-          if (!session.user.preferences && userData.preferences) {
-            await update({
-              ...session,
-              user: {
-                ...session.user,
-                preferences: userData.preferences,
-              }
-            })
+          if (userData.preferences) {
+            // Check if preferences don't exist or are empty
+            const userWithPrefs = session.user as ExtendedUser;
+            const hasNoPreferences = !userWithPrefs.preferences ||
+                                    Object.keys(userWithPrefs.preferences || {}).length === 0;
+
+            if (hasNoPreferences) {
+              await update({
+                ...session,
+                user: {
+                  ...session.user,
+                  preferences: userData.preferences,
+                }
+              });
+            }
           }
 
         } catch (error) {
-          console.error("Error loading user data:", error)
+          logError(error, { context: "Error loading user data" })
           toast({
             title: "Error",
             description: "Failed to load profile data",
@@ -270,12 +277,9 @@ export default function SettingsPage() {
       if (data.website !== undefined) profileData.website = data.website
 
       if (Object.keys(profileData).length === 0 || (Object.keys(profileData).length === 1 && profileData.username === session?.user?.username)) {
-         console.log("No profile info changes detected.")
          setIsUpdating(false);
          return;
       }
-
-      console.log('Saving profile data:', profileData)
 
       const response = await fetchWithCsrf("/api/user/profile", {
         method: "PATCH",
@@ -304,7 +308,7 @@ export default function SettingsPage() {
       })
 
     } catch (error) {
-      console.error("Error updating profile information:", error)
+      logError(error, { context: "Error updating profile information" })
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to update profile information",
@@ -339,7 +343,7 @@ export default function SettingsPage() {
 
       window.location.reload()
     } catch (error) {
-      console.error("Error updating profile image:", error)
+      logError(error, { context: "Error updating profile image" })
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to update profile image",
@@ -373,7 +377,7 @@ export default function SettingsPage() {
 
       window.location.reload()
     } catch (error) {
-      console.error("Error updating banner image:", error)
+      logError(error, { context: "Error updating banner image" })
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to update banner image",
@@ -394,8 +398,6 @@ export default function SettingsPage() {
        if (!linksData.username) {
         throw new Error("Username is required to update social links.")
       }
-
-      console.log('Saving social links:', linksData)
 
       const response = await fetchWithCsrf("/api/user/profile", {
         method: "PATCH",
@@ -434,7 +436,7 @@ export default function SettingsPage() {
       })
 
     } catch (error) {
-      console.error("Error updating social links:", error)
+      logError(error, { context: "Error updating social links" })
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to update social links",
@@ -446,7 +448,6 @@ export default function SettingsPage() {
   }
 
   const changePassword = async () => {
-    console.log('changePassword function called in SettingsPage');
     if (passwordForm.newPassword.length < 8) {
       toast({ title: "Password too short", description: "New password must be at least 8 characters long.", variant: "destructive" })
       return
@@ -462,15 +463,12 @@ export default function SettingsPage() {
 
     setIsChangingPassword(true)
     try {
-      console.log('Sending password change request...');
       const response = await fetchWithCsrf("/api/user/change-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(passwordForm),
       })
-      console.log('Password change response status:', response.status);
       const result = await response.json()
-      console.log('Password change response:', result);
 
       if (!response.ok) {
         throw new Error(result.error || "Failed to change password")
@@ -484,7 +482,7 @@ export default function SettingsPage() {
         duration: 5000,
       })
     } catch (error) {
-      console.error("Error changing password:", error)
+      logError(error, { context: "Error changing password" })
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to change password",
@@ -521,7 +519,7 @@ export default function SettingsPage() {
       await signOut({ callbackUrl: "/" })
 
     } catch (error) {
-      console.error("Error deleting account:", error)
+      logError(error, { context: "Error deleting account" })
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to delete account",
@@ -534,7 +532,6 @@ export default function SettingsPage() {
   }
 
   const savePreferences = async (preferences: UserPreferences) => {
-     console.log("Saving preferences:", preferences);
     try {
       const response = await fetchWithCsrf('/api/user/preferences', {
         method: 'PUT',
@@ -547,7 +544,7 @@ export default function SettingsPage() {
         throw new Error(errorResult.error || 'Failed to save preferences')
       }
 
-      if (session) {
+      if (session?.user) {
         await update({
           ...session,
           user: {
@@ -561,11 +558,10 @@ export default function SettingsPage() {
 
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      console.log("Preferences saved and session updated.");
       return true
 
     } catch (error) {
-      console.error('Error saving preferences:', error)
+      logError(error, { context: 'Saving preferences' })
       toast({
         title: "Error",
         description: "Failed to save preferences. Please try again.",
@@ -576,44 +572,52 @@ export default function SettingsPage() {
   }
 
   const handleNotificationToggle = async (key: keyof UserPreferences['emailNotifications']) => {
-    if (!session?.user?.preferences) return;
+    if (!session?.user) return;
+
+    // Initialize preferences if they don't exist
+    const userWithPrefs = session.user as ExtendedUser;
+    const currentPrefs: UserPreferences = userWithPrefs.preferences || {...defaultPreferences};
+
     setSavingPreferences(`notification-${key}`);
     try {
-      const currentPrefs = session.user.preferences;
       const newPreferences: UserPreferences = {
         ...currentPrefs,
         emailNotifications: {
           ...defaultPreferences.emailNotifications,
-          ...currentPrefs.emailNotifications,
+          ...(currentPrefs.emailNotifications || {}),
           [key]: !(currentPrefs.emailNotifications?.[key] ?? defaultPreferences.emailNotifications[key]),
         },
       };
       await savePreferences(newPreferences);
       toast({ title: "Preference Updated", description: `Email notification for ${key} updated.` });
     } catch (error) {
-       console.error(`Error updating notification preference ${key}:`, error);
+       logError(error, { context: `Error updating notification preference ${key}` });
     } finally {
       setSavingPreferences(null);
     }
   }
 
   const handlePrivacyToggle = async (key: keyof UserPreferences['privacySettings']) => {
-    if (!session?.user?.preferences) return;
+    if (!session?.user) return;
+
+    // Initialize preferences if they don't exist
+    const userWithPrefs = session.user as ExtendedUser;
+    const currentPrefs: UserPreferences = userWithPrefs.preferences || {...defaultPreferences};
+
     setSavingPreferences(`privacy-${key}`);
     try {
-      const currentPrefs = session.user.preferences;
       const newPreferences: UserPreferences = {
-         ...currentPrefs,
+        ...currentPrefs,
         privacySettings: {
           ...defaultPreferences.privacySettings,
-          ...currentPrefs.privacySettings,
+          ...(currentPrefs.privacySettings || {}),
           [key]: !(currentPrefs.privacySettings?.[key] ?? defaultPreferences.privacySettings[key]),
         },
       };
       await savePreferences(newPreferences);
       toast({ title: "Preference Updated", description: `Privacy setting for ${key} updated.` });
     } catch (error) {
-       console.error(`Error updating privacy preference ${key}:`, error);
+       logError(error, { context: `Error updating privacy preference ${key}` });
     } finally {
       setSavingPreferences(null);
     }
@@ -662,7 +666,7 @@ export default function SettingsPage() {
       const stripeConnectUrl = `https://connect.stripe.com/oauth/authorize?response_type=code&client_id=${clientId}&scope=read_write&state=${state}&redirect_uri=${encodeURIComponent(redirectUri)}&stripe_user[email]=${session?.user?.email || ''}`;
       window.location.href = stripeConnectUrl;
     } catch (error) {
-      logger.error('Error initiating Stripe Connect flow:', error);
+      logError(error, { context: 'Error initiating Stripe Connect flow' });
       setDonationError('Failed to initiate Stripe Connect flow');
       toast({
         title: 'Error',
@@ -688,7 +692,6 @@ export default function SettingsPage() {
             body: JSON.stringify({ method: 'paypal', link: paypalLink }),
           });
         } else if (donationMethod === 'stripe') {
-          console.log('Stripe selected. Connection is managed via the OAuth flow.');
           toast({ title: 'Settings Updated', description: 'Stripe selected. Connection status reflects the last update from Stripe.' });
           // Optimistically update UI state - fetch might refresh this later?
           setDonationSettings({

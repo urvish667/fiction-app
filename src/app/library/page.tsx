@@ -12,6 +12,7 @@ import StoryCard from "@/components/story-card"
 import StoryCardSkeleton from "@/components/story-card-skeleton"
 import { StoryService } from "@/services/story-service"
 import { useToast } from "@/components/ui/use-toast"
+import { logError } from "@/lib/error-logger"
 
 export default function LibraryPage() {
   const { toast } = useToast()
@@ -31,7 +32,7 @@ export default function LibraryPage() {
         const response = await StoryService.getBookmarkedStories()
 
         // Log the raw story data to debug genre information
-        console.log('Raw bookmarked stories data:', response.stories);
+        logError(response.stories, { context: 'Raw bookmarked stories data' })
 
         // Format stories to ensure they have all required fields
         const formattedStories = response.stories.map((story: any) => {
@@ -63,7 +64,7 @@ export default function LibraryPage() {
           .map((story: any) => story.genre))]
         setGenres(uniqueGenres)
       } catch (error) {
-        console.error("Error fetching bookmarked stories:", error)
+        logError(error, { context: 'Fetching bookmarked stories' })
         toast({
           title: "Error",
           description: "Failed to load your library. Please try again.",

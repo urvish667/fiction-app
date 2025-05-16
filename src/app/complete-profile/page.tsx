@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { AlertCircle } from "lucide-react"
 import { format } from "date-fns"
 import { useRouter } from "next/navigation"
@@ -15,6 +15,7 @@ import { debounce } from "lodash"
 import Link from "next/link"
 import "../auth-background.css"
 import AuthLogo from "@/components/auth/logo"
+import { logError } from "@/lib/error-logger"
 
 export default function CompleteProfilePage() {
   const router = useRouter()
@@ -74,7 +75,7 @@ export default function CompleteProfilePage() {
         })
       }
     } catch (error) {
-      console.error("Error checking username availability:", error)
+      logError(error, { context: 'Checking username availability' })
       setUsernameAvailability({
         available: false,
         error: "Error checking username availability",
@@ -203,7 +204,7 @@ export default function CompleteProfilePage() {
         router.push("/")
       }
     } catch (error) {
-      console.error("Profile completion error:", error)
+      logError(error, { context: 'Completing profile' })
       setErrors({ form: "An error occurred while completing your profile" })
     } finally {
       setIsSubmitting(false)

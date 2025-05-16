@@ -64,10 +64,8 @@ export function useOptimizedSession(options: UseOptimizedSessionOptions = {}) {
 
     // Always set up a timer to refresh the session before it expires
     // This is especially important now that we've disabled automatic polling
-    console.log(`Session will be refreshed in ${Math.floor(timeUntilExpiry / 60000)} minutes`);
 
     const timer = setTimeout(() => {
-      console.log('Refreshing session before expiry');
       refreshSession();
     }, timeUntilExpiry);
 

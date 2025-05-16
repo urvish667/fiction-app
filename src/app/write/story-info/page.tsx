@@ -34,6 +34,7 @@ import { StoryService } from "@/services/story-service"
 import { CreateStoryRequest, UpdateStoryRequest } from "@/types/story"
 import { fetchWithCsrf } from "@/lib/client/csrf"
 import { useIsMobile } from "@/hooks/use-mobile"
+import { logError } from "@/lib/error-logger"
 
 // Types for the story info page
 interface StoryFormData {
@@ -173,7 +174,7 @@ export default function StoryInfoPage() {
               },
               body: JSON.stringify({ storyId: savedStory.id, tags: newTags }),
             }).catch(err => {
-              console.error('Failed to save tags:', err);
+              logError(err, { context: 'Saving tags', storyId: savedStory.id })
             });
           }
         });
@@ -205,7 +206,7 @@ export default function StoryInfoPage() {
               },
               body: JSON.stringify({ storyId: savedStory.id, tags: newTags }),
             }).catch(err => {
-              console.error('Failed to save tags:', err);
+              logError(err, { context: 'Saving tags', storyId: savedStory.id })
             });
           }
         });
@@ -271,7 +272,7 @@ export default function StoryInfoPage() {
             });
           }
         } catch (error) {
-          console.error("Auto-save failed:", error);
+          logError(error, { context: 'Auto-save', storyId: storyData.id })
         }
       }, 500);
       return () => clearTimeout(autoSaveTimeout);
@@ -335,7 +336,7 @@ export default function StoryInfoPage() {
           // Fetch chapters for this story
           fetchChapters(story.id);
         } catch (error) {
-          console.error("Failed to fetch story", error);
+          logError(error, { context: 'Fetching story', storyId });
           toast({
             title: "Error loading story",
             description: "Failed to load story data. Please try again.",
@@ -375,7 +376,7 @@ export default function StoryInfoPage() {
 
       setChapters(formattedChapters);
     } catch (error) {
-      console.error("Failed to fetch chapters", error);
+      logError(error, { context: 'Fetching chapters', storyId });
       toast({
         title: "Error loading chapters",
         description: "Failed to load chapter data. Please try again.",
@@ -481,7 +482,7 @@ export default function StoryInfoPage() {
               return; // Don't update the status
             }
           } catch (error) {
-            console.error("Failed to check draft chapters:", error);
+            logError(error, { context: 'Checking draft chapters', storyId: storyData.id });
             toast({
               title: "Error",
               description: "Failed to check draft chapters. Please try again.",
@@ -614,7 +615,7 @@ export default function StoryInfoPage() {
         });
       }, 500);
     } catch (error) {
-      console.error('Error uploading image:', error);
+      logError(error, { context: 'Uploading cover image', storyId: storyData.id });
       toast({
         title: "Upload failed",
         description: "Failed to upload the image. Please try again.",
@@ -678,7 +679,7 @@ export default function StoryInfoPage() {
         setHasChanges(true);
       }
     } catch (error) {
-      console.error('Failed to remove cover image:', error);
+      logError(error, { context: 'Removing cover image', storyId: storyData.id });
       toast({
         title: "Error",
         description: "Failed to remove cover image. Please try again.",
@@ -840,7 +841,7 @@ export default function StoryInfoPage() {
             body: JSON.stringify({ storyId: updatedStoryData.id, tags }),
           });
         } catch (err) {
-          console.error('Failed to upsert tags:', err);
+          logError(err, { context: 'Saving tags', storyId: updatedStoryData.id })
         }
       }
 
@@ -854,7 +855,7 @@ export default function StoryInfoPage() {
       // Return the updated story data for immediate use
       return updatedStoryData;
     } catch (error) {
-      console.error("Failed to save story", error);
+      logError(error, { context: 'Saving story', storyId: dataToSave.id });
       toast({
         title: "Save failed",
         description: error instanceof Error ? error.message : "Failed to save your story. Please try again.",
@@ -935,7 +936,7 @@ export default function StoryInfoPage() {
       setDeleteDialogOpen(false);
       setChapterToDelete(null);
     } catch (error) {
-      console.error("Failed to delete chapter:", error);
+      logError(error, { context: 'Deleting chapter', storyId: storyData.id, chapterId: chapterToDelete.id })
       toast({
         title: "Delete failed",
         description: error instanceof Error ? error.message : "Failed to delete the chapter. Please try again.",

@@ -16,6 +16,7 @@ import { motion } from "framer-motion"
 import "../auth-background.css"
 import AuthLogo from "@/components/auth/logo"
 import { GoogleIcon, FacebookIcon } from "@/components/auth/social-icons"
+import { logError } from "@/lib/error-logger"
 
 // Component that uses searchParams
 function SignupContent() {
@@ -136,7 +137,7 @@ function SignupContent() {
         })
       }
     } catch (error) {
-      console.error("Error checking username availability:", error)
+      logError(error, { context: 'Checking username availability' })
       setUsernameAvailability({
         available: false,
         error: "Error checking username availability",
@@ -228,7 +229,7 @@ function SignupContent() {
           router.push("/verify-email?email=" + encodeURIComponent(signupForm.email))
         }
       } catch (error) {
-        console.error("Signup error:", error)
+        logError(error, { context: 'Signup error' })
         setErrors({ form: "An error occurred during signup" })
       } finally {
         setIsSubmitting(false)
@@ -248,7 +249,7 @@ function SignupContent() {
       })
       // Note: This will redirect the page, so no need to set isSubmitting to false
     } catch (error) {
-      console.error(`${provider} sign in error:`, error)
+      logError(error, { context: 'OAuth signup error', provider })
       setErrors({ form: `Error signing in with ${provider}. Please try again.` })
       setIsSubmitting(false)
     }
@@ -290,7 +291,7 @@ function SignupContent() {
       setErrors({ form: errorMessage });
 
       // Log the error for debugging
-      console.error(`Authentication error: ${error}`);
+      logError(error, { context: 'Authentication error' })
     }
   }, [error])
 

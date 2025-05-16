@@ -136,9 +136,6 @@ function PaymentForm({ onSuccess, onError, storyTitle }: Omit<StripePaymentFormP
         // Show error to your customer
         logger.error('Payment confirmation error:', result.error);
 
-        // Log the full error object for debugging
-        console.error('Payment confirmation error details:', result.error);
-
         // Special check for India destination charges error
         let friendlyErrorMessage = '';
         if (result.error.message && result.error.message.includes("destination charges with accounts in IN")) {
@@ -178,9 +175,6 @@ function PaymentForm({ onSuccess, onError, storyTitle }: Omit<StripePaymentFormP
       // Handle unexpected errors
       const error = err as Error;
       logger.error('Unexpected error:', error);
-
-      // Log the full error object for debugging
-      console.error('Payment error details:', err);
 
       // Check if this is a Stripe error that we can parse
       let errorMessage = 'An unexpected error occurred';

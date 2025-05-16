@@ -100,7 +100,6 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({
           <CardFooter className="flex justify-between">
             <Button
               onClick={() => {
-                console.log('Change password button clicked in AccountSettings');
                 changePassword();
               }}
               disabled={

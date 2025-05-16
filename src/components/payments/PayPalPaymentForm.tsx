@@ -195,7 +195,6 @@ export function PayPalPaymentForm({
 
   if (!process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID) {
     logger.error('PayPal client ID is not configured');
-    console.log('PayPal client ID is not configured ');
     return null;
   }
 

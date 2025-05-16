@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { prisma } from "@/lib/auth/db-adapter";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { logError } from "@/lib/error-logger";
 
 // Validation schema for creating a comment
 const createCommentSchema = z.object({
@@ -108,7 +109,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error("Error fetching comments:", error);
+    logError(error, { context: 'Fetching comments' });
     return NextResponse.json(
       { error: "Failed to fetch comments" },
       { status: 500 }
@@ -260,7 +261,7 @@ export async function POST(
       );
     }
 
-    console.error("Error creating comment:", error);
+    logError(error, { context: 'Creating comment' });
     return NextResponse.json(
       { error: "Failed to create comment" },
       { status: 500 }

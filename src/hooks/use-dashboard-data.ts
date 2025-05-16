@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { DashboardOverviewData, ApiResponse } from '@/types/dashboard';
+import { logError } from '@/lib/error-logger';
 
 /**
  * Custom hook for fetching dashboard data
@@ -28,7 +29,7 @@ export function useDashboardData(timeRange: string) {
 
         setData(result.data);
       } catch (err) {
-        console.error('Error fetching dashboard data:', err);
+        logError(err, { context: 'Error fetching dashboard data' });
         setError(err instanceof Error ? err.message : 'An unknown error occurred');
         setData(null);
       } finally {

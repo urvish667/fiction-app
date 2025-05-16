@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ProfileFormValuesSubset } from "../ProfileSettings";
+import { logError } from "@/lib/error-logger";
 
 interface SocialLinksFormProps {
   form: UseFormReturn<ProfileFormValuesSubset>;
@@ -85,7 +86,6 @@ export const SocialLinksForm = ({ form, isUpdating, saveSocialLinks }: SocialLin
         // Save social links data
         await saveSocialLinks(socialData);
       } else {
-        console.log("Social links validation failed for fields:", fieldsToValidate);
         toast({
           title: "Validation Error",
           description: "Please check your social links for errors.",
@@ -93,7 +93,7 @@ export const SocialLinksForm = ({ form, isUpdating, saveSocialLinks }: SocialLin
         });
       }
     } catch (error) {
-      console.error("Error saving social links:", error);
+      logError(error, { context: "Error saving social links" })
       toast({
         title: "Error",
         description: "Failed to save social links. Please try again.",

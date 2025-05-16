@@ -13,6 +13,7 @@ import { SupportButton } from "@/components/SupportButton"
 import StoryRecommendations from "@/components/StoryRecommendations"
 import { StoryService } from "@/services/story-service"
 import { Story, Chapter } from "@/types/story"
+import { logError } from "@/lib/error-logger"
 
 interface EngagementSectionProps {
   story: Story
@@ -76,7 +77,7 @@ export function EngagementSection({
         setIsChapterLiked(!isChapterLiked)
       }
     } catch (err) {
-      console.error("Error updating chapter like status:", err)
+      logError(err, { context: "Error updating chapter like status", chapterId: chapter?.id, userId: session?.user?.id })
 
       // Extract error message if available
       let errorMessage = "Failed to update chapter like status";
@@ -129,7 +130,7 @@ export function EngagementSection({
         setIsFollowing(true)
       }
     } catch (err) {
-      console.error("Error updating follow status:", err)
+      logError(err, { context: "Error updating follow status", authorId: story?.author?.id, userId: session?.user?.id })
       toast({
         title: "Error",
         description: "Failed to update follow status",
@@ -162,7 +163,7 @@ export function EngagementSection({
             description: "Chapter link copied to clipboard",
           });
         }).catch(err => {
-          console.error('Failed to copy link:', err);
+          logError(err, { context: "Error copying link", url })
           toast({
             title: "Copy failed",
             description: "Failed to copy link to clipboard",

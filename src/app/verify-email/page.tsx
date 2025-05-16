@@ -8,6 +8,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import "../auth-background.css"
 import AuthLogo from "@/components/auth/logo"
+import { logError } from "@/lib/error-logger"
 
 // Component that uses useSearchParams
 function VerifyEmailContent() {
@@ -54,7 +55,7 @@ function VerifyEmailContent() {
         setErrorMessage(data.error || "Verification failed. Please try again.")
       }
     } catch (error) {
-      console.error("Verification error:", error)
+      logError(error, { context: 'Verifying email token' })
       setVerificationState("error")
       setErrorMessage("An error occurred during verification. Please try again.")
     }
@@ -87,7 +88,7 @@ function VerifyEmailContent() {
         setErrorMessage(data.error || "Failed to resend verification email. Please try again.")
       }
     } catch (error) {
-      console.error("Resend verification error:", error)
+      logError(error, { context: 'Resending verification email' })
       setErrorMessage("An error occurred. Please try again.")
     } finally {
       setIsResending(false)

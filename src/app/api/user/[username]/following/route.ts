@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/auth/db-adapter";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { logError } from "@/lib/error-logger";
 
 // Define the params type for route handlers
 type UserRouteParams = { params: Promise<{ username: string }> };
@@ -85,7 +84,7 @@ export async function GET(
       }
     });
   } catch (error) {
-    console.error("Error fetching following:", error);
+    logError(error, { context: 'Fetching following' });
     return NextResponse.json(
       { error: "Failed to fetch following" },
       { status: 500 }

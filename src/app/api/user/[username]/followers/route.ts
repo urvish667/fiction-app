@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/auth/db-adapter";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { logError } from "@/lib/error-logger";
 
 // GET endpoint to retrieve followers for a user
 export async function GET(
@@ -82,7 +81,7 @@ export async function GET(
       }
     });
   } catch (error) {
-    console.error("Error fetching followers:", error);
+    logError(error, { context: 'Fetching followers' });
     return NextResponse.json(
       { error: "Failed to fetch followers" },
       { status: 500 }

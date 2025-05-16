@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { DashboardStats, ApiResponse } from '@/types/dashboard';
+import { logError } from "@/lib/error-logger"
 
 /**
  * Custom hook for fetching dashboard statistics
@@ -26,7 +27,7 @@ export function useDashboardStats(timeRange: string) {
 
         setData(result.data);
       } catch (err) {
-        console.error('Error fetching dashboard stats:', err);
+        logError(err, { context: 'Error fetching dashboard stats' });
         setError(err instanceof Error ? err.message : 'An unknown error occurred');
 
         // Create default stats to prevent UI errors

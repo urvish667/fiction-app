@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/auth/db-adapter";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { logError } from "@/lib/error-logger";
 
 // Define the params type for route handlers
 type UserRouteParams = { params: Promise<{ username: string }> };
@@ -91,7 +92,7 @@ export async function POST(
 
     return NextResponse.json(follow, { status: 201 });
   } catch (error) {
-    console.error("Error following user:", error);
+    logError(error, { context: 'Following user' });
     return NextResponse.json(
       { error: "Failed to follow user" },
       { status: 500 }
@@ -158,7 +159,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
-    console.error("Error unfollowing user:", error);
+    logError(error, { context: 'Unfollowing user' });
     return NextResponse.json(
       { error: "Failed to unfollow user" },
       { status: 500 }

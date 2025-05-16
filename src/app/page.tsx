@@ -19,18 +19,14 @@ export default function Home() {
   useEffect(() => {
     async function fetchMostViewedStories() {
       try {
-        console.log('Fetching most viewed stories from home page')
         const response = await fetch('/api/stories/most-viewed?limit=4&timeRange=all')
         if (response.ok) {
           const data = await response.json()
-          console.log('Most viewed API response:', data)
           setStories(data.stories || [])
         } else {
-          console.error('Failed to fetch most viewed stories:', await response.text())
           setStories([])
         }
       } catch (error) {
-        console.error('Error fetching most viewed stories:', error)
         setStories([])
       }
     }

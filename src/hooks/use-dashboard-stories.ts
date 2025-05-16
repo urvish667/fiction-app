@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { DashboardStory, ApiResponse } from '@/types/dashboard';
+import { logError } from "@/lib/error-logger"
 
 /**
  * Custom hook for fetching top performing stories
@@ -28,7 +29,7 @@ export function useDashboardStories(limit: number = 5, sortBy: string = 'reads',
 
         setData(result.data);
       } catch (err) {
-        console.error('Error fetching stories:', err);
+        logError(err, { context: 'Error fetching stories' });
         setError(err instanceof Error ? err.message : 'An unknown error occurred');
 
         // Fallback to empty array to prevent UI errors

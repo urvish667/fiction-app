@@ -4,6 +4,7 @@ import { prisma } from "@/lib/auth/db-adapter";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { calculateStoryStatus } from "@/lib/story-helpers";
 import { Chapter } from "@/types/story";
+import { logError } from "@/lib/error-logger";
 
 // Define the params type for route handlers
 type StoryRouteParams = { params: Promise<{ id: string }> };
@@ -103,7 +104,7 @@ export async function POST(
 
     return NextResponse.json(like, { status: 201 });
   } catch (error) {
-    console.error("Error liking story:", error);
+    logError(error, { context: 'Liking story' });
     return NextResponse.json(
       { error: "Failed to like story" },
       { status: 500 }
@@ -159,7 +160,7 @@ export async function DELETE(
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error unliking story:", error);
+    logError(error, { context: 'Unliking story' });
     return NextResponse.json(
       { error: "Failed to unlike story" },
       { status: 500 }

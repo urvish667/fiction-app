@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { logError } from "@/lib/error-logger";
 
 // Type for a recommended story
 interface RecommendedStory {
@@ -77,7 +78,6 @@ export default function StoryRecommendations({
         }
         // If we got no recommendations and we were excluding same author, try again including same author
         else if (excludeSameAuthor) {
-          console.log('No recommendations found excluding same author, trying with same author included');
 
           // Try again with excludeSameAuthor=false
           const fallbackUrl = `/api/recommendations/${storyId}?limit=${limit}&excludeSameAuthor=false`;
@@ -95,7 +95,7 @@ export default function StoryRecommendations({
           setRecommendations([]);
         }
       } catch (err) {
-        console.error("Error fetching recommendations:", err);
+        logError(err, { context: "Error fetching recommendations", storyId })
         setError("Failed to load recommendations");
       } finally {
         setLoading(false);

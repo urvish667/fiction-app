@@ -14,6 +14,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import "../auth-background.css"
 import AuthLogo from "@/components/auth/logo"
 import { GoogleIcon, FacebookIcon } from "@/components/auth/social-icons"
+import { logError } from "@/lib/error-logger"
 
 // Component that uses searchParams
 function LoginContent() {
@@ -70,7 +71,7 @@ function LoginContent() {
         router.push(callbackUrl)
       }
     } catch (error) {
-      console.error("Login error:", error)
+      logError(error, { context: 'Login error' })
       setErrors({ login: "An error occurred while logging in" })
     } finally {
       setIsSubmitting(false)
@@ -89,7 +90,7 @@ function LoginContent() {
       })
       // Note: This will redirect the page, so no need to set isSubmitting to false
     } catch (error) {
-      console.error(`${provider} sign in error:`, error)
+      logError(error, { context: 'OAuth login error', provider })
       setErrors({ login: `Error signing in with ${provider}. Please try again.` })
       setIsSubmitting(false)
     }
@@ -134,7 +135,7 @@ function LoginContent() {
       setErrors({ login: errorMessage });
 
       // Log the error for debugging
-      console.error(`Authentication error: ${error}`);
+      logError(error, { context: 'Authentication error' })
     }
   }, [error])
 

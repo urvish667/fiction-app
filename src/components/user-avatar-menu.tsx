@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { BookMarked, PenSquare, Bell, Settings, LogOut, Home, LayoutDashboard, FileEdit } from "lucide-react"
 import { motion } from "framer-motion"
+import { logError } from "@/lib/error-logger"
 
 interface UserAvatarMenuProps {
   user: {
@@ -42,7 +43,7 @@ export default function UserAvatarMenu({ user, onLogout }: UserAvatarMenuProps) 
       router.push("/") // Redirect to home page
       router.refresh() // Refresh the page to update auth state
     } catch (error) {
-      console.error("Logout error:", error)
+      logError(error, { context: "Logout error" })
     } finally {
       setIsLoggingOut(false)
     }

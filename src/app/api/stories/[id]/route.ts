@@ -8,6 +8,7 @@ import { calculateStoryStatus } from "@/lib/story-helpers";
 import { ViewService } from "@/services/view-service";
 import { Chapter } from "@/types/story";
 import { Prisma } from "@prisma/client";
+import { logError } from "@/lib/error-logger";
 
 // Validation schema for updating a story
 const updateStorySchema = z.object({
@@ -123,7 +124,7 @@ export async function GET(
     try {
       viewCount = await ViewService.getCombinedViewCount(story.id);
     } catch (viewCountError) {
-      console.error("Error getting combined view count:", viewCountError);
+      logError(viewCountError, { context: 'Getting combined view count', storyId: story.id });
     }
 
     // Format the response
@@ -166,13 +167,13 @@ export async function GET(
         }
       } catch (viewError) {
         // Log the error but don't fail the request
-        console.error("Error tracking story view:", viewError);
+        logError(viewError, { context: 'Tracking story view', storyId: story.id, userId: session?.user?.id });
       }
     }
 
     return NextResponse.json(formattedStory);
   } catch (error) {
-    console.error("Error fetching story:", error);
+    logError(error, { context: 'Fetching story' });
     return NextResponse.json(
       { error: "Failed to fetch story" },
       { status: 500 }
@@ -330,7 +331,7 @@ export async function PUT(
       );
     }
 
-    console.error("Error updating story:", error);
+    logError(error, { context: 'Updating story' });
     return NextResponse.json(
       { error: "Failed to update story" },
       { status: 500 }
@@ -386,7 +387,7 @@ export async function DELETE(
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error deleting story:", error);
+    logError(error, { context: 'Deleting story' });
     return NextResponse.json(
       { error: "Failed to delete story" },
       { status: 500 }

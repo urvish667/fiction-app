@@ -1,5 +1,6 @@
 import { AzureService } from "./azure-service";
 import { fetchWithCsrf } from "./client/csrf";
+import { logError } from "./error-logger";
 
 /**
  * Utility for handling image uploads
@@ -42,7 +43,7 @@ export const ImageUpload = {
       const result = await response.json();
       return result.url;
     } catch (error) {
-      console.error('Error uploading profile image:', error);
+      logError(error, { context: 'Uploading profile image' })
       throw error;
     }
   },
@@ -84,7 +85,7 @@ export const ImageUpload = {
       const result = await response.json();
       return result.url;
     } catch (error) {
-      console.error('Error uploading banner image:', error);
+      logError(error, { context: 'Uploading banner image' })
       throw error;
     }
   },
@@ -203,7 +204,7 @@ export const ImageUpload = {
       const result = await response.json();
       return result.url;
     } catch (error) {
-      console.error('Error uploading editor image:', error);
+      logError(error, { context: 'Uploading editor image' })
       throw error;
     }
   }
