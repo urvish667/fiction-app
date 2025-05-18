@@ -31,15 +31,16 @@ export const authOptions: NextAuthOptions = {
     maxAge: 14 * 24 * 60 * 60, // 14 days
   },
 
-  // Cookie configuration - optimized for OAuth compatibility
+  // Cookie configuration - optimized for cross-domain compatibility in production
   cookies: {
     sessionToken: {
       name: `next-auth.session-token`,
       options: {
         httpOnly: true,
-        sameSite: 'lax',
+        sameSite: process.env.NODE_ENV === "production" ? 'none' : 'lax', // Use 'none' in production for cross-domain
         path: '/',
         secure: process.env.NODE_ENV === "production", // Secure in production, not in development
+        domain: process.env.NODE_ENV === "production" ? process.env.COOKIE_DOMAIN : undefined, // Use custom domain in production
       },
     },
     // Explicitly configure the callback cookie used for state
@@ -47,9 +48,10 @@ export const authOptions: NextAuthOptions = {
       name: `next-auth.callback-url`,
       options: {
         httpOnly: true,
-        sameSite: 'lax',
+        sameSite: process.env.NODE_ENV === "production" ? 'none' : 'lax',
         path: '/',
         secure: process.env.NODE_ENV === "production",
+        domain: process.env.NODE_ENV === "production" ? process.env.COOKIE_DOMAIN : undefined,
       },
     },
     // Configure the CSRF token cookie
@@ -57,9 +59,10 @@ export const authOptions: NextAuthOptions = {
       name: 'next-auth.csrf-token',
       options: {
         httpOnly: true,
-        sameSite: 'lax',
+        sameSite: process.env.NODE_ENV === "production" ? 'none' : 'lax',
         path: '/',
         secure: process.env.NODE_ENV === "production",
+        domain: process.env.NODE_ENV === "production" ? process.env.COOKIE_DOMAIN : undefined,
       },
     },
     // Configure the state cookie specifically for OAuth flows
@@ -67,9 +70,10 @@ export const authOptions: NextAuthOptions = {
       name: 'next-auth.state',
       options: {
         httpOnly: true,
-        sameSite: 'lax', // Use 'lax' to ensure it works with redirects
+        sameSite: process.env.NODE_ENV === "production" ? 'none' : 'lax',
         path: '/',
         secure: process.env.NODE_ENV === "production",
+        domain: process.env.NODE_ENV === "production" ? process.env.COOKIE_DOMAIN : undefined,
         maxAge: 900, // 15 minutes, matching the state maxAge
       },
     },
@@ -140,19 +144,19 @@ export const authOptions: NextAuthOptions = {
       },
     }),
 
-    // Facebook OAuth provider with simplified configuration
+    // Facebook OAuth provider with improved configuration
     FacebookProvider({
       clientId: process.env.FACEBOOK_CLIENT_ID || "",
       clientSecret: process.env.FACEBOOK_CLIENT_SECRET || "",
-      // Use authorization configuration object instead of direct URL
+      // Use authorization configuration object with explicit parameters
       authorization: {
         params: {
-          scope: "public_profile,email"
+          scope: "public_profile,email",
+          response_type: "code"
         }
       },
-      // Temporarily disable state checking to fix Facebook authentication issues
-      // Facebook sometimes doesn't return the state parameter correctly
-      checks: [],
+      // Use pkce for better security instead of disabling state checks
+      checks: ["pkce"],
       profile(profile) {
         // Return a user object with required fields
         return {
@@ -296,13 +300,27 @@ export const authOptions: NextAuthOptions = {
   // Redirect to profile completion page if needed
   callbacks: {
     async redirect({ url, baseUrl }) {
-      // If the user is not logged in, redirect to the requested URL
-      if (url.startsWith(baseUrl)) return url;
+      // Log the redirect attempt for debugging
+      authLogger.debug('Redirect callback called', { url, baseUrl });
 
-      // If the URL is absolute, make it relative
-      const relativeUrl = url.startsWith('/') ? url : `/${url}`;
+      try {
+        // If the URL is already absolute and starts with the base URL, use it directly
+        if (url.startsWith(baseUrl)) {
+          return url;
+        }
 
-      return relativeUrl;
+        // If the URL is already a relative URL starting with /, use it directly
+        if (url.startsWith('/')) {
+          return url;
+        }
+
+        // For other URLs, make them relative by adding a leading /
+        return `/${url}`;
+      } catch (error) {
+        // If there's any error in the redirect logic, log it and redirect to home
+        authLogger.error('Error in redirect callback', { error, url, baseUrl });
+        return '/';
+      }
     },
     // Process new users from OAuth providers - optimized to reduce DB load
     async signIn({ user, account }) {

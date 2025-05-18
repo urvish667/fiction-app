@@ -327,6 +327,7 @@ export async function getTopStories(userId: string, limit: number = 5, sortBy: s
         },
       },
       donations: true,
+      genre: true, // Include genre to get the name
     },
     orderBy,
     take: limit,
@@ -344,10 +345,15 @@ export async function getTopStories(userId: string, limit: number = 5, sortBy: s
     // Convert cents to dollars
     const storyEarnings = storyEarningsInCents / 100;
 
+    // Get genre name if available
+    const genreName = story.genre?.name || "General";
+
     return {
       id: story.id,
       title: story.title,
       genre: story.genreId || "",
+      genreName: genreName,
+      slug: story.slug || story.id, // Use slug if available, fallback to ID
       reads: viewCountMap.get(story.id) || 0,
       likes: story._count.likes,
       comments: story._count.comments,
@@ -621,6 +627,7 @@ export async function getUserStories(userId: string) {
           chapters: true,
         },
       },
+      genre: true, // Include genre to get the name
     },
     orderBy: {
       updatedAt: "desc",
@@ -633,10 +640,15 @@ export async function getUserStories(userId: string) {
 
   // Format stories data
   const formattedStories = stories.map(story => {
+    // Get genre name if available
+    const genreName = story.genre?.name || "General";
+
     return {
       id: story.id,
       title: story.title,
       genre: story.genreId || "",
+      genreName: genreName,
+      slug: story.slug || story.id, // Use slug if available, fallback to ID
       status: story.status,
       viewCount: viewCountMap.get(story.id) || 0,
       reads: viewCountMap.get(story.id) || 0, // Keep reads for backward compatibility
@@ -671,6 +683,7 @@ export async function getEarningsData(userId: string, timeRange: string = '30day
     },
     include: {
       donations: true,
+      genre: true, // Include genre to get the name
     },
     orderBy: {
       updatedAt: "desc",
@@ -747,10 +760,15 @@ export async function getEarningsData(userId: string, timeRange: string = '30day
     // Convert cents to dollars
     const storyEarnings = storyEarningsInCents / 100;
 
+    // Get genre name if available
+    const genreName = story.genre?.name || "General";
+
     return {
       id: story.id,
       title: story.title,
       genre: story.genreId || "",
+      genreName: genreName,
+      slug: story.slug || story.id, // Use slug if available, fallback to ID
       viewCount: viewCountMap.get(story.id) || 0,
       reads: viewCountMap.get(story.id) || 0, // Keep reads for backward compatibility
       earnings: storyEarnings,

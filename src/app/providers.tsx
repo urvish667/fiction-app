@@ -11,10 +11,10 @@ type ProvidersProps = {
 export default function Providers({ children }: ProvidersProps) {
   return (
     <SessionProvider
-      // Use default NextAuth polling behavior for better compatibility
-      // This is more reliable in production environments
-      // Don't refetch when offline
+      // Configure session behavior for better performance and reliability
       refetchWhenOffline={false}
+      refetchInterval={5 * 60} // Reduce polling frequency to 5 minutes (in seconds)
+      refetchOnWindowFocus={false} // Don't refetch on window focus to reduce unnecessary requests
     >
       <CsrfProvider>
         {children}

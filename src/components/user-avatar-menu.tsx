@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { signOut } from "next-auth/react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -38,14 +37,20 @@ export default function UserAvatarMenu({ user, onLogout }: UserAvatarMenuProps) 
   const handleLogout = async () => {
     try {
       setIsLoggingOut(true)
-      await signOut({ redirect: false })
+      // Use callbackUrl to ensure proper redirection after logout
+      await signOut({
+        redirect: true,
+        callbackUrl: "/"
+      })
+      // The following code won't execute due to the redirect: true above
+      // It's kept as a fallback in case the redirect fails
       onLogout() // Notify parent component
-      router.push("/") // Redirect to home page
-      router.refresh() // Refresh the page to update auth state
     } catch (error) {
       logError(error, { context: "Logout error" })
-    } finally {
       setIsLoggingOut(false)
+      // Fallback manual navigation if signOut fails
+      router.push("/")
+      router.refresh()
     }
   }
 
@@ -112,17 +117,28 @@ export default function UserAvatarMenu({ user, onLogout }: UserAvatarMenuProps) 
             <p className="text-xs leading-none text-muted-foreground">@{user.username}</p>
           </div>
         </DropdownMenuLabel>
-        <DropdownMenuItem asChild className="mt-2 mb-1 bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground focus:bg-primary/90 focus:text-primary-foreground">
-          <Link href="/write/story-info" className="flex items-center justify-center py-1 cursor-pointer">
+        <DropdownMenuItem
+          className="mt-2 mb-1 bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground focus:bg-primary/90 focus:text-primary-foreground cursor-pointer"
+          onSelect={() => {
+            router.push("/write/story-info");
+          }}
+        >
+          <div className="flex items-center justify-center py-1 w-full">
             <FileEdit className="mr-2 h-5 w-5" />
             <span className="font-medium">Start Writing</span>
-          </Link>
+          </div>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           {menuItems.map((item) => (
-            <DropdownMenuItem key={item.href} asChild>
-              <Link href={item.href} className="flex items-center justify-between cursor-pointer">
+            <DropdownMenuItem
+              key={item.href}
+              onSelect={() => {
+                router.push(item.href);
+              }}
+              className="cursor-pointer"
+            >
+              <span className="flex items-center justify-between w-full">
                 <span className="flex items-center">
                   {item.icon}
                   {item.label}
@@ -135,7 +151,7 @@ export default function UserAvatarMenu({ user, onLogout }: UserAvatarMenuProps) 
                     {item.badge}
                   </Badge>
                 )}
-              </Link>
+              </span>
             </DropdownMenuItem>
           ))}
         </DropdownMenuGroup>

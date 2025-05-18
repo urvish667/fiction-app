@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { logError } from '../error-logger';
 
 // Constants
 export const CSRF_COOKIE_NAME = 'fablespace_csrf';
@@ -114,7 +115,7 @@ export async function validateCsrfToken(token: string): Promise<boolean> {
     // Compare the signatures
     return expectedSignature === receivedSignature;
   } catch (error) {
-    console.error('CSRF token validation error:', error);
+    logError(error, { context: 'Validating CSRF Token' })
     return false;
   }
 }

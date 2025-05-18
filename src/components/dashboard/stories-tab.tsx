@@ -80,10 +80,10 @@ export function StoriesTab() {
                   {stories.map((story) => (
                     <tr key={story.id} className="border-b hover:bg-muted/50">
                       <td className="py-4 px-6">
-                        <Link href={`/story/${story.id}`} className="font-medium hover:text-primary">
+                        <Link href={`/story/${story.slug || story.id}`} className="font-medium hover:text-primary">
                           {story.title}
                         </Link>
-                        <div className="text-xs text-muted-foreground">{story.genre}</div>
+                        <div className="text-xs text-muted-foreground">{story.genreName || story.genre || 'General'}</div>
                       </td>
                       <td className="text-center py-4 px-4">
                         <Badge variant={story.status === "published" ? "default" : "outline"}>

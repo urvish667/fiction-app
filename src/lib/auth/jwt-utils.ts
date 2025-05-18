@@ -82,11 +82,22 @@ export function decryptTokenData(encryptedData: string, iv: string): string {
  */
 export async function verifyJWT(req: NextRequest) {
   try {
-    // Get the token from the request
+    // Get the token from the request with improved configuration for production
     const token = await getToken({
       req,
-      secret: process.env.NEXTAUTH_SECRET
+      secret: process.env.NEXTAUTH_SECRET,
+      secureCookie: process.env.NODE_ENV === "production", // Ensure secure cookies in production
+      cookieName: "next-auth.session-token" // Explicitly specify the cookie name
     });
+
+    // Debug log for authentication issues in production
+    if (process.env.NODE_ENV === "production") {
+      const url = new URL(req.url);
+      const pathname = url.pathname;
+      if (pathname.startsWith('/api/user') || pathname.startsWith('/api/dashboard')) {
+        console.log(`JWT Auth debug - Path: ${pathname}, Token present: ${!!token}, Cookie header: ${req.headers.get('cookie')?.substring(0, 50)}...`);
+      }
+    }
 
     // If no token, return null
     if (!token) {

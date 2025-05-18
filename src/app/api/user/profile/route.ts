@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { prisma } from "@/lib/auth/db-adapter"
-import { withAuth } from "@/lib/auth/jwt-utils"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 
 // Validation schema for social links
 const socialLinksSchema = z.object({
@@ -30,10 +31,16 @@ const profileUpdateSchema = z.object({
 })
 
 // GET method to retrieve user profile
-export const GET = withAuth(async (req: NextRequest, token) => {
+export async function GET(req: NextRequest) {
   try {
-    // User ID is available from the verified token
-    const userId = token.id
+    // Get the session
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // User ID is available from the session
+    const userId = session.user.id;
 
     // Fetch user profile
     const user = await prisma.user.findUnique({
@@ -67,13 +74,19 @@ export const GET = withAuth(async (req: NextRequest, token) => {
       { status: 500 }
     )
   }
-})
+}
 
 // PATCH method to update user profile
-export const PATCH = withAuth(async (request: NextRequest, token) => {
+export async function PATCH(request: NextRequest) {
   try {
-    // User ID is available from the verified token
-    const userId = token.id
+    // Get the session
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // User ID is available from the session
+    const userId = session.user.id;
 
     // Parse and validate request body
     const body = await request.json()
@@ -163,4 +176,4 @@ export const PATCH = withAuth(async (request: NextRequest, token) => {
       { status: 500 }
     )
   }
-})
+}

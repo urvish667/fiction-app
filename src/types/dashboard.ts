@@ -16,6 +16,8 @@ export interface DashboardStory {
   id: string;
   title: string;
   genre: string;
+  genreName?: string; // Added genre name
+  slug: string; // Added slug
   reads: number;
   likes: number;
   comments: number;

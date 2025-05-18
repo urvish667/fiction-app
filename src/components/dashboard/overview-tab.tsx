@@ -248,10 +248,12 @@ export function OverviewTab({ timeRange }: OverviewTabProps) {
                   {storiesData.map((story) => (
                     <tr key={story.id} className="border-b">
                       <td className="py-3 px-2">
-                        <Link href={`/story/${story.id}`} className="font-medium hover:text-primary">
+                        <Link href={`/story/${story.slug}`} className="font-medium hover:text-primary">
                           {story.title}
                         </Link>
-                        <div className="text-xs text-muted-foreground">{story.genre}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {story.genreName || 'General'}
+                        </div>
                       </td>
                       <td className="text-right py-3 px-2">{story.reads.toLocaleString()}</td>
                       <td className="text-right py-3 px-2">{story.likes.toLocaleString()}</td>

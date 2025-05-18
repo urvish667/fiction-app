@@ -12,10 +12,12 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { clientLogger } from '@/lib/logger/client-logger'
 
 export default function AuthStatus() {
   const { data: session, status } = useSession()
+  const router = useRouter()
   const [mounted, setMounted] = useState(false)
 
   // Add useEffect to handle hydration
@@ -131,15 +133,27 @@ export default function AuthStatus() {
             </div>
           </div>
           <DropdownMenuSeparator />
-          <DropdownMenuItem asChild>
-            <a href="/dashboard" className="w-full cursor-pointer">Dashboard</a>
+          <DropdownMenuItem
+            onClick={() => router.push('/dashboard')}
+            className="cursor-pointer"
+          >
+            Dashboard
           </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <a href="/settings" className="w-full cursor-pointer">Settings</a>
+          <DropdownMenuItem
+            onClick={() => router.push('/settings')}
+            className="cursor-pointer"
+          >
+            Settings
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
-            onClick={() => signOut({ callbackUrl: '/' })}
+            onClick={() => {
+              // Use direct redirect to avoid callback issues
+              signOut({
+                redirect: true,
+                callbackUrl: window.location.origin
+              })
+            }}
             className="text-destructive cursor-pointer focus:text-destructive"
           >
             Log out
