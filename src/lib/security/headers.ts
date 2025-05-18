@@ -19,8 +19,8 @@ export const securityHeaders = {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
     "img-src 'self' data: https: blob:; " +
     "font-src 'self' https://fonts.gstatic.com; " +
-    "connect-src 'self' ws: wss: https://apis.google.com https://www.googleapis.com https://securetoken.googleapis.com https://api.stripe.com https://api.paypal.com; " +
-    "frame-src 'self' https://www.youtube.com https://www.facebook.com https://connect.facebook.net https://checkout.stripe.com https://js.stripe.com https://www.paypal.com; " +
+    "connect-src 'self' ws: wss: https://apis.google.com https://www.googleapis.com https://securetoken.googleapis.com https://api.stripe.com https://api.paypal.com https://www.sandbox.paypal.com; " +
+    "frame-src 'self' https://www.youtube.com https://www.facebook.com https://connect.facebook.net https://checkout.stripe.com https://js.stripe.com https://www.paypal.com https://www.sandbox.paypal.com;" +
     "object-src 'none';",
 
   // Prevent clickjacking attacks
@@ -69,4 +69,5 @@ export function withSecurityHeaders(
     return applySecurityHeaders(response);
   };
 }
+
 
