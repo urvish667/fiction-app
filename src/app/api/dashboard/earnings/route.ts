@@ -65,45 +65,7 @@ export async function GET(request: Request) {
     // Fetch earnings data
     const earningsData = await getEarningsData(userId, timeRange);
 
-    // Fetch recent donations for this user
-    const recentDonations = await prisma.donation.findMany({
-      where: {
-        recipientId: userId,
-        status: 'succeeded', // Only include successful donations
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-      take: 5, // Limit to 5 most recent donations
-      include: {
-        donor: {
-          select: {
-            name: true,
-          },
-        },
-        story: {
-          select: {
-            title: true,
-          },
-        },
-      },
-    });
-
-    // Format the donations for the response
-    const formattedDonations = recentDonations.map((donation) => ({
-      id: donation.id,
-      amount: donation.amount / 100, // Convert cents to dollars
-      donorName: donation.donor.name || 'Anonymous',
-      date: donation.createdAt.toISOString(),
-      storyTitle: donation.story?.title,
-    }));
-
-    // Transform the data to match the expected format
-    const transformedData = {
-      total: earningsData.totalEarnings,
-      change: earningsData.monthlyChange,
-      recentDonations: formattedDonations,
-    };
+    // We no longer need to fetch donations separately as they're included in earningsData.transactions
 
     earningsLogger.debug('Earnings data retrieved successfully', { userId });
 
@@ -112,20 +74,10 @@ export async function GET(request: Request) {
     const headers = new Headers();
     headers.set('Cache-Control', 'public, max-age=300, s-maxage=3600');
 
-    return NextResponse.json<ApiResponse<{
-      total: number;
-      change: number;
-      recentDonations: Array<{
-        id: string;
-        amount: number;
-        donorName: string;
-        date: string;
-        storyTitle?: string;
-      }>;
-    }>>(
+    return NextResponse.json<ApiResponse<any>>(
       {
         success: true,
-        data: transformedData,
+        data: earningsData,
       },
       { headers }
     );

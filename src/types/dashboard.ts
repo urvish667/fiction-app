@@ -41,6 +41,19 @@ export interface EarningsDataPoint {
   earnings: number;
 }
 
+export interface DonationTransaction {
+  id: string;
+  donorId: string;
+  donorName: string;
+  donorUsername?: string;
+  storyId?: string;
+  storyTitle?: string;
+  storySlug?: string;
+  amount: number;
+  message?: string;
+  createdAt: string; // ISO date string
+}
+
 export interface DashboardOverviewData {
   stats: DashboardStats;
   stories: DashboardStory[];

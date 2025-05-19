@@ -1,19 +1,6 @@
 import { useState, useEffect } from 'react';
-import { ApiResponse } from '@/types/dashboard';
+import { ApiResponse, DonationTransaction } from '@/types/dashboard';
 import { logError } from '@/lib/error-logger';
-
-// Define the types for the earnings data
-interface EarningsData {
-  total: number;
-  change: number;
-  recentDonations: Array<{
-    id: string;
-    amount: number;
-    donorName: string;
-    date: string;
-    storyTitle?: string;
-  }>;
-}
 
 // Define the transformed data structure that matches what the component expects
 interface TransformedEarningsData {
@@ -24,9 +11,12 @@ interface TransformedEarningsData {
     id: string;
     title: string;
     genre: string;
+    genreName?: string;
+    slug?: string;
     reads: number;
     earnings: number;
   }>;
+  transactions: DonationTransaction[];
   chartData: Array<{
     name: string;
     earnings: number;
@@ -51,7 +41,7 @@ export function useEarningsData(timeRange: string) {
       try {
         // Fetch earnings data
         const earningsResponse = await fetch(`/api/dashboard/earnings?timeRange=${timeRange}`);
-        const earningsResult = await earningsResponse.json() as ApiResponse<EarningsData>;
+        const earningsResult = await earningsResponse.json() as ApiResponse<any>;
 
         if (!earningsResult.success || !earningsResult.data) {
           throw new Error(earningsResult.error || 'Failed to fetch earnings data');
@@ -65,19 +55,13 @@ export function useEarningsData(timeRange: string) {
           throw new Error(chartResult.error || 'Failed to fetch earnings chart data');
         }
 
-        // Transform the data to match what the component expects
+        // Use the data directly from the API
         const transformedData: TransformedEarningsData = {
-          totalEarnings: earningsResult.data.total,
-          thisMonthEarnings: earningsResult.data.total, // Using total as a fallback
-          monthlyChange: earningsResult.data.change,
-          // Create a placeholder for stories based on recent donations
-          stories: earningsResult.data.recentDonations.map(donation => ({
-            id: donation.id,
-            title: donation.storyTitle || 'Unknown Story',
-            genre: '',
-            reads: 0,
-            earnings: donation.amount,
-          })),
+          totalEarnings: earningsResult.data.totalEarnings,
+          thisMonthEarnings: earningsResult.data.thisMonthEarnings,
+          monthlyChange: earningsResult.data.monthlyChange,
+          stories: earningsResult.data.stories || [],
+          transactions: earningsResult.data.transactions || [],
           chartData: chartResult.data,
         };
 

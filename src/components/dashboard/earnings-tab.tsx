@@ -123,8 +123,8 @@ export function EarningsTab({ timeRange = '30days' }: { timeRange?: string }) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Earnings by Story</CardTitle>
-          <CardDescription>How much each story has earned</CardDescription>
+          <CardTitle>Transactions by Story</CardTitle>
+          <CardDescription>Individual donations received for your stories</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -134,9 +134,9 @@ export function EarningsTab({ timeRange = '30days' }: { timeRange?: string }) {
               <Skeleton className="h-20 w-full" />
               <Skeleton className="h-20 w-full" />
             </div>
-          ) : !data?.stories || data.stories.length === 0 ? (
+          ) : !data?.transactions || data.transactions.length === 0 ? (
             <div className="text-center py-6 text-muted-foreground">
-              <p>You don't have any stories with earnings yet.</p>
+              <p>You don't have any donations yet.</p>
               <Button asChild className="mt-4">
                 <Link href="/write/story-info">
                   Create a new story
@@ -148,22 +148,43 @@ export function EarningsTab({ timeRange = '30days' }: { timeRange?: string }) {
               <table className="w-full">
                 <thead>
                   <tr className="border-b">
+                    <th className="text-left py-3 px-2">Donor</th>
                     <th className="text-left py-3 px-2">Story</th>
-                    <th className="text-right py-3 px-2">Reads</th>
-                    <th className="text-right py-3 px-2">Earnings</th>
+                    <th className="text-right py-3 px-2">Amount</th>
+                    <th className="text-right py-3 px-2">Date</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {data.stories.map((story: any) => (
-                    <tr key={story.id} className="border-b">
+                  {data.transactions.map((transaction: any) => (
+                    <tr key={transaction.id} className="border-b">
                       <td className="py-3 px-2">
-                        <Link href={`/story/${story.slug || story.id}`} className="font-medium hover:text-primary">
-                          {story.title}
-                        </Link>
-                        <div className="text-xs text-muted-foreground">{story.genreName || story.genre || 'General'}</div>
+                        {transaction.donorUsername ? (
+                          <Link href={`/profile/${transaction.donorUsername}`} className="font-medium hover:text-primary">
+                            {transaction.donorName}
+                          </Link>
+                        ) : (
+                          <span className="font-medium">{transaction.donorName}</span>
+                        )}
+                        {transaction.message && (
+                          <div className="text-xs text-muted-foreground mt-1 italic">"{transaction.message}"</div>
+                        )}
                       </td>
-                      <td className="text-right py-3 px-2">{(story.reads || 0).toLocaleString()}</td>
-                      <td className="text-right py-3 px-2">${(story.earnings || 0).toLocaleString()}</td>
+                      <td className="py-3 px-2">
+                        {transaction.storyTitle ? (
+                          <Link href={`/story/${transaction.storySlug || transaction.storyId}`} className="hover:text-primary">
+                            {transaction.storyTitle}
+                          </Link>
+                        ) : (
+                          <span className="text-muted-foreground">General donation</span>
+                        )}
+                      </td>
+                      <td className="text-right py-3 px-2 font-medium">${transaction.amount.toFixed(2)}</td>
+                      <td className="text-right py-3 px-2 text-muted-foreground">
+                        {new Date(transaction.createdAt).toLocaleDateString()}
+                        <div className="text-xs">
+                          {new Date(transaction.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
