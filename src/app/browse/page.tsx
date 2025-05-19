@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useEffect, Suspense } from "react"
+import { useState, useEffect, Suspense, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import Navbar from "@/components/navbar"
 import SearchBar from "@/components/search-bar"
 import FilterPanel from "@/components/filter-panel"
@@ -37,6 +37,7 @@ type BrowseStory = {
   commentCount?: number
   reads?: number
   readCount?: number
+  viewCount?: number // Add viewCount field
   readTime?: number
   date?: Date
   createdAt?: Date
@@ -48,6 +49,8 @@ type BrowseStory = {
 // Component that uses searchParams
 function BrowseContent() {
   const { toast } = useToast()
+  const router = useRouter()
+  const pathname = usePathname()
   const [stories, setStories] = useState<BrowseStory[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -60,6 +63,31 @@ function BrowseContent() {
   // Get URL parameters
   const searchParams = useSearchParams()
   const genreParam = searchParams ? searchParams.get("genre") : null
+
+  // Function to update URL based on current filters
+  const updateURL = useCallback(() => {
+    // Create a URLSearchParams object to build the query string
+    const params = new URLSearchParams()
+
+    // Add genre filter to URL if present
+    if (selectedGenres.length === 1) {
+      params.set('genre', selectedGenres[0])
+    }
+
+    // Add other filters if needed in the future
+    // if (selectedTags.length > 0) params.set('tags', selectedTags.join(','))
+    // if (selectedLanguage) params.set('language', selectedLanguage)
+    // if (storyStatus !== 'all') params.set('status', storyStatus)
+    // if (sortBy !== 'newest') params.set('sortBy', sortBy)
+
+    // Create the new URL
+    const queryString = params.toString()
+    const newPath = pathname || '/browse'
+    const newURL = queryString ? `${newPath}?${queryString}` : newPath
+
+    // Update the URL without refreshing the page
+    router.replace(newURL, { scroll: false })
+  }, [pathname, router, selectedGenres])
 
   // Set initial genre filter from URL parameter and trigger data fetch
   useEffect(() => {
@@ -387,6 +415,9 @@ function BrowseContent() {
   const handleGenreChange = (genres: string[]) => {
     setSelectedGenres(genres)
     setCurrentPage(1) // Reset to first page when filters change
+
+    // Update URL when genre filter changes
+    setTimeout(() => updateURL(), 0) // Use setTimeout to ensure state is updated first
   }
 
   // Handle tag selection
@@ -510,6 +541,11 @@ function BrowseContent() {
                         setStoryStatus("all")
                         setSortBy("newest")
                         setCurrentPage(1)
+
+                        // Update URL to remove all parameters
+                        setTimeout(() => {
+                          router.replace(pathname || '/browse', { scroll: false })
+                        }, 0)
                       }}
                     >
                       Try again
@@ -569,6 +605,11 @@ function BrowseContent() {
                         setSelectedLanguage("")
                         setStoryStatus("all")
                         setSortBy("newest")
+
+                        // Update URL to remove all parameters
+                        setTimeout(() => {
+                          router.replace(pathname || '/browse', { scroll: false })
+                        }, 0)
                       }}
                     >
                       Clear all filters

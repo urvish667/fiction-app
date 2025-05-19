@@ -221,37 +221,49 @@ export default function FilterPanel({
       {/* Selected filters */}
       {(selectedGenres.length > 0 || selectedTags.length > 0 || selectedLanguage || storyStatus !== "all") && (
         <div className="flex flex-wrap gap-2 mb-4">
-          {selectedGenres.map((genre) => (
-            <Badge key={`genre-${genre}`} variant="secondary" className="flex items-center gap-1">
-              {genre}
-              <Button variant="ghost" size="icon" onClick={() => handleGenreToggle(genre)} className="h-4 w-4 p-0 ml-1">
+          {/* Show only first 3 genres and a "+X more" badge if there are more */}
+          {selectedGenres.slice(0, 3).map((genre) => (
+            <Badge key={`genre-${genre}`} variant="secondary" className="flex items-center gap-1 max-w-[150px]">
+              <span className="truncate">{genre}</span>
+              <Button variant="ghost" size="icon" onClick={() => handleGenreToggle(genre)} className="h-4 w-4 p-0 ml-1 shrink-0">
                 <X className="h-3 w-3" />
                 <span className="sr-only">Remove {genre} filter</span>
               </Button>
             </Badge>
           ))}
-          {selectedTags.map((tag) => (
-            <Badge key={`tag-${tag}`} variant="outline" className="flex items-center gap-1 bg-primary/5">
-              {tag}
-              <Button variant="ghost" size="icon" onClick={() => handleTagToggle(tag)} className="h-4 w-4 p-0 ml-1">
+          {selectedGenres.length > 3 && (
+            <Badge variant="secondary">
+              +{selectedGenres.length - 3} more
+            </Badge>
+          )}
+          {/* Show only first 3 tags and a "+X more" badge if there are more */}
+          {selectedTags.slice(0, 3).map((tag) => (
+            <Badge key={`tag-${tag}`} variant="outline" className="flex items-center gap-1 bg-primary/5 max-w-[150px]">
+              <span className="truncate">{tag}</span>
+              <Button variant="ghost" size="icon" onClick={() => handleTagToggle(tag)} className="h-4 w-4 p-0 ml-1 shrink-0">
                 <X className="h-3 w-3" />
                 <span className="sr-only">Remove {tag} filter</span>
               </Button>
             </Badge>
           ))}
+          {selectedTags.length > 3 && (
+            <Badge variant="outline" className="bg-primary/5">
+              +{selectedTags.length - 3} more
+            </Badge>
+          )}
           {selectedLanguage && (
-            <Badge key={`language-${selectedLanguage}`} variant="outline" className="flex items-center gap-1 bg-blue-100/50 dark:bg-blue-900/20">
-              {selectedLanguage}
-              <Button variant="ghost" size="icon" onClick={() => onLanguageChange && onLanguageChange("")} className="h-4 w-4 p-0 ml-1">
+            <Badge key={`language-${selectedLanguage}`} variant="outline" className="flex items-center gap-1 bg-blue-100/50 dark:bg-blue-900/20 max-w-[150px]">
+              <span className="truncate">{selectedLanguage}</span>
+              <Button variant="ghost" size="icon" onClick={() => onLanguageChange && onLanguageChange("")} className="h-4 w-4 p-0 ml-1 shrink-0">
                 <X className="h-3 w-3" />
                 <span className="sr-only">Remove language filter</span>
               </Button>
             </Badge>
           )}
           {storyStatus !== "all" && (
-            <Badge key={`status-${storyStatus}`} variant="outline" className="flex items-center gap-1 bg-green-100/50 dark:bg-green-900/20">
-              {storyStatus === "ongoing" ? "Ongoing" : "Completed"}
-              <Button variant="ghost" size="icon" onClick={() => onStatusChange && onStatusChange("all")} className="h-4 w-4 p-0 ml-1">
+            <Badge key={`status-${storyStatus}`} variant="outline" className="flex items-center gap-1 bg-green-100/50 dark:bg-green-900/20 max-w-[150px]">
+              <span className="truncate">{storyStatus === "ongoing" ? "Ongoing" : "Completed"}</span>
+              <Button variant="ghost" size="icon" onClick={() => onStatusChange && onStatusChange("all")} className="h-4 w-4 p-0 ml-1 shrink-0">
                 <X className="h-3 w-3" />
                 <span className="sr-only">Remove status filter</span>
               </Button>
@@ -348,20 +360,27 @@ export default function FilterPanel({
                   <span className="text-sm">Loading tags...</span>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-2">
-                  {tags.map((tag) => (
-                    <div key={tag} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`tag-${tag}`}
-                        checked={selectedTags.includes(tag)}
-                        onCheckedChange={() => handleTagToggle(tag)}
-                      />
-                      <Label htmlFor={`tag-${tag}`} className="text-sm">
-                        {tag}
-                      </Label>
+                <>
+                  <div className="grid grid-cols-2 gap-2">
+                    {tags.slice(0, 20).map((tag) => (
+                      <div key={tag} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`tag-${tag}`}
+                          checked={selectedTags.includes(tag)}
+                          onCheckedChange={() => handleTagToggle(tag)}
+                        />
+                        <Label htmlFor={`tag-${tag}`} className="text-sm truncate max-w-[100px]" title={tag}>
+                          {tag}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                  {tags.length > 20 && (
+                    <div className="mt-2 text-center text-xs text-muted-foreground">
+                      Showing 20 of {tags.length} tags
                     </div>
-                  ))}
-                </div>
+                  )}
+                </>
               )}
             </AccordionContent>
           </AccordionItem>

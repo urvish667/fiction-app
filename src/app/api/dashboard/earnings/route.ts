@@ -18,9 +18,11 @@ const earningsLogger = logger.child('dashboard-earnings-api');
  * @param timeRange - The time range for the earnings data
  */
 export async function GET(request: Request) {
-  // Get the timeRange from the URL query parameters
+  // Get the parameters from the URL query parameters
   const url = new URL(request.url);
   const timeRange = url.searchParams.get('timeRange') || '30days';
+  const page = parseInt(url.searchParams.get('page') || '1', 10);
+  const pageSize = parseInt(url.searchParams.get('pageSize') || '10', 10);
 
   // Validate timeRange parameter
   if (!VALID_TIME_RANGES.includes(timeRange)) {
@@ -29,6 +31,18 @@ export async function GET(request: Request) {
       {
         success: false,
         error: "Invalid time range parameter",
+      },
+      { status: 400 }
+    );
+  }
+
+  // Validate pagination parameters
+  if (isNaN(page) || page < 1 || isNaN(pageSize) || pageSize < 1 || pageSize > 50) {
+    earningsLogger.warn(`Invalid pagination parameters: page=${page}, pageSize=${pageSize}`);
+    return NextResponse.json<ApiResponse<null>>(
+      {
+        success: false,
+        error: "Invalid pagination parameters",
       },
       { status: 400 }
     );
@@ -60,10 +74,10 @@ export async function GET(request: Request) {
     }
 
     // Log the request details
-    earningsLogger.info('Fetching earnings data', { userId, timeRange });
+    earningsLogger.info('Fetching earnings data', { userId, timeRange, page, pageSize });
 
     // Fetch earnings data
-    const earningsData = await getEarningsData(userId, timeRange);
+    const earningsData = await getEarningsData(userId, timeRange, page, pageSize);
 
     // We no longer need to fetch donations separately as they're included in earningsData.transactions
 

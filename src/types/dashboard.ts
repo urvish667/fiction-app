@@ -54,6 +54,14 @@ export interface DonationTransaction {
   createdAt: string; // ISO date string
 }
 
+export interface PaginationInfo {
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+  hasMore: boolean;
+}
+
 export interface DashboardOverviewData {
   stats: DashboardStats;
   stories: DashboardStory[];

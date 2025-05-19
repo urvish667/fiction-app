@@ -90,7 +90,7 @@ export default function Home() {
 
           {!stories ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {Array(8).fill(0).map((_, index) => (
+              {Array(4).fill(0).map((_, index) => (
                 <div key={index} className="space-y-3">
                   <Skeleton className="h-[200px] w-full rounded-md" />
                   <div className="space-y-2">

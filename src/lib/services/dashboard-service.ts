@@ -677,9 +677,16 @@ export async function getUserStories(userId: string) {
  * Get earnings data for a user
  * @param userId The ID of the user
  * @param timeRange The time range for the data
+ * @param page The page number for transactions pagination
+ * @param pageSize The number of transactions per page
  * @returns Earnings data including total, monthly, per story, and individual transactions
  */
-export async function getEarningsData(userId: string, timeRange: string = '30days') {
+export async function getEarningsData(
+  userId: string,
+  timeRange: string = '30days',
+  page: number = 1,
+  pageSize: number = 10
+) {
   // Calculate date ranges based on the timeRange parameter
   const { startDate } = calculateDateRanges(timeRange);
 
@@ -792,8 +799,25 @@ export async function getEarningsData(userId: string, timeRange: string = '30day
   // Get earnings chart data
   const chartData = await getEarningsChartData(userId, timeRange);
 
+  // Get total count of transactions for pagination
+  const totalTransactions = await prisma.donation.count({
+    where: {
+      story: {
+        authorId: userId,
+      },
+      status: 'succeeded',
+      ...(timeRange !== 'all' && { createdAt: { gte: startDate } }),
+    },
+  });
+
+  // Calculate pagination values
+  const skip = (page - 1) * pageSize;
+  const take = pageSize;
+  const totalPages = Math.ceil(totalTransactions / pageSize);
+  const hasMore = page < totalPages;
+
   // Get individual donation transactions with donor information
-  // Filter by time range if specified
+  // Filter by time range if specified and apply pagination
   const donations = await prisma.donation.findMany({
     where: {
       story: {
@@ -821,6 +845,8 @@ export async function getEarningsData(userId: string, timeRange: string = '30day
     orderBy: {
       createdAt: 'desc',
     },
+    skip,
+    take,
   });
 
   // Format donation transactions
@@ -844,6 +870,13 @@ export async function getEarningsData(userId: string, timeRange: string = '30day
     stories: storiesWithEarnings,
     chartData,
     transactions,
+    pagination: {
+      page,
+      pageSize,
+      totalItems: totalTransactions,
+      totalPages,
+      hasMore: page < totalPages
+    }
   };
 }
 
