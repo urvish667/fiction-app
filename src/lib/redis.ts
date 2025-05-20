@@ -56,16 +56,13 @@ if (!globalRedisClient.redisClient) {
  * @returns A Redis client or null if not configured
  */
 export function createRedisClient(): Redis | null {
-  // Check if Redis URL is configured
-  const redisUrl = process.env.REDIS_URL;
-  let client: Redis | null = null;
-
-  // If no Redis URL, try to construct one from individual components
-  if (!redisUrl) {
+  try {
     const host = process.env.REDIS_HOST;
     const port = process.env.REDIS_PORT;
     const password = process.env.REDIS_PASSWORD;
     const tls = process.env.REDIS_TLS === 'true';
+    
+    let client: Redis | null = null;
 
     if (host && port && password) {
       // Construct Redis URL
@@ -73,7 +70,7 @@ export function createRedisClient(): Redis | null {
       const constructedUrl = `${protocol}://:${password}@${host}:${port}`;
 
       if (!connectionWarningLogged) {
-        logger.info(`Constructed Redis URL from components: ${host}:${port}`);
+        logger.info(`Creating Redis client with components: ${host}:${port}`);
         connectionWarningLogged = true;
       }
 
@@ -91,26 +88,17 @@ export function createRedisClient(): Redis | null {
       }
       return null;
     }
-  } else {
-    try {
-      // Create Redis client with provided URL
-      if (!connectionWarningLogged) {
-        logger.info(`Creating Redis client with URL: ${redisUrl.split('@').pop()}`); // Log only the host part for security
-        connectionWarningLogged = true;
-      }
-      client = new Redis(redisUrl, REDIS_OPTIONS);
-    } catch (error) {
-      logger.error('Failed to create Redis client:', error);
-      return null;
+
+    // Set up event handlers if client was created
+    if (client) {
+      setupRedisEventHandlers(client);
     }
-  }
 
-  // Set up event handlers if client was created
-  if (client) {
-    setupRedisEventHandlers(client);
+    return client;
+  } catch (error) {
+    logger.error('Failed to create Redis client:', error);
+    return null;
   }
-
-  return client;
 }
 
 /**
