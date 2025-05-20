@@ -19,13 +19,6 @@
   width: auto; /* Use original width */
 }
 
-/* Default center alignment for images */
-.ProseMirror img.editor-image-centered {
-  margin-left: auto;
-  margin-right: auto;
-  text-align: center;
-}
-
 /* Text alignment classes */
 .ProseMirror .text-align-left {
   text-align: left;
@@ -55,6 +48,46 @@
   margin-right: 0;
 }
 
+/* Ensure image nodes themselves respect alignment */
+.ProseMirror div[data-text-align="left"] img.editor-image,
+.ProseMirror img.editor-image[data-align="left"] {
+  margin-left: 0;
+  margin-right: auto;
+}
+
+.ProseMirror div[data-text-align="center"] img.editor-image,
+.ProseMirror img.editor-image[data-align="center"] {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.ProseMirror div[data-text-align="right"] img.editor-image,
+.ProseMirror img.editor-image[data-align="right"] {
+  margin-left: auto;
+  margin-right: 0;
+}
+
+/* Direct alignment for image nodes */
+.ProseMirror img.image-left {
+  margin-left: 0 !important;
+  margin-right: auto !important;
+}
+
+.ProseMirror img.image-center {
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+.ProseMirror img.image-right {
+  margin-left: auto !important;
+  margin-right: 0 !important;
+}
+
+/* Force image node to respect alignment */
+.ProseMirror .ProseMirror-selectednode {
+  outline: 3px solid #68cef8;
+}
+
 /* Additional editor styles */
 .ProseMirror:focus {
   outline: none;
@@ -62,6 +95,7 @@
 
 .ProseMirror p {
   margin: 1em 0;
+  line-height: 1.6;
 }
 
 .ProseMirror h1 {
@@ -106,4 +140,38 @@
 .ProseMirror a {
   color: #3b82f6;
   text-decoration: underline;
+}
+
+/* Reading preview mode styling */
+.reading-preview {
+  background-color: #fff;
+  padding: 1.5rem !important;
+  max-width: 42rem !important;
+  margin: 0 auto;
+}
+
+.reading-preview .ProseMirror {
+  padding: 0;
+}
+
+/* Make preview match the chapter view */
+.reading-preview .ProseMirror p {
+  margin: 1em 0;
+  line-height: 1.8;
+  font-size: 1.125rem;
+  white-space: pre-wrap; /* Preserve line breaks */
+}
+
+.reading-preview .ProseMirror h1 {
+  font-size: 2rem;
+  margin: 1.5rem 0 1rem;
+}
+
+.reading-preview .ProseMirror h2 {
+  font-size: 1.75rem;
+  margin: 1.25rem 0 0.75rem;
+}
+
+.reading-preview .ProseMirror img.editor-image {
+  margin: 1.5rem auto;
 }

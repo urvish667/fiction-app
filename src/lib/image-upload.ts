@@ -107,19 +107,42 @@ export const ImageUpload = {
           // Release the object URL
           URL.revokeObjectURL(url);
 
-          // Calculate new dimensions while maintaining aspect ratio
+          // Get original dimensions
           let width = img.width;
           let height = img.height;
 
+          // Only resize if the image is larger than the specified dimensions
+          let needsResize = false;
+
+          // Store original aspect ratio
+          const aspectRatio = width / height;
+
+          // Calculate new dimensions while maintaining aspect ratio
           if (width > maxWidth) {
-            height = (height * maxWidth) / width;
+            height = Math.round((maxWidth / aspectRatio));
             width = maxWidth;
+            needsResize = true;
           }
 
           if (height > maxHeight) {
-            width = (width * maxHeight) / height;
+            width = Math.round((maxHeight * aspectRatio));
             height = maxHeight;
+            needsResize = true;
           }
+
+          // If the image is already smaller than the max dimensions, just return the original file
+          if (!needsResize) {
+            console.log('Image already smaller than max dimensions, not resizing', { width, height, maxWidth, maxHeight });
+            resolve(file);
+            return;
+          }
+
+          console.log('Resizing image', {
+            originalWidth: img.width,
+            originalHeight: img.height,
+            newWidth: width,
+            newHeight: height
+          });
 
           // Create a canvas to resize the image
           const canvas = document.createElement('canvas');

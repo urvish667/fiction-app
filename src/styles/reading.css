@@ -62,3 +62,41 @@
   margin-left: auto !important;
   margin-right: auto !important;
 }
+
+/* Support for direct image alignment classes */
+.prose img.image-left {
+  margin-left: 0 !important;
+  margin-right: auto !important;
+}
+
+.prose img.image-center {
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+.prose img.image-right {
+  margin-left: auto !important;
+  margin-right: 0 !important;
+}
+
+/* Support for data-align attribute */
+.prose img[data-align="left"] {
+  margin-left: 0 !important;
+  margin-right: auto !important;
+}
+
+.prose img[data-align="center"] {
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+.prose img[data-align="right"] {
+  margin-left: auto !important;
+  margin-right: 0 !important;
+}
+
+/* Ensure proper paragraph spacing in reading view */
+.prose p {
+  margin: 1em 0;
+  line-height: 1.6;
+}

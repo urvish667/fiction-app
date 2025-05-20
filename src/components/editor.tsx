@@ -2,6 +2,7 @@
 
 import type React from "react"
 import "@/styles/editor.css"
+import "@/styles/reading.css"
 
 import { useEffect, useRef, useState } from "react"
 import { useEditor, EditorContent } from "@tiptap/react"
@@ -31,6 +32,7 @@ import {
   AlignRight,
 } from "lucide-react"
 import { logError } from "@/lib/error-logger"
+import DivNode from "@/components/editor-extensions/div-node"
 
 interface EditorProps {
   content: string
@@ -49,6 +51,7 @@ export function Editor({ content, onChange, readOnly = false }: EditorProps) {
   const editor = useEditor({
     extensions: [
       StarterKit,
+      DivNode, // Add the custom div node
       Placeholder.configure({
         placeholder: "Begin your story here...",
       }),
@@ -56,20 +59,17 @@ export function Editor({ content, onChange, readOnly = false }: EditorProps) {
         allowBase64: true,
         inline: false, // Block mode for better alignment
         HTMLAttributes: {
-          class: 'editor-image editor-image-centered',
+          class: 'editor-image',
+          draggable: 'false', // Prevent dragging to ensure alignment works
         },
-        // We'll handle image attributes in the HTMLAttributes
-        // and use the TextAlign extension for alignment
       }),
       Link.configure({
         openOnClick: false,
       }),
       TextAlign.configure({
-        types: ['heading', 'paragraph', 'image'],
+        types: ['heading', 'paragraph', 'image', 'div'], // Add div to the types that can be aligned
         alignments: ['left', 'center', 'right'],
-        defaultAlignment: 'left',
-        // Note: defaultAlignments is not a valid option in TextAlign
-        // We'll handle image alignment separately
+        defaultAlignment: 'center',
       }),
     ],
     content,
@@ -133,9 +133,10 @@ export function Editor({ content, onChange, readOnly = false }: EditorProps) {
       setIsUploading(true)
 
       // Process the image (resize, compress)
-      const processedFile = await ImageUpload.processImage(file, 1200, 800)
+      // Use smaller dimensions for editor images (800x600)
+      const processedFile = await ImageUpload.processImage(file, 800, 600)
 
-      // Upload the image to S3 with CSRF token
+      // Upload the image to Azure Blob Storage with CSRF token
       const imageUrl = await ImageUpload.uploadEditorImage(processedFile)
 
       if (editor) {
@@ -144,32 +145,67 @@ export function Editor({ content, onChange, readOnly = false }: EditorProps) {
         tempImg.src = imageUrl
 
         tempImg.onload = () => {
-          // Calculate dimensions while maintaining aspect ratio and limiting size
-          const maxWidth = 600 // Maximum width in pixels
+          // Define target size for smaller images
+          const targetWidth = 200 // Target width for resizing
+
+          // Get original dimensions
           let width = tempImg.width
+          let height = tempImg.height
 
-          // Only set width if the image is larger than maxWidth
-          const widthAttr = width > maxWidth ? { width: maxWidth } : {}
+          // Calculate aspect ratio
+          const aspectRatio = width / height
 
-          // Insert the image at the current cursor position
-          editor
-            .chain()
-            .focus()
-            .insertContent({
+          // Only resize if the image is larger than targetWidth
+          let widthAttr = {}
+          if (width > targetWidth) {
+            // Calculate new height based on aspect ratio
+            const newHeight = Math.round(targetWidth / aspectRatio)
+            widthAttr = { width: targetWidth }
+            console.log('Resizing image in editor', {
+              originalWidth: width,
+              originalHeight: height,
+              newWidth: targetWidth,
+              newHeight: newHeight
+            });
+          } else {
+            console.log('Not resizing image in editor (already small enough)', {
+              width,
+              height,
+              targetWidth
+            });
+          }
+
+          // Get the current text alignment
+          const currentAlignment = editor.isActive({ textAlign: 'center' })
+            ? 'center'
+            : editor.isActive({ textAlign: 'right' })
+              ? 'right'
+              : 'left';
+
+          console.log('Inserting image with alignment:', currentAlignment);
+
+          // Insert a div node with proper alignment
+          editor.chain().focus().insertContent({
+            type: 'div',
+            attrs: {
+              class: `text-align-${currentAlignment}`,
+              'data-text-align': currentAlignment
+            },
+            content: [{
               type: 'image',
               attrs: {
                 src: imageUrl,
-                ...widthAttr
+                ...widthAttr,
+                class: `editor-image`,
+                'data-align': currentAlignment
               }
-            })
-            .run()
+            }]
+          }).run();
 
-          // Always set center alignment for images
-          editor
-            .chain()
-            .focus()
-            .setTextAlign('center')
-            .run()
+          // Add a paragraph after the div
+          editor.chain().focus().insertContent({
+            type: 'paragraph'
+          }).run();
         }
       }
     } catch (error) {
@@ -306,7 +342,36 @@ export function Editor({ content, onChange, readOnly = false }: EditorProps) {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => editor.chain().focus().setTextAlign('left').run()}
+            onClick={() => {
+              // Apply left alignment and log for debugging
+              console.log('Setting alignment to left');
+
+              // Check if an image is selected
+              if (editor.isActive('image')) {
+                // Find the parent node of the image
+                const parentNode = editor.state.selection.$anchor.parent;
+
+                // If the parent is a paragraph or div, set its alignment
+                if (parentNode && (parentNode.type.name === 'paragraph' || parentNode.type.name === 'div')) {
+                  editor.chain().focus().setTextAlign('left').run();
+                } else {
+                  // Create a div with left alignment and wrap the image
+                  editor.chain().focus()
+                    .setNodeSelection(editor.state.selection.$anchor.pos)
+                    .wrapIn('div', { 'data-text-align': 'left' })
+                    .setTextAlign('left')
+                    .run();
+                }
+
+                // Also update the image attributes for backward compatibility
+                editor.chain().focus().updateAttributes('image', {
+                  'data-align': 'left'
+                }).run();
+              } else {
+                // Set text alignment for the current node
+                editor.chain().focus().setTextAlign('left').run();
+              }
+            }}
             className={editor.isActive({ textAlign: 'left' }) ? "bg-muted" : ""}
             title="Align Left"
           >
@@ -317,7 +382,36 @@ export function Editor({ content, onChange, readOnly = false }: EditorProps) {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => editor.chain().focus().setTextAlign('center').run()}
+            onClick={() => {
+              // Apply center alignment and log for debugging
+              console.log('Setting alignment to center');
+
+              // Check if an image is selected
+              if (editor.isActive('image')) {
+                // Find the parent node of the image
+                const parentNode = editor.state.selection.$anchor.parent;
+
+                // If the parent is a paragraph or div, set its alignment
+                if (parentNode && (parentNode.type.name === 'paragraph' || parentNode.type.name === 'div')) {
+                  editor.chain().focus().setTextAlign('center').run();
+                } else {
+                  // Create a div with center alignment and wrap the image
+                  editor.chain().focus()
+                    .setNodeSelection(editor.state.selection.$anchor.pos)
+                    .wrapIn('div', { 'data-text-align': 'center' })
+                    .setTextAlign('center')
+                    .run();
+                }
+
+                // Also update the image attributes for backward compatibility
+                editor.chain().focus().updateAttributes('image', {
+                  'data-align': 'center'
+                }).run();
+              } else {
+                // Set text alignment for the current node
+                editor.chain().focus().setTextAlign('center').run();
+              }
+            }}
             className={editor.isActive({ textAlign: 'center' }) ? "bg-muted" : ""}
             title="Align Center"
           >
@@ -328,7 +422,36 @@ export function Editor({ content, onChange, readOnly = false }: EditorProps) {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => editor.chain().focus().setTextAlign('right').run()}
+            onClick={() => {
+              // Apply right alignment and log for debugging
+              console.log('Setting alignment to right');
+
+              // Check if an image is selected
+              if (editor.isActive('image')) {
+                // Find the parent node of the image
+                const parentNode = editor.state.selection.$anchor.parent;
+
+                // If the parent is a paragraph or div, set its alignment
+                if (parentNode && (parentNode.type.name === 'paragraph' || parentNode.type.name === 'div')) {
+                  editor.chain().focus().setTextAlign('right').run();
+                } else {
+                  // Create a div with right alignment and wrap the image
+                  editor.chain().focus()
+                    .setNodeSelection(editor.state.selection.$anchor.pos)
+                    .wrapIn('div', { 'data-text-align': 'right' })
+                    .setTextAlign('right')
+                    .run();
+                }
+
+                // Also update the image attributes for backward compatibility
+                editor.chain().focus().updateAttributes('image', {
+                  'data-align': 'right'
+                }).run();
+              } else {
+                // Set text alignment for the current node
+                editor.chain().focus().setTextAlign('right').run();
+              }
+            }}
             className={editor.isActive({ textAlign: 'right' }) ? "bg-muted" : ""}
             title="Align Right"
           >
@@ -360,7 +483,7 @@ export function Editor({ content, onChange, readOnly = false }: EditorProps) {
         </div>
       )}
 
-      <div className="p-4 min-h-[570px] prose prose-sm max-w-none editor-content">
+      <div className={`p-4 min-h-[570px] ${readOnly ? 'prose prose-lg' : 'prose prose-sm'} max-w-none editor-content ${readOnly ? 'reading-preview content-protected' : ''}`}>
         <EditorContent editor={editor} />
       </div>
     </div>
