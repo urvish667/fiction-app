@@ -17,3 +17,17 @@ export function formatRelativeTime(dateString: string | Date): string {
 
   return date.toLocaleDateString();
 }
+
+/**
+ * Check if a date is within the last 48 hours
+ * @param dateString The date to check
+ * @returns True if the date is within the last 48 hours
+ */
+export function isWithin48Hours(dateString: string | Date): boolean {
+  const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffHours = diffMs / (1000 * 60 * 60);
+
+  return diffHours <= 48;
+}

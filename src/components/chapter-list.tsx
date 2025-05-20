@@ -3,7 +3,9 @@
 import Link from "next/link"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import type { Chapter as ChapterType } from "@/types/story"
+import { isWithin48Hours } from "@/utils/date-utils"
 
 interface ChapterListProps {
   chapters: ChapterType[]
@@ -36,6 +38,7 @@ export default function ChapterList({ chapters, storySlug, currentChapter }: Cha
           <div className="divide-y">
             {chapters.map((chapter) => {
               const isCurrent = chapter.number === currentChapter
+              const isNew = chapter.status === 'published' && isWithin48Hours(chapter.updatedAt)
 
               return (
                 <div
@@ -45,6 +48,11 @@ export default function ChapterList({ chapters, storySlug, currentChapter }: Cha
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <span className="font-bold">{chapter.title}</span>
+                      {isNew && (
+                        <Badge variant="default" className="bg-green-500 hover:bg-green-600">
+                          New
+                        </Badge>
+                      )}
                     </div>
                   </div>
 
