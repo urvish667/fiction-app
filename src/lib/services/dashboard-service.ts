@@ -361,17 +361,17 @@ export async function getTopStories(userId: string, limit: number = 5, sortBy: s
       genre: story.genreId || "",
       genreName: genreName,
       slug: story.slug || story.id, // Use slug if available, fallback to ID
-      reads: viewCountMap.get(story.id) || 0,
-      likes: story._count.likes,
-      comments: story._count.comments,
+      viewCount: viewCountMap.get(story.id) || 0,
+      likeCount: story._count.likes,
+      commentCount: story._count.comments,
       date: story.updatedAt.toISOString(),
       earnings: storyEarnings,
     };
   });
 
-  // Apply custom sorting for reads and earnings
+  // Apply custom sorting for views and earnings
   if (sortBy === 'reads') {
-    formattedStories = formattedStories.sort((a, b) => b.reads - a.reads).slice(0, limit);
+    formattedStories = formattedStories.sort((a, b) => b.viewCount - a.viewCount).slice(0, limit);
   } else if (sortBy === 'earnings') {
     formattedStories = formattedStories.sort((a, b) => b.earnings - a.earnings).slice(0, limit);
   }
@@ -658,11 +658,9 @@ export async function getUserStories(userId: string) {
       slug: story.slug || story.id, // Use slug if available, fallback to ID
       status: story.status,
       viewCount: viewCountMap.get(story.id) || 0,
-      reads: viewCountMap.get(story.id) || 0, // Keep reads for backward compatibility
-      likes: story._count.likes,
-      comments: story._count.comments,
-      chapters: story._count.chapters, // Renamed from chaptersCount to match API expectation
-      chaptersCount: story._count.chapters, // Keep for backward compatibility
+      likeCount: story._count.likes,
+      commentCount: story._count.comments,
+      chapters: story._count.chapters,
       updatedAt: story.updatedAt,
       createdAt: story.createdAt,
       coverImage: story.coverImage,
@@ -788,7 +786,6 @@ export async function getEarningsData(
       genreName: genreName,
       slug: story.slug || story.id, // Use slug if available, fallback to ID
       viewCount: viewCountMap.get(story.id) || 0,
-      reads: viewCountMap.get(story.id) || 0, // Keep reads for backward compatibility
       earnings: storyEarnings,
     };
   });

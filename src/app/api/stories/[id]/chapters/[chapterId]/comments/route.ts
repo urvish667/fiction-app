@@ -5,6 +5,7 @@ import { prisma } from "@/lib/auth/db-adapter";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { logger } from "@/lib/logger";
 import { withCsrfProtection } from "@/lib/security/csrf";
+import { sanitizeText } from "@/lib/security/input-validation";
 
 // Validation schema for creating a comment
 const createCommentSchema = z.object({
@@ -178,6 +179,9 @@ export const POST = withCsrfProtection(async (request: NextRequest) => {
     // Parse and validate request body
     const body = await request.json();
     const validatedData = createCommentSchema.parse(body);
+
+    // Sanitize the comment content to prevent XSS attacks
+    validatedData.content = sanitizeText(validatedData.content);
 
     // If parentId is provided, verify it exists and belongs to this chapter
     if (validatedData.parentId) {

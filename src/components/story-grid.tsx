@@ -10,21 +10,18 @@ type StoryItem = {
   title: string
   author: any
   genre?: string | any
-  thumbnail?: string
   coverImage?: string
   excerpt?: string
   description?: string
-  likes?: number
   likeCount?: number
-  comments?: number
   commentCount?: number
-  reads?: number
-  readCount?: number
+  viewCount?: number // Combined story + chapter views
   readTime?: number
   date?: Date
   createdAt?: Date
   updatedAt?: Date
   slug?: string
+
   [key: string]: any
 }
 

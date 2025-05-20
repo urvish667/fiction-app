@@ -48,9 +48,9 @@ export default function LibraryPage() {
             ...story,
             author: story.author?.name || story.author?.username || "Unknown",
             excerpt: story.description || "",
-            likes: story.likeCount || 0,
-            comments: story.commentCount || 0,
-            reads: story.readCount || 0,
+            likeCount: story.likeCount || 0,
+            commentCount: story.commentCount || 0,
+            viewCount: story.viewCount || 0,
             date: new Date(story.createdAt),
             genre: genreName
           };
@@ -119,7 +119,7 @@ export default function LibraryPage() {
         filtered.sort((a, b) => getAuthorName(a).localeCompare(getAuthorName(b)))
         break
       case "mostRead":
-        filtered.sort((a, b) => (b.readCount || b.reads || 0) - (a.readCount || a.reads || 0))
+        filtered.sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0))
         break
     }
 

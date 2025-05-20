@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { signOut } from "next-auth/react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -16,7 +16,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { BookMarked, PenSquare, Bell, Settings, LogOut, Home, LayoutDashboard, FileEdit } from "lucide-react"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 import { logError } from "@/lib/error-logger"
 
 interface UserAvatarMenuProps {
@@ -33,6 +33,24 @@ interface UserAvatarMenuProps {
 export default function UserAvatarMenu({ user, onLogout }: UserAvatarMenuProps) {
   const router = useRouter()
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const [isPulsing, setIsPulsing] = useState(false)
+
+  // Log notification count for debugging
+  useEffect(() => {
+    console.log("Unread notifications count:", user.unreadNotifications);
+  }, [user.unreadNotifications]);
+
+  // Add pulsing animation effect for notification badge
+  useEffect(() => {
+    if (user.unreadNotifications > 0) {
+      // Start pulsing animation
+      const pulseInterval = setInterval(() => {
+        setIsPulsing(prev => !prev)
+      }, 2000) // Toggle every 2 seconds
+
+      return () => clearInterval(pulseInterval)
+    }
+  }, [user.unreadNotifications])
 
   const handleLogout = async () => {
     try {
@@ -96,17 +114,33 @@ export default function UserAvatarMenu({ user, onLogout }: UserAvatarMenuProps) 
             <AvatarImage src={user.avatar} alt={user.name} />
             <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
           </Avatar>
-          {user.unreadNotifications > 0 && (
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              className="absolute -right-1 -top-1"
-            >
-              <Badge variant="destructive" className="h-4 w-4 rounded-full p-0 text-[10px]">
-                {user.unreadNotifications}
-              </Badge>
-            </motion.div>
-          )}
+          <AnimatePresence>
+            {user.unreadNotifications > 0 && (
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{
+                  scale: isPulsing ? 1.1 : 1,
+                }}
+                exit={{
+                  scale: 0,
+                  opacity: 0
+                }}
+                transition={{
+                  type: "spring",
+                  stiffness: 500,
+                  damping: 15
+                }}
+                className="absolute -right-2 -top-2"
+              >
+                <Badge
+                  variant="destructive"
+                  className={`flex items-center justify-center min-w-6 h-6 rounded-full px-2 text-xs font-bold shadow-lg border-2 border-background ${user.unreadNotifications > 99 ? 'px-1' : ''}`}
+                >
+                  {user.unreadNotifications > 99 ? '99+' : user.unreadNotifications}
+                </Badge>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </Button>
       </DropdownMenuTrigger>
 

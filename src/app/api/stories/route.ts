@@ -7,6 +7,7 @@ import { slugify } from "@/lib/utils";
 import { ViewService } from "@/services/view-service";
 import { Prisma } from "@prisma/client";
 import { logError } from "@/lib/error-logger";
+import { sanitizeText } from "@/lib/security/input-validation";
 
 // Validation schema for creating a story
 const createStorySchema = z.object({
@@ -271,6 +272,12 @@ export async function POST(request: NextRequest) {
     let validatedData;
     try {
       validatedData = createStorySchema.parse(body);
+
+      // Sanitize user input fields
+      validatedData.title = sanitizeText(validatedData.title);
+      if (validatedData.description) {
+        validatedData.description = sanitizeText(validatedData.description);
+      }
     } catch (validationError) {
       throw validationError;
     }

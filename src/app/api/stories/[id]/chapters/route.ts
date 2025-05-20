@@ -8,6 +8,7 @@ import { AzureService } from "@/lib/azure-service";
 import { calculateStoryStatus } from "@/lib/story-helpers";
 import { Chapter } from "@/types/story";
 import { logError } from "@/lib/error-logger";
+import { sanitizeHtml } from "@/lib/security/input-validation";
 
 // Validation schema for creating a chapter
 const createChapterSchema = z.object({
@@ -159,6 +160,11 @@ export async function POST(
     // Parse and validate request body
     const body = await request.json();
     const validatedData = createChapterSchema.parse(body);
+
+    // Sanitize the content field to prevent XSS attacks
+    if (validatedData.content) {
+      validatedData.content = sanitizeHtml(validatedData.content);
+    }
 
     // Check if chapter number already exists
     const existingChapter = await prisma.chapter.findUnique({

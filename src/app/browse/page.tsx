@@ -19,7 +19,7 @@ import { useToast } from "@/components/ui/use-toast"
 // Import UserSummary type
 import { UserSummary } from "@/types/user"
 
-// Define a type that combines the fields from both Story types
+// Define a type for stories in the browse page
 type BrowseStory = {
   id: string | number
   title: string
@@ -27,17 +27,12 @@ type BrowseStory = {
   genre?: string
   language?: string
   status?: string
-  thumbnail?: string
   coverImage?: string
   excerpt?: string
   description?: string
-  likes?: number
   likeCount?: number
-  comments?: number
   commentCount?: number
-  reads?: number
-  readCount?: number
-  viewCount?: number // Add viewCount field
+  viewCount?: number // Combined story + chapter views
   readTime?: number
   date?: Date
   createdAt?: Date
@@ -225,17 +220,12 @@ function BrowseContent() {
       genre: genreName,
       language: languageName,
       status: story.status || "ongoing",
-      thumbnail: (story.coverImage && story.coverImage.trim() !== "") ? story.coverImage : "/placeholder.svg",
       coverImage: (story.coverImage && story.coverImage.trim() !== "") ? story.coverImage : "/placeholder.svg",
       excerpt: story.description,
       description: story.description,
-      likes: story.likeCount,
-      likeCount: story.likeCount,
-      comments: story.commentCount,
-      commentCount: story.commentCount,
-      reads: story.readCount,
-      readCount: story.readCount,
-      viewCount: story.viewCount, // Include the combined view count from the API
+      likeCount: story.likeCount || 0,
+      commentCount: story.commentCount || 0,
+      viewCount: story.viewCount || story.readCount || 0, // Prefer viewCount (combined), fall back to readCount
       readTime: Math.ceil(story.wordCount / 200), // Estimate read time based on word count
       date: story.createdAt ? new Date(story.createdAt) : new Date(),
       createdAt: story.createdAt ? new Date(story.createdAt) : new Date(),
@@ -338,14 +328,16 @@ function BrowseContent() {
         });
       case 'popular':
         return storiesCopy.sort((a, b) => {
-          const likesA = a.likeCount || a.likes || 0;
-          const likesB = b.likeCount || b.likes || 0;
+          // Always use likeCount as the primary field
+          const likesA = a.likeCount || 0;
+          const likesB = b.likeCount || 0;
           return likesB - likesA;
         });
       case 'mostRead':
         return storiesCopy.sort((a, b) => {
-          const viewsA = a.viewCount || a.readCount || a.reads || 0;
-          const viewsB = b.viewCount || b.readCount || b.reads || 0;
+          // Always use viewCount as the primary field
+          const viewsA = a.viewCount || 0;
+          const viewsB = b.viewCount || 0;
           return viewsB - viewsA;
         });
       default:

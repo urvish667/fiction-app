@@ -130,10 +130,10 @@ export default function UserProfilePage() {
             // Ensure these fields exist for StoryCard component
             author: story.author || user.name || user.username,
             excerpt: story.description,
-            likes: story.likeCount,
-            comments: story.commentCount,
-            reads: story.readCount,
-            viewCount: story.viewCount, // Include the combined view count from the API
+            coverImage: story.coverImage,
+            likeCount: story.likeCount || 0,
+            commentCount: story.commentCount || 0,
+            viewCount: story.viewCount || 0,
             createdAt,
             updatedAt
           };
@@ -155,10 +155,10 @@ export default function UserProfilePage() {
               ...story,
               // Ensure these fields exist for StoryCard component
               excerpt: story.description,
-              likes: story.likeCount,
-              comments: story.commentCount,
-              reads: story.readCount,
-              viewCount: story.viewCount, // Include the combined view count from the API
+              coverImage: story.coverImage,
+              likeCount: story.likeCount || 0,
+              commentCount: story.commentCount || 0,
+              viewCount: story.viewCount || 0,
               createdAt,
               updatedAt
             };

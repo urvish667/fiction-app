@@ -458,7 +458,7 @@ function WorksContent({ works, searchQuery, isLoading, onDeleteStory }: WorksCon
                 <div className="flex gap-4 mt-3 text-sm">
                   <div className="flex items-center gap-1">
                     <Eye className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span>{(typeof work.viewCount === 'number' ? work.viewCount : work.readCount || 0).toLocaleString()}</span>
+                    <span>{work.viewCount?.toLocaleString() || 0}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <Heart className="h-3.5 w-3.5 text-muted-foreground" />

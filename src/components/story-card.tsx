@@ -15,16 +15,11 @@ type StoryCardProps = {
     title: string
     author: string | { name?: string; username?: string }
     genre?: string
-    thumbnail?: string
     coverImage?: string
     excerpt?: string
     description?: string
-    likes?: number
     likeCount?: number
-    comments?: number
     commentCount?: number
-    reads?: number
-    readCount?: number
     viewCount?: number // Combined story + chapter views
     readTime?: number
     date?: Date
@@ -43,17 +38,16 @@ import { useRouter } from "next/navigation"
 export default function StoryCard({ story, viewMode = "grid" }: StoryCardProps) {
   // Use story's like status for display only
   const liked = (story as any).isLiked || false
-  const likeCount = story.likes || story.likeCount || 0
+  // Use the standardized fields
+  const likeCount = story.likeCount || 0
   const router = useRouter()
 
   const isGrid = viewMode === "grid"
 
-  // Ensure we have a valid image URL or use placeholder
-  const imageUrl = (story.thumbnail && story.thumbnail.trim() !== "") ?
-    story.thumbnail :
-    (story.coverImage && story.coverImage.trim() !== "") ?
-      story.coverImage :
-      "/placeholder.svg"
+  // Use coverImage as the standard field
+  const imageUrl = (story.coverImage && story.coverImage.trim() !== "") ?
+    story.coverImage :
+    "/placeholder.svg"
 
   // Image URL is now properly handled without logging
 
@@ -142,11 +136,11 @@ export default function StoryCard({ story, viewMode = "grid" }: StoryCardProps) 
 
           <CardFooter className="pt-0 pb-2 px-4 flex justify-between mt-auto">
             <div className="flex items-center gap-4">
-              {/* Views/Reads Stats */}
+              {/* Views Stats */}
               <div className="flex items-center gap-1">
                 <Eye size={16} className="text-muted-foreground" />
                 <span className="text-sm text-muted-foreground">
-                  {(typeof story.viewCount === 'number' ? story.viewCount : story.readCount || 0).toLocaleString()}
+                  {(story.viewCount || 0).toLocaleString()}
                 </span>
               </div>
 
@@ -162,7 +156,7 @@ export default function StoryCard({ story, viewMode = "grid" }: StoryCardProps) 
               {/* Comments Stats */}
               <div className="flex items-center gap-1">
                 <MessageSquare size={16} className="text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">{story.comments || story.commentCount || 0}</span>
+                <span className="text-sm text-muted-foreground">{story.commentCount || 0}</span>
               </div>
             </div>
 

@@ -3,6 +3,7 @@ import { createUser, isEmailAvailable, isUsernameAvailable } from "@/lib/auth/au
 import { generateVerificationToken, sendVerificationEmail } from "@/lib/auth/email-utils";
 import { ZodError, z } from "zod";
 import { rateLimit } from "@/lib/security/rate-limit";
+import { sanitizeText } from "@/lib/security/input-validation";
 
 // Signup request validation schema
 const signupSchema = z.object({
@@ -52,9 +53,20 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // Parse and validate the request body
+    // Parse the request body
     const body = await request.json();
-    const validatedData = signupSchema.parse(body);
+
+    // Sanitize inputs before validation
+    const sanitizedBody = {
+      ...body,
+      email: body.email ? sanitizeText(body.email.trim().toLowerCase()) : body.email,
+      username: body.username ? sanitizeText(body.username.trim()) : body.username,
+      // Password is not sanitized as it will be hashed
+      pronoun: body.pronoun ? sanitizeText(body.pronoun.trim()) : body.pronoun,
+    };
+
+    // Validate the sanitized data
+    const validatedData = signupSchema.parse(sanitizedBody);
 
     // Check if email is available (for email signup)
     if (validatedData.email) {

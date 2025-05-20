@@ -9,6 +9,7 @@ import { ViewService } from "@/services/view-service";
 import { Chapter } from "@/types/story";
 import { Prisma } from "@prisma/client";
 import { logError } from "@/lib/error-logger";
+import { sanitizeText } from "@/lib/security/input-validation";
 
 // Validation schema for updating a story
 const updateStorySchema = z.object({
@@ -230,6 +231,14 @@ export async function PUT(
       }
 
       validatedData = updateStorySchema.parse(body);
+
+      // Sanitize user input fields
+      if (validatedData.title) {
+        validatedData.title = sanitizeText(validatedData.title);
+      }
+      if (validatedData.description) {
+        validatedData.description = sanitizeText(validatedData.description);
+      }
     } catch (validationError) {
       return NextResponse.json(
         { error: "Validation error", details: (validationError as z.ZodError).errors },

@@ -7,6 +7,7 @@ import { getUserByEmail, verifyPassword } from "@/lib/auth/auth-utils";
 import { prisma } from "@/lib/auth/db-adapter";
 import { defaultPreferences } from "@/types/user";
 import { logger } from "@/lib/logger";
+import { sanitizeText } from "@/lib/security/input-validation";
 
 // Create a dedicated auth logger
 const authLogger = logger.child('nextauth');
@@ -95,15 +96,19 @@ export const authOptions: NextAuthOptions = {
       // Keep standard checks for Google as they typically work well
       checks: ["state"],
       profile(profile) {
+        // Sanitize profile data from OAuth provider
+        const sanitizedName = profile.name ? sanitizeText(profile.name.trim()) : null;
+        const sanitizedEmail = profile.email ? sanitizeText(profile.email.trim().toLowerCase()) : null;
+
         // Return a user object with required fields
         return {
           id: profile.sub,
-          name: profile.name,
+          name: sanitizedName,
           bannerImage: null,
           donationLink: null,
           donationMethod: null,
           donationsEnabled: false,
-          email: profile.email,
+          email: sanitizedEmail,
           image: profile.picture,
           emailVerified: profile.email_verified,
           provider: "google",
@@ -158,15 +163,19 @@ export const authOptions: NextAuthOptions = {
       // Use pkce for better security instead of disabling state checks
       checks: ["pkce"],
       profile(profile) {
+        // Sanitize profile data from OAuth provider
+        const sanitizedName = profile.name ? sanitizeText(profile.name.trim()) : null;
+        const sanitizedEmail = profile.email ? sanitizeText(profile.email.trim().toLowerCase()) : null;
+
         // Return a user object with required fields
         return {
           id: profile.id,
-          name: profile.name,
+          name: sanitizedName,
           bannerImage: null,
           donationLink: null,
           donationMethod: null,
           donationsEnabled: false,
-          email: profile.email,
+          email: sanitizedEmail,
           image: profile.picture?.data?.url,
           provider: "facebook",
           // Add required fields with default values
@@ -219,7 +228,10 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Invalid credentials");
         }
 
-        const user = await getUserByEmail(credentials.email);
+        // Sanitize email input before database lookup
+        const sanitizedEmail = sanitizeText(credentials.email.trim().toLowerCase());
+
+        const user = await getUserByEmail(sanitizedEmail);
 
         if (!user || !user.password) {
           throw new Error("No user found with this email");
@@ -352,12 +364,16 @@ export const authOptions: NextAuthOptions = {
           }
         }
 
+        // Sanitize user data before storing in database
+        const sanitizedEmail = user.email ? sanitizeText(user.email.trim().toLowerCase()) : user.email;
+        const sanitizedName = user.name ? sanitizeText(user.name.trim()) : user.name;
+
         // Only perform upsert if user doesn't exist or hasn't logged in recently
         const dbUser = await prisma.user.upsert({
-          where: { email: user.email! },
+          where: { email: sanitizedEmail! },
           create: {
-            email: user.email!,
-            name: user.name,
+            email: sanitizedEmail!,
+            name: sanitizedName,
             image: user.image,
             provider: account?.provider,
             emailVerified: new Date(),
@@ -415,6 +431,25 @@ export const authOptions: NextAuthOptions = {
         throw new Error("User ID is missing in token");
       }
 
+      // Fetch the unread notifications count from the database
+      let unreadNotificationsCount = 0;
+      try {
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { unreadNotifications: true }
+        });
+
+        if (user) {
+          unreadNotificationsCount = user.unreadNotifications;
+          authLogger.debug('Fetched unread notifications count', {
+            userId,
+            count: unreadNotificationsCount
+          });
+        }
+      } catch (error) {
+        authLogger.error('Error fetching unread notifications count', { error, userId });
+      }
+
       // Create a new session object with only the standard fields
       const userSession = {
         id: userId,
@@ -425,7 +460,7 @@ export const authOptions: NextAuthOptions = {
         username: token.username || (token.name ? String(token.name).split(' ')[0].toLowerCase() : 'user'),
         isProfileComplete: token.isProfileComplete || false,
         needsProfileCompletion: token.needsProfileCompletion || false,
-        unreadNotifications: 0, // Default value for now
+        unreadNotifications: unreadNotificationsCount, // Use the fetched count
         // Add preferences if available
         preferences: token.preferences || {
           emailNotifications: {
@@ -490,7 +525,8 @@ export const authOptions: NextAuthOptions = {
             image: true,
             bannerImage: true,
             preferences: true,
-            marketingOptIn: true
+            marketingOptIn: true,
+            unreadNotifications: true
           }
         });
 
@@ -509,7 +545,13 @@ export const authOptions: NextAuthOptions = {
         token.image = dbUser.image;
         token.bannerImage = dbUser.bannerImage;
         token.marketingOptIn = dbUser.marketingOptIn;
+        token.unreadNotifications = dbUser.unreadNotifications;
         token.lastUpdated = Date.now();
+
+        authLogger.debug('Initial token created with unread notifications', {
+          userId: dbUser.id,
+          count: dbUser.unreadNotifications
+        });
 
         // Add emailVerified status to token
         // For social logins, set emailVerified to current date if not already set
@@ -558,6 +600,7 @@ export const authOptions: NextAuthOptions = {
               image: true,
               bannerImage: true,
               emailVerified: true,
+              unreadNotifications: true,
             }
           });
 
@@ -568,7 +611,13 @@ export const authOptions: NextAuthOptions = {
             token.image = dbUser.image;
             token.bannerImage = dbUser.bannerImage;
             token.emailVerified = dbUser.emailVerified;
+            token.unreadNotifications = dbUser.unreadNotifications;
             token.lastUpdated = Date.now();
+
+            authLogger.debug('Updated token with unread notifications count', {
+              userId: token.id,
+              count: dbUser.unreadNotifications
+            });
 
             // Process preferences if they exist
             if (dbUser.preferences) {

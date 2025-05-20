@@ -3,11 +3,11 @@ export interface Story {
   title: string
   author: string
   genre: string
-  thumbnail: string
+  coverImage: string
   excerpt: string
-  likes: number
-  comments: number
-  reads: number
+  likeCount: number
+  commentCount: number
+  viewCount: number
   readTime: number
   date: Date
 }
@@ -31,7 +31,7 @@ export interface Comment {
   username: string
   userAvatar: string
   content: string
-  likes: number
+  likeCount: number // Standardized from likes
   date: Date
   replies?: Reply[]
 }
@@ -43,7 +43,7 @@ export interface Reply {
   username: string
   userAvatar: string
   content: string
-  likes: number
+  likeCount: number // Standardized from likes
   date: Date
 }
 

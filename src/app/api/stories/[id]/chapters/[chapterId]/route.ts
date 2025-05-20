@@ -10,6 +10,7 @@ import { ViewService } from "@/services/view-service";
 import { Chapter } from "@/types/story";
 import { Prisma } from "@prisma/client";
 import { logError } from "@/lib/error-logger";
+import { sanitizeHtml } from "@/lib/security/input-validation";
 
 // Define the params type for route handlers
 type ChapterRouteParams = { params: Promise<{ id: string; chapterId: string }> };
@@ -254,6 +255,11 @@ export async function PUT(
     // Parse and validate request body
     const body = await request.json();
     const validatedData = updateChapterSchema.parse(body);
+
+    // Sanitize the content field to prevent XSS attacks
+    if (validatedData.content) {
+      validatedData.content = sanitizeHtml(validatedData.content);
+    }
 
     // Check if new chapter number already exists (if changing)
     if (validatedData.number && validatedData.number !== chapter.number) {
