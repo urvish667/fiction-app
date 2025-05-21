@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Heart, Flame } from "lucide-react"
+import { Heart, Flame, Eye } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import Navbar from "@/components/navbar"
@@ -217,7 +217,10 @@ function StoryCard({ story, isTopStory = false }: { story: any, isTopStory?: boo
             <Heart size={16} className="text-muted-foreground" />
             <span>{(story.likeCount || story.likes || 0).toLocaleString()}</span>
           </div>
-          <span className="text-sm text-muted-foreground">{(typeof story.viewCount === 'number' ? story.viewCount : story.readCount || 0).toLocaleString()} views</span>
+          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+            <Eye size={16} className="text-muted-foreground" />
+            <span>{(typeof story.viewCount === 'number' ? story.viewCount : story.readCount || 0).toLocaleString()} views</span>
+          </div>
         </CardFooter>
       </Card>
     </motion.div>

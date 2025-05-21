@@ -2,13 +2,15 @@
 
 This document explains how to configure email sending for the FableSpace application.
 
-## Email Configuration
+> **Note:** FableSpace has migrated from SMTP-based email sending to Azure Communication Service (ACS) Email. This document is kept for reference purposes. For the current email configuration, please refer to [Azure Communication Service Email Configuration](./azure-communication-service-email.md).
 
-FableSpace uses a real SMTP server for sending emails in both development and production environments. This ensures consistent behavior across all environments and simplifies the configuration process.
+## Email Configuration (Legacy SMTP Method)
 
-### SMTP Configuration
+Previously, FableSpace used a real SMTP server for sending emails in both development and production environments.
 
-Add the following variables to your environment:
+### Legacy SMTP Configuration
+
+If you need to revert to the SMTP method for any reason, add the following variables to your environment:
 
 ```
 EMAIL_SERVER_HOST=smtp.example.com
@@ -19,9 +21,9 @@ EMAIL_SERVER_SECURE=true  # Use 'true' for SSL/TLS
 EMAIL_FROM=FableSpace <noreply@yourdomain.com>
 ```
 
-### Supported Email Services
+### Supported Email Services (Legacy)
 
-You can use any SMTP service, including:
+The SMTP method supports any SMTP service, including:
 
 - [SendGrid](https://sendgrid.com/)
 - [Mailgun](https://www.mailgun.com/)
@@ -30,9 +32,9 @@ You can use any SMTP service, including:
 - [Mailchimp Transactional](https://mailchimp.com/features/transactional-email/)
 - [SMTP2GO](https://www.smtp2go.com/)
 
-### SendGrid Example
+### SendGrid Example (Legacy)
 
-If using SendGrid, your configuration would look like:
+If using SendGrid with the SMTP method, your configuration would look like:
 
 ```
 EMAIL_SERVER_HOST=smtp.sendgrid.net

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/auth/db-adapter";
-import { sendWelcomeEmail } from "@/lib/auth/email-utils";
+// import { sendWelcomeEmail } from "@/lib/auth/email-utils";
 import { rateLimit } from "@/lib/security/rate-limit";
 
 export async function GET(request: NextRequest) {
@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Send welcome email
-    await sendWelcomeEmail(verificationToken.identifier);
+    // await sendWelcomeEmail(verificationToken.identifier);
 
     return NextResponse.json({ success: true });
   } catch (error) {
