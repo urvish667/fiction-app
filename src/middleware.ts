@@ -232,11 +232,6 @@ export async function middleware(request: NextRequest) {
     cookieName: "next-auth.session-token" // Explicitly specify the cookie name
   });
 
-  // Debug log for authentication issues in production
-  if (process.env.NODE_ENV === "production" && (pathname.startsWith('/dashboard') || pathname.startsWith('/settings') || pathname.startsWith('/api/dashboard') || pathname.startsWith('/api/user'))) {
-    console.log(`Auth debug - Path: ${pathname}, Token present: ${!!token}, Cookie header: ${request.headers.get('cookie')?.substring(0, 50)}...`);
-  }
-
   // Check if the path is a protected route
   const isProtectedRoute = protectedRoutes.some(route =>
     pathname.startsWith(route)

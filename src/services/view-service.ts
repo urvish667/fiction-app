@@ -64,10 +64,8 @@ export class ViewService {
 
             // Only increment read count if this is a new view
             if (incrementReadCount) {
-              await tx.story.update({
-                where: { id: storyId },
-                data: { readCount: { increment: 1 } },
-              });
+              // Use raw SQL query to increment readCount without updating the updatedAt field
+              await tx.$executeRaw`UPDATE "Story" SET "readCount" = "readCount" + 1 WHERE id = ${storyId}`;
             }
           }
 
@@ -107,10 +105,8 @@ export class ViewService {
 
             // Only increment read count for new anonymous views
             if (incrementReadCount) {
-              await tx.story.update({
-                where: { id: storyId },
-                data: { readCount: { increment: 1 } },
-              });
+              // Use raw SQL query to increment readCount without updating the updatedAt field
+              await tx.$executeRaw`UPDATE "Story" SET "readCount" = "readCount" + 1 WHERE id = ${storyId}`;
             }
           }
         }
@@ -200,10 +196,8 @@ export class ViewService {
             });
 
             // Only increment read count if this is a new view
-            await tx.chapter.update({
-              where: { id: chapterId },
-              data: { readCount: { increment: 1 } },
-            });
+            // Use raw SQL query to increment readCount without updating the updatedAt field
+            await tx.$executeRaw`UPDATE "Chapter" SET "readCount" = "readCount" + 1 WHERE id = ${chapterId}`;
           }
 
         } else {
@@ -241,10 +235,8 @@ export class ViewService {
             isFirstView = true;
 
             // Only increment read count for new anonymous views
-            await tx.chapter.update({
-              where: { id: chapterId },
-              data: { readCount: { increment: 1 } },
-            });
+            // Use raw SQL query to increment readCount without updating the updatedAt field
+            await tx.$executeRaw`UPDATE "Chapter" SET "readCount" = "readCount" + 1 WHERE id = ${chapterId}`;
           }
         }
       });

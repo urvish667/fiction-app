@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { BookMarked, PenSquare, Bell, Settings, LogOut, Home, LayoutDashboard, FileEdit } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
-import { logError } from "@/lib/error-logger"
+import { logError, logInfo } from "@/lib/error-logger"
 
 interface UserAvatarMenuProps {
   user: {

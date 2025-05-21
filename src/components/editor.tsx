@@ -158,21 +158,7 @@ export function Editor({ content, onChange, readOnly = false }: EditorProps) {
           // Only resize if the image is larger than targetWidth
           let widthAttr = {}
           if (width > targetWidth) {
-            // Calculate new height based on aspect ratio
-            const newHeight = Math.round(targetWidth / aspectRatio)
             widthAttr = { width: targetWidth }
-            console.log('Resizing image in editor', {
-              originalWidth: width,
-              originalHeight: height,
-              newWidth: targetWidth,
-              newHeight: newHeight
-            });
-          } else {
-            console.log('Not resizing image in editor (already small enough)', {
-              width,
-              height,
-              targetWidth
-            });
           }
 
           // Get the current text alignment
@@ -181,8 +167,6 @@ export function Editor({ content, onChange, readOnly = false }: EditorProps) {
             : editor.isActive({ textAlign: 'right' })
               ? 'right'
               : 'left';
-
-          console.log('Inserting image with alignment:', currentAlignment);
 
           // Insert a div node with proper alignment
           editor.chain().focus().insertContent({
@@ -344,8 +328,6 @@ export function Editor({ content, onChange, readOnly = false }: EditorProps) {
             size="icon"
             onClick={() => {
               // Apply left alignment and log for debugging
-              console.log('Setting alignment to left');
-
               // Check if an image is selected
               if (editor.isActive('image')) {
                 // Find the parent node of the image
@@ -384,8 +366,6 @@ export function Editor({ content, onChange, readOnly = false }: EditorProps) {
             size="icon"
             onClick={() => {
               // Apply center alignment and log for debugging
-              console.log('Setting alignment to center');
-
               // Check if an image is selected
               if (editor.isActive('image')) {
                 // Find the parent node of the image
@@ -424,8 +404,6 @@ export function Editor({ content, onChange, readOnly = false }: EditorProps) {
             size="icon"
             onClick={() => {
               // Apply right alignment and log for debugging
-              console.log('Setting alignment to right');
-
               // Check if an image is selected
               if (editor.isActive('image')) {
                 // Find the parent node of the image

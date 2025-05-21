@@ -132,17 +132,9 @@ export const ImageUpload = {
 
           // If the image is already smaller than the max dimensions, just return the original file
           if (!needsResize) {
-            console.log('Image already smaller than max dimensions, not resizing', { width, height, maxWidth, maxHeight });
             resolve(file);
             return;
           }
-
-          console.log('Resizing image', {
-            originalWidth: img.width,
-            originalHeight: img.height,
-            newWidth: width,
-            newHeight: height
-          });
 
           // Create a canvas to resize the image
           const canvas = document.createElement('canvas');
