@@ -1,8 +1,9 @@
 import { prisma } from "@/lib/auth/db-adapter";
 import { calculateStoryStatus } from "./story-helpers";
-import { Chapter, Story } from "@/types/story";
-import { PrismaClient } from "@prisma/client";
+import { Chapter } from "@/types/story";
 import { logError } from "./error-logger";
+// Temporarily commented out for performance improvement
+// import { queueFollowerNotificationsAboutNewChapter } from "./chapter-notification-service";
 
 /**
  * Process scheduled chapters that are due for publishing
@@ -48,6 +49,29 @@ export async function processScheduledChapters() {
         if (!updatedStoryIds.has(chapter.storyId)) {
           updatedStoryIds.add(chapter.storyId);
         }
+
+        // Temporarily commented out since we're not sending notifications
+        /*
+        // Get the story to find the author ID
+        const story = await prisma.story.findUnique({
+          where: { id: chapter.storyId },
+          select: { authorId: true }
+        });
+        */
+
+        // Temporarily commented out to improve performance
+        /*
+        if (story) {
+          // Queue notifications to followers (async operation)
+          // Default to true for notifyFollowers since we can't know the author's preference
+          await queueFollowerNotificationsAboutNewChapter(
+            chapter.storyId,
+            chapter.id,
+            story.authorId,
+            true
+          );
+        }
+        */
       } catch (error) {
         logError(error, { context: 'Publishing scheduled chapter', chapterId: chapter.id })
       }

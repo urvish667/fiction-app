@@ -308,8 +308,26 @@ export async function PUT(
         // If language is null, disconnect the relation
         updateData.language = { disconnect: true };
       } else {
-        // If language is a string ID, connect to that language
-        updateData.language = { connect: { id: language } };
+        // Check if language is a name (like "English") or an ID
+        if (language.length > 20 && language.startsWith('c')) {
+          // Looks like an ID, use directly
+          updateData.language = { connect: { id: language } };
+        } else {
+          // Looks like a name, try to find the language by name
+          try {
+            const languageObj = await prisma.language.findFirst({
+              where: { name: { equals: language, mode: 'insensitive' } }
+            });
+
+            if (languageObj) {
+              updateData.language = { connect: { id: languageObj.id } };
+            } else {
+              logError(`Language not found by name: ${language}`, { context: 'Updating story', storyId });
+            }
+          } catch (langError) {
+            logError(langError, { context: 'Looking up language by name during update', language, storyId });
+          }
+        }
       }
     }
 
@@ -340,9 +358,43 @@ export async function PUT(
       );
     }
 
-    logError(error, { context: 'Updating story' });
+    // Provide more detailed error message
+    let errorMessage = "Failed to update story";
+    let errorDetails = null;
+
+    if (error instanceof Error) {
+      errorMessage = error.message;
+
+      // Check if it's a Prisma error with more details
+      if (error.name === 'PrismaClientValidationError' ||
+          error.name === 'PrismaClientKnownRequestError') {
+        // Log the full error for debugging
+        logError(error, {
+          context: 'Updating story',
+          storyId,
+          errorType: error.name,
+          details: JSON.stringify(error, null, 2)
+        });
+
+        // Extract useful information from the error
+        if (error.message.includes('Unknown argument')) {
+          errorDetails = 'Invalid field in story data. Check the logs for details.';
+        } else if (error.message.includes('Foreign key constraint failed')) {
+          errorDetails = 'Referenced record (like genre or language) does not exist.';
+        }
+      } else {
+        // Log other errors
+        logError(error, { context: 'Updating story', storyId });
+      }
+    } else {
+      logError(error, { context: 'Updating story', storyId });
+    }
+
     return NextResponse.json(
-      { error: "Failed to update story" },
+      {
+        error: errorMessage,
+        ...(errorDetails && { details: errorDetails })
+      },
       { status: 500 }
     );
   }

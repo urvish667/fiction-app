@@ -255,10 +255,10 @@ export function OverviewTab({ timeRange }: OverviewTabProps) {
                           {story.genreName || 'General'}
                         </div>
                       </td>
-                      <td className="text-right py-3 px-2">{story.reads.toLocaleString()}</td>
-                      <td className="text-right py-3 px-2">{story.likes.toLocaleString()}</td>
-                      <td className="text-right py-3 px-2">{story.comments.toLocaleString()}</td>
-                      <td className="text-right py-3 px-2">${story.earnings.toLocaleString()}</td>
+                      <td className="text-right py-3 px-2">{(story.viewCount || 0).toLocaleString()}</td>
+                      <td className="text-right py-3 px-2">{(story.likeCount || 0).toLocaleString()}</td>
+                      <td className="text-right py-3 px-2">{(story.commentCount || 0).toLocaleString()}</td>
+                      <td className="text-right py-3 px-2">${(story.earnings || 0).toLocaleString()}</td>
                     </tr>
                   ))}
                 </tbody>

@@ -112,9 +112,22 @@ export const StoryService = {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      logError(error, { context: 'Creating story' })
-      throw new Error(error.error || "Failed to create story");
+      try {
+        const error = await response.json();
+        logError(error.error || error.message || "Failed to create story", {
+          context: 'Creating story',
+          status: response.status,
+          statusText: response.statusText
+        });
+        throw new Error(error.error || error.message || "Failed to create story");
+      } catch (parseError) {
+        logError(`HTTP ${response.status}: ${response.statusText}`, {
+          context: 'Creating story',
+          status: response.status,
+          statusText: response.statusText
+        });
+        throw new Error(`Failed to create story: ${response.status} ${response.statusText}`);
+      }
     }
 
     const result = await response.json();
@@ -134,9 +147,27 @@ export const StoryService = {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      logError(error, { context: 'Updating story', storyId: id })
-      throw new Error(error.error || "Failed to update story");
+      try {
+        const error = await response.json();
+        logError(error.error || error.message || "Failed to update story", {
+          context: 'Updating story',
+          storyId: id,
+          status: response.status,
+          statusText: response.statusText,
+          errorDetails: error.details || error,
+          requestData: data
+        });
+        throw new Error(error.error || error.message || "Failed to update story");
+      } catch (parseError) {
+        logError(`HTTP ${response.status}: ${response.statusText}`, {
+          context: 'Updating story',
+          storyId: id,
+          status: response.status,
+          statusText: response.statusText,
+          requestData: data
+        });
+        throw new Error(`Failed to update story: ${response.status} ${response.statusText}`);
+      }
     }
 
     const result = await response.json();

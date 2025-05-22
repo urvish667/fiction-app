@@ -78,7 +78,7 @@ model User {
   following           Follow[]          @relation("Following")
   followers           Follow[]          @relation("Followers")
   likes               Like[]
-  notifications       Notification[]
+  notificationsActed  Notification[]    @relation("NotificationActor")
   readingProgresses   ReadingProgress[]
   sessions            Session[]
   stories             Story[]
@@ -116,12 +116,29 @@ model Notification {
   type      String
   title     String
   message   String
+  content   Json?
+  actorId   String?
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  actor     User?    @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
 
   @@index([userId])
+  @@index([actorId])
+  @@index([type])
   @@index([read])
+  @@index([createdAt])
+}
+
+model NotificationBatch {
+  id        String   @id @default(cuid())
+  type      String
+  status    String   // 'processing', 'completed', 'failed'
+  metadata  Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type])
+  @@index([status])
   @@index([createdAt])
 }
 

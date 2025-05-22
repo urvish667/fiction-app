@@ -33,13 +33,29 @@ const errorLogger = logger.child('error-logger');
  * @param context Additional context information about where/why the error occurred
  */
 export const logError = (error: unknown, context: ErrorContext = {}): void => {
-  // Convert to string to ensure compatibility with the legacy logger
-  errorLogger.error(String(error instanceof Error ? error.message : error), {
-    ...context,
-    ...(error instanceof Error && {
+  let message: string;
+  let additionalContext: Record<string, any> = {};
+
+  if (error instanceof Error) {
+    message = error.message;
+    additionalContext = {
       stack: error.stack,
       errorName: error.name
-    })
+    };
+  } else if (typeof error === 'object' && error !== null) {
+    // Handle error objects from API responses
+    const errorObj = error as any;
+    message = errorObj.error || errorObj.message || JSON.stringify(error);
+    additionalContext = {
+      errorObject: error
+    };
+  } else {
+    message = String(error);
+  }
+
+  errorLogger.error(message, {
+    ...context,
+    ...additionalContext
   });
 };
 

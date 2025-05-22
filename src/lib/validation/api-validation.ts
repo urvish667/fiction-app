@@ -1,6 +1,6 @@
 /**
  * API Validation Utility
- * 
+ *
  * This module provides enhanced validation for API requests in the FableSpace application.
  * It extends the base input validation with API-specific validation and combines
  * multiple validation types (body, query, headers, etc.) into a single middleware.
@@ -10,11 +10,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z, ZodError, ZodSchema } from 'zod';
 import { ErrorCode, createErrorResponse } from '../error-handling';
 import { logError } from '../error-logger';
-import { 
-  sanitizeHtml, 
-  sanitizeText, 
-  sanitizeUrl, 
-  validateData 
+import {
+  sanitizeHtml,
+  sanitizeText,
+  sanitizeUrl,
+  validateData
 } from '../security/input-validation';
 
 // HTTP methods
@@ -59,34 +59,36 @@ export function sanitizeValidatedData(data: any): any {
   if (typeof data === 'string') {
     return sanitizeText(data);
   }
-  
+
   if (Array.isArray(data)) {
     return data.map(item => sanitizeValidatedData(item));
   }
-  
+
   if (data !== null && typeof data === 'object') {
     const sanitizedData: Record<string, any> = {};
-    
+
     for (const [key, value] of Object.entries(data)) {
       // Skip null or undefined values
       if (value === null || value === undefined) {
         sanitizedData[key] = value;
         continue;
       }
-      
+
       // Sanitize based on key name and value type
-      if (key.includes('html') || key.includes('content') || key.includes('description')) {
+      if (key.includes('html') || key.includes('content')) {
+        // For rich content, use HTML sanitization
         sanitizedData[key] = typeof value === 'string' ? sanitizeHtml(value) : sanitizeValidatedData(value);
       } else if (key.includes('url') || key.includes('link') || key.includes('website')) {
         sanitizedData[key] = typeof value === 'string' ? sanitizeUrl(value) || '' : sanitizeValidatedData(value);
       } else {
+        // For regular text fields (titles, descriptions, etc.), use text sanitization
         sanitizedData[key] = typeof value === 'string' ? sanitizeText(value) : sanitizeValidatedData(value);
       }
     }
-    
+
     return sanitizedData;
   }
-  
+
   return data;
 }
 
@@ -101,7 +103,7 @@ export function handleValidationError(
   options: ValidationOptions = {}
 ): NextResponse {
   const mergedOptions = { ...defaultValidationOptions, ...options };
-  
+
   // Handle Zod validation errors
   if (error instanceof ZodError) {
     // Log the error if enabled
@@ -111,7 +113,7 @@ export function handleValidationError(
         errorType: 'ZodError',
       });
     }
-    
+
     // Create the error response
     return createErrorResponse(
       ErrorCode.VALIDATION_ERROR,
@@ -119,7 +121,7 @@ export function handleValidationError(
       mergedOptions.includeErrorDetails ? { errors: error.errors } : undefined
     );
   }
-  
+
   // Handle other errors
   if (mergedOptions.logErrors) {
     logError('Unexpected validation error', {
@@ -127,7 +129,7 @@ export function handleValidationError(
       errorType: error instanceof Error ? error.constructor.name : typeof error,
     });
   }
-  
+
   return createErrorResponse(
     ErrorCode.INTERNAL_SERVER_ERROR,
     'An error occurred while processing your request'
@@ -147,19 +149,19 @@ export async function validateRequestBody<T>(
   options: ValidationOptions = {}
 ): Promise<T> {
   const mergedOptions = { ...defaultValidationOptions, ...options };
-  
+
   try {
     // Parse the request body
     const body = await req.json();
-    
+
     // Validate the body against the schema
     const validatedBody = validateData(schema, body);
-    
+
     // Sanitize the validated body if enabled
     if (mergedOptions.sanitizeInputs) {
       return sanitizeValidatedData(validatedBody) as T;
     }
-    
+
     return validatedBody;
   } catch (error) {
     throw error;
@@ -179,25 +181,25 @@ export function validateRequestQuery<T>(
   options: ValidationOptions = {}
 ): T {
   const mergedOptions = { ...defaultValidationOptions, ...options };
-  
+
   try {
     // Get the query parameters
     const url = new URL(req.url);
     const queryParams: Record<string, string> = {};
-    
+
     // Convert URLSearchParams to a plain object
     url.searchParams.forEach((value, key) => {
       queryParams[key] = value;
     });
-    
+
     // Validate the query parameters against the schema
     const validatedQuery = validateData(schema, queryParams);
-    
+
     // Sanitize the validated query if enabled
     if (mergedOptions.sanitizeInputs) {
       return sanitizeValidatedData(validatedQuery) as T;
     }
-    
+
     return validatedQuery;
   } catch (error) {
     throw error;
@@ -217,19 +219,19 @@ export function validateRequestHeaders<T>(
   options: ValidationOptions = {}
 ): T {
   const mergedOptions = { ...defaultValidationOptions, ...options };
-  
+
   try {
     // Get the headers
     const headers: Record<string, string> = {};
-    
+
     // Convert headers to a plain object
     req.headers.forEach((value, key) => {
       headers[key] = value;
     });
-    
+
     // Validate the headers against the schema
     const validatedHeaders = validateData(schema, headers);
-    
+
     // No need to sanitize headers
     return validatedHeaders;
   } catch (error) {
@@ -254,7 +256,7 @@ export function validateRequestMethod(
       { allowedMethods }
     );
   }
-  
+
   return null;
 }
 
@@ -273,7 +275,7 @@ export function withBodyValidation<T>(
     try {
       // Validate the request body
       const validatedBody = await validateRequestBody(req, schema, options);
-      
+
       // Call the original handler with the validated body
       return handler(req, validatedBody);
     } catch (error) {
@@ -298,7 +300,7 @@ export function withQueryValidation<T>(
     try {
       // Validate the request query
       const validatedQuery = validateRequestQuery(req, schema, options);
-      
+
       // Call the original handler with the validated query
       return handler(req, validatedQuery);
     } catch (error) {
@@ -323,7 +325,7 @@ export function withHeaderValidation<T>(
     try {
       // Validate the request headers
       const validatedHeaders = validateRequestHeaders(req, schema, options);
-      
+
       // Call the original handler with the validated headers
       return handler(req, validatedHeaders);
     } catch (error) {
@@ -348,7 +350,7 @@ export function withMethodValidation(
     if (methodValidationResult) {
       return methodValidationResult;
     }
-    
+
     // Call the original handler
     return handler(req);
   };
@@ -380,7 +382,7 @@ export function withRequestValidation<B, Q, H>(
   return async function validationHandler(req: NextRequest) {
     try {
       const validated: { body?: B; query?: Q; headers?: H } = {};
-      
+
       // Validate request method if specified
       if (schemas.allowedMethods) {
         const methodValidationResult = validateRequestMethod(req, schemas.allowedMethods);
@@ -388,22 +390,22 @@ export function withRequestValidation<B, Q, H>(
           return methodValidationResult;
         }
       }
-      
+
       // Validate request body if schema is provided
       if (schemas.body) {
         validated.body = await validateRequestBody(req, schemas.body, options);
       }
-      
+
       // Validate request query if schema is provided
       if (schemas.query) {
         validated.query = validateRequestQuery(req, schemas.query, options);
       }
-      
+
       // Validate request headers if schema is provided
       if (schemas.headers) {
         validated.headers = validateRequestHeaders(req, schemas.headers, options);
       }
-      
+
       // Call the original handler with the validated data
       return handler(req, validated);
     } catch (error) {
@@ -424,10 +426,10 @@ export const ApiValidationSchemas = {
       page: z.coerce.number().int().positive().default(1),
       limit: z.coerce.number().int().positive().max(100).default(20),
     }),
-    
+
     // ID schema
     id: z.string().uuid("Invalid ID format"),
-    
+
     // URL schema
     url: z.string()
       .url("Please enter a valid URL")
@@ -435,22 +437,22 @@ export const ApiValidationSchemas = {
         (url) => sanitizeUrl(url) !== null,
         { message: "URL contains invalid protocol" }
       ),
-    
+
     // Date schema
     date: z.string().refine(
       (date) => !isNaN(Date.parse(date)),
       { message: "Invalid date format" }
     ),
-    
+
     // Email schema
     email: z.string().email("Please enter a valid email address"),
   },
-  
+
   // API key schema
   apiKey: z.object({
     'x-api-key': z.string().min(1, "API key is required"),
   }),
-  
+
   // Content-Type schema
   contentType: z.object({
     'content-type': z.string().refine(
@@ -458,7 +460,7 @@ export const ApiValidationSchemas = {
       { message: "Content-Type must be application/json" }
     ),
   }),
-  
+
   // Authorization schema
   authorization: z.object({
     authorization: z.string().refine(
@@ -473,7 +475,7 @@ export const ApiValidationSchemas = {
  * @param middlewares Array of middleware functions
  */
 export function combineValidationMiddleware(
-  ...middlewares: ((handler: (req: NextRequest) => Promise<NextResponse> | NextResponse) => 
+  ...middlewares: ((handler: (req: NextRequest) => Promise<NextResponse> | NextResponse) =>
     (req: NextRequest) => Promise<NextResponse> | NextResponse)[]
 ) {
   return (handler: (req: NextRequest) => Promise<NextResponse> | NextResponse) => {

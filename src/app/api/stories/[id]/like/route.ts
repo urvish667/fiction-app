@@ -82,23 +82,15 @@ export async function POST(
 
     // Create notification for the author (if not self-like)
     if (story.authorId !== session.user.id) {
-      await prisma.notification.create({
-        data: {
-          userId: story.authorId,
-          type: "like",
-          title: "New Like",
-          message: `${session.user.name || session.user.username} liked your story "${story.title}"`,
-        },
-      });
+      const { createStoryLikeNotification } = await import('@/lib/notification-helpers');
 
-      // Increment unread notifications count
-      await prisma.user.update({
-        where: { id: story.authorId },
-        data: {
-          unreadNotifications: {
-            increment: 1,
-          },
-        },
+      await createStoryLikeNotification({
+        recipientId: story.authorId,
+        actorId: session.user.id,
+        actorUsername: session.user.username || 'Someone',
+        storyId: story.id,
+        storyTitle: story.title,
+        storySlug: story.slug,
       });
     }
 

@@ -71,23 +71,12 @@ export async function POST(
     });
 
     // Create notification for the target user
-    await prisma.notification.create({
-      data: {
-        userId: targetUser.id,
-        type: "follow",
-        title: "New Follower",
-        message: `${session.user.name || session.user.username} started following you`,
-      },
-    });
+    const { createFollowNotification } = await import('@/lib/notification-helpers');
 
-    // Increment unread notifications count
-    await prisma.user.update({
-      where: { id: targetUser.id },
-      data: {
-        unreadNotifications: {
-          increment: 1,
-        },
-      },
+    await createFollowNotification({
+      recipientId: targetUser.id,
+      actorId: session.user.id,
+      actorUsername: session.user.username || 'Someone',
     });
 
     return NextResponse.json(follow, { status: 201 });

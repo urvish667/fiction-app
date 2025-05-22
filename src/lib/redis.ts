@@ -15,6 +15,9 @@ import { logger } from '@/lib/logger';
 // Global variable to track connection status to prevent excessive logging
 let connectionWarningLogged = false;
 
+// Health check interval
+let healthCheckInterval: NodeJS.Timeout | null = null;
+
 // Redis client options
 export const REDIS_OPTIONS: RedisOptions = {
   maxRetriesPerRequest: 3,
@@ -61,7 +64,7 @@ export function createRedisClient(): Redis | null {
     const port = process.env.REDIS_PORT;
     const password = process.env.REDIS_PASSWORD;
     const tls = process.env.REDIS_TLS === 'true';
-    
+
     let client: Redis | null = null;
 
     if (host && port && password) {
@@ -146,18 +149,41 @@ function setupRedisEventHandlers(client: Redis): void {
  * @returns The Redis client instance or null if not configured
  */
 export function getRedisClient(): Redis | null {
-  if (!globalRedisClient.redisClient) {
-    globalRedisClient.redisClient = createRedisClient();
-  }
+  try {
+    // Check if Redis is disabled
+    if (process.env.REDIS_ENABLED === 'false') {
+      return null;
+    }
 
-  // Check if the client is still connected
-  if (globalRedisClient.redisClient && !globalRedisClient.redisClient.status.includes('connect')) {
-    // If the client is disconnected, create a new one
-    closeRedisConnection().catch(err => logger.error('Error closing Redis connection:', err));
-    globalRedisClient.redisClient = createRedisClient();
-  }
+    // Create client if it doesn't exist
+    if (!globalRedisClient.redisClient) {
+      globalRedisClient.redisClient = createRedisClient();
+    }
 
-  return globalRedisClient.redisClient;
+    // Check if the client is still connected
+    if (globalRedisClient.redisClient) {
+      try {
+        const status = globalRedisClient.redisClient.status;
+        if (!status.includes('connect')) {
+          // If the client is disconnected, create a new one
+          logger.warn(`Redis client status is ${status}, attempting to reconnect`);
+          closeRedisConnection().catch(err => logger.error('Error closing Redis connection:', err));
+          globalRedisClient.redisClient = createRedisClient();
+        }
+      } catch (statusError) {
+        // If we can't check the status, assume it's disconnected
+        logger.error('Error checking Redis connection status:', statusError);
+        closeRedisConnection().catch(err => logger.error('Error closing Redis connection:', err));
+        globalRedisClient.redisClient = createRedisClient();
+      }
+    }
+
+    return globalRedisClient.redisClient;
+  } catch (error) {
+    // If there's any error in the Redis client management, log and return null
+    logger.error('Error in Redis client management:', error);
+    return null;
+  }
 }
 
 /**
@@ -200,5 +226,104 @@ export async function closeRedisConnection(): Promise<void> {
   }
 }
 
-// Export the Redis client singleton
+/**
+ * Start Redis health check
+ * @param intervalMs Interval in milliseconds between health checks
+ */
+export function startRedisHealthCheck(intervalMs: number = 30000): void {
+  try {
+    // Check if Redis is disabled
+    if (process.env.REDIS_ENABLED === 'false') {
+      logger.info('Redis is disabled, not starting health check');
+      return;
+    }
+
+    // Clear existing interval if any
+    if (healthCheckInterval) {
+      clearInterval(healthCheckInterval);
+      healthCheckInterval = null;
+    }
+
+    // Set up new health check interval
+    healthCheckInterval = setInterval(async () => {
+      try {
+        const client = getRedisClient();
+        if (client) {
+          try {
+            // Ping Redis to check connection
+            const pongResponse = await client.ping();
+            if (pongResponse === 'PONG') {
+              logger.debug('Redis health check: OK');
+            } else {
+              logger.warn(`Redis health check: Unexpected response: ${pongResponse}`);
+              // Force reconnection on next getRedisClient call
+              await closeRedisConnection().catch(err => logger.error('Error closing Redis connection:', err));
+              globalRedisClient.redisClient = null;
+            }
+          } catch (pingError) {
+            logger.error('Redis health check ping failed:', pingError);
+            // Force reconnection on next getRedisClient call
+            await closeRedisConnection().catch(err => logger.error('Error closing Redis connection:', err));
+            globalRedisClient.redisClient = null;
+          }
+        } else {
+          logger.debug('Redis health check: No client available');
+        }
+      } catch (checkError) {
+        logger.error('Error in Redis health check:', checkError);
+      }
+    }, intervalMs);
+
+    logger.info(`Redis health check started with interval of ${intervalMs}ms`);
+  } catch (error) {
+    logger.error('Failed to start Redis health check:', error);
+  }
+}
+
+/**
+ * Stop Redis health check
+ */
+export function stopRedisHealthCheck(): void {
+  if (healthCheckInterval) {
+    clearInterval(healthCheckInterval);
+    healthCheckInterval = null;
+    logger.info('Redis health check stopped');
+  }
+}
+
+/**
+ * Initialize Redis
+ * This function initializes Redis and starts the health check if enabled
+ */
+export function initializeRedis(): void {
+  try {
+    // Check if Redis is disabled
+    if (process.env.REDIS_ENABLED === 'false') {
+      logger.info('Redis is disabled, skipping initialization');
+      return;
+    }
+
+    // Initialize Redis client
+    const client = getRedisClient();
+    if (client) {
+      logger.info('Redis client initialized successfully');
+    } else {
+      logger.warn('Failed to initialize Redis client');
+    }
+
+    // Start health check if enabled
+    if (process.env.REDIS_HEALTH_CHECK_ENABLED === 'true') {
+      const interval = parseInt(process.env.REDIS_HEALTH_CHECK_INTERVAL || '30000', 10);
+      startRedisHealthCheck(interval);
+    }
+  } catch (error) {
+    logger.error('Error initializing Redis:', error);
+  }
+}
+
+// Export the Redis client singleton getter function
+// This is safer than exporting the client directly
 export const redis = getRedisClient();
+
+// Initialize Redis
+initializeRedis();

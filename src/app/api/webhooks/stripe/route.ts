@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { headers } from 'next/headers';
 import Stripe from 'stripe';
 import { prisma } from '@/lib/prisma';
 import { getStripeClient } from '@/lib/stripe';
 import { logger } from '@/lib/logger';
+import { createDonationNotification } from '@/lib/notification-helpers';
 
 // Get the Stripe client from the singleton
 const stripe = getStripeClient();
@@ -14,6 +14,20 @@ const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 // Ensure webhook secret is set
 if (!webhookSecret) {
   logger.error('STRIPE_WEBHOOK_SECRET environment variable is not set');
+}
+
+// Helper function to get story title
+async function getStoryTitle(storyId: string): Promise<string | undefined> {
+  try {
+    const story = await prisma.story.findUnique({
+      where: { id: storyId },
+      select: { title: true }
+    });
+    return story?.title;
+  } catch (error) {
+    logger.error('Error fetching story title:', error);
+    return undefined;
+  }
 }
 
 export async function POST(req: Request) {
@@ -53,24 +67,43 @@ export async function POST(req: Request) {
         // Create a notification for the recipient
         const donation = await prisma.donation.findUnique({
           where: { stripePaymentIntentId: paymentIntent.id },
-          include: { donor: true },
+          include: {
+            donor: true,
+            story: {
+              select: {
+                slug: true
+              }
+            }
+          },
         });
 
         if (donation) {
-          await prisma.notification.create({
-            data: {
-              userId: donation.recipientId,
-              type: 'donation',
-              title: 'New Donation Received!',
-              message: `${donation.donor.name || 'Someone'} has donated $${(donation.amount / 100).toFixed(2)} to support your work.`,
-            },
-          });
+          try {
+            await createDonationNotification({
+              recipientId: donation.recipientId,
+              actorId: donation.donorId,
+              actorUsername: donation.donor.username || donation.donor.name || 'Someone',
+              donationId: donation.id,
+              amount: donation.amount,
+              message: donation.message || undefined,
+              storyId: donation.storyId || undefined,
+              storyTitle: donation.storyId ? await getStoryTitle(donation.storyId) : undefined,
+              storySlug: donation.story?.slug,
+            });
 
-          // Increment recipient's unread notifications
-          await prisma.user.update({
-            where: { id: donation.recipientId },
-            data: { unreadNotifications: { increment: 1 } },
-          });
+            logger.info('Stripe donation notification created successfully', {
+              donationId: donation.id,
+              recipientId: donation.recipientId,
+              donorId: donation.donorId
+            });
+          } catch (notificationError) {
+            logger.error('Failed to create Stripe donation notification', {
+              error: notificationError,
+              donationId: donation.id,
+              recipientId: donation.recipientId,
+              donorId: donation.donorId
+            });
+          }
         }
         break;
       }

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Notification, NotificationResponse, mockNotifications } from "@/types/notification";
+import { Notification, NotificationResponse} from "@/types/notification";
 import { fetchWithCsrf } from "@/lib/client/csrf";
 import { getWebSocketClient, WebSocketStatus } from "@/lib/client/websocket-client";
 import { useSession } from "next-auth/react";
@@ -24,22 +24,28 @@ export function useNotifications({
   const wsConnectedRef = useRef(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState(initialType);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    pages: 0,
+    hasMore: false,
+  });
   // Fetch notifications from API
-  const fetchNotifications = useCallback(async () => {
-    if (useMockData) {
-      // Use mock data
-      setNotifications(mockNotifications as any);
-      return;
-    }
-
+  const fetchNotifications = useCallback(async (reset = true) => {
     try {
-      setLoading(true);
+      if (reset) {
+        setLoading(true);
+      }
       setError(null);
 
       // Build query parameters based on active tab
       let queryParams = new URLSearchParams();
+      queryParams.append("page", reset ? "1" : (pagination.page + 1).toString());
+      queryParams.append("limit", pagination.limit.toString());
 
       if (activeTab === "unread") {
         queryParams.append("read", "false");
@@ -54,14 +60,29 @@ export function useNotifications({
       }
 
       const data: NotificationResponse = await response.json();
-      setNotifications(data.notifications);
+
+      if (reset) {
+        setNotifications(data.notifications);
+      } else {
+        setNotifications(prev => [...prev, ...data.notifications]);
+      }
+
+      setPagination({
+        page: data.pagination.page,
+        limit: data.pagination.limit,
+        total: data.pagination.total,
+        pages: data.pagination.pages,
+        hasMore: data.pagination.page < data.pagination.pages,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
       logError(err, { context: 'Error fetching notifications' });
     } finally {
-      setLoading(false);
+      if (reset) {
+        setLoading(false);
+      }
     }
-  }, [activeTab, useMockData]);
+  }, [activeTab, useMockData, pagination.page, pagination.limit]);
 
   // Mark notification as read
   const markAsRead = useCallback(async (id: string) => {
@@ -177,19 +198,44 @@ export function useNotifications({
     }
   }, [notifications, useMockData]);
 
+  // Load more notifications
+  const loadMoreNotifications = useCallback(async () => {
+    if (!pagination.hasMore || isLoadingMore) return;
+
+    setIsLoadingMore(true);
+    try {
+      await fetchNotifications(false);
+    } catch (err) {
+      logError(err, { context: 'Error loading more notifications' });
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [pagination.hasMore, isLoadingMore, fetchNotifications]);
+
   // Filter notifications based on active tab
   const getFilteredNotificationsByType = useCallback(() => {
     switch (activeTab) {
       case "unread":
         return notifications.filter((notification) => !notification.read);
       case "like":
-        return notifications.filter((notification) => notification.type === "like");
+        return notifications.filter((notification) =>
+          notification.type === "like" ||
+          notification.type === "chapter_like" ||
+          notification.type === "comment_like"
+        );
       case "comment":
-        return notifications.filter((notification) => notification.type === "comment");
+        return notifications.filter((notification) =>
+          notification.type === "comment" ||
+          notification.type === "chapter_comment" ||
+          notification.type === "reply" ||
+          notification.type === "chapter_reply"
+        );
       case "follow":
         return notifications.filter((notification) => notification.type === "follow");
+      // Chapter notifications are temporarily disabled
       case "chapter":
-        return notifications.filter((notification) => notification.type === "chapter");
+        // Return empty array since chapter notifications are disabled
+        return [];
       case "donation":
         return notifications.filter((notification) => notification.type === "donation");
       case "system":
@@ -231,7 +277,7 @@ export function useNotifications({
 
     // Group by date
     filtered.forEach((notification) => {
-      const date = new Date(notification.createdAt || (notification.date as Date));
+      const date = new Date(notification.createdAt);
 
       if (date >= today) {
         groups.today.push(notification);
@@ -365,8 +411,10 @@ export function useNotifications({
 
   // Fetch notifications on mount and when activeTab changes
   useEffect(() => {
-    fetchNotifications();
-  }, [fetchNotifications]);
+    // Reset pagination when tab changes
+    setPagination(prev => ({ ...prev, page: 1 }));
+    fetchNotifications(true);
+  }, [activeTab, useMockData]);
 
   // Set up polling for notifications as fallback when WebSocket is not connected
   useEffect(() => {
@@ -390,7 +438,7 @@ export function useNotifications({
         // Only poll if the page is visible
         if (isVisible) {
           logInfo('Polling for notifications (fallback mode)', { context: 'useNotifications' });
-          fetchNotifications();
+          fetchNotifications(true);
         } else {
           logInfo('Skipping notification poll - page not visible', { context: 'useNotifications' });
         }
@@ -404,7 +452,7 @@ export function useNotifications({
       if (isVisible) {
         logInfo('Page became visible, fetching notifications', { context: 'useNotifications' });
         // Fetch immediately when page becomes visible
-        fetchNotifications();
+        fetchNotifications(true);
         // Restart polling
         startPolling();
       } else {
@@ -418,7 +466,7 @@ export function useNotifications({
     };
 
     // Initial fetch
-    fetchNotifications();
+    fetchNotifications(true);
 
     // Start polling
     startPolling();
@@ -452,12 +500,16 @@ export function useNotifications({
     groupedNotifications,
     hasNotifications,
     loading,
+    isLoadingMore,
     error,
     activeTab,
     setActiveTab,
     markAsRead,
     markAllAsRead,
     deleteNotification,
+    loadMoreNotifications,
+    hasMore: pagination.hasMore,
+    pagination,
     refetch: fetchNotifications,
     wsStatus,
   };

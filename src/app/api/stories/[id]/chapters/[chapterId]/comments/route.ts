@@ -233,23 +233,19 @@ export const POST = withCsrfProtection(async (request: NextRequest) => {
 
     // Create notification for the story author (if not self-comment)
     if (story.authorId !== session.user.id) {
-      await prisma.notification.create({
-        data: {
-          userId: story.authorId,
-          type: "chapter_comment",
-          title: "New Chapter Comment",
-          message: `${session.user.name || session.user.username} commented on chapter "${chapter.title}" of your story "${story.title}"`,
-        },
-      });
+      const { createChapterCommentNotification } = await import('@/lib/notification-helpers');
 
-      // Increment unread notifications count
-      await prisma.user.update({
-        where: { id: story.authorId },
-        data: {
-          unreadNotifications: {
-            increment: 1,
-          },
-        },
+      await createChapterCommentNotification({
+        recipientId: story.authorId,
+        actorId: session.user.id,
+        actorUsername: session.user.username || 'Someone',
+        storyId: story.id,
+        storyTitle: story.title,
+        storySlug: story.slug,
+        chapterId: chapter.id,
+        chapterTitle: chapter.title,
+        commentId: comment.id,
+        comment: validatedData.content,
       });
     }
 
@@ -261,23 +257,19 @@ export const POST = withCsrfProtection(async (request: NextRequest) => {
       });
 
       if (parentComment && parentComment.userId !== session.user.id) {
-        await prisma.notification.create({
-          data: {
-            userId: parentComment.userId,
-            type: "chapter_reply",
-            title: "New Reply",
-            message: `${session.user.name || session.user.username} replied to your comment on chapter "${chapter.title}"`,
-          },
-        });
+        const { createReplyNotification } = await import('@/lib/notification-helpers');
 
-        // Increment unread notifications count
-        await prisma.user.update({
-          where: { id: parentComment.userId },
-          data: {
-            unreadNotifications: {
-              increment: 1,
-            },
-          },
+        await createReplyNotification({
+          recipientId: parentComment.userId,
+          actorId: session.user.id,
+          actorUsername: session.user.username || 'Someone',
+          commentId: comment.id,
+          comment: validatedData.content,
+          storyId: story.id,
+          storyTitle: story.title,
+          storySlug: story.slug,
+          chapterId: chapter.id,
+          chapterTitle: chapter.title,
         });
       }
     }

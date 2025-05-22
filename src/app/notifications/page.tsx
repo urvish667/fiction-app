@@ -8,97 +8,13 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Bell, Heart, MessageSquare, UserPlus, BookOpen, MoreVertical, Check, Trash2 } from "lucide-react"
 import Navbar from "@/components/navbar"
-import { useNotifications } from "@/hooks/useNotifications"
+import { useNotifications } from "@/hooks/use-notifications"
 import { formatRelativeTime } from "@/utils/date-utils"
-import { Notification } from "@/types/notification"
-
-// Notification item component
-interface NotificationItemProps {
-  notification: Notification
-  getNotificationIcon: (type: string) => React.ReactNode
-  getNotificationContent: (notification: any) => React.ReactNode
-  markAsRead: (id: string) => void
-  deleteNotification: (id: string) => void
-}
-
-const NotificationItem = ({
-  notification,
-  getNotificationIcon,
-  getNotificationContent,
-  markAsRead,
-  deleteNotification,
-}: NotificationItemProps) => {
-  return (
-    <div
-      key={notification.id}
-      className={`p-4 rounded-lg border ${!notification.read ? "bg-primary/5 border-primary/20" : "bg-card"}`}
-    >
-      <div className="flex gap-4">
-        {notification.user && (
-          <Link href={`/user/${notification.user.username}`}>
-            <Avatar className="h-10 w-10">
-              <AvatarImage src={notification.user.avatar} alt={notification.user.name} />
-              <AvatarFallback>{notification.user.name.charAt(0)}</AvatarFallback>
-            </Avatar>
-          </Link>
-        )}
-
-        <div className="flex-1">
-          <div className="flex justify-between items-start">
-            <div className="flex items-center gap-2">
-              {getNotificationIcon(notification.type)}
-              <p className="text-sm">
-                {getNotificationContent(notification) || notification.message || `New ${notification.type} notification`}
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">
-                {formatRelativeTime(notification.createdAt || (notification.date as Date))}
-              </span>
-
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <MoreVertical className="h-4 w-4" />
-                    <span className="sr-only">More options</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {!notification.read && (
-                    <DropdownMenuItem onClick={() => markAsRead(notification.id)}>
-                      <Check className="h-4 w-4 mr-2" />
-                      Mark as read
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuItem onClick={() => deleteNotification(notification.id)}>
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-
-          {notification.type === "follow" && notification.user && (
-            <div className="mt-2">
-              <Button size="sm" variant="outline" asChild>
-                <Link href={`/user/${notification.user.username}`}>View Profile</Link>
-              </Button>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
 
 
 export default function NotificationsPage() {
   const {
     filteredNotifications,
-    groupedNotifications,
-    hasNotifications,
     activeTab,
     setActiveTab,
     markAsRead,
@@ -106,14 +22,23 @@ export default function NotificationsPage() {
     deleteNotification,
     loading,
     error,
-  } = useNotifications({ useMockData: false })
+    loadMoreNotifications,
+    hasMore,
+    isLoadingMore,
+  } = useNotifications()
 
   // Get notification icon
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case "like":
+      case "chapter_like":
+      case "comment_like":
         return <Heart className="h-4 w-4 text-red-500" />
       case "comment":
+      case "chapter_comment":
+        return <MessageSquare className="h-4 w-4 text-blue-500" />
+      case "reply":
+      case "chapter_reply":
         return <MessageSquare className="h-4 w-4 text-blue-500" />
       case "follow":
         return <UserPlus className="h-4 w-4 text-green-500" />
@@ -130,17 +55,19 @@ export default function NotificationsPage() {
 
   // Get notification content
   const getNotificationContent = (notification: any) => {
-    // If user is missing, use a fallback
-    const userName = notification.user?.name || 'Someone';
+    // Use actor username or fallback to 'Someone'
+    const username = notification.actor?.username || 'Someone';
 
     switch (notification.type) {
       case "like":
         if (!notification.content) return notification.message || 'Someone liked your story';
         return (
           <>
-            <span className="font-medium">{userName}</span>
+            <Link href={`/user/${username}`} className="font-medium hover:text-primary">
+              {username}
+            </Link>
             {" liked your story "}
-            <Link href={`/story/${notification.content.storyId}`} className="font-medium hover:text-primary">
+            <Link href={`/story/${notification.content.storySlug || notification.content.storyId}`} className="font-medium hover:text-primary">
               {notification.content.storyTitle}
             </Link>
           </>
@@ -149,13 +76,86 @@ export default function NotificationsPage() {
         if (!notification.content) return notification.message || 'Someone commented on your story';
         return (
           <>
-            <p className="text-sm">
-              <span className="font-medium">{userName}</span>
-              {" commented on your story "}
-              <Link href={`/story/${notification.content.storyId}`} className="font-medium hover:text-primary">
-                {notification.content.storyTitle}
-              </Link>
-            </p>
+            <Link href={`/user/${username}`} className="font-medium hover:text-primary">
+              {username}
+            </Link>
+            {" commented on your story "}
+            <Link href={`/story/${notification.content.storySlug || notification.content.storyId}`} className="font-medium hover:text-primary">
+              {notification.content.storyTitle}
+            </Link>
+            {notification.content.comment && (
+              <div className="mt-1 text-sm text-muted-foreground bg-muted/30 p-2 rounded-md">
+                {notification.content.comment}
+              </div>
+            )}
+          </>
+        )
+      case "chapter_like":
+        if (!notification.content) return notification.message || 'Someone liked your chapter';
+        return (
+          <>
+            <Link href={`/user/${username}`} className="font-medium hover:text-primary">
+              {username}
+            </Link>
+            {" liked your chapter "}
+            <Link href={`/story/${notification.content.storySlug || notification.content.storyId}/chapter/${notification.content.chapterNumber}`} className="font-medium hover:text-primary">
+              {notification.content.chapterTitle}
+            </Link>
+          </>
+        )
+      case "chapter_comment":
+        if (!notification.content) return notification.message || 'Someone commented on your chapter';
+        return (
+          <>
+            <Link href={`/user/${username}`} className="font-medium hover:text-primary">
+              {username}
+            </Link>
+            {" commented on your chapter "}
+            <Link href={`/story/${notification.content.storySlug || notification.content.storyId}/chapter/${notification.content.chapterNumber}`} className="font-medium hover:text-primary">
+              {notification.content.chapterTitle}
+            </Link>
+            {notification.content.comment && (
+              <div className="mt-1 text-sm text-muted-foreground bg-muted/30 p-2 rounded-md">
+                {notification.content.comment}
+              </div>
+            )}
+          </>
+        )
+      case "comment_like":
+        if (!notification.content) return notification.message || 'Someone liked your comment';
+        return (
+          <>
+            <Link href={`/user/${username}`} className="font-medium hover:text-primary">
+              {username}
+            </Link>
+            {" liked your comment"}
+            {notification.content.storyId && (
+              <>
+                {" on "}
+                <Link href={`/story/${notification.content.storySlug || notification.content.storyId}`} className="font-medium hover:text-primary">
+                  {notification.content.storyTitle}
+                </Link>
+              </>
+            )}
+          </>
+        )
+      case "reply":
+      case "chapter_reply":
+        if (!notification.content) return notification.message || 'Someone replied to your comment';
+        return (
+          <>
+            <Link href={`/user/${username}`} className="font-medium hover:text-primary">
+              {username}
+            </Link>
+            {" replied to your comment"}
+            {notification.content.storyId && (
+              <>
+                {" on "}
+                <Link href={`/story/${notification.content.storySlug || notification.content.storyId}${notification.content.chapterId ? `/chapter/${notification.content.chapterNumber}` : ''}`} className="font-medium hover:text-primary">
+                  {notification.content.chapterTitle || notification.content.storyTitle}
+                </Link>
+              </>
+            )}
             {notification.content.comment && (
               <div className="mt-1 text-sm text-muted-foreground bg-muted/30 p-2 rounded-md">
                 {notification.content.comment}
@@ -166,30 +166,58 @@ export default function NotificationsPage() {
       case "follow":
         return (
           <>
-            <span className="font-medium">{userName}</span>
+            <Link href={`/user/${username}`} className="font-medium hover:text-primary">
+              {username}
+            </Link>
             {" started following you"}
           </>
         )
-      case "chapter":
-        if (!notification.content) return notification.message || 'New chapter published';
+      // case "chapter":
+      //   if (!notification.content) return notification.message || 'New chapter published';
+      //   return (
+      //     <>
+      //       <span className="font-medium">{userName}</span>
+      //       {" published a new chapter: "}
+      //       <Link
+      //         href={`/story/${notification.content.storySlug || notification.content.storyId}/chapter/${notification.content.chapterNumber}`}
+      //         className="font-medium hover:text-primary"
+      //       >
+      //         Chapter {notification.content.chapterNumber}: {notification.content.chapterTitle}
+      //       </Link>
+      //       {" in "}
+      //       <Link href={`/story/${notification.content.storySlug || notification.content.storyId}`} className="font-medium hover:text-primary">
+      //         {notification.content.storyTitle}
+      //       </Link>
+      //     </>
+      //   )
+      case "donation":
+        if (!notification.content) return notification.message || 'You received a donation';
         return (
           <>
-            <span className="font-medium">{userName}</span>
-            {" published a new chapter: "}
-            <Link
-              href={`/story/${notification.content.storyId}/chapter/${notification.content.chapterNumber}`}
-              className="font-medium hover:text-primary"
-            >
-              Chapter {notification.content.chapterNumber}: {notification.content.chapterTitle}
+            <Link href={`/user/${username}`} className="font-medium hover:text-primary">
+              {username}
             </Link>
-            {" in "}
-            <Link href={`/story/${notification.content.storyId}`} className="font-medium hover:text-primary">
-              {notification.content.storyTitle}
-            </Link>
+            {" donated "}
+            {notification.content.amount && (
+              <span className="font-medium">${(notification.content.amount / 100).toFixed(2)}</span>
+            )}
+            {notification.content.storyId ? (
+              <>
+                {" to your story "}
+                <Link href={`/story/${notification.content.storySlug || notification.content.storyId}`} className="font-medium hover:text-primary">
+                  {notification.content.storyTitle}
+                </Link>
+              </>
+            ) : (
+              " to support your work"
+            )}
+            {notification.content.message && (
+              <div className="mt-1 text-sm text-muted-foreground bg-muted/30 p-2 rounded-md">
+                "{notification.content.message}"
+              </div>
+            )}
           </>
         )
-      case "donation":
-        return notification.message || 'You received a donation';
       default:
         return notification.message || `New ${notification.type} notification`;
     }
@@ -199,7 +227,7 @@ export default function NotificationsPage() {
     <div className="min-h-screen">
       <Navbar />
 
-      <main className="container mx-auto px-8 py-8">
+      <main className="container mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <h1 className="text-3xl font-bold">Notifications</h1>
 
@@ -229,9 +257,8 @@ export default function NotificationsPage() {
             <TabsTrigger value="like">Likes</TabsTrigger>
             <TabsTrigger value="comment">Comments</TabsTrigger>
             <TabsTrigger value="follow">Follows</TabsTrigger>
-            <TabsTrigger value="chapter">New Chapters</TabsTrigger>
+            {/* <TabsTrigger value="chapter">New Chapters</TabsTrigger> */}
             <TabsTrigger value="donation">Donations</TabsTrigger>
-            <TabsTrigger value="system">System</TabsTrigger>
           </TabsList>
 
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
@@ -242,90 +269,84 @@ export default function NotificationsPage() {
                   <p className="text-sm text-muted-foreground">Loading notifications...</p>
                 </div>
               </div>
-            ) : hasNotifications ? (
-              <div className="space-y-8">
-                {/* Today's notifications */}
-                {groupedNotifications.today.length > 0 && (
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-medium text-muted-foreground">Today</h3>
-                    {groupedNotifications.today.map((notification) => (
-                      <NotificationItem
-                        key={notification.id}
-                        notification={notification}
-                        getNotificationIcon={getNotificationIcon}
-                        getNotificationContent={getNotificationContent}
-                        markAsRead={markAsRead}
-                        deleteNotification={deleteNotification}
-                      />
-                    ))}
-                  </div>
-                )}
+            ) : filteredNotifications.length > 0 ? (
+              <div className="space-y-4">
+                {filteredNotifications.map((notification) => (
+                  <div
+                    key={notification.id}
+                    className={`p-4 rounded-lg border ${!notification.read ? "bg-primary/5 border-primary/20" : "bg-card"}`}
+                  >
+                    <div className="flex gap-4">
+                      {notification.actor && (
+                        <Link href={`/user/${notification.actor.username}`}>
+                          <Avatar className="h-10 w-10">
+                            <AvatarImage
+                              src={notification.actor.image}
+                              alt={notification.actor.username}
+                            />
+                            <AvatarFallback>
+                              {notification.actor.username.charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                        </Link>
+                      )}
 
-                {/* Yesterday's notifications */}
-                {groupedNotifications.yesterday.length > 0 && (
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-medium text-muted-foreground">Yesterday</h3>
-                    {groupedNotifications.yesterday.map((notification) => (
-                      <NotificationItem
-                        key={notification.id}
-                        notification={notification}
-                        getNotificationIcon={getNotificationIcon}
-                        getNotificationContent={getNotificationContent}
-                        markAsRead={markAsRead}
-                        deleteNotification={deleteNotification}
-                      />
-                    ))}
-                  </div>
-                )}
+                      <div className="flex-1">
+                        <div className="flex justify-between items-start">
+                          <div className="flex items-center gap-2">
+                            {getNotificationIcon(notification.type)}
+                            <p className="text-sm">{getNotificationContent(notification)}</p>
+                          </div>
 
-                {/* This week's notifications */}
-                {groupedNotifications.thisWeek.length > 0 && (
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-medium text-muted-foreground">This Week</h3>
-                    {groupedNotifications.thisWeek.map((notification) => (
-                      <NotificationItem
-                        key={notification.id}
-                        notification={notification}
-                        getNotificationIcon={getNotificationIcon}
-                        getNotificationContent={getNotificationContent}
-                        markAsRead={markAsRead}
-                        deleteNotification={deleteNotification}
-                      />
-                    ))}
-                  </div>
-                )}
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground">
+                              {formatRelativeTime(notification.createdAt)}
+                            </span>
 
-                {/* This month's notifications */}
-                {groupedNotifications.thisMonth.length > 0 && (
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-medium text-muted-foreground">This Month</h3>
-                    {groupedNotifications.thisMonth.map((notification) => (
-                      <NotificationItem
-                        key={notification.id}
-                        notification={notification}
-                        getNotificationIcon={getNotificationIcon}
-                        getNotificationContent={getNotificationContent}
-                        markAsRead={markAsRead}
-                        deleteNotification={deleteNotification}
-                      />
-                    ))}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                  <MoreVertical className="h-4 w-4" />
+                                  <span className="sr-only">More options</span>
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                {!notification.read && (
+                                  <DropdownMenuItem onClick={() => markAsRead(notification.id)}>
+                                    <Check className="h-4 w-4 mr-2" />
+                                    Mark as read
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuItem onClick={() => deleteNotification(notification.id)}>
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                )}
+                ))}
 
-                {/* Older notifications */}
-                {groupedNotifications.older.length > 0 && (
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-medium text-muted-foreground">Older</h3>
-                    {groupedNotifications.older.map((notification) => (
-                      <NotificationItem
-                        key={notification.id}
-                        notification={notification}
-                        getNotificationIcon={getNotificationIcon}
-                        getNotificationContent={getNotificationContent}
-                        markAsRead={markAsRead}
-                        deleteNotification={deleteNotification}
-                      />
-                    ))}
+                {/* Load More Button */}
+                {hasMore && (
+                  <div className="flex justify-center mt-6">
+                    <Button
+                      variant="outline"
+                      onClick={loadMoreNotifications}
+                      disabled={isLoadingMore}
+                    >
+                      {isLoadingMore ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-primary mr-2"></div>
+                          Loading...
+                        </>
+                      ) : (
+                        "Load More Notifications"
+                      )}
+                    </Button>
                   </div>
                 )}
               </div>

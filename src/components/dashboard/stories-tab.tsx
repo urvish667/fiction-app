@@ -90,9 +90,9 @@ export function StoriesTab() {
                           {story.status === "ongoing" ? "Ongoing" : story.status === "completed" ? "Completed" : story.status}
                         </Badge>
                       </td>
-                      <td className="text-right py-4 px-4">{story.reads.toLocaleString()}</td>
-                      <td className="text-right py-4 px-4">{story.likes.toLocaleString()}</td>
-                      <td className="text-right py-4 px-4">{story.comments.toLocaleString()}</td>
+                      <td className="text-right py-4 px-4">{(story.viewCount || 0).toLocaleString()}</td>
+                      <td className="text-right py-4 px-4">{(story.likeCount || 0).toLocaleString()}</td>
+                      <td className="text-right py-4 px-4">{(story.commentCount || 0).toLocaleString()}</td>
                       <td className="text-right py-4 px-4">{formatDate(story.updatedAt)}</td>
                     </tr>
                   ))}

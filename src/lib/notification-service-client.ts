@@ -7,23 +7,13 @@
 
 import { logger } from '@/lib/logger';
 import { REDIS_CHANNELS, getRedisClient } from '@/lib/redis';
-
-/**
- * Parameters for creating a notification
- */
-export interface CreateNotificationParams {
-  userId: string;
-  type: string;
-  title: string;
-  message: string;
-  content?: Record<string, any>;
-}
+import { CreateNotificationParams } from '@/types/notification-types';
 
 /**
  * Create a notification and deliver it to the user
  */
 export async function createNotification(params: CreateNotificationParams): Promise<any> {
-  const { userId, type, title, message, content } = params;
+  const { userId, type, title, message, content, actorId } = params;
 
   try {
     // Create notification in database
@@ -39,6 +29,7 @@ export async function createNotification(params: CreateNotificationParams): Prom
       title,
       message,
       content: content || null,
+      actorId: actorId || null,
       read: false,
       createdAt: new Date(),
       updatedAt: new Date(),

@@ -16,7 +16,8 @@ FableSpace implements content sanitization for all user-generated content, inclu
 The application uses the following sanitization utilities from `src/lib/security/input-validation.ts`:
 
 - `sanitizeHtml(html)`: Uses DOMPurify to sanitize HTML content while preserving formatting
-- `sanitizeText(text)`: Removes HTML tags and encodes special characters
+- `sanitizeText(text)`: Removes HTML tags but preserves readable characters (quotes, apostrophes, etc.)
+- `sanitizeTextForHtml(text)`: Removes HTML tags and encodes special characters for safe HTML display
 - `sanitizeUrl(url)`: Validates URLs to prevent javascript: and data: URLs
 
 ## Implementation Details
@@ -36,6 +37,8 @@ Story titles and descriptions are sanitized using `sanitizeText()` before being 
 
 - `src/app/api/stories/route.ts` (POST endpoint)
 - `src/app/api/stories/[id]/route.ts` (PUT endpoint)
+
+The `sanitizeText()` function removes HTML tags but preserves normal characters like quotes and apostrophes, ensuring that user input remains readable while preventing XSS attacks.
 
 ### Comments
 
@@ -58,14 +61,15 @@ User input in authentication flows is sanitized using `sanitizeText()`:
 The application uses different sanitization strategies based on the content type:
 
 1. **Rich Text Content** (chapter content): Uses `sanitizeHtml()` to preserve formatting while removing malicious code
-2. **Plain Text Content** (titles, descriptions, comments): Uses `sanitizeText()` to remove all HTML tags
-3. **URLs** (links, images): Uses `sanitizeUrl()` to validate and sanitize URLs
+2. **Plain Text Content** (titles, descriptions, comments): Uses `sanitizeText()` to remove HTML tags while preserving readable characters
+3. **HTML Display Content**: Uses `sanitizeTextForHtml()` to encode special characters for safe HTML display
+4. **URLs** (links, images): Uses `sanitizeUrl()` to validate and sanitize URLs
 
 ## Advanced Validation Framework
 
 The application also includes a comprehensive validation framework in `src/lib/validation/api-validation.ts` that can automatically sanitize validated data based on field names:
 
-- Fields containing 'html', 'content', or 'description' use `sanitizeHtml()`
+- Fields containing 'html' or 'content' use `sanitizeHtml()`
 - Fields containing 'url', 'link', or 'website' use `sanitizeUrl()`
 - Other string fields use `sanitizeText()`
 

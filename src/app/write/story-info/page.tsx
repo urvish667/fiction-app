@@ -119,8 +119,8 @@ export default function StoryInfoPage() {
   const [justCreatedStory, setJustCreatedStory] = useState(false);
   const [chapters, setChapters] = useState<ChapterData[]>([]);
 
-  // Create debounced version of storyData for auto-save
-  const debouncedStoryData = useDebounce(storyData, 3000);
+  // Create debounced version of storyData for auto-save (increased delay)
+  const debouncedStoryData = useDebounce(storyData, 5000);
 
   // Fetch genres/languages/tags on mount
   useEffect(() => {
@@ -160,7 +160,7 @@ export default function StoryInfoPage() {
     setHasChanges(true);
 
     // If we have a valid number of tags and a story ID, trigger an immediate save
-    if (storyData.id && newTags.length >= 3 && newTags.length <= 10) {
+    if (storyData.id && newTags.length >= 3 && newTags.length <= 10 && !isSaving) {
       // Use setTimeout to ensure state is updated before saving
       setTimeout(() => {
         // Save the story data first
@@ -177,10 +177,12 @@ export default function StoryInfoPage() {
               logError(err, { context: 'Saving tags', storyId: savedStory.id })
             });
           }
+        }).catch(err => {
+          logError(err, { context: 'Saving story before tags', storyId: storyData.id })
         });
-      }, 100);
+      }, 500); // Increased delay to prevent conflicts
     }
-  }, [storyData.id, tags]);
+  }, [storyData.id, tags, isSaving]);
 
   const removeTag = useCallback((idx: number) => {
     // Update tags state
@@ -192,7 +194,7 @@ export default function StoryInfoPage() {
     setHasChanges(true);
 
     // If we have a story ID, trigger an immediate save
-    if (storyData.id) {
+    if (storyData.id && !isSaving) {
       // Use setTimeout to ensure state is updated before saving
       setTimeout(() => {
         // Save the story data first
@@ -209,10 +211,12 @@ export default function StoryInfoPage() {
               logError(err, { context: 'Saving tags', storyId: savedStory.id })
             });
           }
+        }).catch(err => {
+          logError(err, { context: 'Saving story before tags', storyId: storyData.id })
         });
-      }, 100);
+      }, 500); // Increased delay to prevent conflicts
     }
-  }, [storyData.id, tags]);
+  }, [storyData.id, tags, isSaving]);
 
   const handleTagInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setTagInput(e.target.value);
@@ -252,15 +256,27 @@ export default function StoryInfoPage() {
     validateTags();
   }, [tags, validateTags]);
 
-  // Auto-save effect
+  // Auto-save effect with improved conditions
   useEffect(() => {
     // Only auto-save if all required fields and tags are valid
-    const valid = debouncedStoryData.title.trim() && debouncedStoryData.description.trim() && debouncedStoryData.genre && tags.length >= 3 && tags.length <= 10;
-    if (valid && hasChanges && !isSaving && !justCreatedStory) {
+    const valid = debouncedStoryData.title.trim() &&
+                  debouncedStoryData.description.trim() &&
+                  debouncedStoryData.genre &&
+                  tags.length >= 3 &&
+                  tags.length <= 10;
+
+    // Additional checks to prevent excessive auto-saving
+    const shouldAutoSave = valid &&
+                          hasChanges &&
+                          !isSaving &&
+                          !justCreatedStory &&
+                          debouncedStoryData.id; // Only auto-save existing stories
+
+    if (shouldAutoSave) {
       const autoSaveTimeout = setTimeout(async () => {
         try {
-          const currentStoryData = { ...storyData };
-          const savedStory = await saveStoryData(false, currentStoryData);
+          // Use the debounced data for auto-save to avoid race conditions
+          const savedStory = await saveStoryData(false, debouncedStoryData);
           if (savedStory) {
             // Upsert tags after save
             await fetchWithCsrf('/api/tags/upsert', {
@@ -272,12 +288,18 @@ export default function StoryInfoPage() {
             });
           }
         } catch (error) {
-          logError(error, { context: 'Auto-save', storyId: storyData.id })
+          logError(error, {
+            context: 'Auto-save',
+            storyId: debouncedStoryData.id,
+            hasChanges,
+            isSaving,
+            justCreatedStory
+          });
         }
-      }, 500);
+      }, 1000); // Additional delay before auto-save
       return () => clearTimeout(autoSaveTimeout);
     }
-  }, [debouncedStoryData, hasChanges, isSaving, justCreatedStory, storyData, tags]);
+  }, [debouncedStoryData, hasChanges, isSaving, justCreatedStory, tags]);
 
   // Load existing story data if editing
   useEffect(() => {
@@ -653,7 +675,7 @@ export default function StoryInfoPage() {
           throw new Error(error.error || "Failed to remove cover image");
         }
 
-        const result = await response.json();
+        await response.json();
 
         // Update the state with the result
         setStoryData(prev => ({

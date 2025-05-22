@@ -124,23 +124,18 @@ export const POST = withCsrfProtection(async (
 
     // Create notification for the author (if not self-like)
     if (story.authorId !== session.user.id) {
-      await prisma.notification.create({
-        data: {
-          userId: story.authorId,
-          type: "chapter_like",
-          title: "New Chapter Like",
-          message: `${session.user.name || session.user.username} liked your chapter "${chapter.title}"`,
-        },
-      });
+      const { createChapterLikeNotification } = await import('@/lib/notification-helpers');
 
-      // Increment unread notifications count
-      await prisma.user.update({
-        where: { id: story.authorId },
-        data: {
-          unreadNotifications: {
-            increment: 1,
-          },
-        },
+      await createChapterLikeNotification({
+        recipientId: story.authorId,
+        actorId: session.user.id,
+        actorUsername: session.user.username || 'Someone',
+        storyId: story.id,
+        storyTitle: story.title,
+        storySlug: story.slug,
+        chapterId: chapter.id,
+        chapterNumber: chapter.number,
+        chapterTitle: chapter.title,
       });
     }
 

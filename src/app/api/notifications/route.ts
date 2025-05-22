@@ -31,8 +31,22 @@ export const GET = withApiLogging(async (request: NextRequest) => {
     // Parse query parameters
     const page = parseInt(searchParams.get("page") || "1");
     const limit = Math.min(parseInt(searchParams.get("limit") || "20"), 100); // Add upper limit for safety
-    const type = searchParams.get("type") || undefined;
+    let type = searchParams.get("type") || undefined;
     const readStatus = searchParams.get("read");
+
+    // Handle chapter type (temporarily disabled)
+    if (type === "chapter") {
+      // Return empty result for chapter notifications since they're disabled
+      return NextResponse.json({
+        notifications: [],
+        pagination: {
+          total: 0,
+          page,
+          limit,
+          pages: 0,
+        },
+      });
+    }
 
     // Get notifications using the service
     const result = await getNotifications(session.user.id, {

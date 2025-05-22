@@ -69,23 +69,17 @@ export async function POST(
 
       // Create notification for the comment author (if not self-like)
       if (comment.userId !== session.user.id) {
-        await tx.notification.create({
-          data: {
-            userId: comment.userId,
-            type: "comment_like",
-            title: "New Like",
-            message: `${session.user.name || session.user.username} liked your comment`,
-          },
-        });
+        const { createCommentLikeNotification } = await import('@/lib/notification-helpers');
 
-        // Increment unread notifications count
-        await tx.user.update({
-          where: { id: comment.userId },
-          data: {
-            unreadNotifications: {
-              increment: 1,
-            },
-          },
+        await createCommentLikeNotification({
+          recipientId: comment.userId,
+          actorId: session.user.id,
+          actorUsername: session.user.username || 'Someone',
+          commentId: comment.id,
+          comment: comment.content,
+          storyId: comment.storyId,
+          storyTitle: comment.story.title,
+          storySlug: comment.story.slug,
         });
       }
 

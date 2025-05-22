@@ -11,6 +11,8 @@ import { Chapter } from "@/types/story";
 import { Prisma } from "@prisma/client";
 import { logError } from "@/lib/error-logger";
 import { sanitizeHtml } from "@/lib/security/input-validation";
+// Temporarily commented out for performance improvement
+// import { queueFollowerNotificationsAboutNewChapter } from "@/lib/chapter-notification-service";
 
 // Define the params type for route handlers
 type ChapterRouteParams = { params: Promise<{ id: string; chapterId: string }> };
@@ -27,6 +29,7 @@ const updateChapterSchema = z.object({
     z.date(),
     z.null()
   ]).optional(),
+  notifyFollowers: z.boolean().optional(),
 });
 
 // GET endpoint to retrieve a specific chapter
@@ -353,6 +356,20 @@ export async function PUT(
           data: { status: newStoryStatus }
         });
       }
+
+      // If the chapter is being published, queue notifications to followers
+      // Temporarily commented out to improve performance
+      /*
+      if (validatedData.status === 'published' && chapter.status !== 'published') {
+        // Queue notifications to followers (async operation)
+        await queueFollowerNotificationsAboutNewChapter(
+          storyId,
+          chapterId,
+          session.user.id,
+          validatedData.notifyFollowers !== false // Default to true if not specified
+        );
+      }
+      */
     }
 
     return NextResponse.json(chapterWithContent);
