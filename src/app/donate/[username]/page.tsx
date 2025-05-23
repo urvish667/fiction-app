@@ -3,6 +3,7 @@
 import type React from "react"
 import { useState, useEffect } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
+import { useSession } from "next-auth/react"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,7 +13,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Textarea } from "@/components/ui/textarea"
 import { Heart, AlertCircle, Loader2 } from "lucide-react"
 import Navbar from "@/components/navbar"
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/hooks/use-toast"
 import { UnifiedPaymentForm } from "@/components/payments/UnifiedPaymentForm"
 import { fetchWithCsrf } from "@/lib/client/csrf"
 import { logError } from "@/lib/error-logger"
@@ -42,6 +43,7 @@ interface Writer {
 export default function DonatePage() {
   const params = useParams<{ username: string }>()
   const router = useRouter()
+  const { data: session, status } = useSession()
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(true)
   const [writer, setWriter] = useState<Writer | null>(null)
@@ -143,7 +145,22 @@ export default function DonatePage() {
    */
   const handleDonate = async () => {
     try {
-      // 1. Validate amount
+      // 1. Check if user is authenticated
+      if (status === "loading") {
+        // Still loading session, wait a moment
+        return
+      }
+
+      if (!session) {
+        toast({
+          title: "Login Required",
+          description: "Please log in to support this author",
+          variant: "destructive",
+        })
+        return
+      }
+
+      // 2. Validate amount
       const amount = donationAmount === "custom" ? Number.parseFloat(customAmount) : Number.parseFloat(donationAmount)
 
       if (isNaN(amount) || amount < 1) {
@@ -159,7 +176,7 @@ export default function DonatePage() {
       setError("")
       setIsProcessing(true)
 
-      // 2. Process payment through unified payment gateway
+      // 3. Process payment through unified payment gateway
       const response = await fetchWithCsrf('/api/donations/create', {
         method: 'POST',
         headers: {
@@ -180,7 +197,7 @@ export default function DonatePage() {
         throw new Error(data.message || 'Failed to create donation')
       }
 
-      // 3. Handle response based on payment processor type
+      // 4. Handle response based on payment processor type
       if (data.processorType === 'stripe' && data.clientSecret) {
         // Handle Stripe payment
         setClientSecret(data.clientSecret)

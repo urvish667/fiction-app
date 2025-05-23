@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/hooks/use-toast"
 import { Editor } from "@/components/editor"
 import { StoryService } from "@/services/story-service"
 import { useChapterEditor } from "@/hooks/use-chapter-editor"

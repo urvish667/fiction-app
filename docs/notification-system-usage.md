@@ -123,9 +123,7 @@ function MyComponent() {
     error,
     activeTab,
     setActiveTab,
-    markAsRead,
-    markAllAsRead,
-    deleteNotification,
+    markAsReadAndDelete,
 
   } = useNotifications();
 

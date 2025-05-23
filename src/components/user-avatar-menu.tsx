@@ -35,23 +35,6 @@ export default function UserAvatarMenu({ user, onLogout }: UserAvatarMenuProps) 
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [isPulsing, setIsPulsing] = useState(false)
 
-  // Log notification count for debugging
-  useEffect(() => {
-    console.log("Unread notifications count:", user.unreadNotifications);
-  }, [user.unreadNotifications]);
-
-  // Add pulsing animation effect for notification badge
-  useEffect(() => {
-    if (user.unreadNotifications > 0) {
-      // Start pulsing animation
-      const pulseInterval = setInterval(() => {
-        setIsPulsing(prev => !prev)
-      }, 2000) // Toggle every 2 seconds
-
-      return () => clearInterval(pulseInterval)
-    }
-  }, [user.unreadNotifications])
-
   const handleLogout = async () => {
     try {
       setIsLoggingOut(true)

@@ -15,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/hooks/use-toast"
 import { PublishSettings } from "@/hooks/use-chapter-editor"
 
 interface PublishDialogProps {
@@ -149,7 +149,7 @@ export const PublishDialog = React.memo(function PublishDialog({
             </div>
           )}
 
-          <div className="flex items-center space-x-2">
+          {/* <div className="flex items-center space-x-2">
             <Checkbox
               id="notifyFollowers"
               checked={extendedSettings.notifyFollowers}
@@ -159,7 +159,7 @@ export const PublishDialog = React.memo(function PublishDialog({
               <Bell size={16} />
               Notify followers when published
             </Label>
-          </div>
+          </div> */}
 
           <div className="bg-muted/30 p-4 rounded-md">
             <div className="flex items-center gap-2 mb-2">

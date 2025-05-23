@@ -7,7 +7,6 @@ import { logError, logInfo } from "@/lib/error-logger";
 
 interface UseNotificationsProps {
   useMockData?: boolean;
-  initialType?: string;
   useWebSocket?: boolean;
 }
 
@@ -16,7 +15,6 @@ interface UseNotificationsProps {
  */
 export function useNotifications({
   useMockData = false,
-  initialType = "all",
   useWebSocket = true
 }: UseNotificationsProps = {}) {
   const { data: session } = useSession();
@@ -26,7 +24,6 @@ export function useNotifications({
   const [loading, setLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState(initialType);
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 20,
@@ -42,16 +39,10 @@ export function useNotifications({
       }
       setError(null);
 
-      // Build query parameters based on active tab
+      // Build query parameters
       let queryParams = new URLSearchParams();
       queryParams.append("page", reset ? "1" : (pagination.page + 1).toString());
       queryParams.append("limit", pagination.limit.toString());
-
-      if (activeTab === "unread") {
-        queryParams.append("read", "false");
-      } else if (activeTab !== "all") {
-        queryParams.append("type", activeTab);
-      }
 
       const response = await fetch(`/api/notifications?${queryParams.toString()}`);
 
@@ -82,22 +73,19 @@ export function useNotifications({
         setLoading(false);
       }
     }
-  }, [activeTab, useMockData, pagination.page, pagination.limit]);
+  }, [useMockData, pagination.page, pagination.limit]);
 
-  // Mark notification as read
-  const markAsRead = useCallback(async (id: string) => {
+  // Mark as read and delete notification (combined action)
+  const markAsReadAndDelete = useCallback(async (id: string) => {
     if (useMockData) {
-      // Update mock data
-      setNotifications(
-        notifications.map((notification) =>
-          notification.id === id ? { ...notification, read: true } : notification
-        )
-      );
+      // Update mock data - just remove the notification
+      setNotifications(prev => prev.filter((notification) => notification.id !== id));
       return;
     }
 
     try {
-      const response = await fetchWithCsrf("/api/notifications/mark-read", {
+      // First mark as read, then delete
+      const markReadResponse = await fetchWithCsrf("/api/notifications/mark-read", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -105,98 +93,38 @@ export function useNotifications({
         body: JSON.stringify({ ids: [id] }),
       });
 
-      if (!response.ok) {
-        throw new Error(`Failed to mark notification as read: ${response.status}`);
+      if (!markReadResponse.ok) {
+        throw new Error(`Failed to mark notification as read: ${markReadResponse.status}`);
       }
 
-      // Update local state
-      setNotifications(
-        notifications.map((notification) =>
-          notification.id === id ? { ...notification, read: true } : notification
-        )
-      );
+      // Then delete the notification
+      const deleteResponse = await fetchWithCsrf(`/api/notifications/${id}`, {
+        method: "DELETE",
+      });
 
-      // Send WebSocket message if connected
+      if (!deleteResponse.ok) {
+        throw new Error(`Failed to delete notification: ${deleteResponse.status}`);
+      }
+
+      // Update local state - remove the notification using functional update
+      setNotifications(prev => prev.filter((notification) => notification.id !== id));
+
+      // Send WebSocket messages if connected
       const wsClient = getWebSocketClient();
       if (wsClient && wsClient.getStatus() === WebSocketStatus.CONNECTED) {
         wsClient.send({
           type: 'mark_read',
           id,
         });
-      }
-    } catch (err) {
-      logError(err, { context: 'Error marking notification as read' });
-    }
-  }, [notifications, useMockData]);
-
-  // Mark all notifications as read
-  const markAllAsRead = useCallback(async () => {
-    if (useMockData) {
-      // Update mock data
-      setNotifications(notifications.map((notification) => ({ ...notification, read: true })));
-      return;
-    }
-
-    try {
-      const response = await fetchWithCsrf("/api/notifications/mark-read", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ all: true }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to mark all notifications as read: ${response.status}`);
-      }
-
-      // Update local state
-      setNotifications(notifications.map((notification) => ({ ...notification, read: true })));
-
-      // Send WebSocket message if connected
-      const wsClient = getWebSocketClient();
-      if (wsClient && wsClient.getStatus() === WebSocketStatus.CONNECTED) {
-        wsClient.send({
-          type: 'mark_all_read',
-        });
-      }
-    } catch (err) {
-      logError(err, { context: 'Error marking all notifications as read' });
-    }
-  }, [notifications, useMockData]);
-
-  // Delete notification
-  const deleteNotification = useCallback(async (id: string) => {
-    if (useMockData) {
-      // Update mock data
-      setNotifications(notifications.filter((notification) => notification.id !== id));
-      return;
-    }
-
-    try {
-      const response = await fetchWithCsrf(`/api/notifications/${id}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to delete notification: ${response.status}`);
-      }
-
-      // Update local state
-      setNotifications(notifications.filter((notification) => notification.id !== id));
-
-      // Send WebSocket message if connected
-      const wsClient = getWebSocketClient();
-      if (wsClient && wsClient.getStatus() === WebSocketStatus.CONNECTED) {
         wsClient.send({
           type: 'delete',
           id,
         });
       }
     } catch (err) {
-      logError(err, { context: 'Error deleting notification' });
+      logError(err, { context: 'Error marking notification as read and deleting' });
     }
-  }, [notifications, useMockData]);
+  }, [useMockData]);
 
   // Load more notifications
   const loadMoreNotifications = useCallback(async () => {
@@ -212,43 +140,10 @@ export function useNotifications({
     }
   }, [pagination.hasMore, isLoadingMore, fetchNotifications]);
 
-  // Filter notifications based on active tab
-  const getFilteredNotificationsByType = useCallback(() => {
-    switch (activeTab) {
-      case "unread":
-        return notifications.filter((notification) => !notification.read);
-      case "like":
-        return notifications.filter((notification) =>
-          notification.type === "like" ||
-          notification.type === "chapter_like" ||
-          notification.type === "comment_like"
-        );
-      case "comment":
-        return notifications.filter((notification) =>
-          notification.type === "comment" ||
-          notification.type === "chapter_comment" ||
-          notification.type === "reply" ||
-          notification.type === "chapter_reply"
-        );
-      case "follow":
-        return notifications.filter((notification) => notification.type === "follow");
-      // Chapter notifications are temporarily disabled
-      case "chapter":
-        // Return empty array since chapter notifications are disabled
-        return [];
-      case "donation":
-        return notifications.filter((notification) => notification.type === "donation");
-      case "system":
-        return notifications.filter((notification) => notification.type === "system");
-      default:
-        return notifications;
-    }
-  }, [activeTab, notifications]);
-
-  // Get flat list of filtered notifications
+  // Get all notifications (no filtering)
   const getFilteredNotifications = useCallback(() => {
-    return getFilteredNotificationsByType();
-  }, [getFilteredNotificationsByType]);
+    return notifications;
+  }, [notifications]);
 
   // Group notifications by date
   const groupNotificationsByDate = useCallback(() => {
@@ -272,11 +167,11 @@ export function useNotifications({
       older: [],
     };
 
-    // Get filtered notifications based on active tab
-    const filtered = getFilteredNotificationsByType();
+    // Get all notifications
+    const filtered = getFilteredNotifications();
 
     // Group by date
-    filtered.forEach((notification) => {
+    filtered.forEach((notification: Notification) => {
       const date = new Date(notification.createdAt);
 
       if (date >= today) {
@@ -293,7 +188,7 @@ export function useNotifications({
     });
 
     return groups;
-  }, [getFilteredNotificationsByType]);
+  }, [getFilteredNotifications]);
 
   // Handle WebSocket messages
   const handleWebSocketMessage = useCallback((data: any) => {
@@ -409,12 +304,10 @@ export function useNotifications({
     };
   }, [session, useMockData, useWebSocket, handleWebSocketMessage]);
 
-  // Fetch notifications on mount and when activeTab changes
+  // Fetch notifications on mount
   useEffect(() => {
-    // Reset pagination when tab changes
-    setPagination(prev => ({ ...prev, page: 1 }));
     fetchNotifications(true);
-  }, [activeTab, useMockData]);
+  }, [fetchNotifications]);
 
   // Set up polling for notifications as fallback when WebSocket is not connected
   useEffect(() => {
@@ -502,11 +395,7 @@ export function useNotifications({
     loading,
     isLoadingMore,
     error,
-    activeTab,
-    setActiveTab,
-    markAsRead,
-    markAllAsRead,
-    deleteNotification,
+    markAsReadAndDelete,
     loadMoreNotifications,
     hasMore: pagination.hasMore,
     pagination,

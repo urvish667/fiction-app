@@ -12,7 +12,7 @@ import { Image } from "@tiptap/extension-image"
 import Link from "@tiptap/extension-link"
 import TextAlign from "@tiptap/extension-text-align"
 import { ImageUpload } from "@/lib/image-upload"
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import {
   Bold,

@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button"
 import { Filter, Grid, List } from "lucide-react"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { StoryService } from "@/services/story-service"
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/hooks/use-toast"
 
 // Import UserSummary type
 import { UserSummary } from "@/types/user"

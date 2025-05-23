@@ -5,8 +5,9 @@ import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-
 import { loadStripe, StripeError } from "@stripe/stripe-js"
 import { Button } from "@/components/ui/button"
 import { Loader2 } from "lucide-react"
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/hooks/use-toast"
 import { logger } from "@/lib/logger"
+import { fetchWithCsrf } from "@/lib/client/csrf"
 
 /**
  * Get a user-friendly error message for Stripe errors
@@ -64,12 +65,16 @@ if (typeof window !== 'undefined') {
 
 interface StripePaymentFormProps {
   clientSecret: string
+  recipientId: string
+  amount: number
+  message?: string
+  storyId?: string | null
+  storyTitle?: string | null
   onSuccess: () => void
   onError: (error: Error) => void
-  storyTitle?: string | null
 }
 
-function PaymentForm({ onSuccess, onError, storyTitle }: Omit<StripePaymentFormProps, 'clientSecret'>) {
+function PaymentForm({ recipientId, amount, message, storyId, storyTitle, onSuccess, onError }: Omit<StripePaymentFormProps, 'clientSecret'>) {
   const stripe = useStripe()
   const elements = useElements()
   const { toast } = useToast()
@@ -159,17 +164,56 @@ function PaymentForm({ onSuccess, onError, storyTitle }: Omit<StripePaymentFormP
         // Pass the error to the parent component
         onError(new Error(friendlyErrorMessage));
       } else if (result.paymentIntent && result.paymentIntent.status === 'succeeded') {
-        // Payment succeeded
-        toast({
-          title: "Payment Successful!",
-          description: "Your donation has been processed successfully. Thank you for your support!",
-          variant: "default",
-        });
+        // Payment succeeded - record the donation and create notification
+        try {
+          const response = await fetchWithCsrf('/api/donations/record-stripe', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              recipientId: recipientId,
+              amount: amount,
+              message: message,
+              storyId: storyId,
+              stripePaymentIntentId: result.paymentIntent.id,
+            }),
+          });
 
-        // Add a small delay before calling onSuccess to ensure the user sees the toast
-        setTimeout(() => {
-          onSuccess();
-        }, 1500);
+          const responseData = await response.json();
+
+          if (!response.ok) {
+            // The payment was successful, but we failed to record it
+            // We should still consider this a success from the user's perspective
+            logger.error('Failed to record Stripe payment:', responseData);
+          }
+
+          // Payment successful - show a toast notification
+          toast({
+            title: "Payment Successful!",
+            description: "Your donation has been processed successfully. Thank you for your support!",
+            variant: "default",
+          });
+
+          // Add a small delay before calling onSuccess to ensure the user sees the toast
+          setTimeout(() => {
+            onSuccess();
+          }, 1500);
+        } catch (recordingError) {
+          logger.error('Error recording Stripe payment:', recordingError);
+
+          // Even if recording fails, the payment was successful
+          // Show success message but log the error
+          toast({
+            title: "Payment Successful!",
+            description: "Your donation has been processed successfully. Thank you for your support!",
+            variant: "default",
+          });
+
+          setTimeout(() => {
+            onSuccess();
+          }, 1500);
+        }
       }
     } catch (err) {
       // Handle unexpected errors
@@ -238,7 +282,7 @@ function PaymentForm({ onSuccess, onError, storyTitle }: Omit<StripePaymentFormP
   )
 }
 
-export function StripePaymentForm({ clientSecret, onSuccess, onError, storyTitle }: StripePaymentFormProps) {
+export function StripePaymentForm({ clientSecret, recipientId, amount, message, storyId, storyTitle, onSuccess, onError }: StripePaymentFormProps) {
   const { toast } = useToast();
   const [isReady, setIsReady] = useState(false);
 
@@ -279,7 +323,15 @@ export function StripePaymentForm({ clientSecret, onSuccess, onError, storyTitle
     <div className="w-full">
 
       <Elements stripe={stripePromise} options={{ clientSecret }}>
-        <PaymentForm onSuccess={onSuccess} onError={onError} storyTitle={storyTitle} />
+        <PaymentForm
+          recipientId={recipientId}
+          amount={amount}
+          message={message}
+          storyId={storyId}
+          storyTitle={storyTitle}
+          onSuccess={onSuccess}
+          onError={onError}
+        />
       </Elements>
     </div>
   );

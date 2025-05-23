@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Heart, MoreVertical, Flag, Trash, Reply, Edit, AlertCircle } from "lucide-react"
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/hooks/use-toast"
 import { CommentService } from "@/services/comment-service"
 import { Comment } from "@/types/story"
 import { logError } from "@/lib/error-logger"
@@ -19,6 +19,9 @@ interface CommentSectionProps {
   isChapterComment?: boolean
 }
 
+const INITIAL_LOAD_COUNT = 2
+const LOAD_MORE_COUNT = 3
+
 export default function CommentSection({ storyId, chapterId, isChapterComment = false }: CommentSectionProps) {
   const { data: session } = useSession()
   const router = useRouter()
@@ -26,9 +29,8 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
 
   const [comments, setComments] = useState<Comment[]>([])
   const [newComment, setNewComment] = useState("")
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [editingComment, setEditingComment] = useState<string | null>(null)
@@ -44,9 +46,9 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
   // Determine if we're in chapter comment mode
   const isChapter = isChapterComment && !!chapterId
 
-  // Fetch comments
+  // Load initial comments (first 2)
   useEffect(() => {
-    const fetchComments = async () => {
+    const fetchInitialComments = async () => {
       setIsLoading(true)
       setError(null)
 
@@ -54,64 +56,63 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
         let response;
 
         if (isChapter && chapterId) {
-          // Fetch chapter comments
           response = await CommentService.getChapterComments(storyId, chapterId, {
             page: 1,
-            limit: 10,
-            parentId: null // Only fetch top-level comments
+            limit: INITIAL_LOAD_COUNT,
+            parentId: null
           });
         } else {
-          // Fetch story comments
           response = await CommentService.getComments(storyId, {
             page: 1,
-            limit: 10,
-            parentId: null // Only fetch top-level comments
+            limit: INITIAL_LOAD_COUNT,
+            parentId: null
           });
         }
 
         setComments(response.comments)
         setHasMore(response.pagination.hasMore)
-        setPage(1)
       } catch (err) {
-        logError(err, { context: 'Fetching comments', storyId, chapterId })
+        logError(err, { context: 'Fetching initial comments', storyId, chapterId })
         setError(`Failed to load ${isChapter ? 'chapter' : 'story'} comments`)
       } finally {
         setIsLoading(false)
       }
     }
 
-    fetchComments()
+    fetchInitialComments()
   }, [storyId, chapterId, isChapter])
 
-  // Load more comments
+  // Load more comments (3 at a time)
   const loadMoreComments = async () => {
     if (!hasMore || isLoading) return
 
     try {
       setIsLoading(true)
-      const nextPage = page + 1
+
+      // Calculate the next page based on current comments loaded
+      // First load was 2 comments (page 1), subsequent loads are 3 comments each
+      const nextPage = comments.length <= INITIAL_LOAD_COUNT
+        ? 2
+        : Math.floor((comments.length - INITIAL_LOAD_COUNT) / LOAD_MORE_COUNT) + 2
 
       let response;
 
       if (isChapter && chapterId) {
-        // Load more chapter comments
         response = await CommentService.getChapterComments(storyId, chapterId, {
           page: nextPage,
-          limit: 10,
+          limit: LOAD_MORE_COUNT,
           parentId: null
         });
       } else {
-        // Load more story comments
         response = await CommentService.getComments(storyId, {
           page: nextPage,
-          limit: 10,
+          limit: LOAD_MORE_COUNT,
           parentId: null
         });
       }
 
-      setComments([...comments, ...response.comments])
+      setComments(prev => [...prev, ...response.comments])
       setHasMore(response.pagination.hasMore)
-      setPage(nextPage)
     } catch (err) {
       logError(err, { context: 'Loading more comments', storyId, chapterId })
       toast({
@@ -376,13 +377,9 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
     try {
       setIsSubmitting(true)
 
-      // This would be your actual API call
-      // const updatedReply = await CommentService.updateComment(replyId, {
-      //   content: editReplyContent
-      // })
-
-      // For now, simulate a successful update
-      await new Promise(resolve => setTimeout(resolve, 300))
+      const updatedReply = await CommentService.updateComment(replyId, {
+        content: editReplyContent
+      })
 
       // Update the reply in the UI
       setExpandedReplies(prev => {
@@ -391,10 +388,7 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
         if (newState[commentId]) {
           newState[commentId] = newState[commentId].map(reply => {
             if (reply.id === replyId) {
-              return {
-                ...reply,
-                content: editReplyContent
-              }
+              return updatedReply
             }
             return reply
           })
@@ -428,11 +422,7 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
     if (!session) return
 
     try {
-      // This would be your actual API call
-      // await CommentService.deleteComment(replyId)
-
-      // For now, simulate a successful delete
-      await new Promise(resolve => setTimeout(resolve, 300))
+      await CommentService.deleteComment(replyId)
 
       // Remove the reply from the UI
       setExpandedReplies(prev => {
@@ -509,25 +499,40 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
   }
 
   // Format date
-  const formatDate = (dateInput: Date | string) => {
-    const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput
-    const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffSecs = Math.floor(diffMs / 1000)
-    const diffMins = Math.floor(diffSecs / 60)
-    const diffHours = Math.floor(diffMins / 60)
-    const diffDays = Math.floor(diffHours / 24)
+  const formatDate = (dateInput: Date | string | undefined | null) => {
+    // Handle null, undefined, or empty string
+    if (!dateInput) {
+      return "Unknown time";
+    }
 
-    if (diffSecs < 60) return "just now"
-    if (diffMins < 60) return `${diffMins}m ago`
-    if (diffHours < 24) return `${diffHours}h ago`
-    if (diffDays < 7) return `${diffDays}d ago`
+    try {
+      const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput
 
-    return new Intl.DateTimeFormat("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    }).format(date)
+      // Check if the date is valid
+      if (isNaN(date.getTime())) {
+        return "Unknown time";
+      }
+
+      const now = new Date()
+      const diffMs = now.getTime() - date.getTime()
+      const diffSecs = Math.floor(diffMs / 1000)
+      const diffMins = Math.floor(diffSecs / 60)
+      const diffHours = Math.floor(diffMins / 60)
+      const diffDays = Math.floor(diffHours / 24)
+
+      if (diffSecs < 60) return "just now"
+      if (diffMins < 60) return `${diffMins}m ago`
+      if (diffHours < 24) return `${diffHours}h ago`
+      if (diffDays < 7) return `${diffDays}d ago`
+
+      return new Intl.DateTimeFormat("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }).format(date)
+    } catch (error) {
+      return "Unknown time";
+    }
   }
 
   if (isLoading && comments.length === 0) {
@@ -546,6 +551,8 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
       </div>
     )
   }
+
+
 
   return (
     <div className="space-y-6">
@@ -578,8 +585,16 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
         </div>
       </div>
 
-      {/* Comments list */}
-      {comments.length > 0 ? (
+      {/* Loading state for initial fetch */}
+      {isLoading && comments.length === 0 ? (
+        <div className="text-center py-8 bg-muted/30 rounded-lg">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary mx-auto mb-2"></div>
+          <p className="text-muted-foreground">Loading comments...</p>
+        </div>
+      ) : (
+        <>
+          {/* Comments list */}
+          {comments.length > 0 ? (
         <div className="space-y-6">
           {comments.map((comment) => (
             <div key={comment.id} className="flex gap-4">
@@ -641,7 +656,39 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
                     </DropdownMenu>
                   </div>
 
-                  <p className="text-sm">{comment.content}</p>
+                  {/* Comment content - show edit form if editing */}
+                  {editingComment === comment.id ? (
+                    <div className="space-y-2">
+                      <Textarea
+                        value={editContent}
+                        onChange={(e) => setEditContent(e.target.value)}
+                        className="resize-none text-sm"
+                        disabled={isSubmitting}
+                      />
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setEditingComment(null);
+                            setEditContent("");
+                          }}
+                          disabled={isSubmitting}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => handleEditComment(comment.id)}
+                          disabled={!editContent.trim() || isSubmitting}
+                        >
+                          {isSubmitting ? "Saving..." : "Save"}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm">{comment.content}</p>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-2 mt-2 ml-2">
@@ -875,9 +922,11 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
           )}
         </div>
       ) : (
-        <div className="text-center py-8 bg-muted/30 rounded-lg">
-          <p className="text-muted-foreground">No comments yet. Be the first to comment!</p>
-        </div>
+            <div className="text-center py-8 bg-muted/30 rounded-lg">
+              <p className="text-muted-foreground">No comments yet. Be the first to comment!</p>
+            </div>
+          )}
+        </>
       )}
     </div>
   )

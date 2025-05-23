@@ -7,17 +7,18 @@ import { logger } from '@/lib/logger';
 import { createDonationNotification } from '@/lib/notification-helpers';
 
 // Schema for the request body
-const recordPaypalSchema = z.object({
+const recordStripeSchema = z.object({
   recipientId: z.string().min(1, { message: 'Recipient ID is required' }),
   amount: z.number().positive({ message: 'Amount must be positive' }).int({ message: 'Amount must be an integer (in cents)' }),
   message: z.string().optional(),
   storyId: z.string().optional(),
-  paypalOrderId: z.string().min(1, { message: 'PayPal order ID is required' }),
-  paypalTransactionId: z.string().optional(),
+  stripePaymentIntentId: z.string().min(1, { message: 'Stripe payment intent ID is required' }),
 });
 
 /**
- * API endpoint for recording a successful PayPal payment
+ * API endpoint for recording a successful Stripe payment
+ * This provides primary notification creation for Stripe donations,
+ * matching the robustness of the PayPal flow
  */
 export async function POST(req: Request) {
   try {
@@ -33,7 +34,7 @@ export async function POST(req: Request) {
 
     // 2. Validate request body
     const body = await req.json();
-    const validation = recordPaypalSchema.safeParse(body);
+    const validation = recordStripeSchema.safeParse(body);
 
     if (!validation.success) {
       return NextResponse.json({
@@ -44,7 +45,7 @@ export async function POST(req: Request) {
     }
 
     // 3. Extract validated data
-    const { recipientId, amount, message, storyId, paypalOrderId } = validation.data;
+    const { recipientId, amount, message, storyId, stripePaymentIntentId } = validation.data;
 
     // 4. Fetch recipient's donation settings
     const recipient = await prisma.user.findUnique({
@@ -66,7 +67,7 @@ export async function POST(req: Request) {
     // 5. Check if this payment has already been recorded
     const existingDonation = await prisma.donation.findFirst({
       where: {
-        paypalOrderId: paypalOrderId,
+        stripePaymentIntentId: stripePaymentIntentId,
       },
     });
 
@@ -119,16 +120,18 @@ export async function POST(req: Request) {
             storySlug: updatedDonation.story?.slug,
           });
 
-          logger.info('PayPal donation notification created for updated donation', {
+          logger.info('Stripe donation notification created for updated donation', {
             donationId: updatedDonation.id,
             recipientId: updatedDonation.recipientId,
-            donorId: updatedDonation.donorId
+            donorId: updatedDonation.donorId,
+            paymentIntentId: stripePaymentIntentId
           });
         }
       } catch (notificationError) {
-        logger.error('Failed to create notification for updated PayPal donation', {
+        logger.error('Failed to create notification for updated Stripe donation', {
           error: notificationError instanceof Error ? notificationError.message : String(notificationError),
-          donationId: updatedDonation.id
+          donationId: updatedDonation.id,
+          paymentIntentId: stripePaymentIntentId
         });
         // Don't fail the request if notification creation fails
       }
@@ -149,8 +152,8 @@ export async function POST(req: Request) {
         message: message || null,
         storyId: storyId || null,
         status: 'succeeded',
-        paymentMethod: 'paypal',
-        paypalOrderId,
+        paymentMethod: 'stripe',
+        stripePaymentIntentId,
       },
       include: {
         donor: {
@@ -180,18 +183,20 @@ export async function POST(req: Request) {
         storySlug: donation.story?.slug,
       });
 
-      logger.info('PayPal donation notification created for new donation', {
+      logger.info('Stripe donation notification created for new donation', {
         donationId: donation.id,
         recipientId: donation.recipientId,
         donorId: donation.donorId,
-        amount: donation.amount
+        amount: donation.amount,
+        paymentIntentId: stripePaymentIntentId
       });
     } catch (notificationError) {
-      logger.error('Failed to create notification for new PayPal donation', {
+      logger.error('Failed to create notification for new Stripe donation', {
         error: notificationError instanceof Error ? notificationError.message : String(notificationError),
         donationId: donation.id,
         recipientId: donation.recipientId,
-        donorId: donation.donorId
+        donorId: donation.donorId,
+        paymentIntentId: stripePaymentIntentId
       });
       // Don't fail the request if notification creation fails
     }
@@ -204,7 +209,7 @@ export async function POST(req: Request) {
     });
 
   } catch (error) {
-    logger.error('Error recording PayPal payment:', error);
+    logger.error('Error recording Stripe payment:', error);
     return NextResponse.json({
       error: 'Internal Server Error',
       message: 'An unexpected error occurred while recording your payment'

@@ -9,7 +9,7 @@ import { useSession } from "next-auth/react"
 
 // UI Components
 import { Button } from "@/components/ui/button"
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/hooks/use-toast"
 import MatureContentDialog, { needsMatureContentConsent } from "@/components/mature-content-dialog"
 
 // App Components

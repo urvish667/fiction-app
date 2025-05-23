@@ -1,13 +1,10 @@
 import { prisma } from '@/lib/prisma';
 import { Notification } from '@prisma/client';
-import { REDIS_CHANNELS, getRedisClient } from './redis';
+import { REDIS_CHANNELS, REDIS_KEYS, getRedisClient } from './redis';
 import { logger } from '@/lib/logger';
-import { createNotification as createNotificationExternal, queueNotification as queueNotificationExternal } from './notification-service-client';
+import { queueNotification as queueNotificationExternal } from './notification-service-client';
 import {
-  CreateNotificationParams,
-  NotificationType,
-  EnhancedNotification,
-  NotificationContent
+  CreateNotificationParams
 } from '@/types/notification-types';
 
 /**
@@ -94,6 +91,9 @@ export async function createNotification(params: CreateNotificationParams): Prom
 
             // Delete unread count cache
             await redisClient.del(`user:unread_count:${userId}`);
+
+            // Invalidate session cache by publishing an event
+            await redisClient.publish('session_invalidate', JSON.stringify({ userId, reason: 'new_notification' }));
           } catch (cacheError) {
             logger.warn('Failed to invalidate notification caches:', cacheError);
           }
@@ -171,6 +171,9 @@ export async function markNotificationsAsRead(userId: string, notificationIds?: 
 
             // Delete unread count cache
             await redisClient.del(`user:unread_count:${userId}`);
+
+            // Invalidate session cache by publishing an event
+            await redisClient.publish('session_invalidate', JSON.stringify({ userId, reason: 'notifications_read' }));
           } catch (cacheError) {
             logger.warn('Failed to invalidate notification caches:', cacheError);
           }
@@ -233,6 +236,7 @@ export async function deleteNotification(userId: string, notificationId: string)
             userId,
             type: 'delete',
             id: notificationId,
+            wasUnread: notification && !notification.read, // Include whether it was unread
           })
         );
 
@@ -250,6 +254,9 @@ export async function deleteNotification(userId: string, notificationId: string)
             // Delete unread count cache if notification was unread
             if (notification && !notification.read) {
               await redisClient.del(`user:unread_count:${userId}`);
+
+              // Invalidate session cache by publishing an event
+              await redisClient.publish('session_invalidate', JSON.stringify({ userId, reason: 'notification_deleted' }));
             }
           } catch (cacheError) {
             logger.warn('Failed to invalidate notification caches:', cacheError);
@@ -503,6 +510,9 @@ export async function createNotificationBatch(
 
         // Delete unread count cache
         await redisClient.del(`user:unread_count:${userId}`);
+
+        // Invalidate session cache by publishing an event
+        await redisClient.publish('session_invalidate', JSON.stringify({ userId, reason: 'new_notifications' }));
       }
     }
 

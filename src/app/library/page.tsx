@@ -11,7 +11,7 @@ import Navbar from "@/components/navbar"
 import StoryCard from "@/components/story-card"
 import StoryCardSkeleton from "@/components/story-card-skeleton"
 import { StoryService } from "@/services/story-service"
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/hooks/use-toast"
 import { logError } from "@/lib/error-logger"
 
 export default function LibraryPage() {

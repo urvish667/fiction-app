@@ -3,11 +3,10 @@
 import { useState } from "react"
 import { motion } from "framer-motion"
 import { Mail, Send } from "lucide-react"
-import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/hooks/use-toast"
 import Navbar from "@/components/navbar"
 import { SiteFooter } from "@/components/site-footer"
 

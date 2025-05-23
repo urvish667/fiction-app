@@ -111,12 +111,16 @@ export function UnifiedPaymentForm({
       <div className="payment-form-container">
         <StripePaymentForm
           clientSecret={clientSecret}
+          recipientId={recipientId}
+          amount={amount}
+          message={message}
+          storyId={storyId}
+          storyTitle={storyTitle}
           onSuccess={onSuccess}
           onError={(error) => {
             setError(error.message)
             onError(error)
           }}
-          storyTitle={storyTitle}
         />
       </div>
     )

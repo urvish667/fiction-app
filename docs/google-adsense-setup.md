@@ -20,19 +20,47 @@ Replace `ca-pub-xxxxxxxxxxxxxxxx` with your actual Google AdSense Publisher ID. 
 
 ### Implementation Details
 
-The Google AdSense script is loaded in the root layout component (`src/app/layout.tsx`) using Next.js's `Script` component. The script is only loaded in production mode to avoid development issues.
+The Google AdSense script is loaded in the root layout component (`src/app/layout.tsx`) using a standard HTML script tag in the head section. This approach avoids Next.js Script component issues with the `data-nscript` attribute that AdSense doesn't support.
 
 ```tsx
 {process.env.NODE_ENV === 'production' && (
-  <Script
-    id="google-adsense"
+  <script
     async
-    strategy="afterInteractive"
     src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_ID}`}
     crossOrigin="anonymous"
   />
 )}
 ```
+
+### Content Security Policy (CSP)
+
+The application's CSP has been configured with comprehensive Google AdSense support. Google uses multiple domains that can change over time, so we've included wildcard patterns to handle current and future domains:
+
+**Script Sources (`script-src`):**
+- `*.googlesyndication.com` - Main AdSense scripts
+- `*.doubleclick.net` - DoubleClick ad serving
+- `*.adtrafficquality.google` - Ad quality monitoring (e.g., ep1, ep2, etc.)
+- `*.googleadservices.com` - Google ad services
+
+**Connection Sources (`connect-src`):**
+- All of the above plus `*.google.com` for API calls
+
+**Frame Sources (`frame-src`):**
+- `*.googlesyndication.com` and `*.doubleclick.net` for ad iframes
+- `*.adtrafficquality.google` for ad quality monitoring frames
+- `www.google.com` for Google services frames
+
+**Why CSP Violations Keep Happening:**
+Google AdSense uses dynamic subdomains (like `ep1.adtrafficquality.google`, `ep2.adtrafficquality.google`, etc.) that can change over time. The comprehensive wildcard patterns now included should prevent future violations as Google adds new subdomains.
+
+**Alternative: Strict CSP (Recommended by Google):**
+Google officially recommends using "strict CSP" with nonces instead of domain allowlists, as domains change frequently. If you continue experiencing issues, consider implementing strict CSP:
+
+```http
+Content-Security-Policy: object-src 'none'; script-src 'nonce-{random}' 'unsafe-inline' 'unsafe-eval' 'strict-dynamic' https: http:; base-uri 'none';
+```
+
+This approach requires adding a nonce to all script tags but eliminates the need to maintain domain lists.
 
 ## Ad Placement
 
@@ -42,7 +70,33 @@ FableSpace already has ad components in place throughout the application:
 2. **Interstitial Ads**: Placed between content sections on story and chapter pages
 3. **Sidebar Ads**: Available for placement in sidebar components
 
-These ad components use the `AdBanner` component (`src/components/ad-banner.tsx`), which is currently implemented as a placeholder. With Google AdSense now integrated, these placeholders will be automatically filled with real ads when the AdSense account is approved.
+These ad components use the `AdBanner` component (`src/components/ad-banner.tsx`), which automatically integrates with Google AdSense in production. The component supports the following props:
+
+- `type`: The type of ad ("banner", "interstitial", or "sidebar")
+- `className`: Additional CSS classes for styling
+- `slot`: The AdSense ad slot ID (required for production ads)
+
+### Usage Example
+
+```tsx
+// Development - shows placeholder
+<AdBanner type="banner" className="my-4" />
+
+// Production - shows real AdSense ad
+<AdBanner
+  type="banner"
+  className="my-4"
+  slot="1234567890"
+/>
+```
+
+### Getting Ad Slot IDs
+
+Once your AdSense account is approved:
+1. Go to your AdSense dashboard
+2. Navigate to "Ads" > "By ad unit"
+3. Create new ad units for each placement
+4. Copy the ad slot IDs and use them in your AdBanner components
 
 ## Verification and Approval
 
@@ -81,6 +135,16 @@ If ads are not appearing:
 3. Ensure the site is deployed in production mode
 4. Look for any errors in the browser console
 5. Check the AdSense dashboard for any policy violations or account issues
+
+### Common Issues
+
+**CSP Violations**: If you see Content Security Policy errors in the console, ensure that the CSP configuration in `src/lib/security/headers.ts` includes all necessary Google AdSense domains.
+
+**Script Loading Issues**: Use a standard HTML `<script>` tag instead of Next.js `<Script>` component to avoid `data-nscript` attribute issues that AdSense doesn't support.
+
+**Ad Slot Errors**: Make sure you're providing valid ad slot IDs to the AdBanner component in production. Without slot IDs, only placeholder ads will be shown.
+
+**Development vs Production**: Ads only load in production mode. In development, you'll see placeholder ads regardless of your configuration.
 
 ## Further Resources
 

@@ -10,7 +10,7 @@ const PAYPAL_API_BASE = process.env.NODE_ENV === 'production'
 
 // Get PayPal access token
 async function getPayPalAccessToken(): Promise<string> {
-  const clientId = process.env.PAYPAL_CLIENT_ID;
+  const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
   const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
 
   if (!clientId || !clientSecret) {
@@ -18,7 +18,7 @@ async function getPayPalAccessToken(): Promise<string> {
   }
 
   const auth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
-  
+
   const response = await fetch(`${PAYPAL_API_BASE}/v1/oauth2/token`, {
     method: 'POST',
     headers: {
@@ -29,7 +29,7 @@ async function getPayPalAccessToken(): Promise<string> {
   });
 
   const data = await response.json();
-  
+
   if (!response.ok) {
     logger.error('Failed to get PayPal access token:', data);
     throw new Error('Failed to authenticate with PayPal');
@@ -50,14 +50,14 @@ async function verifyPayPalOrder(orderId: string, accessToken: string) {
     });
 
     const data = await response.json();
-    
+
     if (!response.ok) {
       logger.error('Failed to verify PayPal order:', data);
       return { verified: false, status: 'ERROR', data };
     }
 
-    return { 
-      verified: true, 
+    return {
+      verified: true,
       status: data.status,
       data
     };
@@ -77,17 +77,17 @@ export async function POST(request: NextRequest) {
 
     // Get order ID from request body
     const { orderId } = await request.json();
-    
+
     if (!orderId) {
       return NextResponse.json({ error: 'Order ID is required' }, { status: 400 });
     }
 
     // Get PayPal access token
     const accessToken = await getPayPalAccessToken();
-    
+
     // Verify the order
     const verificationResult = await verifyPayPalOrder(orderId, accessToken);
-    
+
     return NextResponse.json(verificationResult);
   } catch (error) {
     logger.error('Error in PayPal order verification API:', error);

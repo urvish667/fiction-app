@@ -64,46 +64,80 @@ export async function POST(req: Request) {
           },
         });
 
-        // Create a notification for the recipient
+        // Create a notification for the recipient (backup notification creation)
         const donation = await prisma.donation.findUnique({
           where: { stripePaymentIntentId: paymentIntent.id },
           include: {
-            donor: true,
+            donor: {
+              select: { id: true, username: true, name: true }
+            },
+            recipient: {
+              select: { id: true, username: true, name: true }
+            },
             story: {
-              select: {
-                slug: true
-              }
+              select: { id: true, title: true, slug: true }
             }
           },
         });
 
         if (donation) {
           try {
-            await createDonationNotification({
-              recipientId: donation.recipientId,
-              actorId: donation.donorId,
-              actorUsername: donation.donor.username || donation.donor.name || 'Someone',
-              donationId: donation.id,
-              amount: donation.amount,
-              message: donation.message || undefined,
-              storyId: donation.storyId || undefined,
-              storyTitle: donation.storyId ? await getStoryTitle(donation.storyId) : undefined,
-              storySlug: donation.story?.slug,
+            // Check if notification already exists (duplicate prevention)
+            const existingNotification = await prisma.notification.findFirst({
+              where: {
+                userId: donation.recipientId,
+                type: 'donation',
+                content: {
+                  path: ['donationId'],
+                  equals: donation.id
+                }
+              }
             });
 
-            logger.info('Stripe donation notification created successfully', {
-              donationId: donation.id,
-              recipientId: donation.recipientId,
-              donorId: donation.donorId
-            });
+            if (existingNotification) {
+              logger.info('Stripe webhook: Donation already has notification', {
+                donationId: donation.id,
+                paymentIntentId: paymentIntent.id,
+                notificationId: existingNotification.id
+              });
+            } else {
+              // Create notification as backup
+              const actorUsername = donation.donor.username || donation.donor.name;
+              await createDonationNotification({
+                recipientId: donation.recipientId,
+                actorId: donation.donorId,
+                actorUsername: actorUsername || 'Anonymous',
+                donationId: donation.id,
+                amount: donation.amount,
+                message: donation.message || undefined,
+                storyId: donation.storyId || undefined,
+                storyTitle: donation.story?.title,
+                storySlug: donation.story?.slug,
+              });
+
+              logger.info('Stripe webhook: Backup notification created successfully', {
+                donationId: donation.id,
+                recipientId: donation.recipientId,
+                donorId: donation.donorId,
+                paymentIntentId: paymentIntent.id
+              });
+            }
           } catch (notificationError) {
-            logger.error('Failed to create Stripe donation notification', {
-              error: notificationError,
+            logger.error('Failed to create Stripe backup notification', {
+              error: notificationError instanceof Error ? notificationError.message : String(notificationError),
+              stack: notificationError instanceof Error ? notificationError.stack : undefined,
               donationId: donation.id,
               recipientId: donation.recipientId,
-              donorId: donation.donorId
+              donorId: donation.donorId,
+              paymentIntentId: paymentIntent.id
             });
+            // Don't fail the webhook if notification creation fails
+            // The payment was successful, notification failure shouldn't affect that
           }
+        } else {
+          logger.warn('Stripe webhook: Donation not found for payment intent', {
+            paymentIntentId: paymentIntent.id
+          });
         }
         break;
       }

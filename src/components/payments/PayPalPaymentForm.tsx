@@ -2,7 +2,7 @@ import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { logger } from "@/lib/logger";
 import { SimplePayPalButton } from "./SimplePayPalButton";
 import { fetchWithCsrf } from "@/lib/client/csrf";

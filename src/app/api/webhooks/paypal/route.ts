@@ -44,8 +44,7 @@ function checkRateLimit(ip: string): boolean {
   return record.count <= maxRequests;
 }
 
-// Helper function to verify PayPal webhook authenticity
-// PayPal uses certificate-based verification, not HMAC with shared secrets
+// PayPal webhook verification using their API
 async function verifyPayPalWebhook(
   headers: Headers,
   body: string,
@@ -75,32 +74,161 @@ async function verifyPayPalWebhook(
       return false;
     }
 
-    // For development, we'll do basic validation
-    // In production, you should implement full certificate verification
-    if (process.env.NODE_ENV === 'development') {
-      logger.info('PayPal webhook: Basic validation passed for development');
-      return true;
+    // Validate timestamp (reject webhooks older than 5 minutes)
+    const webhookTime = parseInt(transmissionTime);
+    const currentTime = Math.floor(Date.now() / 1000);
+    const timeDiff = Math.abs(currentTime - webhookTime);
+
+    if (timeDiff > 300) { // 5 minutes
+      logger.error('PayPal webhook: Timestamp too old', {
+        webhookTime,
+        currentTime,
+        timeDiff
+      });
+      return false;
     }
 
-    // TODO: For production, implement full certificate verification
-    // This involves:
-    // 1. Downloading the certificate from certUrl
-    // 2. Verifying the certificate chain
-    // 3. Using the public key to verify the signature
-    logger.warn('PayPal webhook: Full certificate verification not implemented for production');
-    return true; // Temporarily allow in production
+    // Get PayPal access token for verification
+    const accessToken = await getPayPalAccessToken();
+    if (!accessToken) {
+      logger.error('PayPal webhook: Failed to get access token for verification');
+      return false;
+    }
+
+    // Use PayPal's webhook verification API
+    const verificationData = {
+      auth_algo: authAlgo,
+      cert_url: certUrl,
+      transmission_id: transmissionId,
+      cert_id: transmissionId, // PayPal uses transmission_id as cert_id
+      transmission_sig: transmissionSig,
+      transmission_time: transmissionTime,
+      webhook_id: webhookId,
+      webhook_event: JSON.parse(body)
+    };
+
+    // const paypalApiBase = process.env.NODE_ENV === 'production'
+    //   ? 'https://api.paypal.com'
+    //   : 'https://api.sandbox.paypal.com';
+
+    const paypalApiBase = 'https://api.sandbox.paypal.com';
+
+    const verificationResponse = await fetch(`${paypalApiBase}/v1/notifications/verify-webhook-signature`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(verificationData),
+    });
+
+    const verificationResult = await verificationResponse.json();
+
+    if (verificationResponse.ok && verificationResult.verification_status === 'SUCCESS') {
+      logger.info('PayPal webhook: Verification successful');
+      return true;
+    } else {
+      logger.error('PayPal webhook: Verification failed', {
+        status: verificationResponse.status,
+        result: verificationResult
+      });
+      return false;
+    }
   } catch (error) {
     logger.error('PayPal webhook verification error:', error);
     return false;
   }
 }
 
+// Get PayPal access token for webhook verification
+async function getPayPalAccessToken(): Promise<string | null> {
+  try {
+    const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
+    const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
+
+    if (!clientId || !clientSecret) {
+      logger.error('PayPal webhook: Missing client credentials');
+      return null;
+    }
+
+    const paypalApiBase = process.env.NODE_ENV === 'production'
+      ? 'https://api.paypal.com'
+      : 'https://api.sandbox.paypal.com';
+
+    const auth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+
+    const response = await fetch(`${paypalApiBase}/v1/oauth2/token`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': `Basic ${auth}`,
+      },
+      body: 'grant_type=client_credentials',
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      logger.error('PayPal webhook: Failed to get access token:', data);
+      return null;
+    }
+
+    return data.access_token;
+  } catch (error) {
+    logger.error('PayPal webhook: Error getting access token:', error);
+    return null;
+  }
+}
+
+// PayPal's known IP ranges for webhook delivery (for additional security)
+const PAYPAL_WEBHOOK_IPS = [
+  '173.0.82.126/32',
+  '173.0.82.127/32',
+  '173.0.82.128/32',
+  '173.0.82.129/32',
+  '173.0.82.130/32',
+  '173.0.82.131/32',
+  // Add more PayPal IPs as needed
+];
+
+// Function to check if IP is in CIDR range
+function isIpInRange(ip: string, cidr: string): boolean {
+  try {
+    const [range, bits] = cidr.split('/');
+    const mask = ~(2 ** (32 - parseInt(bits)) - 1);
+    return (ip2int(ip) & mask) === (ip2int(range) & mask);
+  } catch {
+    return false;
+  }
+}
+
+function ip2int(ip: string): number {
+  return ip.split('.').reduce((int, oct) => (int << 8) + parseInt(oct, 10), 0) >>> 0;
+}
+
+function validatePayPalIP(clientIp: string): boolean {
+  // Skip IP validation in development
+  if (process.env.NODE_ENV === 'development') {
+    return true;
+  }
+
+  // Check if IP is from PayPal
+  return PAYPAL_WEBHOOK_IPS.some(range => isIpInRange(clientIp, range));
+}
+
 export async function POST(req: Request) {
   try {
-    // Get client IP for rate limiting
-    const clientIp = req.headers.get('x-forwarded-for') ||
+    // Get client IP for rate limiting and validation
+    const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
                      req.headers.get('x-real-ip') ||
+                     req.headers.get('cf-connecting-ip') ||
                      'unknown';
+
+    // Validate PayPal IP (optional additional security)
+    if (process.env.PAYPAL_WEBHOOK_IP_VALIDATION === 'true' && !validatePayPalIP(clientIp)) {
+      logger.warn('PayPal webhook: Request from non-PayPal IP', { clientIp });
+      return new NextResponse('Forbidden', { status: 403 });
+    }
 
     // Check rate limiting
     if (!checkRateLimit(clientIp)) {
@@ -203,11 +331,12 @@ export async function POST(req: Request) {
         }
 
         // Find the donation record by PayPal order ID with additional security checks
+        // Look for both pending and succeeded donations to handle different creation flows
         const donation = await prisma.donation.findFirst({
           where: {
             paypalOrderId: sanitizedOrderId,
             paymentMethod: 'paypal', // Ensure it's a PayPal donation
-            status: 'pending' // Only process pending donations
+            status: { in: ['pending', 'succeeded'] } // Process both pending and succeeded donations
           },
           include: {
             donor: {
@@ -232,35 +361,56 @@ export async function POST(req: Request) {
           return new NextResponse('Webhook received but no matching donation found', { status: 200 });
         }
 
-        // Prevent duplicate processing by checking if already succeeded
+        // Check if donation is already succeeded and if notification might already exist
         if (donation.status === 'succeeded') {
-          logger.warn('PayPal webhook: Donation already processed', {
-            donationId: donation.id,
-            orderId: sanitizedOrderId,
-            clientIp
-          });
-          return new NextResponse('Donation already processed', { status: 200 });
-        }
-
-        // Update donation status in database with transaction
-        await prisma.$transaction(async (tx) => {
-          await tx.donation.update({
-            where: { id: donation.id },
-            data: {
-              status: 'succeeded',
-              updatedAt: new Date()
+          // Check if notification already exists for this donation
+          const existingNotification = await prisma.notification.findFirst({
+            where: {
+              userId: donation.recipientId,
+              type: 'donation',
+              content: {
+                path: ['donationId'],
+                equals: donation.id
+              }
             }
           });
 
-          // Log the successful payment
-          logger.info('PayPal payment completed', {
-            orderId: sanitizedOrderId,
-            transactionId,
+          if (existingNotification) {
+            logger.info('PayPal webhook: Donation already processed with notification', {
+              donationId: donation.id,
+              orderId: sanitizedOrderId,
+              notificationId: existingNotification.id,
+              clientIp
+            });
+            return new NextResponse('Donation already processed with notification', { status: 200 });
+          }
+
+          logger.info('PayPal webhook: Donation succeeded but notification missing, will create notification', {
             donationId: donation.id,
-            amount: donation.amount,
+            orderId: sanitizedOrderId,
             clientIp
           });
-        });
+        } else {
+          // Update donation status to succeeded if it's still pending
+          await prisma.$transaction(async (tx) => {
+            await tx.donation.update({
+              where: { id: donation.id },
+              data: {
+                status: 'succeeded',
+                updatedAt: new Date()
+              }
+            });
+
+            // Log the successful payment
+            logger.info('PayPal payment completed', {
+              orderId: sanitizedOrderId,
+              transactionId,
+              donationId: donation.id,
+              amount: donation.amount,
+              clientIp
+            });
+          });
+        }
 
         // Create notification with enhanced error handling
         try {

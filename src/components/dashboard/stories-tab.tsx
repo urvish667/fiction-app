@@ -15,9 +15,23 @@ export function StoriesTab() {
   const { data: stories, isLoading, error } = useUserStories();
 
   // Format date for display
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  const formatDate = (dateString: string | undefined | null) => {
+    if (!dateString) {
+      return "Unknown date";
+    }
+
+    try {
+      const date = new Date(dateString);
+
+      // Check if the date is valid
+      if (isNaN(date.getTime())) {
+        return "Unknown date";
+      }
+
+      return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    } catch (error) {
+      return "Unknown date";
+    }
   };
 
   return (

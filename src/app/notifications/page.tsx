@@ -1,12 +1,12 @@
 "use client"
 
 import Link from "next/link"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
+import { useState } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Bell, Heart, MessageSquare, UserPlus, BookOpen, MoreVertical, Check, Trash2 } from "lucide-react"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Bell, Heart, MessageSquare, UserPlus, BookOpen, Check } from "lucide-react"
 import Navbar from "@/components/navbar"
 import { useNotifications } from "@/hooks/use-notifications"
 import { formatRelativeTime } from "@/utils/date-utils"
@@ -15,17 +15,43 @@ import { formatRelativeTime } from "@/utils/date-utils"
 export default function NotificationsPage() {
   const {
     filteredNotifications,
-    activeTab,
-    setActiveTab,
-    markAsRead,
-    markAllAsRead,
-    deleteNotification,
+    markAsReadAndDelete,
     loading,
     error,
     loadMoreNotifications,
     hasMore,
     isLoadingMore,
   } = useNotifications()
+
+  // Track notifications being deleted for animation
+  const [deletingNotifications, setDeletingNotifications] = useState<Set<string>>(new Set())
+
+  // Handle notification deletion with animation
+  const handleDeleteNotification = async (id: string) => {
+    // Add to deleting set to trigger animation
+    setDeletingNotifications(prev => new Set(prev).add(id))
+
+    // Wait for animation to complete, then delete
+    setTimeout(async () => {
+      await markAsReadAndDelete(id)
+      // Remove from deleting set after deletion
+      setDeletingNotifications(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(id)
+        return newSet
+      })
+    }, 300) // Animation duration
+  }
+
+  // Mark all unread notifications as read and dismiss them
+  const markAllAsReadAndDismiss = async () => {
+    const unreadNotifications = filteredNotifications.filter((n: any) => !n.read)
+
+    // Process each unread notification with animation
+    for (const notification of unreadNotifications) {
+      await handleDeleteNotification(notification.id)
+    }
+  }
 
   // Get notification icon
   const getNotificationIcon = (type: string) => {
@@ -224,16 +250,17 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="min-h-screen">
-      <Navbar />
+    <TooltipProvider>
+      <div className="min-h-screen">
+        <Navbar />
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-8 py-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <h1 className="text-3xl font-bold">Notifications</h1>
 
-          <Button variant="outline" onClick={markAllAsRead} disabled={!filteredNotifications.some((n: any) => !n.read)}>
+          <Button variant="outline" onClick={markAllAsReadAndDismiss} disabled={!filteredNotifications.some((n: any) => !n.read)}>
             <Check className="h-4 w-4 mr-2" />
-            Mark all as read
+            Mark all as read and dismiss
           </Button>
         </div>
 
@@ -243,25 +270,7 @@ export default function NotificationsPage() {
           </div>
         )}
 
-        <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="mt-6">
-          <TabsList className="mb-8">
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="unread">
-              Unread
-              {filteredNotifications.filter((n: any) => !n.read).length > 0 && (
-                <span className="ml-1 bg-primary text-primary-foreground rounded-full px-2 py-0.5 text-xs">
-                  {filteredNotifications.filter((n: any) => !n.read).length}
-                </span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="like">Likes</TabsTrigger>
-            <TabsTrigger value="comment">Comments</TabsTrigger>
-            <TabsTrigger value="follow">Follows</TabsTrigger>
-            {/* <TabsTrigger value="chapter">New Chapters</TabsTrigger> */}
-            <TabsTrigger value="donation">Donations</TabsTrigger>
-          </TabsList>
-
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="mt-6">
             {loading ? (
               <div className="flex justify-center py-12">
                 <div className="flex flex-col items-center gap-2">
@@ -270,65 +279,81 @@ export default function NotificationsPage() {
                 </div>
               </div>
             ) : filteredNotifications.length > 0 ? (
-              <div className="space-y-4">
-                {filteredNotifications.map((notification) => (
-                  <div
-                    key={notification.id}
-                    className={`p-4 rounded-lg border ${!notification.read ? "bg-primary/5 border-primary/20" : "bg-card"}`}
-                  >
-                    <div className="flex gap-4">
-                      {notification.actor && (
-                        <Link href={`/user/${notification.actor.username}`}>
-                          <Avatar className="h-10 w-10">
-                            <AvatarImage
-                              src={notification.actor.image}
-                              alt={notification.actor.username}
-                            />
-                            <AvatarFallback>
-                              {notification.actor.username.charAt(0).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                        </Link>
-                      )}
+              <div>
+                <AnimatePresence mode="popLayout">
+                  {filteredNotifications.map((notification) => (
+                    <motion.div
+                      key={notification.id}
+                      layout
+                      initial={{ opacity: 1, x: 0, height: "auto", marginBottom: "1rem" }}
+                      animate={{
+                        opacity: deletingNotifications.has(notification.id) ? 0 : 1,
+                        x: deletingNotifications.has(notification.id) ? 300 : 0,
+                        height: deletingNotifications.has(notification.id) ? 0 : "auto",
+                        marginBottom: deletingNotifications.has(notification.id) ? 0 : "1rem"
+                      }}
+                      exit={{ opacity: 0, x: 300, height: 0, marginBottom: 0 }}
+                      transition={{
+                        duration: 0.3,
+                        ease: "easeInOut"
+                      }}
+                      className="overflow-hidden"
+                    >
+                      <div className={`p-4 rounded-lg border ${!notification.read ? "bg-primary/5 border-primary/20" : "bg-card"}`}>
+                      <div className="flex gap-4">
+                        {notification.actor && (
+                          <Link href={`/user/${notification.actor.username}`}>
+                            <Avatar className="h-10 w-10">
+                              <AvatarImage
+                                src={notification.actor.image}
+                                alt={notification.actor.username}
+                              />
+                              <AvatarFallback>
+                                {notification.actor.username.charAt(0).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                          </Link>
+                        )}
 
-                      <div className="flex-1">
-                        <div className="flex justify-between items-start">
-                          <div className="flex items-center gap-2">
-                            {getNotificationIcon(notification.type)}
-                            <p className="text-sm">{getNotificationContent(notification)}</p>
-                          </div>
+                        <div className="flex-1">
+                          <div className="flex justify-between items-start">
+                            <div className="flex items-center gap-2">
+                              {getNotificationIcon(notification.type)}
+                              <div className="text-sm">{getNotificationContent(notification)}</div>
+                            </div>
 
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-muted-foreground">
-                              {formatRelativeTime(notification.createdAt)}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-muted-foreground">
+                                {formatRelativeTime(notification.createdAt)}
+                              </span>
 
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8">
-                                  <MoreVertical className="h-4 w-4" />
-                                  <span className="sr-only">More options</span>
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                {!notification.read && (
-                                  <DropdownMenuItem onClick={() => markAsRead(notification.id)}>
-                                    <Check className="h-4 w-4 mr-2" />
-                                    Mark as read
-                                  </DropdownMenuItem>
-                                )}
-                                <DropdownMenuItem onClick={() => deleteNotification(notification.id)}>
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  Delete
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
+                              {!notification.read && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 hover:bg-green-100 hover:text-green-600 dark:hover:bg-green-900/20 dark:hover:text-green-400"
+                                      onClick={() => handleDeleteNotification(notification.id)}
+                                      disabled={deletingNotifications.has(notification.id)}
+                                    >
+                                      <Check className="h-4 w-4" />
+                                      <span className="sr-only">Mark as read and dismiss</span>
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Mark as read and dismiss</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  </div>
-                ))}
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
 
                 {/* Load More Button */}
                 {hasMore && (
@@ -355,18 +380,16 @@ export default function NotificationsPage() {
                 <Bell className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <h3 className="text-xl font-semibold mb-2">No notifications</h3>
                 <p className="text-muted-foreground">
-                  {activeTab === "all"
-                    ? "You don't have any notifications yet."
-                    : `You don't have any ${activeTab} notifications.`}
+                  You don't have any notifications yet.
                 </p>
               </div>
             )}
           </motion.div>
-        </Tabs>
 
 
-      </main>
-    </div>
+        </main>
+      </div>
+    </TooltipProvider>
   )
 }
 

@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { UserPlus, UserCheck, Share2, Check, Loader2 } from "lucide-react"
 import { StoryService } from "@/services/story-service"
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/hooks/use-toast"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { logError } from "@/lib/error-logger"
 
