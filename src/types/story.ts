@@ -10,6 +10,7 @@ export type Story = {
   language: string;
   isMature: boolean;
   status: string; // "draft", "ongoing", or "completed"
+  license: string; // License type
   wordCount: number;
   readCount: number;
   authorId: string;
@@ -99,6 +100,7 @@ export type CreateStoryRequest = {
   language?: string | { connect: { id: string } };
   isMature?: boolean;
   status?: string; // "draft", "ongoing", or "completed"
+  license?: string; // License type
 };
 
 export type UpdateStoryRequest = Partial<CreateStoryRequest>;

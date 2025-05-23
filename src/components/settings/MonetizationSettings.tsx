@@ -1,5 +1,4 @@
 import type React from "react"
-import { useState, useEffect } from "react"
 import type { Session } from "next-auth"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
@@ -8,9 +7,6 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Check } from "lucide-react"
-import { useRouter } from "next/navigation"
-import { fetchWithCsrf } from "@/lib/client/csrf"
-import { useToast } from "@/hooks/use-toast"
 
 // Donation Settings Types
 interface DonationSettingsData {
@@ -110,7 +106,7 @@ const MonetizationSettings: React.FC<MonetizationSettingsProps> = ({
                     </Label>
                     <div className="absolute inset-0 flex items-center justify-center">
                       <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-xs font-medium">
-                        DISABLED
+                        STRIPE TEMPORARILY DISABLED
                       </span>
                     </div>
                   </div>

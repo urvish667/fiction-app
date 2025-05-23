@@ -1,8 +1,6 @@
 "use client"
 
-import type React from "react"
-
-import { useState, useEffect, useRef, useCallback, useReducer } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { motion } from "framer-motion"
@@ -33,8 +31,9 @@ import { useDebounce } from "@/hooks/use-debounce"
 import { StoryService } from "@/services/story-service"
 import { CreateStoryRequest, UpdateStoryRequest } from "@/types/story"
 import { fetchWithCsrf } from "@/lib/client/csrf"
-import { useIsMobile } from "@/hooks/use-mobile"
+
 import { logError } from "@/lib/error-logger"
+import { licenses } from "@/constants/licenses"
 
 // Types for the story info page
 interface StoryFormData {
@@ -46,6 +45,7 @@ interface StoryFormData {
   isMature: boolean;
   coverImage: string;
   status: "draft" | "ongoing" | "completed";
+  license: string;
   lastSaved: Date | null;
   slug: string;
 }
@@ -70,7 +70,6 @@ interface TagData {
 }
 
 export default function StoryInfoPage() {
-  const isMobile = useIsMobile();
   const router = useRouter();
   const { toast } = useToast();
   const { data: session } = useSession();
@@ -97,6 +96,7 @@ export default function StoryInfoPage() {
     isMature: false,
     coverImage: "/placeholder.svg?height=1600&width=900",
     status: "draft",
+    license: "ALL_RIGHTS_RESERVED",
     lastSaved: null,
     slug: "",
   });
@@ -351,6 +351,7 @@ export default function StoryInfoPage() {
               ? story.coverImage
               : "/placeholder.svg?height=1600&width=900",
             status: storyStatus,
+            license: story.license || "ALL_RIGHTS_RESERVED",
             lastSaved: new Date(story.updatedAt),
             slug: story.slug,
           });
@@ -780,6 +781,7 @@ export default function StoryInfoPage() {
         language: dataToSave.language || undefined,
         isMature: dataToSave.isMature,
         status: dataToSave.status || "draft", // Include the story status
+        license: dataToSave.license || "ALL_RIGHTS_RESERVED", // Include the license
       };
 
       let savedStory;
@@ -842,6 +844,11 @@ export default function StoryInfoPage() {
         // Status (toggle)
         if (prevData.status !== dataToSave.status) {
           newData.status = prevData.status;
+        }
+
+        // License (select field)
+        if (prevData.license !== dataToSave.license) {
+          newData.license = prevData.license;
         }
 
         // Cover image
@@ -1208,6 +1215,37 @@ export default function StoryInfoPage() {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              {/* License */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <Label htmlFor="license">Copyright License</Label>
+                </div>
+                <div className="relative">
+                  <Select
+                    value={storyData.license}
+                    onValueChange={(value) => handleSelectChange("license", value)}
+                    disabled={isSaving && !hasChanges}
+                  >
+                    <SelectTrigger id="license">
+                      <SelectValue placeholder="Select a license" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {licenses.map((license) => (
+                        <SelectItem key={license.value} value={license.value}>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{license.label}</span>
+                            <span className="text-xs text-muted-foreground">{license.description}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Choose how others can use your work. This affects copyright and sharing permissions.
+                </p>
               </div>
 
               {/* Tags Input - moved here */}

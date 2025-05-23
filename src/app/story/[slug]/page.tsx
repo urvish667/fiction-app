@@ -390,7 +390,7 @@ export default function StoryInfoPage() {
               )}
 
               {/* Metadata (Genre, Language, Status, Counts) */}
-              <StoryMetadata story={story} className="mb-6" />
+              <StoryMetadata story={story} className="mb-6" showLicense={true} />
 
               {/* Start Reading Button (Desktop) */}
               <div className="hidden md:block mb-8">

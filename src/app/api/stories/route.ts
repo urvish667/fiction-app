@@ -18,6 +18,7 @@ const createStorySchema = z.object({
   language: z.string().default("en"),
   isMature: z.boolean().default(false),
   status: z.enum(["draft", "ongoing", "completed"]).default("draft"),
+  license: z.enum(["ALL_RIGHTS_RESERVED", "CC_BY", "CC_BY_SA", "CC_BY_NC", "CC_BY_ND", "CC_BY_NC_SA", "CC_BY_NC_ND", "CC0"]).default("ALL_RIGHTS_RESERVED"),
 });
 
 // Helper function to determine the order by clause based on sort option
