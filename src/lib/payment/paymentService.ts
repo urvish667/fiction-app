@@ -53,10 +53,8 @@ export class PaymentService {
       let paymentResponse: PaymentResponse;
 
       if (recipient.donationMethod === 'stripe') {
-        if (!this.stripeProcessor.validatePaymentSetup(recipient)) {
-          return this.createErrorResponse('Stripe not properly configured for this recipient', 'STRIPE_NOT_CONFIGURED');
-        }
-        paymentResponse = await this.stripeProcessor.processPayment(request, recipient);
+        // Stripe is temporarily disabled
+        return this.createErrorResponse('Stripe payments are temporarily disabled. Please contact the creator for alternative payment methods.', 'STRIPE_DISABLED');
       } else if (recipient.donationMethod === 'paypal') {
         if (!this.paypalProcessor.validatePaymentSetup(recipient)) {
           return this.createErrorResponse('PayPal not properly configured for this recipient', 'PAYPAL_NOT_CONFIGURED');

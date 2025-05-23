@@ -30,7 +30,7 @@ interface MonetizationSettingsProps {
   paypalLink: string;
   handleEnableDonationToggle: (checked: boolean) => void;
   handleDonationMethodChange: (value: string) => void;
-  handleConnectStripe: () => void;
+  // handleConnectStripe: () => void; // Temporarily disabled with Stripe
   handleSaveDonationChanges: () => Promise<void>;
   setIsSavingDonations: React.Dispatch<React.SetStateAction<boolean>>;
   setDonationError: React.Dispatch<React.SetStateAction<string | null>>;
@@ -48,7 +48,7 @@ const MonetizationSettings: React.FC<MonetizationSettingsProps> = ({
   paypalLink,
   handleEnableDonationToggle,
   handleDonationMethodChange,
-  handleConnectStripe,
+  // handleConnectStripe,
   handleSaveDonationChanges,
   setIsSavingDonations,
   setDonationError,
@@ -98,14 +98,22 @@ const MonetizationSettings: React.FC<MonetizationSettingsProps> = ({
                       <p className="text-sm text-muted-foreground">Receive payments directly to your PayPal account</p>
                     </div>
                   </Label>
-                  <Label htmlFor="stripe" className={`flex items-center space-x-3 p-4 border rounded-md transition-colors ${!process.env.NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-muted/50'}`}>
-                    <RadioGroupItem value="stripe" id="stripe" disabled={!process.env.NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID} />
-                    <div className="space-y-1">
-                      <span className="font-medium">Stripe</span>
-                      <p className="text-sm text-muted-foreground">Receive payments directly to your bank account</p>
-                      {!process.env.NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID && <span className="text-xs text-muted-foreground">(Admin setup required)</span>}
+                  {/* Stripe option visually disabled */}
+                  <div className="relative">
+                    <Label htmlFor="stripe" className="flex items-center space-x-3 p-4 border rounded-md cursor-not-allowed opacity-30 blur-sm transition-colors">
+                      <RadioGroupItem value="stripe" id="stripe" disabled={true} />
+                      <div className="space-y-1">
+                        <span className="font-medium">Stripe</span>
+                        <p className="text-sm text-muted-foreground">Receive payments directly to your bank account</p>
+                        <span className="text-xs text-muted-foreground">(Temporarily disabled)</span>
+                      </div>
+                    </Label>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-xs font-medium">
+                        DISABLED
+                      </span>
                     </div>
-                  </Label>
+                  </div>
                 </RadioGroup>
 
                 {donationMethod === 'paypal' && (
@@ -127,21 +135,29 @@ const MonetizationSettings: React.FC<MonetizationSettingsProps> = ({
                 )}
 
                 {donationMethod === 'stripe' && (
-                  <div className="space-y-2 pt-4 pl-2">
-                    {donationSettings?.donationMethod === 'stripe' && donationSettings?.donationLink ? (
-                      <div className="flex items-center gap-2">
-                        <Check className="h-5 w-5 text-green-600" />
-                        <p className="text-sm text-green-600">Stripe account connected</p>
-                        <p className="text-xs text-muted-foreground">(ID: {donationSettings.donationLink ?? 'N/A'})</p>
-                      </div>
-                    ) : (
-                      <div>
-                        <Button onClick={handleConnectStripe} disabled={isSavingDonations || !process.env.NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID} >
-                            {isSavingDonations ? 'Redirecting...' : 'Connect Stripe Account'}
-                        </Button>
-                        {!process.env.NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID && <p className="text-xs text-muted-foreground mt-1">Stripe integration is not configured.</p>}
-                      </div>
-                    )}
+                  <div className="space-y-2 pt-4 pl-2 relative">
+                    <div className="opacity-30 blur-sm pointer-events-none">
+                      {donationSettings?.donationMethod === 'stripe' && donationSettings?.donationLink ? (
+                        <div className="flex items-center gap-2">
+                          <Check className="h-5 w-5 text-green-600" />
+                          <p className="text-sm text-green-600">Stripe account connected</p>
+                          <p className="text-xs text-muted-foreground">(ID: {donationSettings.donationLink ?? 'N/A'})</p>
+                        </div>
+                      ) : (
+                        <div>
+                          {/* <Button onClick={handleConnectStripe} disabled={true}> */}
+                          <Button disabled={true}>
+                              Connect Stripe Account
+                          </Button>
+                          <p className="text-xs text-muted-foreground mt-1">Stripe integration is temporarily disabled.</p>
+                        </div>
+                      )}
+                    </div>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-xs font-medium">
+                        STRIPE DISABLED
+                      </span>
+                    </div>
                   </div>
                 )}
               </div>

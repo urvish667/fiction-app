@@ -639,6 +639,12 @@ export default function SettingsPage() {
   };
 
   const handleConnectStripe = async () => {
+    // Stripe is temporarily disabled
+    setDonationError('Stripe is temporarily disabled.');
+    toast({ title: 'Stripe Disabled', description: 'Stripe payments are temporarily disabled. Please use PayPal instead.', variant: 'destructive' });
+    setIsSavingDonations(false);
+    return;
+
     setIsSavingDonations(true);
     const clientId = process.env.NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID;
     const redirectUri = `${window.location.origin}/api/stripe/oauth/callback`;
@@ -692,15 +698,8 @@ export default function SettingsPage() {
             body: JSON.stringify({ method: 'paypal', link: paypalLink }),
           });
         } else if (donationMethod === 'stripe') {
-          toast({ title: 'Settings Updated', description: 'Stripe selected. Connection status reflects the last update from Stripe.' });
-          // Optimistically update UI state - fetch might refresh this later?
-          setDonationSettings({
-            donationsEnabled: true,
-            donationMethod: 'stripe',
-            donationLink: donationSettings?.donationLink ?? null
-          });
-          setIsSavingDonations(false);
-          return; // Exit early
+          // Stripe is temporarily disabled
+          throw new Error('Stripe payments are temporarily disabled. Please use PayPal instead.');
         } else {
           throw new Error('Please select a valid donation method.');
         }

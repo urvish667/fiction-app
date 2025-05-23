@@ -58,31 +58,8 @@ export function UnifiedPaymentForm({
 
       // For Stripe, we need to create a payment intent
       if (data.paymentMethod === 'stripe') {
-        const stripeResponse = await fetchWithCsrf('/api/donations/create', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            recipientId,
-            amount,
-            message,
-            storyId,
-          }),
-        })
-
-        const stripeData = await stripeResponse.json()
-
-        if (!stripeResponse.ok) {
-          throw new Error(stripeData.message || 'Failed to process payment')
-        }
-
-        // Set the client secret for the Stripe form
-        if (stripeData.clientSecret) {
-          setClientSecret(stripeData.clientSecret)
-        } else {
-          throw new Error('Invalid payment response')
-        }
+        // Stripe is temporarily disabled
+        throw new Error('Stripe payments are temporarily disabled. Please contact the creator for alternative payment methods.')
       }
     } catch (error) {
       // Get the error message
@@ -107,21 +84,17 @@ export function UnifiedPaymentForm({
 
   // If we have determined the payment method, show the appropriate form
   if (paymentMethod === 'stripe' && clientSecret && clientSecret !== 'paypal') {
+    // Stripe is disabled, show error message
     return (
       <div className="payment-form-container">
-        <StripePaymentForm
-          clientSecret={clientSecret}
-          recipientId={recipientId}
-          amount={amount}
-          message={message}
-          storyId={storyId}
-          storyTitle={storyTitle}
-          onSuccess={onSuccess}
-          onError={(error) => {
-            setError(error.message)
-            onError(error)
-          }}
-        />
+        <div className="p-4 border border-destructive rounded-md bg-destructive/10 text-destructive">
+          <p>Stripe payments are temporarily disabled. Please contact the creator for alternative payment methods.</p>
+          <div className="mt-4 flex justify-end">
+            <Button variant="outline" onClick={onCancel}>
+              Cancel
+            </Button>
+          </div>
+        </div>
       </div>
     )
   } else if (paymentMethod === 'paypal' || clientSecret === 'paypal') {

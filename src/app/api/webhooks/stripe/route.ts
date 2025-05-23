@@ -31,6 +31,9 @@ async function getStoryTitle(storyId: string): Promise<string | undefined> {
 }
 
 export async function POST(req: Request) {
+  // Stripe is temporarily disabled
+  return new NextResponse('Stripe webhooks are temporarily disabled', { status: 503 });
+
   try {
     const body = await req.text();
     const signature = req.headers.get('stripe-signature');

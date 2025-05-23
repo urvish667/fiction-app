@@ -10,6 +10,9 @@ import { cookies } from 'next/headers';
 const stripe = getStripeClient();
 
 export async function GET(req: NextRequest) {
+  // Stripe is temporarily disabled
+  return NextResponse.redirect(new URL('/settings?tab=monetization&error=stripe_disabled', req.url));
+
   const session = await getServerSession(authOptions);
 
   if (!session?.user?.id) {
