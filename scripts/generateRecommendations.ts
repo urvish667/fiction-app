@@ -1,11 +1,11 @@
 /**
  * Script to generate story recommendations
- * 
+ *
  * This script:
  * 1. Fetches all published stories from the database
  * 2. Computes similarity scores between stories based on genres and tags
  * 3. Stores the top N most similar stories for each story in the database
- * 
+ *
  * Usage:
  * npx ts-node scripts/generateRecommendations.ts
  */
@@ -23,7 +23,7 @@ const prisma = new PrismaClient();
 
 async function generateRecommendations() {
   console.log("Starting recommendation generation...");
-  
+
   try {
     // Fetch all published stories with their tags and genres
     const stories = await prisma.story.findMany({
@@ -32,15 +32,10 @@ async function generateRecommendations() {
           not: "draft", // Exclude draft stories
         },
       },
-      select: {
-        id: true,
-        title: true,
-        status: true,
-        authorId: true,
-        genreId: true,
+      include: {
         genre: true,
         tags: {
-          select: {
+          include: {
             tag: true,
           },
         },

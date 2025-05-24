@@ -1,0 +1,91 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum License {
+  ALL_RIGHTS_RESERVED
+  CC_BY
+  CC_BY_SA
+  CC_BY_NC
+  CC_BY_ND
+  CC_BY_NC_SA
+  CC_BY_NC_ND
+  CC0
+}
+
+model Story {
+  id              String                @id @default(cuid())
+  title           String
+  slug            String                @unique
+  description     String?
+  coverImage      String?
+  isMature        Boolean               @default(false)
+  status          String                @default("ongoing")
+  license         License               @default(ALL_RIGHTS_RESERVED)
+  wordCount       Int                   @default(0)
+  readCount       Int                   @default(0)
+  authorId        String
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  genreId         String?
+  languageId      String?
+  genre           Genre?                @relation(fields: [genreId], references: [id])
+  language        Language?             @relation(fields: [languageId], references: [id])
+  recommendedIn   StoryRecommendation[] @relation("RecommendedTo")
+  recommendations StoryRecommendation[] @relation("StoryRecommendations")
+  tags            StoryTag[]
+
+  @@index([authorId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Tag {
+  id      String     @id @default(cuid())
+  name    String     @unique
+  stories StoryTag[]
+}
+
+model StoryTag {
+  id      String @id @default(cuid())
+  storyId String
+  tagId   String
+  story   Story  @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  tag     Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([storyId, tagId])
+  @@index([tagId])
+}
+
+model Genre {
+  id      String  @id @default(cuid())
+  name    String  @unique
+  stories Story[]
+}
+
+model Language {
+  id      String  @id @default(cuid())
+  name    String  @unique
+  stories Story[]
+}
+
+model StoryRecommendation {
+  id                 String   @id @default(cuid())
+  storyId            String
+  recommendedStoryId String
+  score              Float
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  recommendedStory   Story    @relation("RecommendedTo", fields: [recommendedStoryId], references: [id], onDelete: Cascade)
+  story              Story    @relation("StoryRecommendations", fields: [storyId], references: [id], onDelete: Cascade)
+
+  @@unique([storyId, recommendedStoryId])
+  @@index([storyId])
+  @@index([recommendedStoryId])
+  @@index([score])
+}
