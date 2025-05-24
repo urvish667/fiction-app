@@ -15,7 +15,7 @@ import Link from "next/link"
 import { motion } from "framer-motion"
 import "../auth-background.css"
 import AuthLogo from "@/components/auth/logo"
-import { GoogleIcon, FacebookIcon } from "@/components/auth/social-icons"
+import { GoogleIcon, XIcon } from "@/components/auth/social-icons"
 import { logError } from "@/lib/error-logger"
 
 // Component that uses searchParams
@@ -238,7 +238,7 @@ function SignupContent() {
   }
 
   // Handle OAuth signup with improved error handling
-  const handleOAuthSignup = async (provider: "google" | "facebook") => {
+  const handleOAuthSignup = async (provider: "google" | "twitter") => {
     setIsSubmitting(true)
 
     try {
@@ -336,12 +336,12 @@ function SignupContent() {
               <Button
                 variant="outline"
                 type="button"
-                onClick={() => handleOAuthSignup("facebook")}
+                onClick={() => handleOAuthSignup("twitter")}
                 disabled={isSubmitting}
                 className="w-full flex items-center justify-center gap-2"
               >
-                <FacebookIcon className="text-blue-600" />
-                <span>Facebook</span>
+                <XIcon className="text-black dark:text-white" />
+                <span>X</span>
               </Button>
             </div>
 

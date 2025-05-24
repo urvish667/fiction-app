@@ -125,15 +125,6 @@ export default function ContactPage() {
               )}
             </Button>
           </form>
-
-          <div className="mt-8 text-center text-sm text-muted-foreground">
-            <p>
-              For urgent inquiries, please email us directly at{" "}
-              <a href="mailto:contact@fablespace.com" className="text-primary hover:underline">
-                contact@fablespace.com
-              </a>
-            </p>
-          </div>
         </motion.div>
       </main>
 

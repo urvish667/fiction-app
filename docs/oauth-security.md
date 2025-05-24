@@ -4,7 +4,7 @@ This document outlines the OAuth security implementation in the FableSpace appli
 
 ## Overview
 
-FableSpace uses NextAuth.js for authentication, including OAuth providers like Google and Facebook. To ensure secure authentication, we've implemented proper CSRF protection using the PKCE (Proof Key for Code Exchange) flow and state parameter validation.
+FableSpace uses NextAuth.js for authentication, including OAuth providers like Google and X/Twitter. To ensure secure authentication, we've implemented proper CSRF protection using the PKCE (Proof Key for Code Exchange) flow and state parameter validation.
 
 ## CSRF Protection for OAuth
 
@@ -36,19 +36,13 @@ GoogleProvider({
   // ...
 }),
 
-// Facebook OAuth provider with simplified configuration
-FacebookProvider({
-  clientId: process.env.FACEBOOK_CLIENT_ID || "",
-  clientSecret: process.env.FACEBOOK_CLIENT_SECRET || "",
-  // Use authorization configuration object instead of direct URL
-  authorization: {
-    params: {
-      scope: "public_profile,email"
-    }
-  },
-  // Temporarily disable state checking to fix Facebook authentication issues
-  // Facebook sometimes doesn't return the state parameter correctly
-  checks: [],
+// X/Twitter OAuth provider with improved configuration
+TwitterProvider({
+  clientId: process.env.TWITTER_CLIENT_ID || "",
+  clientSecret: process.env.TWITTER_CLIENT_SECRET || "",
+  version: "2.0", // Use OAuth 2.0 for better compatibility
+  // Use standard state checking for Twitter
+  checks: ["state"],
   // ...
 }),
 ```
@@ -125,12 +119,12 @@ We've implemented comprehensive error handling for OAuth-related errors:
 
 ### "State missing from the response" Error
 
-This error occurs when the state parameter is not properly maintained during the OAuth flow. After extensive testing, we found that the most reliable solution for Facebook authentication is:
+This error occurs when the state parameter is not properly maintained during the OAuth flow. For X/Twitter authentication, we use the standard OAuth 2.0 flow with proper state checking:
 
-1. **Simplified Facebook Provider Configuration**:
-   - Use a direct authorization URL: `"https://www.facebook.com/v18.0/dialog/oauth?scope=public_profile,email"`
-   - Temporarily disable state checking with `checks: []` to fix the authentication flow
-   - Facebook sometimes doesn't return the state parameter correctly in the callback
+1. **X/Twitter Provider Configuration**:
+   - Use OAuth 2.0 version for better compatibility: `version: "2.0"`
+   - Enable standard state checking with `checks: ["state"]`
+   - X/Twitter properly supports the state parameter for CSRF protection
 
 2. **Optimized Cookie Configuration**:
    - Explicitly configure all NextAuth.js cookies including `callbackUrl`, `csrfToken`, and `state`
@@ -173,50 +167,19 @@ authorization: {
   }
 },
 
-// INCORRECT: Direct URL with scope parameter
-// authorization: "https://www.facebook.com/v18.0/dialog/oauth?scope=public_profile,email",
 ```
-- This follows Facebook's recommended format for permission requests and ensures proper URL encoding
 
-#### Facebook Permission Reference
+#### X/Twitter Permission Reference
 
-| Permission | Description | Notes |
-|------------|-------------|-------|
-| `public_profile` | Basic profile information | Includes name, profile picture, etc. |
-| `email` | User's email address | Must be explicitly requested |
-| `user_friends` | User's friends who also use the app | Requires App Review |
-| `user_birthday` | User's birthday | Requires App Review |
+X/Twitter OAuth 2.0 provides access to basic user information including:
 
-For a complete list of available permissions, refer to [Facebook's permissions documentation](https://developers.facebook.com/docs/facebook-login/permissions).
+| Scope | Description | Notes |
+|-------|-------------|-------|
+| `tweet.read` | Read tweets | Basic read access |
+| `users.read` | Read user profile information | Includes name, username, profile picture |
+| `offline.access` | Refresh token access | For long-term access |
 
-### Re-enabling State Checking for Facebook
-
-Once the basic Facebook authentication flow is working with `checks: []`, you can gradually re-enable security features:
-
-1. **Step 1: Test with basic state checking**
-   ```javascript
-   // Re-enable basic state checking
-   checks: ["state"],
-   ```
-
-2. **Step 2: If issues persist, try a custom state handler**
-   ```javascript
-   // Custom state handler that's more tolerant of Facebook's behavior
-   checks: ["state"],
-   // Add a custom state handler if needed
-   state: {
-     // Custom state validation logic
-     validate: (params) => {
-       // More lenient validation for Facebook
-       return true; // Or implement custom validation
-     }
-   }
-   ```
-
-3. **Step 3: Monitor logs and user feedback**
-   - Watch for authentication errors in the logs
-   - Collect feedback from users about login issues
-   - Adjust the configuration based on real-world usage
+For a complete list of available scopes, refer to [X/Twitter's OAuth 2.0 documentation](https://developer.twitter.com/en/docs/authentication/oauth-2-0).
 
 ### Testing OAuth Security
 

@@ -1,6 +1,6 @@
 import NextAuth, { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
-import FacebookProvider from "next-auth/providers/facebook";
+import TwitterProvider from "next-auth/providers/twitter";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { getPrismaAdapter } from "@/lib/auth/db-adapter";
 import { getUserByEmail, verifyPassword } from "@/lib/auth/auth-utils";
@@ -149,38 +149,34 @@ export const authOptions: NextAuthOptions = {
       },
     }),
 
-    // Facebook OAuth provider with improved configuration
-    FacebookProvider({
-      clientId: process.env.FACEBOOK_CLIENT_ID || "",
-      clientSecret: process.env.FACEBOOK_CLIENT_SECRET || "",
-      // Use authorization configuration object with explicit parameters
-      authorization: {
-        params: {
-          scope: "public_profile,email",
-          response_type: "code"
-        }
-      },
-      // Use pkce for better security instead of disabling state checks
-      checks: ["pkce"],
+    // X/Twitter OAuth provider with improved configuration
+    TwitterProvider({
+      clientId: process.env.TWITTER_CLIENT_ID || "",
+      clientSecret: process.env.TWITTER_CLIENT_SECRET || "",
+      version: "2.0", // Use OAuth 2.0 for better compatibility
       profile(profile) {
+        // Twitter OAuth 1.0A returns user data directly in profile object
+        // OAuth 2.0 returns user data in a 'data' object (fallback for compatibility)
+        const userData = profile.data || profile;
+
         // Sanitize profile data from OAuth provider
-        const sanitizedName = profile.name ? sanitizeText(profile.name.trim()) : null;
-        const sanitizedEmail = profile.email ? sanitizeText(profile.email.trim().toLowerCase()) : null;
+        const sanitizedName = userData.name ? sanitizeText(userData.name.trim()) : null;
+        const sanitizedEmail = userData.email ? sanitizeText(userData.email.trim().toLowerCase()) : null;
 
         // Return a user object with required fields
         return {
-          id: profile.id,
+          id: userData.id_str || userData.id, // OAuth 1.0A uses id_str, OAuth 2.0 uses id
           name: sanitizedName,
           bannerImage: null,
           donationLink: null,
           donationMethod: null,
           donationsEnabled: false,
           email: sanitizedEmail,
-          image: profile.picture?.data?.url,
-          provider: "facebook",
+          image: userData.profile_image_url_https || userData.profile_image_url,
+          provider: "twitter",
           // Add required fields with default values
           emailVerified: null,
-          username: null,
+          username: userData.username || null,
           password: null,
           birthdate: null,
           bio: null,
@@ -347,9 +343,67 @@ export const authOptions: NextAuthOptions = {
           provider: account?.provider
         });
 
+        // For Twitter OAuth without email, we need to handle differently
+        if (!user.email && account?.provider === 'twitter') {
+          // For Twitter users without email, check by provider account ID
+          const existingAccount = await prisma.account.findUnique({
+            where: {
+              provider_providerAccountId: {
+                provider: account.provider,
+                providerAccountId: account.providerAccountId || '',
+              },
+            },
+            include: { user: true }
+          });
+
+          if (existingAccount) {
+            // User exists, update last login
+            await prisma.user.update({
+              where: { id: existingAccount.userId },
+              data: { lastLogin: new Date() }
+            });
+            return true;
+          }
+
+          // Create new user without email for Twitter
+          const sanitizedName = user.name ? sanitizeText(user.name.trim()) : user.name;
+          const dbUser = await prisma.user.create({
+            data: {
+              email: `twitter_${account.providerAccountId}@temp.local`, // Temporary email
+              name: sanitizedName,
+              image: user.image,
+              provider: account?.provider,
+              emailVerified: null, // No email verification for Twitter without email
+              isProfileComplete: false,
+              accounts: {
+                create: {
+                  type: account?.type || '',
+                  provider: account?.provider || '',
+                  providerAccountId: account?.providerAccountId || '',
+                  access_token: account?.access_token,
+                  expires_at: account?.expires_at,
+                  token_type: account?.token_type,
+                  scope: account?.scope,
+                  id_token: account?.id_token,
+                  session_state: account?.session_state,
+                },
+              },
+            },
+          });
+
+          authLogger.debug("Created Twitter user without email", { userId: dbUser.id });
+          return true;
+        }
+
+        // For users with email (Google, Twitter with email)
+        if (!user.email) {
+          authLogger.error("No email provided for OAuth user", { provider: account?.provider });
+          return false;
+        }
+
         // Check if user exists before attempting upsert
         const existingUser = await prisma.user.findUnique({
-          where: { email: user.email! },
+          where: { email: user.email },
           select: { id: true, lastLogin: true }
         });
 
@@ -370,9 +424,9 @@ export const authOptions: NextAuthOptions = {
 
         // Only perform upsert if user doesn't exist or hasn't logged in recently
         const dbUser = await prisma.user.upsert({
-          where: { email: sanitizedEmail! },
+          where: { email: sanitizedEmail },
           create: {
-            email: sanitizedEmail!,
+            email: sanitizedEmail,
             name: sanitizedName,
             image: user.image,
             provider: account?.provider,
@@ -514,25 +568,61 @@ export const authOptions: NextAuthOptions = {
         if (user && 'needsProfileCompletion' in user && user.needsProfileCompletion) {
           token.needsProfileCompletion = true;
         }
+
         // Fetch the user from DB to ensure we have the database ID
-        const dbUser = await prisma.user.findUnique({
-          where: { email: user.email! },
-          select: {
-            id: true,
-            username: true,
-            provider: true,
-            isProfileComplete: true,
-            image: true,
-            bannerImage: true,
-            preferences: true,
-            marketingOptIn: true,
-            unreadNotifications: true
-          }
-        });
+        let dbUser;
+
+        if (user.email) {
+          // For users with email (Google, Twitter with email)
+          dbUser = await prisma.user.findUnique({
+            where: { email: user.email },
+            select: {
+              id: true,
+              username: true,
+              provider: true,
+              isProfileComplete: true,
+              image: true,
+              bannerImage: true,
+              preferences: true,
+              marketingOptIn: true,
+              unreadNotifications: true
+            }
+          });
+        } else if (account?.provider === 'twitter') {
+          // For Twitter users without email, find by account
+          const userAccount = await prisma.account.findUnique({
+            where: {
+              provider_providerAccountId: {
+                provider: account.provider,
+                providerAccountId: account.providerAccountId || '',
+              },
+            },
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  username: true,
+                  provider: true,
+                  isProfileComplete: true,
+                  image: true,
+                  bannerImage: true,
+                  preferences: true,
+                  marketingOptIn: true,
+                  unreadNotifications: true
+                }
+              }
+            }
+          });
+          dbUser = userAccount?.user;
+        }
 
         if (!dbUser) {
           // Should not happen if adapter/signIn works correctly, but handle defensively
-          authLogger.error(`User not found in DB during initial sign-in`, { email: user.email });
+          authLogger.error(`User not found in DB during initial sign-in`, {
+            email: user.email,
+            provider: account?.provider,
+            providerAccountId: account?.providerAccountId
+          });
           // Return the token as-is or throw an error depending on desired behavior
           return token;
         }
@@ -555,7 +645,7 @@ export const authOptions: NextAuthOptions = {
 
         // Add emailVerified status to token
         // For social logins, set emailVerified to current date if not already set
-        if (account && account.provider && (account.provider === 'google' || account.provider === 'facebook')) {
+        if (account && account.provider && (account.provider === 'google' || account.provider === 'twitter')) {
           token.emailVerified = new Date();
         } else if (user.emailVerified) {
           token.emailVerified = user.emailVerified;

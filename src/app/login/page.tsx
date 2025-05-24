@@ -13,7 +13,7 @@ import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
 import "../auth-background.css"
 import AuthLogo from "@/components/auth/logo"
-import { GoogleIcon, FacebookIcon } from "@/components/auth/social-icons"
+import { GoogleIcon, XIcon } from "@/components/auth/social-icons"
 import { logError } from "@/lib/error-logger"
 
 // Component that uses searchParams
@@ -79,7 +79,7 @@ function LoginContent() {
   }
 
   // Handle OAuth login with improved error handling
-  const handleOAuthLogin = async (provider: "google" | "facebook") => {
+  const handleOAuthLogin = async (provider: "google" | "twitter") => {
     setIsSubmitting(true)
 
     try {
@@ -248,12 +248,12 @@ function LoginContent() {
                       <Button
                         variant="outline"
                         type="button"
-                        onClick={() => handleOAuthLogin("facebook")}
+                        onClick={() => handleOAuthLogin("twitter")}
                         disabled={isSubmitting}
                         className="flex items-center justify-center gap-2"
                       >
-                        <FacebookIcon className="text-blue-600" />
-                        <span>Facebook</span>
+                        <XIcon className="text-black dark:text-white" />
+                        <span>X</span>
                       </Button>
                     </div>
                   </form>
@@ -295,12 +295,12 @@ function LoginContent() {
                       <Button
                         variant="outline"
                         type="button"
-                        onClick={() => handleOAuthLogin("facebook")}
+                        onClick={() => handleOAuthLogin("twitter")}
                         disabled={isSubmitting}
                         className="flex items-center justify-center gap-2"
                       >
-                        <FacebookIcon className="text-blue-600" />
-                        <span>Facebook</span>
+                        <XIcon className="text-black dark:text-white" />
+                        <span>X</span>
                       </Button>
                     </div>
                   </div>

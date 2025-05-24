@@ -36,7 +36,7 @@ const authRateLimitedRoutes = [
   '/api/auth/callback',
   '/api/auth/signin/credentials',
   '/api/auth/signin/google',
-  '/api/auth/signin/facebook',
+  '/api/auth/signin/twitter',
 ];
 
 // Note: We identify editor endpoints dynamically in the middleware function
@@ -129,7 +129,7 @@ export async function middleware(request: NextRequest) {
       }
     }
     // Less strict rate limiting for OAuth signin
-    else if (pathname.includes('/signin/google') || pathname.includes('/signin/facebook')) {
+    else if (pathname.includes('/signin/google') || pathname.includes('/signin/twitter')) {
       const result = await rateLimit(request, {
         ...rateLimitConfigs.oauthAuth,
       });
