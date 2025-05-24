@@ -2,6 +2,8 @@
 
 # dependencies
 /node_modules
+/container-jobs/*/node_modules
+/container-jobs/*/dist
 /.pnp
 .pnp.*
 .yarn/*

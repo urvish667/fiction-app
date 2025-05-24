@@ -1,0 +1,63 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum License {
+  ALL_RIGHTS_RESERVED
+  CC_BY
+  CC_BY_SA
+  CC_BY_NC
+  CC_BY_ND
+  CC_BY_NC_SA
+  CC_BY_NC_ND
+  CC0
+}
+
+model Story {
+  id              String    @id @default(cuid())
+  title           String
+  slug            String    @unique
+  description     String?
+  coverImage      String?
+  isMature        Boolean   @default(false)
+  status          String    @default("ongoing")
+  license         License   @default(ALL_RIGHTS_RESERVED)
+  wordCount       Int       @default(0)
+  readCount       Int       @default(0)
+  authorId        String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  genreId         String?
+  languageId      String?
+  chapters        Chapter[]
+
+  @@index([authorId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Chapter {
+  id          String    @id @default(cuid())
+  title       String
+  contentKey  String
+  number      Int
+  wordCount   Int       @default(0)
+  isPremium   Boolean   @default(false)
+  status      String    @default("draft")
+  publishDate DateTime?
+  readCount   Int       @default(0)
+  storyId     String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  story       Story     @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  @@unique([storyId, number])
+  @@index([storyId])
+  @@index([status])
+  @@index([publishDate])
+}
