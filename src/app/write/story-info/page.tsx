@@ -1234,9 +1234,9 @@ export default function StoryInfoPage() {
                     <SelectContent>
                       {licenses.map((license) => (
                         <SelectItem key={license.value} value={license.value}>
-                          <div className="flex flex-col">
-                            <span className="font-medium">{license.label}</span>
-                            <span className="text-xs text-muted-foreground">{license.description}</span>
+                          <div className="flex flex-col items-start w-full">
+                            <span className="font-medium text-left">{license.label}</span>
+                            <span className="text-xs text-muted-foreground text-left">{license.description}</span>
                           </div>
                         </SelectItem>
                       ))}

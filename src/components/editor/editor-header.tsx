@@ -17,7 +17,7 @@ interface EditorHeaderProps {
   setShowPreview: (show: boolean) => void
   setIsPublishDialogOpen: (open: boolean) => void
   handleTitleChange: (e: React.ChangeEvent<HTMLInputElement>) => void
-  saveChapter: (showToast?: boolean, forceDraft?: boolean) => Promise<any>
+  saveChapter: (showToast?: boolean, forceDraft?: boolean, preserveStatus?: boolean) => Promise<any>
 }
 
 export const EditorHeader = React.memo(function EditorHeader({
@@ -105,18 +105,33 @@ export const EditorHeader = React.memo(function EditorHeader({
 
           {/* Desktop buttons */}
           <div className="hidden sm:flex items-center gap-2">
-            <Button
-              variant="outline"
-              onClick={() => saveChapter(true, true)}
-              disabled={isSaving}
-              className="flex items-center gap-2"
-              title="Save as draft (only visible to you)"
-              aria-label="Save as draft"
-              aria-busy={isSaving}
-            >
-              <Save size={16} />
-              Save Draft
-            </Button>
+            {chapter.status === "published" ? (
+              <Button
+                variant="outline"
+                onClick={() => saveChapter(true, false, true)}
+                disabled={isSaving}
+                className="flex items-center gap-2"
+                title="Update published chapter"
+                aria-label="Update chapter"
+                aria-busy={isSaving}
+              >
+                <Save size={16} />
+                Update Chapter
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                onClick={() => saveChapter(true, true)}
+                disabled={isSaving}
+                className="flex items-center gap-2"
+                title="Save as draft (only visible to you)"
+                aria-label="Save as draft"
+                aria-busy={isSaving}
+              >
+                <Save size={16} />
+                Save Draft
+              </Button>
+            )}
 
             <Button
               variant="outline"
@@ -131,10 +146,10 @@ export const EditorHeader = React.memo(function EditorHeader({
             <Button
               onClick={() => setIsPublishDialogOpen(true)}
               className="flex items-center gap-2"
-              disabled={!chapter.id}
-              title="Publish chapter (visible to all readers)"
+              disabled={!chapter.id || chapter.status === "published"}
+              title={chapter.status === "published" ? "Chapter is already published" : "Publish chapter (visible to all readers)"}
               aria-label="Publish chapter"
-              aria-disabled={!chapter.id}
+              aria-disabled={!chapter.id || chapter.status === "published"}
             >
               <Check size={16} />
               Publish
@@ -175,14 +190,25 @@ export const EditorHeader = React.memo(function EditorHeader({
                   </div>
 
                   <div className="flex flex-col gap-2">
-                    <Button
-                      onClick={() => saveChapter(true, true)}
-                      disabled={isSaving}
-                      className="flex items-center justify-start gap-2 w-full"
-                    >
-                      <Save size={16} />
-                      Save Draft
-                    </Button>
+                    {chapter.status === "published" ? (
+                      <Button
+                        onClick={() => saveChapter(true, false, true)}
+                        disabled={isSaving}
+                        className="flex items-center justify-start gap-2 w-full"
+                      >
+                        <Save size={16} />
+                        Update Chapter
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={() => saveChapter(true, true)}
+                        disabled={isSaving}
+                        className="flex items-center justify-start gap-2 w-full"
+                      >
+                        <Save size={16} />
+                        Save Draft
+                      </Button>
+                    )}
 
                     <Button
                       variant="outline"
@@ -198,7 +224,7 @@ export const EditorHeader = React.memo(function EditorHeader({
                       onClick={() => {
                         setIsPublishDialogOpen(true);
                       }}
-                      disabled={!chapter.id}
+                      disabled={!chapter.id || chapter.status === "published"}
                       className="flex items-center justify-start gap-2 w-full"
                     >
                       <Check size={16} />

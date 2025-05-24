@@ -44,7 +44,7 @@ export interface UseChapterEditorReturn {
   setPublishSettings: React.Dispatch<React.SetStateAction<PublishSettings>>
   handleEditorChange: (content: string) => void
   handleTitleChange: (e: React.ChangeEvent<HTMLInputElement>) => void
-  saveChapter: (showToast?: boolean, forceDraft?: boolean) => Promise<Chapter | undefined>
+  saveChapter: (showToast?: boolean, forceDraft?: boolean, preserveStatus?: boolean) => Promise<Chapter | undefined>
   publishChapter: () => Promise<void>
   syncStateWithBackend: (savedChapter: Chapter) => void
   isNewChapter: boolean
@@ -277,7 +277,7 @@ export function useChapterEditor({
   }
 
   // Save chapter as draft or update existing chapter
-  const saveChapter = async (showToast = true, forceDraft = false): Promise<Chapter | undefined> => {
+  const saveChapter = async (showToast = true, forceDraft = false, preserveStatus = false): Promise<Chapter | undefined> => {
     if (isSaving) return
 
     // Validate input
@@ -299,16 +299,26 @@ export function useChapterEditor({
 
     try {
       // Determine if we should change the status
-      // For auto-saves (showToast=false), preserve the original status
-      // For manual saves (showToast=true), set status based on forceDraft parameter
-      // If forceDraft is true, always save as draft
-      // If forceDraft is false and no changes, preserve original status
-      const status: 'draft' | 'published' = forceDraft || (hasChanges && initialIsDraft) ? 'draft' : 'published'
+      let status: 'draft' | 'published' | 'scheduled'
+
+      if (preserveStatus && chapter.status) {
+        // When preserveStatus is true, keep the current status
+        status = chapter.status
+      } else if (forceDraft) {
+        // When forceDraft is true, always save as draft
+        status = 'draft'
+      } else if (hasChanges && initialIsDraft) {
+        // If there are changes and it was originally a draft, keep as draft
+        status = 'draft'
+      } else {
+        // Otherwise, preserve the original status or default to published
+        status = chapter.status || 'published'
+      }
 
       // Only include status in the API request if we're explicitly changing it
       // or if this is a new chapter (which should default to draft)
-      const statusField = showToast || isNewChapter || !chapter.id
-        ? { status }
+      const statusField = (showToast && !preserveStatus) || isNewChapter || !chapter.id
+        ? { status: isNewChapter ? 'draft' : status }
         : {}
 
       // Prepare chapter data for API
