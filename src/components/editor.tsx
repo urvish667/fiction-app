@@ -69,7 +69,7 @@ export function Editor({ content, onChange, readOnly = false }: EditorProps) {
       TextAlign.configure({
         types: ['heading', 'paragraph', 'image', 'div'], // Add div to the types that can be aligned
         alignments: ['left', 'center', 'right'],
-        defaultAlignment: 'center',
+        defaultAlignment: 'left',
       }),
     ],
     content,

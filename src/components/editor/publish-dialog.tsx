@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
-import { Bell, Check, Globe } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Check, Globe, Clock } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -17,6 +18,7 @@ import {
 } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
 import { PublishSettings } from "@/hooks/use-chapter-editor"
+import { generateTimeIntervals, getNextQuarterHour, validateScheduledTime } from "@/utils/time-utils"
 
 interface PublishDialogProps {
   isOpen: boolean
@@ -40,6 +42,9 @@ export const PublishDialog = React.memo(function PublishDialog({
   isSaving
 }: PublishDialogProps) {
   const { toast } = useToast()
+
+  // Generate time intervals
+  const timeIntervals = generateTimeIntervals()
 
   // Handle date change
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -65,32 +70,55 @@ export const PublishDialog = React.memo(function PublishDialog({
     }
   }
 
-  // Handle time change
-  const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.value) {
-      const [hours, minutes] = e.target.value.split(':').map(Number);
-      const newDate = new Date(publishSettings.publishDate);
-      newDate.setHours(hours, minutes, 0, 0);
+  // Handle time change from select dropdown
+  const handleTimeChange = (timeValue: string) => {
+    const [hours, minutes] = timeValue.split(':').map(Number);
+    const newDate = new Date(publishSettings.publishDate);
+    newDate.setHours(hours, minutes, 0, 0);
 
-      // Check if the combined date and time is in the future
-      const now = new Date();
-      const selectedDate = new Date(publishSettings.publishDate);
-      selectedDate.setHours(0, 0, 0, 0); // Start of the selected day
-      const today = new Date();
-      today.setHours(0, 0, 0, 0); // Start of today
+    // Validate the scheduled time
+    const validation = validateScheduledTime(newDate);
+    if (!validation.isValid) {
+      toast({
+        title: "Invalid time",
+        description: validation.error || "Please select a valid time.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-      // If the selected date is today, ensure the time is in the future
-      if (selectedDate.getTime() === today.getTime() && newDate <= now) {
-        toast({
-          title: "Invalid time",
-          description: "Publication time must be in the future.",
-          variant: "destructive",
-        });
-      } else {
-        handlePublishSettingsChange("publishDate", newDate);
-      }
+    handlePublishSettingsChange("publishDate", newDate);
+  }
+
+  // Get the current time formatted for display
+  const getCurrentTimeInfo = () => {
+    const now = new Date()
+    const nextQuarter = getNextQuarterHour()
+    return {
+      current: format(now, 'h:mm a'),
+      nextAvailable: format(nextQuarter, 'h:mm a'),
+      isToday: format(publishSettings.publishDate, 'yyyy-MM-dd') === format(now, 'yyyy-MM-dd')
     }
   }
+
+  // Initialize with next quarter hour if scheduling is enabled and date is today
+  React.useEffect(() => {
+    if (publishSettings.schedulePublish) {
+      const now = new Date();
+      const publishDate = new Date(publishSettings.publishDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      publishDate.setHours(0, 0, 0, 0);
+
+      // If the publish date is today and the time is in the past, update to next quarter hour
+      if (publishDate.getTime() === today.getTime() && publishSettings.publishDate <= now) {
+        const nextQuarter = getNextQuarterHour();
+        handlePublishSettingsChange("publishDate", nextQuarter);
+      }
+    }
+  }, [publishSettings.schedulePublish])
+
+  const timeInfo = getCurrentTimeInfo()
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -138,13 +166,62 @@ export const PublishDialog = React.memo(function PublishDialog({
 
               <div className="space-y-2">
                 <Label htmlFor="publishTime">Publication Time</Label>
-                <Input
-                  id="publishTime"
-                  type="time"
+                <Select
                   value={format(publishSettings.publishDate, "HH:mm")}
-                  onChange={handleTimeChange}
-                  className="w-full"
-                />
+                  onValueChange={handleTimeChange}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select time" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60">
+                    {timeIntervals.map((interval) => (
+                      <SelectItem key={interval.value} value={interval.value}>
+                        {interval.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    Times are shown in your local timezone ({Intl.DateTimeFormat().resolvedOptions().timeZone})
+                  </p>
+                  {timeInfo.isToday && (
+                    <p className="text-xs text-muted-foreground">
+                      Current time: {timeInfo.current} • Next available: {timeInfo.nextAvailable}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Quick scheduling options */}
+              <div className="flex gap-2 flex-wrap">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const nextQuarter = getNextQuarterHour()
+                    handlePublishSettingsChange("publishDate", nextQuarter)
+                  }}
+                  className="text-xs"
+                >
+                  Next 15 min
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const tomorrow9am = new Date()
+                    tomorrow9am.setDate(tomorrow9am.getDate() + 1)
+                    tomorrow9am.setHours(9, 0, 0, 0)
+                    handlePublishSettingsChange("publishDate", tomorrow9am)
+                  }}
+                  className="text-xs"
+                >
+                  Tomorrow 9 AM
+                </Button>
               </div>
             </div>
           )}
