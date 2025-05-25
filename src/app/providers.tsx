@@ -13,7 +13,7 @@ export default function Providers({ children }: ProvidersProps) {
     <SessionProvider
       // Configure session behavior for better performance and reliability
       refetchWhenOffline={false}
-      refetchInterval={5 * 60} // Reduce polling frequency to 5 minutes (in seconds)
+      refetchInterval={0} // Disable automatic polling to prevent unnecessary callback calls
       refetchOnWindowFocus={false} // Don't refetch on window focus to reduce unnecessary requests
     >
       <CsrfProvider>

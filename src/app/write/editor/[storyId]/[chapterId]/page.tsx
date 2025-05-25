@@ -20,7 +20,7 @@ export default function ChapterEditorPage() {
   const chapterId = params?.chapterId as string
 
   // Get the session for authentication
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
 
   // State for UI elements
   const [showPreview, setShowPreview] = useState(false)
@@ -62,11 +62,12 @@ export default function ChapterEditorPage() {
 
   // Check authentication
   useEffect(() => {
-    if (!session) {
-      // Redirect to login if not authenticated
+    // Only redirect if we're sure the user is not authenticated
+    // Don't redirect during loading state
+    if (status === "unauthenticated") {
       router.push(`/login?callbackUrl=/write/editor/${storyId}/${chapterId}`)
     }
-  }, [session, router, storyId, chapterId])
+  }, [session, status, router, storyId, chapterId])
 
   // Add keyboard shortcuts
   useEffect(() => {
@@ -185,6 +186,26 @@ export default function ChapterEditorPage() {
       setIsPublishDialogOpen(false)
     }
   }, [publishChapter, setIsPublishDialogOpen, validateBeforePublish])
+
+  // Show loading state while session is being restored
+  if (status === "loading") {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex justify-center items-center">
+              <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-primary"></div>
+            </div>
+          </div>
+        </div>
+        <main className="flex-1 container mx-auto px-4 py-6 max-w-6xl">
+          <div className="flex justify-center items-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col">

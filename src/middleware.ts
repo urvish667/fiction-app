@@ -22,6 +22,9 @@ const profileRequiredRoutes = [
   '/settings',
   '/dashboard',
   '/works',
+  '/profile',
+  '/library',
+  '/notifications',
 ];
 
 // Routes that are exempt from profile completion check

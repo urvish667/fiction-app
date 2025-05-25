@@ -72,7 +72,7 @@ interface TagData {
 export default function StoryInfoPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Reference data state
@@ -984,11 +984,26 @@ export default function StoryInfoPage() {
 
   // Check authentication
   useEffect(() => {
-    if (!session) {
-      // Redirect to login if not authenticated
+    // Only redirect if we're sure the user is not authenticated
+    // Don't redirect during loading state
+    if (status === "unauthenticated") {
       router.push('/login?callbackUrl=/write/story-info')
     }
-  }, [session, router])
+  }, [session, status, router])
+
+  // Show loading state while session is being restored
+  if (status === "loading") {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        <main className="flex-1 container mx-auto px-4 sm:px-6 md:px-8 py-6 md:py-8">
+          <div className="flex justify-center items-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col">

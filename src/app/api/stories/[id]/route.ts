@@ -372,7 +372,6 @@ export async function PUT(
         // Log the full error for debugging
         logError(error, {
           context: 'Updating story',
-          storyId,
           errorType: error.name,
           details: JSON.stringify(error, null, 2)
         });
@@ -385,10 +384,10 @@ export async function PUT(
         }
       } else {
         // Log other errors
-        logError(error, { context: 'Updating story', storyId });
+        logError(error, { context: 'Updating story' });
       }
     } else {
-      logError(error, { context: 'Updating story', storyId });
+      logError(error, { context: 'Updating story'});
     }
 
     return NextResponse.json(
