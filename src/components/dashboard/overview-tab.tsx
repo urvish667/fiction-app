@@ -24,6 +24,7 @@ import { StatsCard } from "@/components/dashboard/stats-card"
 import { useDashboardStats } from "@/hooks/use-dashboard-stats"
 import { useDashboardStories } from "@/hooks/use-dashboard-stories"
 import { useReadsChartData, useEngagementChartData } from "@/hooks/use-chart-data"
+import { formatStatNumber } from "@/utils/number-utils"
 
 interface OverviewTabProps {
   timeRange: string;
@@ -101,31 +102,31 @@ export function OverviewTab({ timeRange }: OverviewTabProps) {
               <>
                 <StatsCard
                   title="Total Reads"
-                  value={statsData.totalReads.toLocaleString()}
+                  value={formatStatNumber(statsData.totalReads)}
                   change={statsData.readsChange}
                   icon={<BookOpen className="h-4 w-4" />}
                 />
                 <StatsCard
                   title="Total Likes"
-                  value={statsData.totalLikes.toLocaleString()}
+                  value={formatStatNumber(statsData.totalLikes)}
                   change={statsData.likesChange}
                   icon={<Heart className="h-4 w-4" />}
                 />
                 <StatsCard
                   title="Comments"
-                  value={statsData.totalComments.toLocaleString()}
+                  value={formatStatNumber(statsData.totalComments)}
                   change={statsData.commentsChange}
                   icon={<MessageSquare className="h-4 w-4" />}
                 />
                 <StatsCard
                   title="Followers"
-                  value={statsData.totalFollowers.toLocaleString()}
+                  value={formatStatNumber(statsData.totalFollowers)}
                   change={statsData.followersChange}
                   icon={<Users className="h-4 w-4" />}
                 />
                 <StatsCard
                   title="Earnings"
-                  value={`$${statsData.totalEarnings.toLocaleString()}`}
+                  value={`$${formatStatNumber(statsData.totalEarnings)}`}
                   change={statsData.earningsChange}
                   icon={<DollarSign className="h-4 w-4" />}
                 />
@@ -255,10 +256,10 @@ export function OverviewTab({ timeRange }: OverviewTabProps) {
                           {story.genreName || 'General'}
                         </div>
                       </td>
-                      <td className="text-right py-3 px-2">{(story.viewCount || 0).toLocaleString()}</td>
-                      <td className="text-right py-3 px-2">{(story.likeCount || 0).toLocaleString()}</td>
-                      <td className="text-right py-3 px-2">{(story.commentCount || 0).toLocaleString()}</td>
-                      <td className="text-right py-3 px-2">${(story.earnings || 0).toLocaleString()}</td>
+                      <td className="text-right py-3 px-2">{formatStatNumber(story.viewCount || 0)}</td>
+                      <td className="text-right py-3 px-2">{formatStatNumber(story.likeCount || 0)}</td>
+                      <td className="text-right py-3 px-2">{formatStatNumber(story.commentCount || 0)}</td>
+                      <td className="text-right py-3 px-2">${formatStatNumber(story.earnings || 0)}</td>
                     </tr>
                   ))}
                 </tbody>

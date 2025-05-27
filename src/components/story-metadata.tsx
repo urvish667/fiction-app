@@ -1,6 +1,7 @@
 import { Eye, Heart, MessageSquare, Clock, BookOpen } from "lucide-react"
 import type { Story } from "@/types/story"
 import LicenseInfo from "./license-info"
+import { formatStatNumber } from "@/utils/number-utils"
 
 interface StoryMetadataProps {
   story: Story
@@ -14,15 +15,15 @@ export default function StoryMetadata({ story, className = "", showLicense = fal
       <div className="flex flex-wrap gap-4 text-sm">
         <div className="flex items-center gap-1">
           <Eye size={16} className="text-muted-foreground" />
-          <span>{story.viewCount?.toLocaleString() || 0} Views</span>
+          <span>{formatStatNumber(story.viewCount || 0)} Views</span>
         </div>
         <div className="flex items-center gap-1">
           <Heart size={16} className="text-muted-foreground" />
-          <span>{story.likeCount?.toLocaleString() || 0} Likes</span>
+          <span>{formatStatNumber(story.likeCount || 0)} Likes</span>
         </div>
         <div className="flex items-center gap-1">
           <MessageSquare size={16} className="text-muted-foreground" />
-          <span>{story.commentCount?.toLocaleString() || 0} Comments</span>
+          <span>{formatStatNumber(story.commentCount || 0)} Comments</span>
         </div>
         <div className="flex items-center gap-1">
           <Clock size={16} className="text-muted-foreground" />
@@ -30,7 +31,7 @@ export default function StoryMetadata({ story, className = "", showLicense = fal
         </div>
         <div className="flex items-center gap-1">
           <BookOpen size={16} className="text-muted-foreground" />
-          <span>{story.wordCount?.toLocaleString() || 0} words</span>
+          <span>{formatStatNumber(story.wordCount || 0)} words</span>
         </div>
       </div>
 

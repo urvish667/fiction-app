@@ -6,7 +6,7 @@ import { z } from 'zod';
 // Input validation schema
 const upsertTagsSchema = z.object({
   storyId: z.string().min(1, "Story ID is required"),
-  tags: z.array(z.string()).min(3, "At least 3 tags are required").max(10, "Maximum 10 tags allowed"),
+  tags: z.array(z.string()).min(0, "Tags array is required").max(10, "Maximum 10 tags allowed"),
 });
 
 // POST: Upsert tags for a story
@@ -36,8 +36,9 @@ export async function POST(req: NextRequest) {
       )
     );
 
-    if (normalized.length < 3 || normalized.length > 10) {
-      return NextResponse.json({ error: 'Must provide 3-10 unique tags.' }, { status: 400 });
+    // Allow 0 tags (for clearing) or 3-10 tags
+    if (normalized.length > 0 && (normalized.length < 3 || normalized.length > 10)) {
+      return NextResponse.json({ error: 'Must provide either 0 tags (to clear) or 3-10 unique tags.' }, { status: 400 });
     }
 
     // Verify story exists
@@ -51,21 +52,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Story not found' }, { status: 404 });
     }
 
-    // Upsert tags
-    const tagRecords = await Promise.all(
-      normalized.map(async (name) =>
-        prisma.tag.upsert({ where: { name }, update: {}, create: { name } })
-      )
-    );
-
-    // Remove old tags for this story
+    // Remove old tags for this story first
     await prisma.storyTag.deleteMany({ where: { storyId } });
 
-    // Create new relations
-    await prisma.storyTag.createMany({
-      data: tagRecords.map((tag) => ({ storyId, tagId: tag.id })),
-      skipDuplicates: true,
-    });
+    // If we have tags to add, upsert them and create relations
+    if (normalized.length > 0) {
+      // Upsert tags
+      const tagRecords = await Promise.all(
+        normalized.map(async (name) =>
+          prisma.tag.upsert({ where: { name }, update: {}, create: { name } })
+        )
+      );
+
+      // Create new relations
+      await prisma.storyTag.createMany({
+        data: tagRecords.map((tag) => ({ storyId, tagId: tag.id })),
+        skipDuplicates: true,
+      });
+    }
 
     logger.info('Tags updated successfully', {
       storyId,

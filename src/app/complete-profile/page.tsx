@@ -215,9 +215,11 @@ export default function CompleteProfilePage() {
     return (
       <div className="min-h-screen auth-background flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
         <div className="w-full max-w-md">
-          <AuthLogo />
           <Card className="shadow-xl border border-border overflow-hidden w-full backdrop-blur-sm bg-opacity-95">
           <CardHeader>
+            <div className="flex justify-center mb-4">
+              <AuthLogo />
+            </div>
             <CardTitle className="text-2xl font-bold text-center">Loading...</CardTitle>
           </CardHeader>
         </Card>
@@ -229,9 +231,11 @@ export default function CompleteProfilePage() {
   return (
     <div className="min-h-screen auth-background flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="w-full max-w-md">
-        <AuthLogo />
         <Card className="shadow-xl border border-border overflow-hidden w-full backdrop-blur-sm bg-opacity-95">
         <CardHeader>
+          <div className="flex justify-center mb-4">
+            <AuthLogo />
+          </div>
           <CardTitle className="text-2xl font-bold text-center">Complete Your Profile</CardTitle>
           <CardDescription className="text-center">
             Please provide a few more details to complete your account setup

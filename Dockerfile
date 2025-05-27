@@ -23,7 +23,7 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Copy .env.docker to .env for build
-COPY .env.docker .env
+COPY .env.prod .env
 
 # Generate Prisma client
 RUN npx prisma generate

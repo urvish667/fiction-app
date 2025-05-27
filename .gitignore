@@ -11,6 +11,8 @@
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
+/notification-service/node_modules
+/notification-service/dist
 
 # testing
 /coverage

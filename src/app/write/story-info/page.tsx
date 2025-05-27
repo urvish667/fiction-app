@@ -85,6 +85,9 @@ export default function StoryInfoPage() {
   const [tagSuggestions, setTagSuggestions] = useState<TagData[]>([]);
   const [popularTags, setPopularTags] = useState<TagData[]>([]);
   const [tagError, setTagError] = useState<string>("");
+  const [isSavingTags, setIsSavingTags] = useState(false);
+
+
 
   // Story data state
   const [storyData, setStoryData] = useState<StoryFormData>({
@@ -119,8 +122,10 @@ export default function StoryInfoPage() {
   const [justCreatedStory, setJustCreatedStory] = useState(false);
   const [chapters, setChapters] = useState<ChapterData[]>([]);
 
-  // Create debounced version of storyData for auto-save (increased delay)
-  const debouncedStoryData = useDebounce(storyData, 5000);
+  // Create debounced version of storyData for auto-save
+  const debouncedStoryData = useDebounce(storyData, 2000);
+
+
 
   // Fetch genres/languages/tags on mount
   useEffect(() => {
@@ -135,9 +140,17 @@ export default function StoryInfoPage() {
   // Fetch story tags when editing an existing story
   useEffect(() => {
     if (storyData.id) {
-      fetch(`/api/stories/${storyData.id}/tags`).then(r => r.json()).then(data => {
-        if (Array.isArray(data)) setTags(data.map((t: any) => t.name));
-      });
+      fetch(`/api/stories/${storyData.id}/tags`)
+        .then(r => r.json())
+        .then(data => {
+          if (Array.isArray(data)) {
+            const tagNames = data.map((t: any) => t.name);
+            setTags(tagNames);
+          }
+        })
+        .catch(error => {
+          logError(error, { context: 'Fetching story tags', storyId: storyData.id });
+        });
     }
   }, [storyData.id]);
 
@@ -159,30 +172,35 @@ export default function StoryInfoPage() {
     // Mark that we have unsaved changes when adding a tag
     setHasChanges(true);
 
-    // If we have a valid number of tags and a story ID, trigger an immediate save
-    if (storyData.id && newTags.length >= 3 && newTags.length <= 10 && !isSaving) {
-      // Use setTimeout to ensure state is updated before saving
-      setTimeout(() => {
-        // Save the story data first
-        saveStoryData(false).then(savedStory => {
-          if (savedStory) {
-            // Then explicitly save the tags
-            fetchWithCsrf('/api/tags/upsert', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ storyId: savedStory.id, tags: newTags }),
-            }).catch(err => {
-              logError(err, { context: 'Saving tags', storyId: savedStory.id })
+    // Immediate auto-save for tags
+    if (storyData.id && !isSaving && !isSavingTags) {
+      setTimeout(async () => {
+        try {
+          setIsSavingTags(true);
+          const response = await fetchWithCsrf('/api/tags/upsert', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ storyId: storyData.id, tags: newTags }),
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            logError(new Error(`Failed to save tags: ${errorData.error}`), {
+              context: 'Immediate tag save after add',
+              storyId: storyData.id,
+              tags: newTags
             });
           }
-        }).catch(err => {
-          logError(err, { context: 'Saving story before tags', storyId: storyData.id })
-        });
-      }, 500); // Increased delay to prevent conflicts
+        } catch (err) {
+          logError(err, { context: 'Immediate tag save after add', storyId: storyData.id, tags: newTags });
+        } finally {
+          setIsSavingTags(false);
+        }
+      }, 100); // Very short delay to ensure state is updated
     }
-  }, [storyData.id, tags, isSaving]);
+  }, [tags, storyData.id, isSaving, isSavingTags]);
 
   const removeTag = useCallback((idx: number) => {
     // Update tags state
@@ -193,30 +211,35 @@ export default function StoryInfoPage() {
     // Mark that we have unsaved changes when removing a tag
     setHasChanges(true);
 
-    // If we have a story ID, trigger an immediate save
-    if (storyData.id && !isSaving) {
-      // Use setTimeout to ensure state is updated before saving
-      setTimeout(() => {
-        // Save the story data first
-        saveStoryData(false).then(savedStory => {
-          if (savedStory) {
-            // Then explicitly save the tags
-            fetchWithCsrf('/api/tags/upsert', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ storyId: savedStory.id, tags: newTags }),
-            }).catch(err => {
-              logError(err, { context: 'Saving tags', storyId: savedStory.id })
+    // Immediate auto-save for tags
+    if (storyData.id && !isSaving && !isSavingTags) {
+      setTimeout(async () => {
+        try {
+          setIsSavingTags(true);
+          const response = await fetchWithCsrf('/api/tags/upsert', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ storyId: storyData.id, tags: newTags }),
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            logError(new Error(`Failed to save tags: ${errorData.error}`), {
+              context: 'Immediate tag save after remove',
+              storyId: storyData.id,
+              tags: newTags
             });
           }
-        }).catch(err => {
-          logError(err, { context: 'Saving story before tags', storyId: storyData.id })
-        });
-      }, 500); // Increased delay to prevent conflicts
+        } catch (err) {
+          logError(err, { context: 'Immediate tag save after remove', storyId: storyData.id, tags: newTags });
+        } finally {
+          setIsSavingTags(false);
+        }
+      }, 100); // Very short delay to ensure state is updated
     }
-  }, [storyData.id, tags, isSaving]);
+  }, [tags, storyData.id, isSaving, isSavingTags]);
 
   const handleTagInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setTagInput(e.target.value);
@@ -258,12 +281,10 @@ export default function StoryInfoPage() {
 
   // Auto-save effect with improved conditions
   useEffect(() => {
-    // Only auto-save if all required fields and tags are valid
+    // Only auto-save if all required fields are valid
     const valid = debouncedStoryData.title.trim() &&
                   debouncedStoryData.description.trim() &&
-                  debouncedStoryData.genre &&
-                  tags.length >= 3 &&
-                  tags.length <= 10;
+                  debouncedStoryData.genre;
 
     // Additional checks to prevent excessive auto-saving
     const shouldAutoSave = valid &&
@@ -279,13 +300,22 @@ export default function StoryInfoPage() {
           const savedStory = await saveStoryData(false, debouncedStoryData);
           if (savedStory) {
             // Upsert tags after save
-            await fetchWithCsrf('/api/tags/upsert', {
+            const response = await fetchWithCsrf('/api/tags/upsert', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({ storyId: savedStory.id, tags }),
             });
+
+            if (!response.ok) {
+              const errorData = await response.json();
+              logError(new Error(`Auto-save failed to save tags: ${errorData.error}`), {
+                context: 'Auto-save tags',
+                storyId: savedStory.id,
+                tags
+              });
+            }
           }
         } catch (error) {
           logError(error, {
@@ -293,10 +323,11 @@ export default function StoryInfoPage() {
             storyId: debouncedStoryData.id,
             hasChanges,
             isSaving,
-            justCreatedStory
+            justCreatedStory,
+            tags
           });
         }
-      }, 1000); // Additional delay before auto-save
+      }, 500); // Reduced delay for more responsive auto-save
       return () => clearTimeout(autoSaveTimeout);
     }
   }, [debouncedStoryData, hasChanges, isSaving, justCreatedStory, tags]);
@@ -339,7 +370,7 @@ export default function StoryInfoPage() {
             ? story.status
             : "draft" as const;
 
-          setStoryData({
+          const newStoryData: StoryFormData = {
             id: story.id,
             title: story.title,
             description: story.description || "",
@@ -354,7 +385,9 @@ export default function StoryInfoPage() {
             license: story.license || "ALL_RIGHTS_RESERVED",
             lastSaved: new Date(story.updatedAt),
             slug: story.slug,
-          });
+          };
+
+          setStoryData(newStoryData);
 
           // Fetch chapters for this story
           fetchChapters(story.id);
@@ -862,15 +895,24 @@ export default function StoryInfoPage() {
       setHasChanges(false); // Reset changes flag
 
       // Upsert tags after save (if not handled by autosave)
-      if (updatedStoryData.id && tags.length >= 3 && tags.length <= 10) {
+      if (updatedStoryData.id) {
         try {
-          await fetchWithCsrf('/api/tags/upsert', {
+          const response = await fetchWithCsrf('/api/tags/upsert', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ storyId: updatedStoryData.id, tags }),
           });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            logError(new Error(`Manual save failed to save tags: ${errorData.error}`), {
+              context: 'Manual save tags',
+              storyId: updatedStoryData.id,
+              tags
+            });
+          }
         } catch (err) {
-          logError(err, { context: 'Saving tags', storyId: updatedStoryData.id })
+          logError(err, { context: 'Saving tags', storyId: updatedStoryData.id, tags })
         }
       }
 
@@ -1265,7 +1307,12 @@ export default function StoryInfoPage() {
 
               {/* Tags Input - moved here */}
               <div className="mb-6">
-                <Label htmlFor="tags">Tags</Label>
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="tags">Tags</Label>
+                  {isSavingTags && (
+                    <div className="animate-spin h-3 w-3 border-t-2 border-b-2 border-primary rounded-full"></div>
+                  )}
+                </div>
                 <div className="flex flex-wrap gap-2 mt-2">
                   {tags.map((tag, idx) => (
                     <motion.span

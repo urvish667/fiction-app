@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Heart, MessageSquare, Share2, Eye } from "lucide-react"
 import Image from "next/image"
+import { formatStatNumber } from "@/utils/number-utils"
 // Using a more flexible type to handle both mock and API data
 type StoryCardProps = {
   story: {
@@ -140,7 +141,7 @@ export default function StoryCard({ story, viewMode = "grid" }: StoryCardProps) 
               <div className="flex items-center gap-1">
                 <Eye size={16} className="text-muted-foreground" />
                 <span className="text-sm text-muted-foreground">
-                  {(story.viewCount || 0).toLocaleString()}
+                  {formatStatNumber(story.viewCount || 0)}
                 </span>
               </div>
 
@@ -150,13 +151,13 @@ export default function StoryCard({ story, viewMode = "grid" }: StoryCardProps) 
                   size={16}
                   className={`${liked ? "fill-red-500 text-red-500" : "text-muted-foreground"}`}
                 />
-                <span className="text-sm text-muted-foreground">{likeCount}</span>
+                <span className="text-sm text-muted-foreground">{formatStatNumber(likeCount)}</span>
               </div>
 
               {/* Comments Stats */}
               <div className="flex items-center gap-1">
                 <MessageSquare size={16} className="text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">{story.commentCount || 0}</span>
+                <span className="text-sm text-muted-foreground">{formatStatNumber(story.commentCount || 0)}</span>
               </div>
             </div>
 

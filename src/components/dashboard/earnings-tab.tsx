@@ -19,6 +19,7 @@ import {
 } from "recharts"
 
 import { useEarningsData } from "@/hooks/use-earnings-data"
+import { formatStatNumber } from "@/utils/number-utils"
 
 export function EarningsTab({ timeRange = '30days' }: { timeRange?: string }) {
   const { data, isLoading, isLoadingMore, error, loadMoreTransactions } = useEarningsData(timeRange);
@@ -48,7 +49,7 @@ export function EarningsTab({ timeRange = '30days' }: { timeRange?: string }) {
             {isLoading ? (
               <Skeleton className="h-8 w-24 mb-2" />
             ) : (
-              <div className="text-2xl font-bold">${(data?.totalEarnings || 0).toLocaleString()}</div>
+              <div className="text-2xl font-bold">${formatStatNumber(data?.totalEarnings || 0)}</div>
             )}
             <p className="text-xs text-muted-foreground">Lifetime earnings from all stories</p>
           </CardContent>
@@ -67,7 +68,7 @@ export function EarningsTab({ timeRange = '30days' }: { timeRange?: string }) {
               </>
             ) : (
               <>
-                <div className="text-2xl font-bold">${(data?.thisMonthEarnings || 0).toLocaleString()}</div>
+                <div className="text-2xl font-bold">${formatStatNumber(data?.thisMonthEarnings || 0)}</div>
                 <div className="flex items-center mt-1">
                   {(data?.monthlyChange || 0) >= 0 ? (
                     <>

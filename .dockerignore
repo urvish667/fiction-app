@@ -36,3 +36,14 @@ jest.setup.js
 
 # Notification service
 notification-service
+
+# container-jobs
+container-jobs
+
+# Others
+scripts
+docs
+
+# configs
+.eslintrc
+.prettierrc
