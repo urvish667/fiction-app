@@ -455,7 +455,7 @@ export default function StoryInfoPage() {
                  )}
 
                  {/* *** Add Support Button Here *** */}
-                 {author?.donationsEnabled && (
+                 {author?.donationsEnabled && session?.user?.id !== author.id && (
                     <SupportButton
                         authorId={author.id}
                         donationMethod={author.donationMethod ?? null}
@@ -520,8 +520,8 @@ export default function StoryInfoPage() {
         </div>
 
 
-        {/* Support the Author Section - Only shown when monetization is enabled */}
-        {author?.donationsEnabled && (
+        {/* Support the Author Section - Only shown when monetization is enabled and not viewing own story */}
+        {author?.donationsEnabled && session?.user?.id !== author.id && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

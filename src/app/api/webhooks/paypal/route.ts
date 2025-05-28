@@ -107,11 +107,9 @@ async function verifyPayPalWebhook(
       webhook_event: JSON.parse(body)
     };
 
-    // const paypalApiBase = process.env.NODE_ENV === 'production'
-    //   ? 'https://api.paypal.com'
-    //   : 'https://api.sandbox.paypal.com';
-
-    const paypalApiBase = 'https://api.sandbox.paypal.com';
+    const paypalApiBase = process.env.NODE_ENV === 'production'
+      ? 'https://api.paypal.com'
+      : 'https://api.sandbox.paypal.com';
 
     const verificationResponse = await fetch(`${paypalApiBase}/v1/notifications/verify-webhook-signature`, {
       method: 'POST',

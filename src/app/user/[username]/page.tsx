@@ -24,7 +24,7 @@ import StoryCard from "@/components/story-card"
 import { SiteFooter } from "@/components/site-footer"
 // import { sampleStories } from "@/lib/sample-data" - not needed
 import { StoryService } from "@/services/story-service"
-import { SupportButton } from "@/components/SupportButton"
+
 import { logError } from "@/lib/error-logger"
 
 // Define user profile type
@@ -262,15 +262,6 @@ export default function UserProfilePage() {
                 <AvatarFallback>{(user.name || user.username).charAt(0)}</AvatarFallback>
               </Avatar>
               <div className="flex items-center space-x-2 pb-4 pr-4">
-                {user.donationsEnabled && (
-                  <SupportButton
-                    authorId={user.id}
-                    donationMethod={user.donationMethod ?? null}
-                    donationLink={user.donationLink ?? null}
-                    authorName={user.name || user.username}
-                    authorUsername={user.username}
-                  />
-                )}
                 <ProfileActionButtons
                   username={user.username}
                   isCurrentUser={user.isCurrentUser}
