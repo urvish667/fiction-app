@@ -18,6 +18,7 @@ const protectedRoutes = [
 
 // Routes that require profile completion
 const profileRequiredRoutes = [
+  '/user',
   '/write',
   '/settings',
   '/dashboard',
