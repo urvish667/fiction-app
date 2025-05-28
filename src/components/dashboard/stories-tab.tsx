@@ -10,9 +10,11 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 import { useUserStories } from "@/hooks/use-user-stories"
+import { useIsMobile } from "@/hooks/use-mobile"
 
 export function StoriesTab() {
   const { data: stories, isLoading, error } = useUserStories();
+  const isMobile = useIsMobile();
 
   // Format date for display
   const formatDate = (dateString: string | undefined | null) => {
@@ -36,12 +38,13 @@ export function StoriesTab() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">Your Stories</h2>
-        <Button asChild>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
+        <h2 className="text-xl md:text-2xl font-bold">Your Stories</h2>
+        <Button asChild className="w-full sm:w-auto">
           <Link href="/works">
             <BookText className="h-4 w-4 mr-2" />
-            Manage All Stories
+            <span className="hidden sm:inline">Manage All Stories</span>
+            <span className="sm:hidden">Manage All</span>
           </Link>
         </Button>
       </div>
@@ -78,7 +81,47 @@ export function StoriesTab() {
                   </Link>
                 </Button>
               </div>
+            ) : isMobile ? (
+              // Mobile card layout
+              <div className="space-y-3 p-4">
+                {stories.map((story) => (
+                  <div key={story.id} className="border rounded-lg p-4 space-y-3">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <Link href={`/story/${story.slug || story.id}`} className="font-medium hover:text-primary text-sm">
+                          {story.title}
+                        </Link>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {story.genreName || story.genre || 'General'}
+                        </div>
+                      </div>
+                      <Badge variant={story.status === "published" ? "default" : "outline"} className="ml-2 text-xs">
+                        {story.status === "ongoing" ? "Ongoing" : story.status === "completed" ? "Completed" : story.status}
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Reads:</span>
+                        <span className="font-medium">{(story.viewCount || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Likes:</span>
+                        <span className="font-medium">{(story.likeCount || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Comments:</span>
+                        <span className="font-medium">{(story.commentCount || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Updated:</span>
+                        <span className="font-medium">{formatDate(story.updatedAt)}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : (
+              // Desktop table layout
               <table className="w-full">
                 <thead>
                   <tr className="border-b">

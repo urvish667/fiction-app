@@ -20,9 +20,11 @@ import {
 
 import { useEarningsData } from "@/hooks/use-earnings-data"
 import { formatStatNumber } from "@/utils/number-utils"
+import { useIsMobile } from "@/hooks/use-mobile"
 
 export function EarningsTab({ timeRange = '30days' }: { timeRange?: string }) {
   const { data, isLoading, isLoadingMore, error, loadMoreTransactions } = useEarningsData(timeRange);
+  const isMobile = useIsMobile();
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
@@ -39,7 +41,7 @@ export function EarningsTab({ timeRange = '30days' }: { timeRange?: string }) {
         </Alert>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-6 md:mb-8">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Earnings</CardTitle>
@@ -89,13 +91,13 @@ export function EarningsTab({ timeRange = '30days' }: { timeRange?: string }) {
         </Card>
       </div>
 
-      <Card className="mb-8">
+      <Card className="mb-6 md:mb-8">
         <CardHeader>
-          <CardTitle>Earnings Over Time</CardTitle>
-          <CardDescription>Your earnings for the selected period</CardDescription>
+          <CardTitle className="text-lg md:text-xl">Earnings Over Time</CardTitle>
+          <CardDescription className="text-sm">Your earnings for the selected period</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="h-80">
+          <div className="h-64 md:h-80">
             {isLoading ? (
               <div className="flex items-center justify-center h-full">
                 <Skeleton className="h-full w-full" />
@@ -144,7 +146,49 @@ export function EarningsTab({ timeRange = '30days' }: { timeRange?: string }) {
                 </Link>
               </Button>
             </div>
+          ) : isMobile ? (
+            // Mobile card layout
+            <div className="space-y-3">
+              {data.transactions.map((transaction: any) => (
+                <div key={transaction.id} className="border rounded-lg p-4 space-y-3">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="font-medium text-sm">
+                        {transaction.donorUsername ? (
+                          <Link href={`/user/${transaction.donorUsername}`} className="hover:text-primary">
+                            {transaction.donorUsername}
+                          </Link>
+                        ) : (
+                          <span>{transaction.donorName}</span>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {transaction.storyTitle ? (
+                          <Link href={`/story/${transaction.storySlug || transaction.storyId}`} className="hover:text-primary">
+                            {transaction.storyTitle}
+                          </Link>
+                        ) : (
+                          <span>General donation</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-bold text-green-600">${transaction.amount.toFixed(2)}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {new Date(transaction.createdAt).toLocaleDateString()}
+                      </div>
+                    </div>
+                  </div>
+                  {transaction.message && (
+                    <div className="text-xs text-muted-foreground italic border-t pt-2">
+                      "{transaction.message}"
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           ) : (
+            // Desktop table layout
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -190,7 +234,12 @@ export function EarningsTab({ timeRange = '30days' }: { timeRange?: string }) {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
 
+          {/* Load more button and pagination info for both mobile and desktop */}
+          {data?.transactions && data.transactions.length > 0 && (
+            <>
               {data.pagination && data.pagination.hasMore && (
                 <div className="mt-6 text-center">
                   <Button
@@ -216,7 +265,7 @@ export function EarningsTab({ timeRange = '30days' }: { timeRange?: string }) {
               <div className="mt-4 text-xs text-center text-muted-foreground">
                 Showing {data.transactions.length} of {data.pagination?.totalItems || 0} transactions
               </div>
-            </div>
+            </>
           )}
         </CardContent>
       </Card>

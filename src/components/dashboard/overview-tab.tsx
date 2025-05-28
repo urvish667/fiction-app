@@ -25,12 +25,15 @@ import { useDashboardStats } from "@/hooks/use-dashboard-stats"
 import { useDashboardStories } from "@/hooks/use-dashboard-stories"
 import { useReadsChartData, useEngagementChartData } from "@/hooks/use-chart-data"
 import { formatStatNumber } from "@/utils/number-utils"
+import { useIsMobile } from "@/hooks/use-mobile"
 
 interface OverviewTabProps {
   timeRange: string;
 }
 
 export function OverviewTab({ timeRange }: OverviewTabProps) {
+  const isMobile = useIsMobile();
+
   // Fetch stats data
   const {
     data: statsData,
@@ -79,7 +82,7 @@ export function OverviewTab({ timeRange }: OverviewTabProps) {
       )}
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 md:gap-4 mb-6 md:mb-8">
         {isLoading ? (
           // Loading skeletons for stats cards
           <>
@@ -137,14 +140,14 @@ export function OverviewTab({ timeRange }: OverviewTabProps) {
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-6 md:mb-8">
         <Card>
           <CardHeader>
-            <CardTitle>Reads Over Time</CardTitle>
-            <CardDescription>Total story views for the selected period</CardDescription>
+            <CardTitle className="text-lg md:text-xl">Reads Over Time</CardTitle>
+            <CardDescription className="text-sm">Total story views for the selected period</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-80">
+            <div className="h-64 md:h-80">
               {isLoading ? (
                 <div className="flex items-center justify-center h-full">
                   <Skeleton className="h-full w-full" />
@@ -173,11 +176,11 @@ export function OverviewTab({ timeRange }: OverviewTabProps) {
 
         <Card>
           <CardHeader>
-            <CardTitle>Engagement</CardTitle>
-            <CardDescription>Likes and comments on your stories</CardDescription>
+            <CardTitle className="text-lg md:text-xl">Engagement</CardTitle>
+            <CardDescription className="text-sm">Likes and comments on your stories</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-80">
+            <div className="h-64 md:h-80">
               {isLoading ? (
                 <div className="flex items-center justify-center h-full">
                   <Skeleton className="h-full w-full" />
@@ -233,7 +236,42 @@ export function OverviewTab({ timeRange }: OverviewTabProps) {
                 </Link>
               </Button>
             </div>
+          ) : isMobile ? (
+            // Mobile card layout
+            <div className="space-y-3">
+              {storiesData.map((story) => (
+                <div key={story.id} className="border rounded-lg p-4 space-y-2">
+                  <div>
+                    <Link href={`/story/${story.slug}`} className="font-medium hover:text-primary text-sm">
+                      {story.title}
+                    </Link>
+                    <div className="text-xs text-muted-foreground">
+                      {story.genreName || 'General'}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Reads:</span>
+                      <span className="font-medium">{formatStatNumber(story.viewCount || 0)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Likes:</span>
+                      <span className="font-medium">{formatStatNumber(story.likeCount || 0)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Comments:</span>
+                      <span className="font-medium">{formatStatNumber(story.commentCount || 0)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Earnings:</span>
+                      <span className="font-medium">${formatStatNumber(story.earnings || 0)}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : (
+            // Desktop table layout
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>

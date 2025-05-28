@@ -12,15 +12,15 @@ interface DashboardHeaderProps {
 
 export function DashboardHeader({ timeRange, setTimeRange }: DashboardHeaderProps) {
   return (
-    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 md:mb-8 gap-4">
       <div>
-        <h1 className="text-3xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground">Manage your stories and track performance</p>
+        <h1 className="text-2xl md:text-3xl font-bold">Dashboard</h1>
+        <p className="text-sm md:text-base text-muted-foreground">Manage your stories and track performance</p>
       </div>
 
-      <div className="flex gap-4">
+      <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
         <Select value={timeRange} onValueChange={setTimeRange}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full sm:w-[180px]">
             <SelectValue placeholder="Select time range" />
           </SelectTrigger>
           <SelectContent>
@@ -32,10 +32,11 @@ export function DashboardHeader({ timeRange, setTimeRange }: DashboardHeaderProp
           </SelectContent>
         </Select>
 
-        <Button asChild className="border-2 border-primary">
+        <Button asChild className="border-2 border-primary w-full sm:w-auto">
           <Link href="/write/story-info">
             <PenSquare className="h-4 w-4 mr-2" />
-            New Story
+            <span className="hidden sm:inline">New Story</span>
+            <span className="sm:hidden">New</span>
           </Link>
         </Button>
       </div>
