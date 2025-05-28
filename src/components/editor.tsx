@@ -9,7 +9,7 @@ import { useEditor, EditorContent } from "@tiptap/react"
 import StarterKit from "@tiptap/starter-kit"
 import Placeholder from "@tiptap/extension-placeholder"
 import { Image } from "@tiptap/extension-image"
-import Link from "@tiptap/extension-link"
+
 import TextAlign from "@tiptap/extension-text-align"
 import { ImageUpload } from "@/lib/image-upload"
 import { useToast } from "@/hooks/use-toast"
@@ -22,9 +22,7 @@ import {
   List,
   ListOrdered,
   Quote,
-  Code,
   ImageIcon,
-  LinkIcon,
   Undo,
   Redo,
   AlignLeft,
@@ -51,7 +49,7 @@ export function Editor({ content, onChange, readOnly = false }: EditorProps) {
   const editor = useEditor({
     extensions: [
       StarterKit,
-      DivNode, // Add the custom div node
+      // DivNode, // Temporarily remove the custom div node to test image insertion
       Placeholder.configure({
         placeholder: "Begin your story here...",
       }),
@@ -63,11 +61,8 @@ export function Editor({ content, onChange, readOnly = false }: EditorProps) {
           draggable: 'false', // Prevent dragging to ensure alignment works
         },
       }),
-      Link.configure({
-        openOnClick: false,
-      }),
       TextAlign.configure({
-        types: ['heading', 'paragraph', 'image', 'div'], // Add div to the types that can be aligned
+        types: ['heading', 'paragraph', 'image'], // Remove div from types for now
         alignments: ['left', 'center', 'right'],
         defaultAlignment: 'left',
       }),
@@ -140,57 +135,15 @@ export function Editor({ content, onChange, readOnly = false }: EditorProps) {
       const imageUrl = await ImageUpload.uploadEditorImage(processedFile)
 
       if (editor) {
-        // Create a temporary HTML image to get the original dimensions
-        const tempImg = new window.Image()
-        tempImg.src = imageUrl
+        // Simple and reliable image insertion
+        editor.chain().focus().setImage({
+          src: imageUrl
+        }).run();
 
-        tempImg.onload = () => {
-          // Define target size for smaller images
-          const targetWidth = 200 // Target width for resizing
-
-          // Get original dimensions
-          let width = tempImg.width
-          let height = tempImg.height
-
-          // Calculate aspect ratio
-          const aspectRatio = width / height
-
-          // Only resize if the image is larger than targetWidth
-          let widthAttr = {}
-          if (width > targetWidth) {
-            widthAttr = { width: targetWidth }
-          }
-
-          // Get the current text alignment
-          const currentAlignment = editor.isActive({ textAlign: 'center' })
-            ? 'center'
-            : editor.isActive({ textAlign: 'right' })
-              ? 'right'
-              : 'left';
-
-          // Insert a div node with proper alignment
-          editor.chain().focus().insertContent({
-            type: 'div',
-            attrs: {
-              class: `text-align-${currentAlignment}`,
-              'data-text-align': currentAlignment
-            },
-            content: [{
-              type: 'image',
-              attrs: {
-                src: imageUrl,
-                ...widthAttr,
-                class: `editor-image`,
-                'data-align': currentAlignment
-              }
-            }]
-          }).run();
-
-          // Add a paragraph after the div
-          editor.chain().focus().insertContent({
-            type: 'paragraph'
-          }).run();
-        }
+        toast({
+          title: "Image uploaded",
+          description: "Image has been added to your chapter.",
+        })
       }
     } catch (error) {
       logError(error, { context: 'Uploading image' });
@@ -206,22 +159,7 @@ export function Editor({ content, onChange, readOnly = false }: EditorProps) {
     }
   }
 
-  // Handle link
-  const setLink = () => {
-    const previousUrl = editor.getAttributes("link").href
-    const url = window.prompt("Enter link URL", previousUrl)
 
-    if (url === null) {
-      return
-    }
-
-    if (url === "") {
-      editor.chain().focus().extendMarkRange("link").unsetLink().run()
-      return
-    }
-
-    editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run()
-  }
 
   return (
     <div className={`border rounded-md ${readOnly ? "bg-muted/20" : ""}`}>
@@ -297,16 +235,6 @@ export function Editor({ content, onChange, readOnly = false }: EditorProps) {
             <span className="sr-only">Blockquote</span>
           </Button>
 
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => editor.chain().focus().toggleCodeBlock().run()}
-            className={editor.isActive("codeBlock") ? "bg-muted" : ""}
-          >
-            <Code size={16} />
-            <span className="sr-only">Code Block</span>
-          </Button>
-
           <Button variant="ghost" size="icon" onClick={handleImageUpload} disabled={isUploading}>
             <ImageIcon size={16} />
             <span className="sr-only">Image</span>
@@ -315,45 +243,13 @@ export function Editor({ content, onChange, readOnly = false }: EditorProps) {
 
           <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" disabled={isUploading} />
 
-          <Button variant="ghost" size="icon" onClick={setLink}>
-            <LinkIcon size={16} />
-            <span className="sr-only">Link</span>
-          </Button>
-
           <div className="border-l mx-1 h-6"></div>
 
           {/* Text alignment buttons */}
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => {
-              // Apply left alignment and log for debugging
-              // Check if an image is selected
-              if (editor.isActive('image')) {
-                // Find the parent node of the image
-                const parentNode = editor.state.selection.$anchor.parent;
-
-                // If the parent is a paragraph or div, set its alignment
-                if (parentNode && (parentNode.type.name === 'paragraph' || parentNode.type.name === 'div')) {
-                  editor.chain().focus().setTextAlign('left').run();
-                } else {
-                  // Create a div with left alignment and wrap the image
-                  editor.chain().focus()
-                    .setNodeSelection(editor.state.selection.$anchor.pos)
-                    .wrapIn('div', { 'data-text-align': 'left' })
-                    .setTextAlign('left')
-                    .run();
-                }
-
-                // Also update the image attributes for backward compatibility
-                editor.chain().focus().updateAttributes('image', {
-                  'data-align': 'left'
-                }).run();
-              } else {
-                // Set text alignment for the current node
-                editor.chain().focus().setTextAlign('left').run();
-              }
-            }}
+            onClick={() => editor.chain().focus().setTextAlign('left').run()}
             className={editor.isActive({ textAlign: 'left' }) ? "bg-muted" : ""}
             title="Align Left"
           >
@@ -364,34 +260,7 @@ export function Editor({ content, onChange, readOnly = false }: EditorProps) {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => {
-              // Apply center alignment and log for debugging
-              // Check if an image is selected
-              if (editor.isActive('image')) {
-                // Find the parent node of the image
-                const parentNode = editor.state.selection.$anchor.parent;
-
-                // If the parent is a paragraph or div, set its alignment
-                if (parentNode && (parentNode.type.name === 'paragraph' || parentNode.type.name === 'div')) {
-                  editor.chain().focus().setTextAlign('center').run();
-                } else {
-                  // Create a div with center alignment and wrap the image
-                  editor.chain().focus()
-                    .setNodeSelection(editor.state.selection.$anchor.pos)
-                    .wrapIn('div', { 'data-text-align': 'center' })
-                    .setTextAlign('center')
-                    .run();
-                }
-
-                // Also update the image attributes for backward compatibility
-                editor.chain().focus().updateAttributes('image', {
-                  'data-align': 'center'
-                }).run();
-              } else {
-                // Set text alignment for the current node
-                editor.chain().focus().setTextAlign('center').run();
-              }
-            }}
+            onClick={() => editor.chain().focus().setTextAlign('center').run()}
             className={editor.isActive({ textAlign: 'center' }) ? "bg-muted" : ""}
             title="Align Center"
           >
@@ -402,34 +271,7 @@ export function Editor({ content, onChange, readOnly = false }: EditorProps) {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => {
-              // Apply right alignment and log for debugging
-              // Check if an image is selected
-              if (editor.isActive('image')) {
-                // Find the parent node of the image
-                const parentNode = editor.state.selection.$anchor.parent;
-
-                // If the parent is a paragraph or div, set its alignment
-                if (parentNode && (parentNode.type.name === 'paragraph' || parentNode.type.name === 'div')) {
-                  editor.chain().focus().setTextAlign('right').run();
-                } else {
-                  // Create a div with right alignment and wrap the image
-                  editor.chain().focus()
-                    .setNodeSelection(editor.state.selection.$anchor.pos)
-                    .wrapIn('div', { 'data-text-align': 'right' })
-                    .setTextAlign('right')
-                    .run();
-                }
-
-                // Also update the image attributes for backward compatibility
-                editor.chain().focus().updateAttributes('image', {
-                  'data-align': 'right'
-                }).run();
-              } else {
-                // Set text alignment for the current node
-                editor.chain().focus().setTextAlign('right').run();
-              }
-            }}
+            onClick={() => editor.chain().focus().setTextAlign('right').run()}
             className={editor.isActive({ textAlign: 'right' }) ? "bg-muted" : ""}
             title="Align Right"
           >
