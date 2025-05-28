@@ -578,6 +578,7 @@ export const authOptions: NextAuthOptions = {
             where: { email: user.email },
             select: {
               id: true,
+              name: true,
               username: true,
               provider: true,
               isProfileComplete: true,
@@ -601,6 +602,7 @@ export const authOptions: NextAuthOptions = {
               user: {
                 select: {
                   id: true,
+                  name: true,
                   username: true,
                   provider: true,
                   isProfileComplete: true,
@@ -629,6 +631,7 @@ export const authOptions: NextAuthOptions = {
 
         // Store data from the DB user in the token
         token.id = dbUser.id; // Use the actual database ID
+        token.name = dbUser.name;
         token.username = dbUser.username;
         token.provider = dbUser.provider || (account ? account.provider : undefined); // Keep provider logic
         token.isProfileComplete = dbUser.isProfileComplete;
@@ -683,6 +686,7 @@ export const authOptions: NextAuthOptions = {
           const dbUser = await prisma.user.findUnique({
             where: { id: token.id as string }, // Use ONLY token.id
             select: {
+              name: true,
               username: true,
               isProfileComplete: true,
               preferences: true,
@@ -695,6 +699,7 @@ export const authOptions: NextAuthOptions = {
           });
 
           if (dbUser) {
+            token.name = dbUser.name;
             token.username = dbUser.username;
             token.isProfileComplete = dbUser.isProfileComplete;
             token.marketingOptIn = dbUser.marketingOptIn;

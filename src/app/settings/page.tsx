@@ -674,11 +674,11 @@ export default function SettingsPage() {
     } catch (error) {
       logError(error, { context: 'Error initiating Stripe Connect flow' });
       setDonationError('Failed to initiate Stripe Connect flow');
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to initiate Stripe Connect flow',
-        variant: 'destructive'
-      });
+      // toast({
+      //   title: 'Error',
+      //   description: error instanceof Error ? error.message : 'Failed to initiate Stripe Connect flow',
+      //   variant: 'destructive'
+      // });
       setIsSavingDonations(false);
     }
   };
@@ -769,13 +769,15 @@ export default function SettingsPage() {
         </Suspense>
 
         <Tabs value={activeTab} onValueChange={handleTabChange} className="mt-6">
-          <TabsList className="mb-8">
-            <TabsTrigger value="profile">Profile</TabsTrigger>
-            <TabsTrigger value="account">Account</TabsTrigger>
-            <TabsTrigger value="notifications">Notifications</TabsTrigger>
-            <TabsTrigger value="privacy">Privacy</TabsTrigger>
-            <TabsTrigger value="monetization">Monetization</TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto sm:overflow-x-visible">
+            <TabsList className="mb-8 w-max sm:w-auto">
+              <TabsTrigger value="profile" className="text-xs sm:text-sm">Profile</TabsTrigger>
+              <TabsTrigger value="account" className="text-xs sm:text-sm">Account</TabsTrigger>
+              <TabsTrigger value="notifications" className="text-xs sm:text-sm">Notifications</TabsTrigger>
+              <TabsTrigger value="privacy" className="text-xs sm:text-sm">Privacy</TabsTrigger>
+              <TabsTrigger value="monetization" className="text-xs sm:text-sm">Monetization</TabsTrigger>
+            </TabsList>
+          </div>
 
           <motion.div
             key={activeTab}
@@ -837,7 +839,7 @@ export default function SettingsPage() {
                 paypalLink={paypalLink}
                 handleEnableDonationToggle={handleEnableDonationToggle}
                 handleDonationMethodChange={handleDonationMethodChange}
-                handleConnectStripe={handleConnectStripe}
+                // handleConnectStripe={handleConnectStripe}
                 handleSaveDonationChanges={handleSaveDonationChanges}
                 setIsSavingDonations={setIsSavingDonations}
                 setDonationError={setDonationError}

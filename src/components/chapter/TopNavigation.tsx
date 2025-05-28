@@ -30,15 +30,18 @@ export function TopNavigation({
   const currentIndex = chapters.findIndex((c) => c.number === currentChapter.number)
 
   return (
-    <div className="flex justify-between items-center mb-6 sm:mb-8">
-      <Button variant="ghost" onClick={handleBackToStory} className="pl-0 flex items-center gap-1 sm:gap-2">
+    <div className="flex justify-between items-center mb-6 sm:mb-8 gap-2">
+      {/* Back to Story Button - Responsive text */}
+      <Button variant="ghost" onClick={handleBackToStory} className="pl-0 flex items-center gap-1 sm:gap-2 flex-shrink-0">
         <ArrowLeft size={16} />
-        <span className="text-sm sm:text-base">Back to Story</span>
+        <span className="text-sm sm:text-base hidden xs:inline">Back to Story</span>
+        <span className="text-sm xs:hidden">Back</span>
       </Button>
 
-      <div className="flex items-center gap-2">
+      {/* Navigation Controls - Responsive layout */}
+      <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
         {/* Chapter Navigation */}
-        <div className="flex items-center">
+        <div className="flex items-center gap-1">
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -47,8 +50,9 @@ export function TopNavigation({
                   size="icon"
                   onClick={() => navigateToChapter("prev")}
                   disabled={currentIndex <= 0}
+                  className="h-8 w-8 sm:h-10 sm:w-10"
                 >
-                  <ChevronLeft size={16} />
+                  <ChevronLeft size={14} className="sm:w-4 sm:h-4" />
                   <span className="sr-only">Previous Chapter</span>
                 </Button>
               </TooltipTrigger>
@@ -56,12 +60,14 @@ export function TopNavigation({
             </Tooltip>
           </TooltipProvider>
 
-          {/* Chapter Selector */}
+          {/* Chapter Selector - Responsive text */}
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="outline" className="mx-2 text-xs sm:text-sm">
-                <span>Chapter {currentIndex + 1}/{chapters.length}</span>
-                <List size={16} className="ml-1 sm:ml-2" />
+              <Button variant="outline" className="mx-1 sm:mx-2 text-xs sm:text-sm h-8 sm:h-10 px-2 sm:px-3">
+                {/* Show abbreviated format on very small screens */}
+                <span className="hidden sm:inline">Chapter {currentIndex + 1}/{chapters.length}</span>
+                <span className="sm:hidden">{currentIndex + 1}/{chapters.length}</span>
+                <List size={14} className="ml-1 sm:ml-2 sm:w-4 sm:h-4" />
               </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
@@ -82,8 +88,9 @@ export function TopNavigation({
                   size="icon"
                   onClick={() => navigateToChapter("next")}
                   disabled={currentIndex >= chapters.length - 1}
+                  className="h-8 w-8 sm:h-10 sm:w-10"
                 >
-                  <ChevronRight size={16} />
+                  <ChevronRight size={14} className="sm:w-4 sm:h-4" />
                   <span className="sr-only">Next Chapter</span>
                 </Button>
               </TooltipTrigger>
@@ -98,8 +105,8 @@ export function TopNavigation({
             <Tooltip>
               <TooltipTrigger asChild>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="icon">
-                    <AlignJustify size={16} />
+                  <Button variant="outline" size="icon" className="h-8 w-8 sm:h-10 sm:w-10">
+                    <AlignJustify size={14} className="sm:w-4 sm:h-4" />
                     <span className="sr-only">Reading Settings</span>
                   </Button>
                 </DropdownMenuTrigger>

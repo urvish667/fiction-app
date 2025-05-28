@@ -61,8 +61,27 @@ export function ChapterContent({
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5, delay: 0.2 }}
       ref={contentRef}
-      className="prose prose-lg dark:prose-invert max-w-none mb-12 relative"
-      style={{ fontSize: `${fontSize}px` }}
+      className="prose prose-sm sm:prose-base lg:prose-lg dark:prose-invert max-w-none mb-8 sm:mb-12 relative"
+      style={{
+        fontSize: `${fontSize}px`,
+        lineHeight: '1.7',
+        '--tw-prose-body': 'rgb(75 85 99)',
+        '--tw-prose-headings': 'rgb(17 24 39)',
+        '--tw-prose-lead': 'rgb(75 85 99)',
+        '--tw-prose-links': 'rgb(59 130 246)',
+        '--tw-prose-bold': 'rgb(17 24 39)',
+        '--tw-prose-counters': 'rgb(107 114 128)',
+        '--tw-prose-bullets': 'rgb(209 213 219)',
+        '--tw-prose-hr': 'rgb(229 231 235)',
+        '--tw-prose-quotes': 'rgb(17 24 39)',
+        '--tw-prose-quote-borders': 'rgb(229 231 235)',
+        '--tw-prose-captions': 'rgb(107 114 128)',
+        '--tw-prose-code': 'rgb(17 24 39)',
+        '--tw-prose-pre-code': 'rgb(229 231 235)',
+        '--tw-prose-pre-bg': 'rgb(17 24 39)',
+        '--tw-prose-th-borders': 'rgb(209 213 219)',
+        '--tw-prose-td-borders': 'rgb(229 231 235)'
+      } as React.CSSProperties}
     >
       {/* Loading overlay */}
       {isContentLoading && (
@@ -89,7 +108,7 @@ export function ChapterContent({
           />
 
           {/* First ad after 1/3 of content */}
-          <AdBanner type="interstitial" className="my-8 w-full h-32" />
+          <AdBanner type="interstitial" className="my-6 sm:my-8 w-full h-24 sm:h-32" />
 
           {/* Second third of content */}
           <div
@@ -107,7 +126,7 @@ export function ChapterContent({
           />
 
           {/* Second ad after 2/3 of content */}
-          <AdBanner type="interstitial" className="my-8 w-full h-32" />
+          <AdBanner type="interstitial" className="my-6 sm:my-8 w-full h-24 sm:h-32" />
 
           {/* Final third of content */}
           <div
@@ -143,7 +162,7 @@ export function ChapterContent({
           />
 
           {/* Ad in the middle */}
-          <AdBanner type="interstitial" className="my-8 w-full h-32" />
+          <AdBanner type="interstitial" className="my-6 sm:my-8 w-full h-24 sm:h-32" />
 
           {/* Second half of content */}
           <div
@@ -175,7 +194,7 @@ export function ChapterContent({
           />
 
           {/* Ad at the end */}
-          <AdBanner type="interstitial" className="my-8 w-full h-32" />
+          <AdBanner type="interstitial" className="my-6 sm:my-8 w-full h-24 sm:h-32" />
         </>
       )}
     </motion.div>

@@ -1100,7 +1100,7 @@ export default function StoryInfoPage() {
               <h2 className="text-xl font-bold">Cover Image</h2>
 
               <div
-                className="relative aspect-[3/4] sm:aspect-[16/9] rounded-lg overflow-hidden border cursor-pointer group"
+                className="relative aspect-[16/9] sm:aspect-[16/9] rounded-lg overflow-hidden border cursor-pointer group"
                 onClick={handleCoverImageClick}
               >
                 {isUploading ? (

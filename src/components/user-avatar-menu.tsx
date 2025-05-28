@@ -130,7 +130,9 @@ export default function UserAvatarMenu({ user, onLogout }: UserAvatarMenuProps) 
       <DropdownMenuContent className="w-56" align="end" alignOffset={-5} forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{user.name}</p>
+            <p className="text-sm font-medium leading-none">
+              {user.name && user.name.trim() !== '' && user.name !== 'User' ? user.name : 'User'}
+            </p>
             <p className="text-xs leading-none text-muted-foreground">@{user.username}</p>
           </div>
         </DropdownMenuLabel>

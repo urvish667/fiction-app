@@ -31,9 +31,6 @@ export default function LibraryPage() {
         setLoading(true)
         const response = await StoryService.getBookmarkedStories()
 
-        // Log the raw story data to debug genre information
-        logError(response.stories, { context: 'Raw bookmarked stories data' })
-
         // Format stories to ensure they have all required fields
         const formattedStories = response.stories.map((story: any) => {
           // Extract genre name from genre object if it exists
@@ -132,7 +129,7 @@ export default function LibraryPage() {
     <div className="min-h-screen">
       <Navbar />
 
-      <main className="container mx-auto px-8 py-8">
+      <main className="container mx-auto px-4 md:px-8 py-4 md:py-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <h1 className="text-3xl font-bold">My Library</h1>
 

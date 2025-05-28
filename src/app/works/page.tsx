@@ -191,7 +191,7 @@ export default function MyWorksPage() {
     <div className="min-h-screen">
       <Navbar />
 
-      <main className="container mx-auto px-8 py-8">
+      <main className="container mx-auto px-4 md:px-8 py-4 md:py-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <h1 className="text-3xl font-bold">My Works</h1>
 
@@ -226,12 +226,14 @@ export default function MyWorksPage() {
         </div>
 
         <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="mt-6">
-          <TabsList className="mb-8">
-            <TabsTrigger value="all">All Works</TabsTrigger>
-            <TabsTrigger value="draft">Drafts</TabsTrigger>
-            <TabsTrigger value="ongoing">Ongoing</TabsTrigger>
-            <TabsTrigger value="completed">Completed</TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto sm:overflow-x-visible px-4 -mx-4 md:px-0 md:mx-0">
+            <TabsList className="mb-8 w-max sm:w-auto ml-0 sm:ml-0">
+              <TabsTrigger value="all" className="text-xs sm:text-sm">All Works</TabsTrigger>
+              <TabsTrigger value="draft" className="text-xs sm:text-sm">Drafts</TabsTrigger>
+              <TabsTrigger value="ongoing" className="text-xs sm:text-sm">Ongoing</TabsTrigger>
+              <TabsTrigger value="completed" className="text-xs sm:text-sm">Completed</TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* Use a single TabsContent component that renders for all tab values */}
           <TabsContent value={activeTab}>

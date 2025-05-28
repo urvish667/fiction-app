@@ -30,7 +30,7 @@ export default function Navbar() {
 
   const userWithAvatar = session?.user ? {
     id: session.user.id,
-    name: session.user.name || 'User',
+    name: session.user.name && session.user.name.trim() !== '' ? session.user.name : 'User',
     username: session.user.username || session.user.name?.split(' ')[0].toLowerCase() || 'user',
     avatar: session.user.image || '/placeholder-user.jpg',
     unreadNotifications: session.user.unreadNotifications || 0

@@ -314,16 +314,16 @@ export default function StoryInfoPage() {
         />
       )}
 
-      <main className="container mx-auto px-8 py-8">
+      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
         {/* Back Button and Story Status */}
-        <div className="flex justify-between items-center mb-6">
-          <Button variant="ghost" onClick={handleBack} className="pl-0 flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0 mb-4 sm:mb-6">
+          <Button variant="ghost" onClick={handleBack} className="pl-0 flex items-center gap-2 self-start">
             <ArrowLeft size={16} />
-            Back to Browse
+            <span className="text-sm sm:text-base">Back to Browse</span>
           </Button>
 
           {story.status && (
-            <Badge variant="outline" className="text-sm px-3 py-1 capitalize flex items-center gap-1">
+            <Badge variant="outline" className="text-sm px-3 py-1 capitalize flex items-center gap-1 self-start sm:self-auto">
               {story.status === "completed" ? <CheckCircle size={14} className="text-green-500" /> : null}
               {story.status}
             </Badge>
@@ -331,21 +331,21 @@ export default function StoryInfoPage() {
         </div>
 
         {/* Story Overview Section */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 mb-8 lg:mb-12">
           {/* Left Column (Cover, Actions) */}
-          <div className="md:col-span-1">
-            {/* Cover Image - Change aspect ratio */}
+          <div className="lg:col-span-1">
+            {/* Cover Image - Better mobile aspect ratio */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
-              className="relative aspect-video rounded-lg overflow-hidden shadow-lg mb-6"
+              className="relative aspect-video sm:aspect-[4/3] lg:aspect-video rounded-lg overflow-hidden shadow-lg mb-4 sm:mb-6"
             >
               <Image
                 src={imageFallback ? "/placeholder.svg" : story.coverImage || "/placeholder.svg"}
                 alt={`${story.title} cover`}
                 fill
-                sizes="(max-width: 768px) 100vw, 33vw"
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                 className="object-cover"
                 onError={() => {
                     logError(`Image loading failed`, { context: 'Cover image error', imageUrl: story.coverImage });
@@ -356,32 +356,37 @@ export default function StoryInfoPage() {
             </motion.div>
 
             {/* Start Reading Button (Mobile) */}
-            <div className="mt-6 md:hidden">
-              <Button onClick={handleStartReading} disabled={chapters.length === 0} className="w-full flex items-center gap-2" size="lg">
-                <BookOpen size={18} />
+            <div className="mt-4 lg:hidden">
+              <Button
+                onClick={handleStartReading}
+                disabled={chapters.length === 0}
+                className="w-full flex items-center justify-center gap-2 h-12 text-base font-medium"
+                size="lg"
+              >
+                <BookOpen size={20} />
                 Start Reading
               </Button>
             </div>
           </div>
 
           {/* Story Details (Right Column) */}
-          <div className="md:col-span-2">
+          <div className="lg:col-span-2">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
             >
-              <h1 className="text-3xl md:text-4xl font-bold mb-2">{story.title}</h1>
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 sm:mb-2 leading-tight">{story.title}</h1>
 
               {/* Author Info Section with Genre */}
               {author && (
-                  <div className="flex items-center flex-wrap gap-3 mb-4 text-lg">
+                  <div className="flex items-center flex-wrap gap-2 sm:gap-3 mb-4 text-base sm:text-lg">
                     <span>By</span>
                     <Link href={`/user/${author.username || ''}`} className="font-semibold hover:text-primary">
                         {author.name || author.username || 'Unknown Author'}
                     </Link>
-                    <span className="text-muted-foreground">•</span>
-                    <Badge variant="secondary" className="text-sm">
+                    <span className="text-muted-foreground hidden xs:inline">•</span>
+                    <Badge variant="secondary" className="text-xs sm:text-sm">
                       {typeof story.genre === 'object' && story.genre !== null
                         ? (story.genre as {name: string}).name
                         : (typeof story.genre === 'string' ? story.genre : 'General')}
@@ -390,48 +395,63 @@ export default function StoryInfoPage() {
               )}
 
               {/* Metadata (Genre, Language, Status, Counts) */}
-              <StoryMetadata story={story} className="mb-6" showLicense={true} />
+              <StoryMetadata story={story} className="mb-4 sm:mb-6" showLicense={true} />
 
               {/* Start Reading Button (Desktop) */}
-              <div className="hidden md:block mb-8">
-                 <Button onClick={handleStartReading} disabled={chapters.length === 0} className="flex items-center gap-2" size="lg">
-                   <BookOpen size={18} />
+              <div className="hidden lg:block mb-6 lg:mb-8">
+                 <Button
+                   onClick={handleStartReading}
+                   disabled={chapters.length === 0}
+                   className="flex items-center gap-2 h-12 text-base font-medium"
+                   size="lg"
+                 >
+                   <BookOpen size={20} />
                    Start Reading
                  </Button>
                </div>
 
-              {/* Like, Bookmark, Follow Buttons (Original Structure) */}
-              <div className="flex items-center flex-wrap gap-3 mb-6">
+              {/* Like, Bookmark, Follow Buttons - Mobile Optimized */}
+              <div className="flex items-center flex-wrap gap-2 sm:gap-3 mb-4 sm:mb-6">
                 <Button
                   variant={story.isLiked ? "default" : "outline"}
                   size="sm"
                   onClick={handleLike}
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-1 sm:gap-2 h-9 sm:h-10 text-xs sm:text-sm px-3 sm:px-4"
                   title={!session ? "Sign in to like this story" : undefined}
                   disabled={likeLoading}
                 >
                   {likeLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                    <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
                   ) : (
-                    <Heart size={16} className={story.isLiked ? "fill-current text-red-500" : ""} />
+                    <Heart size={14} className={story.isLiked ? "fill-current text-red-500" : ""} />
                   )}
-                  {likeLoading ? "Processing..." : `${story.likeCount || 0} Likes`}
+                  <span className="hidden xs:inline">
+                    {likeLoading ? "Processing..." : `${story.likeCount || 0} Likes`}
+                  </span>
+                  <span className="xs:hidden">
+                    {likeLoading ? "..." : `${story.likeCount || 0}`}
+                  </span>
                 </Button>
 
                 <Button
                   variant={story.isBookmarked ? "default" : "outline"}
                   size="sm"
                   onClick={handleBookmark}
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-1 sm:gap-2 h-9 sm:h-10 text-xs sm:text-sm px-3 sm:px-4"
                   title={!session ? "Sign in to bookmark this story" : undefined}
                   disabled={bookmarkLoading}
                 >
                   {bookmarkLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                    <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
                   ) : (
-                    <Bookmark size={16} className={story.isBookmarked ? "fill-current text-primary" : ""} />
+                    <Bookmark size={14} className={story.isBookmarked ? "fill-current text-primary" : ""} />
                   )}
-                  {bookmarkLoading ? "Processing..." : (story.isBookmarked ? 'Saved' : 'Save')}
+                  <span className="hidden xs:inline">
+                    {bookmarkLoading ? "Processing..." : (story.isBookmarked ? 'Saved' : 'Save')}
+                  </span>
+                  <span className="xs:hidden">
+                    {bookmarkLoading ? "..." : (story.isBookmarked ? '✓' : '+')}
+                  </span>
                 </Button>
 
                 {/* Follow button - only show if author exists and is not the current user */}
@@ -441,39 +461,46 @@ export default function StoryInfoPage() {
                      size="sm"
                      onClick={handleFollow}
                      disabled={followLoading}
-                     className="flex items-center gap-2"
+                     className="flex items-center gap-1 sm:gap-2 h-9 sm:h-10 text-xs sm:text-sm px-3 sm:px-4"
                    >
                      {followLoading ? (
-                       <Loader2 className="h-4 w-4 animate-spin" />
+                       <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
                      ) : isFollowing ? (
-                       <UserCheck size={16} />
+                       <UserCheck size={14} />
                      ) : (
-                       <UserPlus size={16} />
+                       <UserPlus size={14} />
                      )}
-                     {isFollowing ? "Following" : "Follow Author"}
+                     <span className="hidden sm:inline">
+                       {isFollowing ? "Following" : "Follow Author"}
+                     </span>
+                     <span className="sm:hidden">
+                       {isFollowing ? "Following" : "Follow"}
+                     </span>
                    </Button>
                  )}
 
-                 {/* *** Add Support Button Here *** */}
+                 {/* Support Button - Mobile Optimized */}
                  {author?.donationsEnabled && session?.user?.id !== author.id && (
-                    <SupportButton
-                        authorId={author.id}
-                        donationMethod={author.donationMethod ?? null}
-                        donationLink={author.donationLink ?? null}
-                        authorName={author.name || author.username || 'Author'}
-                        authorUsername={author.username || undefined}
-                        storyId={story.id}
-                        storyTitle={story.title}
-                    />
+                    <div className="w-full sm:w-auto mt-2 sm:mt-0">
+                      <SupportButton
+                          authorId={author.id}
+                          donationMethod={author.donationMethod ?? null}
+                          donationLink={author.donationLink ?? null}
+                          authorName={author.name || author.username || 'Author'}
+                          authorUsername={author.username || undefined}
+                          storyId={story.id}
+                          storyTitle={story.title}
+                      />
+                    </div>
                  )}
               </div>
 
               {/* Tags */}
               {storyTags.length > 0 && (
-                <div className="mb-4">
-                  <div className="flex flex-wrap gap-2">
+                <div className="mb-4 sm:mb-6">
+                  <div className="flex flex-wrap gap-1.5 sm:gap-2">
                     {storyTags.map((tag) => (
-                      <Badge key={tag.id} variant="secondary" className="px-3 py-1">
+                      <Badge key={tag.id} variant="secondary" className="px-2 sm:px-3 py-1 text-xs sm:text-sm">
                         {tag.name}
                       </Badge>
                     ))}
@@ -482,16 +509,16 @@ export default function StoryInfoPage() {
               )}
 
               {/* Description */}
-              <div className="mb-6">
-                <h2 className="text-xl font-semibold mb-2">Description</h2>
-                <p className="text-muted-foreground">
+              <div className="mb-4 sm:mb-6">
+                <h2 className="text-lg sm:text-xl font-semibold mb-2 sm:mb-3">Description</h2>
+                <p className="text-muted-foreground text-sm sm:text-base leading-relaxed">
                   {story.description || "No description available for this story."}
                 </p>
               </div>
 
               {/* Interstitial Ad between Description and Table of Contents */}
-              <div className="mb-6">
-                <AdBanner type="interstitial" className="w-full h-32" />
+              <div className="mb-4 sm:mb-6">
+                <AdBanner type="interstitial" className="w-full h-24 sm:h-32" />
               </div>
 
               {/* Chapters */}
@@ -499,9 +526,9 @@ export default function StoryInfoPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.4 }}
-                className="mb-12"
+                className="mb-8 sm:mb-12"
               >
-                <h2 className="text-2xl font-bold mb-6">Table of Contents</h2>
+                <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Table of Contents</h2>
                 <ChapterList chapters={chapters} storySlug={slug} currentChapter={null} />
               </motion.div>
 
@@ -510,9 +537,9 @@ export default function StoryInfoPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.6 }}
-                className="mb-12"
+                className="mb-8 sm:mb-12"
               >
-                <h2 className="text-2xl font-bold mb-6">Comments</h2>
+                <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Comments</h2>
                 <CommentSection storyId={story.id} />
               </motion.div>
             </motion.div>
@@ -526,10 +553,10 @@ export default function StoryInfoPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.8 }}
-            className="mb-12 bg-muted/30 rounded-lg p-6 text-center"
+            className="mb-8 sm:mb-12 bg-muted/30 rounded-lg p-4 sm:p-6 text-center"
           >
-            <h2 className="text-xl font-bold mb-2">Support the Author</h2>
-            <p className="text-muted-foreground mb-4">
+            <h2 className="text-lg sm:text-xl font-bold mb-2">Support the Author</h2>
+            <p className="text-muted-foreground mb-4 text-sm sm:text-base">
               If you enjoyed this story, consider supporting the author to help them create more amazing content.
             </p>
             <SupportButton

@@ -175,11 +175,9 @@ export function EngagementSection({
   };
 
   return (
-    <div className="border-t pt-8 mb-12">
-      <div className="flex flex-wrap justify-between items-center gap-4 mb-8">
-        <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-
-
+    <div className="border-t pt-6 sm:pt-8 mb-8 sm:mb-12">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 sm:mb-8">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {/* Chapter Like Button - Only show if chapter is provided */}
           {chapter && (
             <Button
@@ -187,19 +185,22 @@ export function EngagementSection({
               size="sm"
               onClick={handleChapterLike}
               disabled={chapterLikeLoading}
-              className="flex items-center gap-2"
+              className="flex items-center gap-1 sm:gap-2 h-9 sm:h-10 text-xs sm:text-sm px-3 sm:px-4"
               title={!session ? "Sign in to like this chapter" : undefined}
             >
               {chapterLikeLoading ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-current mr-1"></div>
+                <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-t-2 border-b-2 border-current"></div>
               ) : (
-                <Heart size={16} className={isChapterLiked ? "fill-current" : ""} />
+                <Heart size={14} className={isChapterLiked ? "fill-current" : ""} />
               )}
-              {isChapterLiked ? "Liked Chapter" : "Like Chapter"}
+              <span className="hidden xs:inline">
+                {isChapterLiked ? "Liked Chapter" : "Like Chapter"}
+              </span>
+              <span className="xs:hidden">
+                {isChapterLiked ? "Liked" : "Like"}
+              </span>
             </Button>
           )}
-
-
 
           {/* Chapter Comments Button - Only show if chapter is provided */}
           {chapter && (
@@ -209,17 +210,18 @@ export function EngagementSection({
               onClick={() => {
                 setShowChapterComments(!showChapterComments)
               }}
-              className="flex items-center gap-2"
+              className="flex items-center gap-1 sm:gap-2 h-9 sm:h-10 text-xs sm:text-sm px-3 sm:px-4"
             >
-              <MessageCircle size={16} />
-              Chapter Comments
+              <MessageCircle size={14} />
+              <span className="hidden xs:inline">Chapter Comments</span>
+              <span className="xs:hidden">Comments</span>
             </Button>
           )}
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="flex items-center gap-2">
-                <Share2 size={16} />
+              <Button variant="outline" size="sm" className="flex items-center gap-1 sm:gap-2 h-9 sm:h-10 text-xs sm:text-sm px-3 sm:px-4">
+                <Share2 size={14} />
                 Share
               </Button>
             </DropdownMenuTrigger>
@@ -255,14 +257,19 @@ export function EngagementSection({
             size="sm"
             onClick={handleFollow}
             disabled={followLoading}
-            className="flex items-center gap-2"
+            className="flex items-center gap-1 sm:gap-2 h-9 sm:h-10 text-xs sm:text-sm px-3 sm:px-4 w-full sm:w-auto"
           >
             {followLoading ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-current mr-1"></div>
+              <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-t-2 border-b-2 border-current"></div>
             ) : (
-              <Bell size={16} />
+              <Bell size={14} />
             )}
-            {isFollowing ? "Following Author" : "Follow Author"}
+            <span className="hidden sm:inline">
+              {isFollowing ? "Following Author" : "Follow Author"}
+            </span>
+            <span className="sm:hidden">
+              {isFollowing ? "Following" : "Follow"}
+            </span>
           </Button>
         ) : null}
       </div>
@@ -277,9 +284,9 @@ export function EngagementSection({
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.3 }}
-            className="mb-12"
+            className="mb-8 sm:mb-12"
           >
-            <h2 className="text-2xl font-bold mb-6">Chapter Comments</h2>
+            <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Chapter Comments</h2>
             <CommentSection
               storyId={story.id}
               chapterId={chapter.id}
@@ -292,7 +299,7 @@ export function EngagementSection({
       {/* Support the Author Section - Only shown when monetization is enabled and user is not the author */}
       {story.author && typeof story.author === 'object' && story.author.donationsEnabled &&
        session && session.user.id !== story.author.id && (
-        <div className="bg-muted/30 rounded-lg p-4 sm:p-6 text-center mb-12">
+        <div className="bg-muted/30 rounded-lg p-4 sm:p-6 text-center mb-8 sm:mb-12">
           <h2 className="text-lg sm:text-xl font-bold mb-2">Support the Author</h2>
           <p className="text-sm sm:text-base text-muted-foreground mb-4">
             If you enjoyed this chapter, consider supporting the author to help them create more amazing content.
@@ -308,9 +315,9 @@ export function EngagementSection({
       )}
 
       {/* Story Recommendations - You Might Also Like */}
-      <div className="mt-8">
+      <div className="mt-6 sm:mt-8">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6">
-          <h2 className="text-xl sm:text-2xl font-bold mb-1 sm:mb-0">You Might Also Like</h2>
+          <h2 className="text-xl sm:text-2xl font-bold mb-2 sm:mb-0">You Might Also Like</h2>
           <span className="text-xs sm:text-sm text-muted-foreground">
             Based on genre and tags
           </span>
@@ -319,7 +326,7 @@ export function EngagementSection({
           storyId={story.id}
           excludeSameAuthor={true}
           limit={6}
-          className="mb-12"
+          className="mb-8 sm:mb-12"
         />
       </div>
     </div>

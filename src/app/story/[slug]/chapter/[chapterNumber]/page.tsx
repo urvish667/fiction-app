@@ -514,7 +514,7 @@ export default function ReadingPage() {
         />
       )}
 
-      <main className="container mx-auto px-4 sm:px-8 py-6 sm:py-8">
+      <main className="container mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 lg:py-8">
         {/* Top Navigation */}
         <TopNavigation
           slug={slug}
@@ -526,7 +526,7 @@ export default function ReadingPage() {
           navigateToChapter={navigateToChapter}
         />
 
-        {/* Story Content */}
+        {/* Story Content - Better mobile spacing */}
         <div className="max-w-3xl mx-auto">
           {/* Chapter Title */}
           <ChapterHeader
