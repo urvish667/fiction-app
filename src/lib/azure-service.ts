@@ -106,12 +106,21 @@ export const AzureService = {
       const blockBlobClient = containerClient.getBlockBlobClient(key);
 
       // Get blob properties to ensure it exists
-      await blockBlobClient.getProperties();
+      try {
+        await blockBlobClient.getProperties();
+      } catch (blobError) {
+        logError(blobError, { context: 'Blob not found', key });
+        throw new Error(`Blob not found: ${key}`);
+      }
 
       try {
         // Check if credential is available for SAS generation
         if (!blockBlobClient.credential || !(blockBlobClient.credential instanceof StorageSharedKeyCredential)) {
-          logError("No valid credential available for SAS token generation", { context: 'Generating signed URL' });
+          logError("No valid credential available for SAS token generation", {
+            context: 'Generating signed URL',
+            key,
+            credentialType: blockBlobClient.credential?.constructor?.name || 'undefined'
+          });
           // Return a direct URL to our API endpoint as fallback
           return `/api/images/${encodeURIComponent(key)}`;
         }
@@ -122,7 +131,7 @@ export const AzureService = {
           blobName: key,
           permissions: BlobSASPermissions.parse("r"), // Read permission
           protocol: SASProtocol.Https,
-          startsOn: new Date(),
+          startsOn: new Date(Date.now() - 5 * 60 * 1000), // Start 5 minutes ago to account for clock skew
           expiresOn: new Date(new Date().valueOf() + expiresIn * 1000),
         };
 
@@ -132,16 +141,22 @@ export const AzureService = {
           blockBlobClient.credential as StorageSharedKeyCredential
         ).toString();
 
+        const signedUrl = `${blockBlobClient.url}?${sasToken}`;
+        
         // Return the full URL with SAS token
-        return `${blockBlobClient.url}?${sasToken}`;
+        return signedUrl;
       } catch (sasError) {
-        logError(sasError, { context: 'Generating SAS token for signed URL' });
+        logError(sasError, {
+          context: 'Generating SAS token for signed URL',
+          key,
+          error: sasError instanceof Error ? sasError.message : 'Unknown error'
+        });
         // Return a direct URL to our API endpoint as fallback
         return `/api/images/${encodeURIComponent(key)}`;
       }
     } catch (error) {
-      logError(error, { context: 'Generating signed URL' });
-      throw new Error("Failed to generate signed URL");
+      logError(error, { context: 'Generating signed URL', key });
+      throw new Error(`Failed to generate signed URL for ${key}`);
     }
   }
 };
