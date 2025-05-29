@@ -22,40 +22,6 @@ export function ChapterContent({
   contentRef,
   isContentLoading = false
 }: ChapterContentProps) {
-  // Debug image loading issues
-  useEffect(() => {
-    if (typeof window !== 'undefined' && contentRef.current) {
-      const images = contentRef.current.querySelectorAll('img');
-
-      images.forEach((img, index) => {
-        console.log(`Image ${index + 1}:`, {
-          src: img.src,
-          naturalWidth: img.naturalWidth,
-          naturalHeight: img.naturalHeight,
-          complete: img.complete,
-          loading: img.loading
-        });
-
-        // Add error handler for debugging
-        img.addEventListener('error', (e) => {
-          console.error(`Image ${index + 1} failed to load:`, {
-            src: img.src,
-            error: e,
-            userAgent: navigator.userAgent
-          });
-        });
-
-        // Add load handler for debugging
-        img.addEventListener('load', () => {
-          console.log(`Image ${index + 1} loaded successfully:`, {
-            src: img.src,
-            naturalWidth: img.naturalWidth,
-            naturalHeight: img.naturalHeight
-          });
-        });
-      });
-    }
-  }, [chapter.content, contentRef]);
   // Function to split content for ad placement
   const splitContentForAds = (content: string, parts: number, partIndex: number): string => {
     if (typeof window === 'undefined') return '';
