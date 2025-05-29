@@ -24,6 +24,14 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        {/* Google AdSense Account Verification Meta Tag */}
+        {process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_ID && (
+          <meta
+            name="google-adsense-account"
+            content={process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_ID}
+          />
+        )}
+
         {/* Google AdSense Script - Only included in production */}
         {process.env.NODE_ENV === 'production' && (
           <script
