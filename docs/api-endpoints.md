@@ -135,9 +135,10 @@ NextAuth.js authentication handling
 
 ### `/api/images/[...key]`
 **GET**
-- Purpose: Serve images from S3
+- Purpose: Serve images directly from Azure Blob Storage
 - Parameters:
   - `key`: Image path segments
+- Response: Returns image data with appropriate headers and caching
 
 ## Metadata
 ### `/api/genres`

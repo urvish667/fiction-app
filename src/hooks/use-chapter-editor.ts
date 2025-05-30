@@ -336,7 +336,6 @@ export function useChapterEditor({
         // For new chapters, only create if this is a manual save (showToast is true)
         // This prevents auto-save from creating multiple chapters
         if (showToast) {
-          logInfo('Creating new chapter', { storyId, title: chapter.title })
           // Create new chapter
           savedChapter = await StoryService.createChapter(storyId, chapterData)
         } else {

@@ -143,6 +143,7 @@ export async function POST(
     });
 
     if (!story) {
+      logError('Story not found', { storyId });
       return NextResponse.json(
         { error: "Story not found" },
         { status: 404 }

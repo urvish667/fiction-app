@@ -26,8 +26,8 @@ export async function OPTIONS() {
 }
 
 /**
- * GET endpoint to serve images from Azure Blob Storage
- * Generates a signed URL and redirects to it
+ * GET endpoint to serve images directly from Azure Blob Storage
+ * Downloads the image from Azure and serves it directly through the API
  */
 export async function GET(
   request: NextRequest,
@@ -45,20 +45,26 @@ export async function GET(
       referer: request.headers.get('referer') || 'unknown'
     });
 
-    // Generate a signed URL with a short expiration (1 hour)
-    const signedUrl = await AzureService.getSignedUrl(key, 3600);
+    // Get the image data directly from Azure Blob Storage
+    const imageData = await AzureService.getImageData(key);
 
-    // Create response with redirect and cache headers
-    const response = NextResponse.redirect(signedUrl, { status: 307 });
-    response.headers.set(CACHE_CONTROL_HEADER, CACHE_VALUE);
+    // Create response with the image data
+    const response = new NextResponse(imageData.buffer, {
+      status: 200,
+      headers: {
+        'Content-Type': imageData.contentType,
+        'Content-Length': imageData.buffer.byteLength.toString(),
+        [CACHE_CONTROL_HEADER]: CACHE_VALUE,
+      },
+    });
 
     // Add CORS headers
     addCorsHeaders(response);
 
     logger.info('Image served successfully', {
       key,
-      signedUrl: signedUrl.substring(0, 100) + '...',
-      redirectStatus: 307
+      contentType: imageData.contentType,
+      size: imageData.buffer.byteLength
     });
 
     return response;

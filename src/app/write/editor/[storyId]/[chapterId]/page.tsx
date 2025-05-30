@@ -106,7 +106,6 @@ export default function ChapterEditorPage() {
     const fetchStory = async () => {
       try {
         const story = await StoryService.getStory(storyId)
-
         // Check if the user is the author
         if (story.authorId !== session.user.id) {
           toast({

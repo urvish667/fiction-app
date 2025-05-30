@@ -46,17 +46,18 @@ Response:
 
 ### Image Management
 **GET `/api/images/[...key]`**
-Serves images from S3 storage.
+Serves images directly from Azure Blob Storage.
 
 Parameters:
 - `key`: Image path segments
 
 Response:
-- Redirects to signed S3 URL
-- URL expires in 1 hour
+- Returns image data directly with appropriate content-type headers
+- Includes cache control headers for optimal performance
+- CORS headers for cross-origin requests
 
 **POST `/api/upload-image`**
-Uploads an image to S3 storage.
+Uploads an image to Azure Blob Storage.
 
 Authentication required: Yes (session)
 

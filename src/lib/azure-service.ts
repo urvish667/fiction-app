@@ -80,6 +80,38 @@ export const AzureService = {
   },
 
   /**
+   * Get image data from Azure Blob Storage
+   * @param key The blob name (path)
+   */
+  async getImageData(key: string): Promise<{ buffer: ArrayBuffer; contentType: string }> {
+    try {
+      const containerClient = blobServiceClient.getContainerClient(CONTAINER_NAME);
+      const blockBlobClient = containerClient.getBlockBlobClient(key);
+
+      const downloadResponse = await blockBlobClient.download(0);
+
+      if (!downloadResponse.readableStreamBody) {
+        throw new Error("No readable stream available");
+      }
+
+      // Get the content type from blob properties
+      const contentType = downloadResponse.contentType || 'image/jpeg';
+
+      // Convert stream to buffer
+      const buffer = await streamToBuffer(downloadResponse.readableStreamBody);
+
+      if (!buffer || buffer.byteLength === 0) {
+        throw new Error("Empty image data");
+      }
+
+      return { buffer, contentType };
+    } catch (error) {
+      logError(error, { context: 'Fetching image data from Azure Blob Storage' });
+      throw new Error("Failed to retrieve image data");
+    }
+  },
+
+  /**
    * Delete content from Azure Blob Storage
    * @param key The blob name (path)
    */
@@ -96,9 +128,10 @@ export const AzureService = {
   },
 
   /**
-   * Generate a signed URL for reading content
+   * Generate a signed URL for reading content (kept for backward compatibility)
    * @param key The blob name (path)
    * @param expiresIn Expiration time in seconds (default: 3600)
+   * @deprecated Use getImageData() for images or serve through API endpoints
    */
   async getSignedUrl(key: string, expiresIn = 3600): Promise<string> {
     try {
@@ -106,57 +139,35 @@ export const AzureService = {
       const blockBlobClient = containerClient.getBlockBlobClient(key);
 
       // Get blob properties to ensure it exists
-      try {
-        await blockBlobClient.getProperties();
-      } catch (blobError) {
-        logError(blobError, { context: 'Blob not found', key });
-        throw new Error(`Blob not found: ${key}`);
-      }
+      await blockBlobClient.getProperties();
 
-      try {
-        // Check if credential is available for SAS generation
-        if (!blockBlobClient.credential || !(blockBlobClient.credential instanceof StorageSharedKeyCredential)) {
-          logError("No valid credential available for SAS token generation", {
-            context: 'Generating signed URL',
-            key,
-            credentialType: blockBlobClient.credential?.constructor?.name || 'undefined'
-          });
-          // Return a direct URL to our API endpoint as fallback
-          return `/api/images/${encodeURIComponent(key)}`;
-        }
-
-        // Create SAS token with read permissions
-        const sasOptions = {
-          containerName: CONTAINER_NAME,
-          blobName: key,
-          permissions: BlobSASPermissions.parse("r"), // Read permission
-          protocol: SASProtocol.Https,
-          startsOn: new Date(Date.now() - 5 * 60 * 1000), // Start 5 minutes ago to account for clock skew
-          expiresOn: new Date(new Date().valueOf() + expiresIn * 1000),
-        };
-
-        // Generate SAS token
-        const sasToken = generateBlobSASQueryParameters(
-          sasOptions,
-          blockBlobClient.credential as StorageSharedKeyCredential
-        ).toString();
-
-        const signedUrl = `${blockBlobClient.url}?${sasToken}`;
-        
-        // Return the full URL with SAS token
-        return signedUrl;
-      } catch (sasError) {
-        logError(sasError, {
-          context: 'Generating SAS token for signed URL',
-          key,
-          error: sasError instanceof Error ? sasError.message : 'Unknown error'
-        });
+      // Check if credential is available for SAS generation
+      if (!blockBlobClient.credential || !(blockBlobClient.credential instanceof StorageSharedKeyCredential)) {
         // Return a direct URL to our API endpoint as fallback
         return `/api/images/${encodeURIComponent(key)}`;
       }
+
+      // Create SAS token with read permissions
+      const sasOptions = {
+        containerName: CONTAINER_NAME,
+        blobName: key,
+        permissions: BlobSASPermissions.parse("r"), // Read permission
+        protocol: SASProtocol.Https,
+        startsOn: new Date(Date.now() - 5 * 60 * 1000), // Start 5 minutes ago to account for clock skew
+        expiresOn: new Date(new Date().valueOf() + expiresIn * 1000),
+      };
+
+      // Generate SAS token
+      const sasToken = generateBlobSASQueryParameters(
+        sasOptions,
+        blockBlobClient.credential as StorageSharedKeyCredential
+      ).toString();
+
+      return `${blockBlobClient.url}?${sasToken}`;
     } catch (error) {
       logError(error, { context: 'Generating signed URL', key });
-      throw new Error(`Failed to generate signed URL for ${key}`);
+      // Return a direct URL to our API endpoint as fallback
+      return `/api/images/${encodeURIComponent(key)}`;
     }
   }
 };
@@ -176,6 +187,27 @@ async function streamToString(readableStream: NodeJS.ReadableStream | undefined)
     });
     readableStream.on("end", () => {
       resolve(Buffer.concat(chunks).toString("utf8"));
+    });
+    readableStream.on("error", reject);
+  });
+}
+
+/**
+ * Helper function to convert a readable stream to an ArrayBuffer
+ */
+async function streamToBuffer(readableStream: NodeJS.ReadableStream | undefined): Promise<ArrayBuffer> {
+  if (!readableStream) {
+    return new ArrayBuffer(0);
+  }
+
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    readableStream.on("data", (data) => {
+      chunks.push(Buffer.from(data));
+    });
+    readableStream.on("end", () => {
+      const buffer = Buffer.concat(chunks);
+      resolve(buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength));
     });
     readableStream.on("error", reject);
   });
