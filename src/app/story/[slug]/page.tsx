@@ -1,20 +1,29 @@
 import { Metadata } from "next"
 import { notFound } from "next/navigation"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/app/api/auth/[...nextauth]/route"
+import { prisma } from "@/lib/auth/db-adapter"
 import { StoryService } from "@/services/story-service"
+import { ViewService } from "@/services/view-service"
+import { calculateStoryStatus } from "@/lib/story-helpers"
 import { generateStoryMetadata, generateStoryStructuredData, generateStoryBreadcrumbStructuredData } from "@/lib/seo/metadata"
 import StoryPageClient from "@/components/story/story-page-client"
 import StructuredData from "@/components/seo/structured-data"
 
+import { logError } from "@/lib/error-logger"
+import { StoryResponse, Chapter } from "@/types/story"
+
 interface StoryPageProps {
-  params: {
+  params: Promise<{
     slug: string
-  }
+  }>
 }
 
 // Generate metadata for SEO
 export async function generateMetadata({ params }: StoryPageProps): Promise<Metadata> {
   try {
-    const story = await StoryService.getStoryBySlug(params.slug)
+    const { slug } = await params
+    const story = await StoryService.getStoryBySlug(slug)
     if (!story) {
       return {
         title: "Story Not Found - FableSpace",
@@ -33,12 +42,135 @@ export async function generateMetadata({ params }: StoryPageProps): Promise<Meta
 
 export default async function StoryInfoPage({ params }: StoryPageProps) {
   try {
-    // Fetch story data
-    const story = await StoryService.getStoryBySlug(params.slug)
+    const { slug } = await params
+    const session = await getServerSession(authOptions)
+
+    // Fetch story data directly from database to include session context
+    const story = await prisma.story.findUnique({
+      where: { slug },
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+            username: true,
+            image: true,
+            donationsEnabled: true,
+            donationMethod: true,
+            donationLink: true,
+          },
+        },
+        genre: true,
+        language: true,
+        tags: {
+          include: {
+            tag: true
+          }
+        },
+        _count: {
+          select: {
+            likes: true,
+            comments: true,
+            bookmarks: true,
+            chapters: true,
+          },
+        },
+      },
+    });
 
     if (!story) {
       notFound()
     }
+
+    // Get chapters to determine story status
+    const chapters = await prisma.chapter.findMany({
+      where: { storyId: story.id },
+      select: { status: true }
+    });
+
+    // Calculate story status
+    const storyStatus = calculateStoryStatus(chapters as Chapter[]);
+
+    // Check if the story is a draft and the user is not the author
+    if (storyStatus === "draft" && (!session?.user?.id || session.user.id !== story.authorId)) {
+      notFound()
+    }
+
+    // Check if the user has liked or bookmarked this story
+    let isLiked = false;
+    let isBookmarked = false;
+
+    if (session?.user?.id) {
+      const [like, bookmark] = await Promise.all([
+        prisma.like.findFirst({
+          where: {
+            userId: session.user.id,
+            storyId: story.id,
+            chapterId: null,
+          },
+        }),
+        prisma.bookmark.findUnique({
+          where: {
+            userId_storyId: {
+              userId: session.user.id,
+              storyId: story.id,
+            },
+          },
+        }),
+      ]);
+
+      isLiked = !!like;
+      isBookmarked = !!bookmark;
+    }
+
+    // Get the combined view count
+    let viewCount = 0;
+    try {
+      viewCount = await ViewService.getCombinedViewCount(story.id);
+    } catch (viewCountError) {
+      logError(viewCountError, { context: 'Getting combined view count', storyId: story.id });
+    }
+
+    // Create a properly formatted story response
+    const formattedStory: StoryResponse = {
+      id: story.id,
+      title: story.title,
+      slug: story.slug,
+      description: story.description || undefined,
+      coverImage: story.coverImage || undefined,
+      genre: story.genre?.name || undefined,
+      language: story.language?.name || 'en',
+      isMature: story.isMature,
+      status: story.status,
+      license: story.license,
+      wordCount: story.wordCount,
+      readCount: story.readCount,
+      authorId: story.authorId,
+      createdAt: story.createdAt,
+      updatedAt: story.updatedAt,
+      viewCount,
+
+      // Add author with correct type for donationMethod
+      author: story.author ? {
+        id: story.author.id,
+        name: story.author.name,
+        username: story.author.username,
+        image: story.author.image,
+        donationsEnabled: story.author.donationsEnabled,
+        donationMethod: story.author.donationMethod as 'paypal' | 'stripe' | null,
+        donationLink: story.author.donationLink,
+      } : undefined,
+
+      // Add counts from _count
+      likeCount: story._count.likes,
+      commentCount: story._count.comments,
+      bookmarkCount: story._count.bookmarks,
+      chapterCount: story._count.chapters,
+
+      // Add user interaction flags - THIS IS THE FIX!
+      isLiked,
+      isBookmarked,
+    };
 
     // Fetch chapters for this story
     const chaptersData = await StoryService.getChapters(story.id)
@@ -48,23 +180,17 @@ export default async function StoryInfoPage({ params }: StoryPageProps) {
       chapter.status === 'published'
     );
 
-    // Fetch tags for this story
-    let storyTags: { id: string; name: string }[] = []
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/stories/${story.id}/tags`)
-      if (response.ok) {
-        const tagsData = await response.json()
-        if (Array.isArray(tagsData)) {
-          storyTags = tagsData
-        }
-      }
-    } catch (err) {
-      console.error('Error fetching story tags:', err)
-    }
+    // Extract tags for structured data
+    const storyTags = Array.isArray(story.tags)
+      ? story.tags.map(storyTag => ({
+          id: storyTag.tag?.id || '',
+          name: storyTag.tag?.name || ''
+        })).filter(tag => tag.name)
+      : [];
 
     // Generate structured data for SEO
-    const structuredData = generateStoryStructuredData(story, storyTags.map(tag => tag.name))
-    const breadcrumbData = generateStoryBreadcrumbStructuredData(story)
+    const structuredData = generateStoryStructuredData(formattedStory, storyTags.map(tag => tag.name))
+    const breadcrumbData = generateStoryBreadcrumbStructuredData(formattedStory)
 
     return (
       <>
@@ -74,10 +200,10 @@ export default async function StoryInfoPage({ params }: StoryPageProps) {
 
         {/* Client Component */}
         <StoryPageClient
-          initialStory={story}
+          initialStory={formattedStory}
           initialChapters={publishedChapters}
           initialTags={storyTags}
-          slug={params.slug}
+          slug={slug}
         />
       </>
     )

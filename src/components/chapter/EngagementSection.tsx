@@ -66,10 +66,25 @@ export function EngagementSection({
     try {
       setChapterLikeLoading(true)
 
-      if (isChapterLiked) {
-        await StoryService.unlikeChapter(story.id, chapter.id)
-      } else {
-        await StoryService.likeChapter(story.id, chapter.id)
+      // Try to toggle the like status based on current state
+      try {
+        if (isChapterLiked) {
+          await StoryService.unlikeChapter(story.id, chapter.id)
+        } else {
+          await StoryService.likeChapter(story.id, chapter.id)
+        }
+      } catch (apiError: any) {
+        // Handle specific API errors gracefully
+        if (apiError.message?.includes("Chapter already liked")) {
+          // Chapter is already liked, try to unlike it instead
+          await StoryService.unlikeChapter(story.id, chapter.id)
+        } else if (apiError.message?.includes("Like not found")) {
+          // Chapter is not liked, try to like it instead
+          await StoryService.likeChapter(story.id, chapter.id)
+        } else {
+          // Re-throw other errors
+          throw apiError
+        }
       }
 
       // Toggle like status locally

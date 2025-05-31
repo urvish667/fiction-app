@@ -4,21 +4,23 @@ import { StoryService } from "@/services/story-service"
 import { generateChapterMetadata, generateChapterStructuredData, generateChapterBreadcrumbStructuredData } from "@/lib/seo/metadata"
 import ChapterPageClient from "@/components/chapter/chapter-page-client"
 import StructuredData from "@/components/seo/structured-data"
+import { logger } from "@azure/storage-blob"
 
 interface ChapterPageProps {
-  params: {
+  params: Promise<{
     slug: string
     chapterNumber: string
-  }
+  }>
 }
 
 // Generate metadata for SEO
 export async function generateMetadata({ params }: ChapterPageProps): Promise<Metadata> {
   try {
-    const chapterNumber = Number.parseInt(params.chapterNumber, 10)
+    const { slug, chapterNumber: chapterNumberStr } = await params
+    const chapterNumber = Number.parseInt(chapterNumberStr, 10)
 
     // Fetch story data
-    const story = await StoryService.getStoryBySlug(params.slug)
+    const story = await StoryService.getStoryBySlug(slug)
     if (!story) {
       return {
         title: "Chapter Not Found - FableSpace",
@@ -52,10 +54,11 @@ export async function generateMetadata({ params }: ChapterPageProps): Promise<Me
 
 export default async function ChapterPage({ params }: ChapterPageProps) {
   try {
-    const chapterNumber = Number.parseInt(params.chapterNumber, 10)
+    const { slug, chapterNumber: chapterNumberStr } = await params
+    const chapterNumber = Number.parseInt(chapterNumberStr, 10)
 
     // Fetch story data
-    const story = await StoryService.getStoryBySlug(params.slug)
+    const story = await StoryService.getStoryBySlug(slug)
     if (!story) {
       notFound()
     }
@@ -92,13 +95,13 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
           initialStory={story}
           initialChapter={chapter}
           initialChapters={publishedChapters}
-          slug={params.slug}
+          slug={slug}
           chapterNumber={chapterNumber}
         />
       </>
     )
   } catch (error) {
-    console.error('Error loading chapter page:', error)
+    logger.error('Error loading chapter page:', error)
     notFound()
   }
 }
