@@ -10,6 +10,7 @@ import {
 } from "@/types/story";
 import { fetchWithCsrf } from "@/lib/client/csrf";
 import { logError } from "@/lib/error-logger";
+import { getBaseUrl } from "@/lib/utils";
 
 /**
  * Service for interacting with the story API endpoints
@@ -44,7 +45,8 @@ export const StoryService = {
       });
     }
 
-    const response = await fetch(`/api/stories?${queryParams.toString()}`);
+    const baseUrl = getBaseUrl();
+    const response = await fetch(`${baseUrl}/api/stories?${queryParams.toString()}`);
 
     if (!response.ok) {
       const error = await response.json();
@@ -58,7 +60,8 @@ export const StoryService = {
    * Get a story by ID
    */
   async getStory(id: string): Promise<StoryResponse> {
-    const response = await fetch(`/api/stories/${id}`);
+    const baseUrl = getBaseUrl();
+    const response = await fetch(`${baseUrl}/api/stories/${id}`);
 
     if (!response.ok) {
       const error = await response.json();
@@ -74,7 +77,8 @@ export const StoryService = {
   async getStoryBySlug(slug: string): Promise<StoryResponse | null> {
     try {
       // First, try to find stories with exact slug match
-      const response = await fetch(`/api/stories/by-slug/${slug}`);
+      const baseUrl = getBaseUrl();
+      const response = await fetch(`${baseUrl}/api/stories/by-slug/${slug}`);
 
       if (!response.ok) {
         // If the dedicated endpoint fails, fall back to search
@@ -192,7 +196,8 @@ export const StoryService = {
    * Get all chapters for a story
    */
   async getChapters(storyId: string): Promise<ChapterResponse[]> {
-    const response = await fetch(`/api/stories/${storyId}/chapters`);
+    const baseUrl = getBaseUrl();
+    const response = await fetch(`${baseUrl}/api/stories/${storyId}/chapters`);
 
     if (!response.ok) {
       const error = await response.json();
@@ -206,7 +211,8 @@ export const StoryService = {
    * Get a specific chapter
    */
   async getChapter(storyId: string, chapterId: string): Promise<ChapterResponse> {
-    const response = await fetch(`/api/stories/${storyId}/chapters/${chapterId}`);
+    const baseUrl = getBaseUrl();
+    const response = await fetch(`${baseUrl}/api/stories/${storyId}/chapters/${chapterId}`);
 
     if (!response.ok) {
       const error = await response.json();
@@ -459,7 +465,8 @@ export const StoryService = {
       });
     }
 
-    const response = await fetch(`/api/user/bookmarks?${queryParams.toString()}`);
+    const baseUrl = getBaseUrl();
+    const response = await fetch(`${baseUrl}/api/user/bookmarks?${queryParams.toString()}`);
 
     if (!response.ok) {
       const error = await response.json();
@@ -504,7 +511,8 @@ export const StoryService = {
    */
   async isFollowingUser(username: string): Promise<boolean> {
     try {
-      const response = await fetch(`/api/user/${username}/follow/status`);
+      const baseUrl = getBaseUrl();
+      const response = await fetch(`${baseUrl}/api/user/${username}/follow/status`);
 
       if (!response.ok) {
         return false;
@@ -535,7 +543,8 @@ export const StoryService = {
       });
     }
 
-    const response = await fetch(`/api/user/${username}/followers?${queryParams.toString()}`);
+    const baseUrl = getBaseUrl();
+    const response = await fetch(`${baseUrl}/api/user/${username}/followers?${queryParams.toString()}`);
 
     if (!response.ok) {
       const error = await response.json();
@@ -562,7 +571,8 @@ export const StoryService = {
       });
     }
 
-    const response = await fetch(`/api/user/${username}/following?${queryParams.toString()}`);
+    const baseUrl = getBaseUrl();
+    const response = await fetch(`${baseUrl}/api/user/${username}/following?${queryParams.toString()}`);
 
     if (!response.ok) {
       const error = await response.json();

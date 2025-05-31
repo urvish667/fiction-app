@@ -1,7 +1,7 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import AdBanner from "@/components/ad-banner"
 import { Chapter } from "@/types/story"
 
@@ -22,17 +22,27 @@ export function ChapterContent({
   contentRef,
   isContentLoading = false
 }: ChapterContentProps) {
+  // Track if component has hydrated to avoid SSR/client mismatch
+  const [isHydrated, setIsHydrated] = useState(false)
+
+  useEffect(() => {
+    setIsHydrated(true)
+  }, [])
+
   // Function to split content for ad placement
   const splitContentForAds = (content: string, parts: number, partIndex: number): string => {
-    if (typeof window === 'undefined') return '';
+    // During SSR or before hydration, return the full content to avoid hydration mismatch
+    if (!isHydrated) {
+      return content || '';
+    }
 
     // Parse the HTML content
     const parser = new DOMParser()
     const doc = parser.parseFromString(content, 'text/html')
     const elements = Array.from(doc.body.children)
 
-    // If no elements, return empty string
-    if (elements.length === 0) return ''
+    // If no elements, return the original content
+    if (elements.length === 0) return content || ''
 
     // Calculate the number of elements per part
     const elementsPerPart = Math.ceil(elements.length / parts)
@@ -90,7 +100,18 @@ export function ChapterContent({
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
         </div>
       )}
-      {contentLength === 'long' ? (
+      {!isHydrated ? (
+        // During SSR, show full content without ads to avoid hydration mismatch
+        <div
+          className="content-protected"
+          dangerouslySetInnerHTML={{ __html: chapter.content || 'Content not available.' }}
+          onContextMenu={handleCopyAttempt}
+          onCopy={handleCopyAttempt}
+          onCut={handleCopyAttempt}
+          onDrag={handleCopyAttempt}
+          onDragStart={handleCopyAttempt}
+        />
+      ) : contentLength === 'long' ? (
         // For long content: Show ads at 1/3 and 2/3 of the content
         <>
           {/* First third of content */}

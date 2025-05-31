@@ -10,7 +10,7 @@ const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "FableSpace - Unleash Your Stories",
-  description: "A modern fiction-sharing platform where writers and readers connect",
+  description: "FableSpace is a creative fiction-sharing platform where writers publish original stories and readers explore immersive worlds. From fantasy epics to romantic tales, discover, write, and connect with a passionate storytelling community.",
   icons: {
     icon: "/favicon.ico",
   }

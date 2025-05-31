@@ -30,7 +30,11 @@ export default function ChapterList({ chapters, storySlug, currentChapter }: Cha
           <div className="flex justify-between items-center w-full">
             <span>Chapters ({chapters.length})</span>
             <span className="text-sm text-muted-foreground">
-              Last updated: {new Date(chapters[chapters.length - 1].updatedAt).toLocaleDateString()}
+              Last updated: {new Intl.DateTimeFormat("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              }).format(new Date(chapters[chapters.length - 1].updatedAt))}
             </span>
           </div>
         </AccordionTrigger>
