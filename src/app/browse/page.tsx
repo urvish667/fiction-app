@@ -194,23 +194,24 @@ function BrowseContent() {
       }
     }
 
-    // Extract tags if they exist
+    // Extract tags if they exist - now expecting objects with id and name
     let tags: string[] = [];
-    if (story.tags) {
-      // If tags is already an array of strings, use it directly
-      if (Array.isArray(story.tags) && typeof story.tags[0] === 'string') {
-        tags = story.tags;
-      }
-      // If tags is an array of objects with a tag property (from the API)
-      else if (Array.isArray(story.tags) && story.tags.length > 0) {
-        tags = story.tags.map((storyTag: Record<string, any>) => {
-          // Handle different possible structures
-          if (typeof storyTag === 'string') return storyTag;
-          if (storyTag.tag && storyTag.tag.name) return storyTag.tag.name;
-          if (storyTag.name) return storyTag.name;
-          return '';
-        }).filter(Boolean); // Remove empty strings
-      }
+    if (story.tags && Array.isArray(story.tags)) {
+      tags = story.tags.map((tag: any) => {
+        // Handle the new format: objects with id and name
+        if (tag && typeof tag === 'object' && tag.name) {
+          return tag.name;
+        }
+        // Handle legacy string format
+        if (typeof tag === 'string') {
+          return tag;
+        }
+        // Handle old nested format (storyTag.tag.name)
+        if (tag && tag.tag && tag.tag.name) {
+          return tag.tag.name;
+        }
+        return '';
+      }).filter(Boolean); // Remove empty strings
     }
 
     return {

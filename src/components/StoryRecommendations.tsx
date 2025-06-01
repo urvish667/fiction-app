@@ -26,7 +26,7 @@ interface RecommendedStory {
     image: string | null;
   };
   genre: string | null;
-  tags: string[];
+  tags: (string | { id: string; name: string })[];
   likeCount: number;
   commentCount: number;
   bookmarkCount: number;
@@ -354,8 +354,8 @@ function RecommendationCard({ story }: { story: RecommendedStory }) {
             </Badge>
           )}
           {story.tags.slice(0, 2).map((tag) => (
-            <Badge key={tag} variant="secondary" className="text-xs">
-              {tag}
+            <Badge key={typeof tag === 'string' ? tag : tag.id} variant="secondary" className="text-xs">
+              {typeof tag === 'string' ? tag : tag.name}
             </Badge>
           ))}
           {story.tags.length > 2 && (

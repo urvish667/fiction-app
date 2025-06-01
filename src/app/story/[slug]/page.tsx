@@ -180,7 +180,7 @@ export default async function StoryInfoPage({ params }: StoryPageProps) {
       chapter.status === 'published'
     );
 
-    // Extract tags for structured data
+    // Extract tags for structured data - handle nested format from Prisma
     const storyTags = Array.isArray(story.tags)
       ? story.tags.map(storyTag => ({
           id: storyTag.tag?.id || '',

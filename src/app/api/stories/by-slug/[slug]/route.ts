@@ -148,11 +148,14 @@ export async function GET(
       isLiked,
       isBookmarked,
 
-      // Add tags
+      // Add tags - return as objects with id and name for consistency
       tags: Array.isArray(story.tags)
-        ? story.tags.map(storyTag => storyTag.tag?.name || '').filter(Boolean)
+        ? story.tags.map(storyTag => ({
+            id: storyTag.tag?.id || '',
+            name: storyTag.tag?.name || ''
+          })).filter(tag => tag.name)
         : [],
-    } as StoryResponse & { tags: string[] };
+    } as StoryResponse & { tags: { id: string; name: string }[] };
 
     // Track view if not the author
     if (session?.user?.id !== story.authorId) {

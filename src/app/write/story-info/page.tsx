@@ -389,6 +389,20 @@ export default function StoryInfoPage() {
 
           setStoryData(newStoryData);
 
+          // Extract and set tags from the story data
+          if (Array.isArray(story.tags)) {
+            const tagNames = story.tags.map((tag: any) => {
+              // Handle both string format (legacy) and object format (current)
+              if (typeof tag === 'string') {
+                return tag;
+              } else if (tag && typeof tag === 'object' && tag.name) {
+                return tag.name;
+              }
+              return '';
+            }).filter(Boolean);
+            setTags(tagNames);
+          }
+
           // Fetch chapters for this story
           fetchChapters(story.id);
         } catch (error) {

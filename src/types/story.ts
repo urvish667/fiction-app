@@ -16,6 +16,7 @@ export type Story = {
   authorId: string;
   author?: UserSummary;
   chapters?: Chapter[];
+  tags?: { id: string; name: string }[]; // Tags associated with the story
   createdAt: Date;
   updatedAt: Date;
   // Interaction properties

@@ -133,9 +133,12 @@ export async function GET(
     const formattedStory = {
       ...story,
       author: story.author,
-      // Extract tags safely
+      // Extract tags safely - return as objects with id and name for consistency
       tags: Array.isArray(story.tags)
-        ? story.tags.map(storyTag => storyTag.tag?.name || '').filter(Boolean)
+        ? story.tags.map(storyTag => ({
+            id: storyTag.tag?.id || '',
+            name: storyTag.tag?.name || ''
+          })).filter(tag => tag.name)
         : [],
       likeCount: story._count.likes,
       commentCount: story._count.comments,
