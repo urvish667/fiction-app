@@ -14,8 +14,6 @@ export const metadata: Metadata = {
     process.env.NEXTAUTH_URL ||
     'http://localhost:3000'
   ),
-  title: "FableSpace - Unleash Your Stories",
-  description: "FableSpace is a creative fiction-sharing platform where writers publish original stories and readers explore immersive worlds. From fantasy epics to romantic tales, discover, write, and connect with a passionate storytelling community.",
   icons: {
     icon: "/favicon.ico",
   }

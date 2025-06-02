@@ -402,3 +402,769 @@ export function generateChapterBreadcrumbStructuredData(story: Story, chapter: a
     ]
   }
 }
+
+/**
+ * Generate SEO metadata for homepage
+ */
+export function generateHomepageMetadata(): Metadata {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.com'
+
+  return {
+    title: "FableSpace - Unleash Your Stories",
+    description: "Unleash your creativity on FableSpace. Writers publish stories, earn via PayPal, no fees. Readers explore fantasy, romance, and more. Join our community!",
+    keywords: [
+      'fiction writing',
+      'story sharing',
+      'creative writing',
+      'online stories',
+      'fantasy',
+      'romance',
+      'science fiction',
+      'writing community',
+      'publish stories',
+      'read stories',
+      'FableSpace'
+    ].join(', '),
+    authors: [{ name: 'FableSpace Team' }],
+    creator: 'FableSpace',
+    publisher: 'FableSpace',
+    alternates: {
+      canonical: baseUrl
+    },
+    openGraph: {
+      title: "FableSpace - Unleash Your Stories",
+      description: "Unleash your creativity on FableSpace. Writers publish stories, earn via PayPal, no fees. Readers explore fantasy, romance, and more. Join our community!",
+      type: 'website',
+      url: baseUrl,
+      siteName: 'FableSpace',
+      images: [
+        {
+          url: `${baseUrl}/og-image.jpg`,
+          width: 1200,
+          height: 630,
+          alt: 'FableSpace - Creative Fiction Platform',
+        }
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: "FableSpace - Unleash Your Stories",
+      description: "Unleash your creativity on FableSpace. Writers publish stories, earn via PayPal, no fees. Readers explore fantasy, romance, and more. Join our community!",
+      images: [`${baseUrl}/og-image.jpg`],
+      site: '@FableSpace'
+    },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        'max-video-preview': -1,
+        'max-image-preview': 'large',
+        'max-snippet': -1,
+      },
+    }
+  }
+}
+
+/**
+ * Generate structured data for homepage
+ */
+export function generateHomepageStructuredData() {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.com'
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: 'FableSpace',
+    description: 'Creative fiction-sharing platform where writers publish original stories and readers explore immersive worlds.',
+    url: baseUrl,
+    publisher: {
+      '@type': 'Organization',
+      name: 'FableSpace',
+      url: baseUrl,
+      logo: {
+        '@type': 'ImageObject',
+        url: `${baseUrl}/logo.png`,
+        width: 200,
+        height: 200
+      }
+    },
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: {
+        '@type': 'EntryPoint',
+        urlTemplate: `${baseUrl}/browse?search={search_term_string}`
+      },
+      'query-input': 'required name=search_term_string'
+    },
+    sameAs: [
+      'https://discord.gg/JVMr2TRXY7'
+    ]
+  }
+}
+
+/**
+ * Generate organization structured data
+ */
+export function generateOrganizationStructuredData() {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.com'
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: 'FableSpace',
+    alternateName: 'FableSpace Fiction Platform',
+    description: 'A cozy corner of the internet for storytellers, dreamers, and readers alike. FableSpace is a creative fiction-sharing platform where writers publish original stories, earn money through direct PayPal donations, and readers explore immersive worlds—all with zero platform fees.',
+    url: baseUrl,
+    logo: {
+      '@type': 'ImageObject',
+      url: `${baseUrl}/logo.png`,
+      width: 200,
+      height: 200,
+      caption: 'FableSpace Logo'
+    },
+    foundingDate: '2024',
+    sameAs: [
+      'https://discord.gg/JVMr2TRXY7'
+    ],
+    contactPoint: {
+      '@type': 'ContactPoint',
+      contactType: 'customer service',
+      url: `${baseUrl}/contact`,
+      availableLanguage: ['English']
+    },
+    knowsAbout: [
+      'Creative Writing',
+      'Fiction',
+      'Storytelling',
+      'Digital Publishing',
+      'Online Literature',
+      'Fantasy',
+      'Romance',
+      'Science Fiction',
+      'Writing Community'
+    ],
+    audience: {
+      '@type': 'Audience',
+      audienceType: 'Writers and Readers',
+      name: 'Fiction Writers and Readers'
+    },
+    serviceType: 'Creative Writing Platform',
+    applicationCategory: 'Entertainment',
+    operatingSystem: 'Web-based',
+    offers: {
+      '@type': 'Offer',
+      price: '0',
+      priceCurrency: 'USD',
+      description: 'Free platform for publishing and reading fiction stories with direct PayPal monetization for authors'
+    },
+    hasOfferCatalog: {
+      '@type': 'OfferCatalog',
+      name: 'Writer Services',
+      itemListElement: [
+        {
+          '@type': 'Offer',
+          itemOffered: {
+            '@type': 'Service',
+            name: 'Story Publishing',
+            description: 'Publish fiction stories with zero platform fees'
+          },
+          price: '0',
+          priceCurrency: 'USD'
+        },
+        {
+          '@type': 'Offer',
+          itemOffered: {
+            '@type': 'Service',
+            name: 'PayPal Monetization',
+            description: 'Receive direct donations from readers with 100% earnings retention'
+          },
+          price: '0',
+          priceCurrency: 'USD'
+        }
+      ]
+    }
+  }
+}
+
+/**
+ * Generate SEO metadata for about page
+ */
+export function generateAboutMetadata(): Metadata {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.com'
+  const canonicalUrl = `${baseUrl}/about`
+
+  return {
+    title: "About FableSpace - Where Stories Come Alive",
+    description: "Learn about FableSpace, where writers earn money through direct PayPal donations with zero platform fees. Discover our mission to empower creativity and reward storytellers fairly.",
+    keywords: [
+      'about FableSpace',
+      'fiction platform',
+      'earn money writing',
+      'PayPal donations',
+      'zero platform fees',
+      'writer monetization',
+      'creative writing community',
+      'storytelling platform',
+      'online fiction',
+      'writing platform',
+      'story sharing',
+      'creative writing',
+      'fiction writers',
+      'reading community',
+      'digital publishing',
+      'original stories',
+      'Wattpad alternative',
+      'no fees writing platform'
+    ].join(', '),
+    authors: [{ name: 'FableSpace Team' }],
+    creator: 'FableSpace',
+    publisher: 'FableSpace',
+    alternates: {
+      canonical: canonicalUrl
+    },
+    openGraph: {
+      title: "About FableSpace - Where Stories Come Alive",
+      description: "Learn about FableSpace, where writers earn money through direct PayPal donations with zero platform fees. Discover our mission to empower creativity and reward storytellers fairly.",
+      type: 'website',
+      url: canonicalUrl,
+      siteName: 'FableSpace',
+      images: [
+        {
+          url: `${baseUrl}/og-about.jpg`,
+          width: 1200,
+          height: 630,
+          alt: 'About FableSpace - Creative Fiction Platform',
+        }
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: "About FableSpace - Where Stories Come Alive",
+      description: "Learn about FableSpace, where writers earn money through direct PayPal donations with zero platform fees. Discover our mission to empower creativity and reward storytellers fairly.",
+      images: [`${baseUrl}/og-about.jpg`],
+      site: '@FableSpace'
+    },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        'max-video-preview': -1,
+        'max-image-preview': 'large',
+        'max-snippet': -1,
+      },
+    }
+  }
+}
+
+/**
+ * Category-specific SEO content for enhanced metadata
+ */
+const categoryDescriptions: Record<string, { description: string; keywords: string[] }> = {
+  'Fantasy': {
+    description: 'Immerse yourself in magical worlds filled with dragons, wizards, and epic adventures. Discover the best fantasy stories on FableSpace.',
+    keywords: ['fantasy fiction', 'magic stories', 'dragons', 'wizards', 'epic fantasy', 'sword and sorcery', 'magical realism']
+  },
+  'Science Fiction': {
+    description: 'Explore the future with cutting-edge sci-fi stories. From space exploration to dystopian futures, find your next favorite science fiction read.',
+    keywords: ['sci-fi', 'space opera', 'dystopian', 'cyberpunk', 'time travel', 'aliens', 'future fiction']
+  },
+  'Romance': {
+    description: 'Fall in love with heartwarming romance stories. From contemporary love stories to historical romance, discover your perfect romantic escape.',
+    keywords: ['romance novels', 'love stories', 'contemporary romance', 'historical romance', 'romantic fiction']
+  },
+  'Mystery': {
+    description: 'Solve puzzles and uncover secrets with thrilling mystery stories. From cozy mysteries to hard-boiled detective fiction.',
+    keywords: ['mystery novels', 'detective fiction', 'crime stories', 'thriller', 'suspense', 'whodunit']
+  },
+  'Horror': {
+    description: 'Experience spine-chilling horror stories that will keep you on the edge of your seat. From psychological horror to supernatural scares.',
+    keywords: ['horror fiction', 'scary stories', 'supernatural horror', 'psychological thriller', 'ghost stories']
+  },
+  'Young Adult': {
+    description: 'Discover coming-of-age stories perfect for young adult readers. From high school drama to dystopian adventures.',
+    keywords: ['YA fiction', 'teen stories', 'coming of age', 'young adult romance', 'teen fantasy']
+  },
+  'Historical': {
+    description: 'Journey through time with captivating historical fiction. Experience different eras through compelling storytelling.',
+    keywords: ['historical fiction', 'period drama', 'historical romance', 'war stories', 'ancient history']
+  },
+  'Thriller': {
+    description: 'Get your adrenaline pumping with heart-pounding thriller stories. From psychological thrillers to action-packed adventures.',
+    keywords: ['thriller novels', 'suspense fiction', 'action thriller', 'psychological thriller', 'crime thriller']
+  }
+}
+
+/**
+ * Generate SEO metadata for browse page with enhanced category-based optimization
+ */
+export function generateBrowseMetadata(params?: {
+  genre?: string
+  search?: string
+  language?: string
+  status?: string
+  totalStories?: number
+}): Metadata {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.com'
+
+  let title = "Browse Stories - FableSpace"
+  let description = "Discover amazing stories on FableSpace. Browse thousands of fiction stories across all genres including fantasy, romance, science fiction, and more."
+  let canonicalUrl = `${baseUrl}/browse`
+  let keywords = [
+    'browse stories',
+    'fiction stories',
+    'online reading',
+    'story discovery',
+    'creative writing',
+    'FableSpace',
+    'free stories',
+    'indie authors',
+    'digital library'
+  ]
+
+  // Enhanced genre-based SEO
+  if (params?.genre) {
+    const genreInfo = categoryDescriptions[params.genre]
+    const genreLower = params.genre.toLowerCase()
+
+    title = `${params.genre} Stories - Browse ${params.genre} Fiction - FableSpace`
+    description = genreInfo?.description ||
+      `Discover the best ${genreLower} stories on FableSpace. Read engaging ${genreLower} fiction from talented writers around the world.`
+
+    canonicalUrl = `${baseUrl}/browse?genre=${encodeURIComponent(params.genre)}`
+
+    keywords = [
+      ...keywords,
+      genreLower,
+      `${genreLower} fiction`,
+      `${genreLower} stories`,
+      `${genreLower} books`,
+      `read ${genreLower}`,
+      ...(genreInfo?.keywords || [])
+    ]
+
+    // Add status-specific keywords if present
+    if (params.status && params.status !== 'all') {
+      title = `${params.status === 'completed' ? 'Completed' : 'Ongoing'} ${params.genre} Stories - FableSpace`
+      description = `Find ${params.status} ${genreLower} stories on FableSpace. ${genreInfo?.description || `Browse ${genreLower} fiction that is ${params.status}.`}`
+      keywords.push(`${params.status} ${genreLower}`, `${params.status} stories`)
+    }
+  }
+
+  // Enhanced search-based SEO
+  if (params?.search) {
+    const searchTerm = params.search.trim()
+    title = `"${searchTerm}" Stories - Search Results - FableSpace`
+    description = `Search results for "${searchTerm}" on FableSpace. Find stories, authors, and content matching "${searchTerm}".`
+    canonicalUrl = `${baseUrl}/browse?search=${encodeURIComponent(searchTerm)}`
+    keywords.push(searchTerm, `${searchTerm} stories`, `${searchTerm} fiction`)
+  }
+
+  // Language-specific SEO
+  if (params?.language && params.language !== 'English') {
+    const langSuffix = ` in ${params.language}`
+    title = title.replace(' - FableSpace', `${langSuffix} - FableSpace`)
+    description = description.replace('.', `${langSuffix}.`)
+    keywords.push(params.language.toLowerCase(), `${params.language.toLowerCase()} stories`)
+  }
+
+  // Add story count to description if available
+  if (params?.totalStories && params.totalStories > 0) {
+    const storyCountText = `Browse ${params.totalStories.toLocaleString()} stories`
+    description = description.replace('Discover', storyCountText + '. Discover')
+  }
+
+  return {
+    title,
+    description,
+    keywords: keywords.filter(Boolean).join(', '),
+    authors: [{ name: 'FableSpace Community' }],
+    creator: 'FableSpace',
+    publisher: 'FableSpace',
+    category: params?.genre || 'Fiction',
+    alternates: {
+      canonical: canonicalUrl
+    },
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+      url: canonicalUrl,
+      siteName: 'FableSpace',
+      images: [
+        {
+          url: params?.genre ? `${baseUrl}/og-${params.genre.toLowerCase().replace(/\s+/g, '-')}.jpg` : `${baseUrl}/og-browse.jpg`,
+          width: 1200,
+          height: 630,
+          alt: params?.genre ? `${params.genre} Stories on FableSpace` : 'Browse Stories on FableSpace',
+        }
+      ],
+      locale: 'en_US',
+      ...(params?.genre && { section: params.genre })
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [params?.genre ? `${baseUrl}/og-${params.genre.toLowerCase().replace(/\s+/g, '-')}.jpg` : `${baseUrl}/og-browse.jpg`],
+      site: '@FableSpace'
+    },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        'max-video-preview': -1,
+        'max-image-preview': 'large',
+        'max-snippet': -1,
+      },
+    }
+  }
+}
+
+/**
+ * Generate enhanced structured data for browse page with category-specific optimization
+ */
+export function generateBrowseStructuredData(params?: {
+  genre?: string
+  language?: string
+  status?: string
+  totalStories?: number
+  stories?: any[]
+}) {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.com'
+  const genreInfo = params?.genre ? categoryDescriptions[params.genre] : null
+
+  // Base structured data
+  const structuredData: any = {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: params?.genre ? `${params.genre} Stories` : 'Browse Stories',
+    description: genreInfo?.description ||
+      (params?.genre
+        ? `Collection of ${params.genre.toLowerCase()} stories on FableSpace`
+        : 'Browse and discover amazing fiction stories on FableSpace'),
+    url: params?.genre
+      ? `${baseUrl}/browse?genre=${encodeURIComponent(params.genre)}`
+      : `${baseUrl}/browse`,
+    isPartOf: {
+      '@type': 'WebSite',
+      name: 'FableSpace',
+      url: baseUrl
+    },
+    publisher: {
+      '@type': 'Organization',
+      name: 'FableSpace',
+      url: baseUrl,
+      logo: {
+        '@type': 'ImageObject',
+        url: `${baseUrl}/logo.png`,
+        width: 200,
+        height: 200
+      }
+    },
+    breadcrumb: {
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        {
+          '@type': 'ListItem',
+          position: 1,
+          name: 'Home',
+          item: baseUrl
+        },
+        {
+          '@type': 'ListItem',
+          position: 2,
+          name: 'Browse Stories',
+          item: `${baseUrl}/browse`
+        },
+        ...(params?.genre ? [{
+          '@type': 'ListItem',
+          position: 3,
+          name: params.genre,
+          item: `${baseUrl}/browse?genre=${encodeURIComponent(params.genre)}`
+        }] : [])
+      ]
+    }
+  }
+
+  // Add story count if available
+  if (params?.totalStories && params.totalStories > 0) {
+    structuredData.numberOfItems = params.totalStories
+  }
+
+  // Add genre-specific keywords
+  if (params?.genre && genreInfo?.keywords) {
+    structuredData.keywords = genreInfo.keywords.join(', ')
+  }
+
+  // Add language information
+  if (params?.language) {
+    structuredData.inLanguage = params.language
+  }
+
+  // Add ItemList for stories if provided
+  if (params?.stories && params.stories.length > 0) {
+    structuredData.mainEntity = {
+      '@type': 'ItemList',
+      numberOfItems: params.stories.length,
+      itemListElement: params.stories.slice(0, 10).map((story, index) => ({
+        '@type': 'ListItem',
+        position: index + 1,
+        item: {
+          '@type': 'Book',
+          name: story.title,
+          author: {
+            '@type': 'Person',
+            name: typeof story.author === 'object'
+              ? (story.author?.name || story.author?.username || 'Unknown Author')
+              : (story.author || 'Unknown Author')
+          },
+          genre: typeof story.genre === 'object'
+            ? (story.genre?.name || 'General')
+            : (story.genre || 'General'),
+          url: `${baseUrl}/story/${story.slug}`,
+          ...(story.coverImage && {
+            image: {
+              '@type': 'ImageObject',
+              url: story.coverImage,
+              width: 400,
+              height: 600
+            }
+          }),
+          ...(story.description && {
+            description: story.description.slice(0, 160) + (story.description.length > 160 ? '...' : '')
+          }),
+          ...(story.wordCount && {
+            numberOfPages: Math.ceil(story.wordCount / 250) // Approximate pages
+          }),
+          ...(story.createdAt && {
+            datePublished: toISOString(story.createdAt)
+          }),
+          ...(story.updatedAt && {
+            dateModified: toISOString(story.updatedAt)
+          })
+        }
+      }))
+    }
+  }
+
+  return structuredData
+}
+
+/**
+ * Generate FAQ structured data for category pages
+ */
+export function generateCategoryFAQStructuredData(genre: string) {
+  const commonFAQs = [
+    {
+      question: `What are the best ${genre.toLowerCase()} stories on FableSpace?`,
+      answer: `FableSpace features a curated collection of ${genre.toLowerCase()} stories from talented indie authors. Browse our ${genre.toLowerCase()} section to discover highly-rated stories, trending reads, and hidden gems in the ${genre.toLowerCase()} genre.`
+    },
+    {
+      question: `How do I find new ${genre.toLowerCase()} stories to read?`,
+      answer: `You can discover new ${genre.toLowerCase()} stories by browsing our ${genre.toLowerCase()} category, using our advanced filters to sort by popularity, newest releases, or completed stories. You can also follow your favorite ${genre.toLowerCase()} authors to get notified of their new releases.`
+    },
+    {
+      question: `Are ${genre.toLowerCase()} stories on FableSpace free to read?`,
+      answer: `Yes! Most ${genre.toLowerCase()} stories on FableSpace are free to read. Our platform supports authors through optional reader donations, allowing you to enjoy great ${genre.toLowerCase()} fiction while supporting the writers you love.`
+    },
+    {
+      question: `Can I publish my own ${genre.toLowerCase()} stories on FableSpace?`,
+      answer: `Absolutely! FableSpace welcomes ${genre.toLowerCase()} writers of all experience levels. You can publish your ${genre.toLowerCase()} stories, build an audience, and even earn money through reader donations with no platform fees.`
+    }
+  ]
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: commonFAQs.map(faq => ({
+      '@type': 'Question',
+      name: faq.question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: faq.answer
+      }
+    }))
+  }
+}
+
+/**
+ * Generate WebPage structured data for category pages
+ */
+export function generateCategoryWebPageStructuredData(params: {
+  genre: string
+  totalStories?: number
+  language?: string
+}) {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.com'
+  const genreInfo = categoryDescriptions[params.genre]
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    name: `${params.genre} Stories - FableSpace`,
+    description: genreInfo?.description || `Discover amazing ${params.genre.toLowerCase()} stories on FableSpace`,
+    url: `${baseUrl}/browse?genre=${encodeURIComponent(params.genre)}`,
+    isPartOf: {
+      '@type': 'WebSite',
+      name: 'FableSpace',
+      url: baseUrl
+    },
+    about: {
+      '@type': 'Thing',
+      name: `${params.genre} Fiction`,
+      description: `${params.genre} stories and literature`
+    },
+    audience: {
+      '@type': 'Audience',
+      audienceType: `${params.genre} readers`
+    },
+    ...(params.totalStories && {
+      mainContentOfPage: {
+        '@type': 'WebPageElement',
+        description: `Collection of ${params.totalStories} ${params.genre.toLowerCase()} stories`
+      }
+    }),
+    ...(params.language && {
+      inLanguage: params.language
+    }),
+    publisher: {
+      '@type': 'Organization',
+      name: 'FableSpace',
+      url: baseUrl
+    }
+  }
+}
+
+/**
+ * Generate SEO metadata for user profile page
+ */
+export function generateUserProfileMetadata(user: {
+  username: string
+  name?: string | null
+  bio?: string | null
+  storyCount?: number
+  image?: string | null
+  location?: string | null
+}): Metadata {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.com'
+  const displayName = user.name || user.username
+  const canonicalUrl = `${baseUrl}/user/${user.username}`
+
+  const title = `${displayName} - FableSpace`
+  const description = user.bio
+    ? user.bio.slice(0, 160) + (user.bio.length > 160 ? '...' : '')
+    : `Read stories by ${displayName} on FableSpace. ${user.storyCount || 0} published stories. Join our creative writing community.`
+
+  const keywords = [
+    displayName,
+    user.username,
+    'author profile',
+    'fiction writer',
+    'stories',
+    'creative writing',
+    'FableSpace',
+    ...(user.location ? [user.location] : [])
+  ].filter(Boolean).join(', ')
+
+  return {
+    title,
+    description,
+    keywords,
+    authors: [{ name: displayName }],
+    creator: displayName,
+    publisher: 'FableSpace',
+    alternates: {
+      canonical: canonicalUrl
+    },
+    openGraph: {
+      title,
+      description,
+      type: 'profile',
+      url: canonicalUrl,
+      siteName: 'FableSpace',
+      images: [
+        {
+          url: user.image || `${baseUrl}/default-avatar.png`,
+          width: 400,
+          height: 400,
+          alt: `${displayName} profile picture`,
+        }
+      ],
+    },
+    twitter: {
+      card: 'summary',
+      title,
+      description,
+      images: [user.image || `${baseUrl}/default-avatar.png`],
+      site: '@FableSpace'
+    },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        'max-video-preview': -1,
+        'max-image-preview': 'large',
+        'max-snippet': -1,
+      },
+    }
+  }
+}
+
+/**
+ * Generate structured data for user profile page
+ */
+export function generateUserProfileStructuredData(user: {
+  username: string
+  name?: string | null
+  bio?: string | null
+  storyCount?: number
+  image?: string | null
+  location?: string | null
+  website?: string | null
+  joinedDate?: string | null
+}) {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.com'
+  const displayName = user.name || user.username
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Person',
+    name: displayName,
+    alternateName: user.username,
+    description: user.bio || `Fiction writer on FableSpace with ${user.storyCount || 0} published stories.`,
+    url: `${baseUrl}/user/${user.username}`,
+    image: user.image || `${baseUrl}/default-avatar.png`,
+    ...(user.location && { address: user.location }),
+    ...(user.website && { url: user.website }),
+    worksFor: {
+      '@type': 'Organization',
+      name: 'FableSpace',
+      url: baseUrl
+    },
+    knowsAbout: [
+      'Creative Writing',
+      'Fiction',
+      'Storytelling'
+    ],
+    ...(user.joinedDate && {
+      memberOf: {
+        '@type': 'Organization',
+        name: 'FableSpace',
+        url: baseUrl,
+        membershipNumber: user.username
+      }
+    }),
+    mainEntityOfPage: {
+      '@type': 'ProfilePage',
+      '@id': `${baseUrl}/user/${user.username}`
+    }
+  }
+}

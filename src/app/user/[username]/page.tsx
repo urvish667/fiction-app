@@ -1,37 +1,30 @@
-"use client"
-
-import { useState, useEffect } from "react"
-import { useParams } from "next/navigation"
-// import Image from "next/image" - not needed
+import { Metadata } from "next"
 import Link from "next/link"
-import { motion } from "framer-motion"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   Calendar,
   MapPin,
   LinkIcon,
-  Loader2,
   Mail,
-  Lock,
 } from "lucide-react"
 import { TwitterIcon, FacebookIcon, InstagramIcon } from "@/components/social-icons"
 import ProfileActionButtons from "@/components/profile-action-buttons"
 import Navbar from "@/components/navbar"
-import StoryCard from "@/components/story-card"
 import { SiteFooter } from "@/components/site-footer"
-// import { sampleStories } from "@/lib/sample-data" - not needed
-import { StoryService } from "@/services/story-service"
-
-import { logError } from "@/lib/error-logger"
+import { generateUserProfileMetadata, generateUserProfileStructuredData } from "@/lib/seo/metadata"
+import { prisma } from "@/lib/auth/db-adapter"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/app/api/auth/[...nextauth]/route"
+import { formatDistanceToNow } from "date-fns"
+import { notFound } from "next/navigation"
+import UserProfileClient from "./user-profile-client"
 
 // Define user profile type
 type UserProfile = {
   id: string
   name: string | null
-  username: string
+  username: string // We ensure this is not null in getUserData
   bio: string | null
   location: string | null
   website: string | null
@@ -48,7 +41,7 @@ type UserProfile = {
   followers?: number
   following?: number
   donationsEnabled?: boolean | null;
-  donationMethod?: 'paypal' | 'stripe' | null;
+  donationMethod?: string | null;
   donationLink?: string | null;
   preferences?: {
     privacySettings?: {
@@ -60,178 +53,197 @@ type UserProfile = {
   email: string | null
 }
 
-export default function UserProfilePage() {
-  const params = useParams()
-  const username = params?.username as string
-  const [user, setUser] = useState<UserProfile | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState("stories")
+// Define a basic type for expected social links structure
+type ExpectedSocialLinks = {
+  twitter?: string | null;
+  facebook?: string | null;
+  instagram?: string | null;
+};
 
-  // Fetch user data and stories
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        setLoading(true)
-        const response = await fetch(`/api/user/${username}`)
+// Define the params type for the page
+type UserPageParams = { params: Promise<{ username: string }> };
 
-        if (!response.ok) {
-          if (response.status === 404) {
-            throw new Error("User not found")
+// Server-side function to fetch user data
+async function getUserData(username: string): Promise<UserProfile | null> {
+  try {
+    const session = await getServerSession(authOptions);
+
+    // Try to find user by username or ID
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { username: username },
+          { id: username }
+        ]
+      },
+      select: {
+        id: true,
+        name: true,
+        username: true,
+        email: true,
+        bio: true,
+        location: true,
+        website: true,
+        socialLinks: true,
+        image: true,
+        bannerImage: true,
+        createdAt: true,
+        preferences: true,
+        donationsEnabled: true,
+        donationMethod: true,
+        donationLink: true,
+        stories: {
+          where: {
+            status: { not: "draft" }
+          },
+          select: { id: true }
+        },
+        _count: {
+          select: {
+            followers: true,
+            following: true
           }
-          throw new Error("Failed to fetch user data")
         }
-
-        const userData = await response.json()
-        setUser(userData)
-      } catch (err) {
-        logError(err, { context: "Error fetching user data", username })
-        setError(err instanceof Error ? err.message : "An error occurred")
-      } finally {
-        setLoading(false)
       }
+    });
+
+    if (!user || !user.username) {
+      return null;
     }
 
-    if (username) {
-      fetchUserData()
-    }
-  }, [username])
+    // Parse preferences safely
+    let preferences = {
+      privacySettings: {
+        publicProfile: false,
+        showEmail: false,
+        showLocation: false,
+        allowMessages: false
+      }
+    };
 
-  // Fetch user's published stories and bookmarked stories
-  useEffect(() => {
-    const fetchUserData = async () => {
-      if (!user?.id) return
-
+    if (user.preferences) {
       try {
-        setStoriesLoading(true)
-
-        // Fetch stories with status 'ongoing' or 'completed' by this author
-        const [storiesResponse, bookmarksResponse] = await Promise.all([
-          // Fetch published stories
-          fetch(`/api/stories?authorId=${user.id}&status=ongoing,completed`),
-          // Fetch bookmarked stories
-          fetch(`/api/user/bookmarks?userId=${user.id}`)
-        ])
-
-        if (!storiesResponse.ok) {
-          throw new Error("Failed to fetch user stories")
-        }
-
-        const storiesData = await storiesResponse.json()
-
-        // Format the stories to ensure they have all required fields
-        const formattedStories = storiesData.stories.map((story: any) => {
-          // Convert date strings to Date objects if they exist
-          const createdAt = story.createdAt ? new Date(story.createdAt) : undefined;
-          const updatedAt = story.updatedAt ? new Date(story.updatedAt) : undefined;
-
-          return {
-            ...story,
-            // Ensure these fields exist for StoryCard component
-            author: story.author || user.name || user.username,
-            excerpt: story.description,
-            coverImage: story.coverImage,
-            likeCount: story.likeCount || 0,
-            commentCount: story.commentCount || 0,
-            viewCount: story.viewCount || 0,
-            createdAt,
-            updatedAt
-          };
-        })
-
-        setUserStories(formattedStories || [])
-
-        // Process bookmarked stories if the request was successful
-        if (bookmarksResponse.ok) {
-          const bookmarksData = await bookmarksResponse.json()
-
-          // Format the bookmarked stories
-          const formattedBookmarks = bookmarksData.stories.map((story: any) => {
-            // Convert date strings to Date objects if they exist
-            const createdAt = story.createdAt ? new Date(story.createdAt) : undefined;
-            const updatedAt = story.updatedAt ? new Date(story.updatedAt) : undefined;
-
-            return {
-              ...story,
-              // Ensure these fields exist for StoryCard component
-              excerpt: story.description,
-              coverImage: story.coverImage,
-              likeCount: story.likeCount || 0,
-              commentCount: story.commentCount || 0,
-              viewCount: story.viewCount || 0,
-              createdAt,
-              updatedAt
-            };
-          })
-
-          setLibraryStories(formattedBookmarks || [])
-        } else {
-          logError(bookmarksResponse, { context: "Failed to fetch bookmarked stories", userId: user.id })
-          setLibraryStories([])
-        }
-      } catch (err) {
-        logError(err, { context: "Error fetching user stories", userId: user.id })
-      } finally {
-        setStoriesLoading(false)
+        preferences = typeof user.preferences === 'string'
+          ? JSON.parse(user.preferences)
+          : user.preferences;
+      } catch (error) {
+        // Silently fall back to default preferences if parsing fails
       }
     }
 
-    fetchUserData()
-  }, [user?.id])
+    // Check if the current user is the profile owner
+    const isCurrentUser = session?.user?.id === user.id;
 
-  // State for user's published stories and library
-  const [userStories, setUserStories] = useState<any[]>([])
-  const [savedStories, setLibraryStories] = useState<any[]>([])
-  const [storiesLoading, setStoriesLoading] = useState(false)
+    // Get follower/following counts
+    const followerCount = user._count.followers;
+    const followingCount = user._count.following;
 
-  // State for followers and following
-  const [followers, setFollowers] = useState<any[]>([])
-  const [following, setFollowing] = useState<any[]>([])
-  const [followersLoading, setFollowersLoading] = useState(false)
-  const [followingLoading, setFollowingLoading] = useState(false)
-
-  // Fetch followers and following when the tab is selected
-  useEffect(() => {
-    const fetchFollowData = async () => {
-      if (!user?.username || activeTab !== "followers") return
-
+    // Safely parse and normalize socialLinks
+    let parsedSocialLinks: ExpectedSocialLinks | null = null;
+    if (user.socialLinks) {
       try {
-        setFollowersLoading(true)
-        setFollowingLoading(true)
+        let tempLinks = typeof user.socialLinks === 'string'
+          ? JSON.parse(user.socialLinks)
+          : user.socialLinks;
 
-        // Fetch followers
-        const followersData = await StoryService.getFollowers(user.username)
-        setFollowers(followersData.followers || [])
-
-        // Fetch following
-        const followingData = await StoryService.getFollowing(user.username)
-        setFollowing(followingData.following || [])
-      } catch (err) {
-        logError(err, { context: "Error fetching follow data", userId: user.id })
-      } finally {
-        setFollowersLoading(false)
-        setFollowingLoading(false)
+        if (tempLinks && typeof tempLinks === 'object' && !Array.isArray(tempLinks)) {
+          if ('set' in tempLinks && typeof tempLinks.set === 'object' && tempLinks.set !== null) {
+            parsedSocialLinks = tempLinks.set as ExpectedSocialLinks;
+          } else {
+            parsedSocialLinks = tempLinks as ExpectedSocialLinks;
+          }
+        }
+      } catch (error) {
+        // Silently fall back to null if parsing fails
       }
     }
 
-    fetchFollowData()
-  }, [user?.username, activeTab])
+    // Format the response with privacy checks
+    return {
+      id: user.id,
+      username: user.username, // We already checked this is not null above
+      name: user.name,
+      bio: user.bio,
+      location: preferences.privacySettings?.showLocation ? user.location : null,
+      email: preferences.privacySettings?.showEmail ? user.email : null,
+      website: user.website,
+      socialLinks: parsedSocialLinks,
+      image: user.image,
+      bannerImage: user.bannerImage,
+      joinedDate: user.createdAt ? formatDistanceToNow(new Date(user.createdAt), { addSuffix: true }) : null,
+      storyCount: user.stories.length,
+      followers: followerCount,
+      following: followingCount,
+      donationsEnabled: user.donationsEnabled,
+      donationMethod: user.donationMethod,
+      donationLink: user.donationLink,
+      isCurrentUser,
+      preferences: preferences,
+      isPublic: preferences.privacySettings?.publicProfile || false
+    } as UserProfile;
+
+  } catch (error) {
+    console.error('Error fetching user data:', error);
+    return null;
+  }
+}
+
+// Generate metadata for SEO
+export async function generateMetadata({ params }: UserPageParams): Promise<Metadata> {
+  const resolvedParams = await params;
+  const user = await getUserData(resolvedParams.username);
+
+  if (!user) {
+    return {
+      title: 'User Not Found - FableSpace',
+      description: 'The requested user profile could not be found on FableSpace.',
+    };
+  }
+
+  return generateUserProfileMetadata({
+    username: user.username,
+    name: user.name,
+    bio: user.bio,
+    storyCount: user.storyCount,
+    image: user.image,
+    location: user.location
+  });
+}
+
+export default async function UserProfilePage({ params }: UserPageParams) {
+  const resolvedParams = await params;
+  const user = await getUserData(resolvedParams.username);
+
+  if (!user) {
+    notFound();
+  }
+
+  // Generate structured data for SEO
+  const userProfileStructuredData = generateUserProfileStructuredData({
+    username: user.username,
+    name: user.name,
+    bio: user.bio,
+    storyCount: user.storyCount,
+    image: user.image,
+    location: user.location,
+    website: user.website,
+    joinedDate: user.joinedDate
+  });
 
   return (
-    <div className="min-h-screen">
-      <Navbar />
+    <>
+      {/* Structured Data */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(userProfileStructuredData),
+        }}
+      />
 
-      <main className="container mx-auto px-4 md:px-8 py-4 md:py-8">
-        {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        ) : error ? (
-          <div className="text-center py-12 bg-muted/30 rounded-lg">
-            <h3 className="text-xl font-semibold mb-2 text-destructive">{error}</h3>
-            <p className="text-muted-foreground">Unable to load user profile.</p>
-          </div>
-        ) : user ? (
+      <div className="min-h-screen">
+        <Navbar />
+
+        <main className="container mx-auto px-4 md:px-8 py-4 md:py-8">
           <div className="mb-4 md:mb-8">
             <div className="relative h-32 sm:h-48 md:h-64 w-full rounded-lg overflow-hidden mb-8 sm:mb-12 md:mb-16">
               {user.bannerImage ? (
@@ -241,7 +253,6 @@ export default function UserProfilePage() {
                     alt="Profile banner"
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      logError(`Image loading failed`, { context: 'Banner image error', imageUrl: user.bannerImage });
                       e.currentTarget.src = '/placeholder.svg';
                     }}
                   />
@@ -383,147 +394,15 @@ export default function UserProfilePage() {
               </Link>
             </div>
           </div>
-        ) : null}
 
-        {/* Tabs */}
-        {!loading && !error && user && (
-          <Tabs defaultValue="stories" value={activeTab} onValueChange={setActiveTab} className="mt-8 md:mt-12">
-            <TabsList className="mb-6 md:mb-8">
-              <TabsTrigger value="stories" className="text-xs sm:text-sm">Published Stories</TabsTrigger>
-              <TabsTrigger value="library" className="text-xs sm:text-sm">Library</TabsTrigger>
-              <TabsTrigger value="followers" className="text-xs sm:text-sm">Followers & Following</TabsTrigger>
-            </TabsList>
+          {/* Client-side interactive tabs */}
+          <UserProfileClient user={user} />
+        </main>
 
-            <TabsContent value="stories">
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-                {storiesLoading ? (
-                  <div className="flex justify-center items-center h-64">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  </div>
-                ) : userStories.length > 0 ? (
-                  <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {userStories.map((story) => (
-                      <StoryCard key={story.id} story={story} viewMode="grid" />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-12 bg-muted/30 rounded-lg">
-                    <h3 className="text-xl font-semibold mb-2">No stories published yet</h3>
-                    <p className="text-muted-foreground">This user hasn't published any stories yet.</p>
-                  </div>
-                )}
-              </motion.div>
-            </TabsContent>
-
-            <TabsContent value="library">
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-                {storiesLoading ? (
-                  <div className="flex justify-center items-center h-64">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  </div>
-                ) : savedStories.length > 0 ? (
-                  <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {savedStories.map((story) => (
-                      <StoryCard key={story.id} story={story} viewMode="grid" />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-12 bg-muted/30 rounded-lg">
-                    <h3 className="text-xl font-semibold mb-2">No saved stories</h3>
-                    <p className="text-muted-foreground">This user hasn't saved any stories to their library.</p>
-                  </div>
-                )}
-              </motion.div>
-            </TabsContent>
-
-            <TabsContent value="followers" id="followers">
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-                <div className="grid grid-cols-1 gap-8">
-                  {/* Followers Section */}
-                  <div>
-                    <h3 className="text-xl font-semibold mb-4">Followers</h3>
-                    {followersLoading ? (
-                      <div className="flex justify-center items-center h-40">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                      </div>
-                    ) : followers.length > 0 ? (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                        {followers.map((follower) => (
-                          <Card key={follower.id}>
-                            <CardContent className="p-4 flex flex-col items-center text-center">
-                              <Avatar className="h-16 w-16 mb-2">
-                                <AvatarImage src={follower.image || "/placeholder-user.jpg"} alt={follower.name || follower.username} />
-                                <AvatarFallback>{(follower.name || follower.username || "U").charAt(0)}</AvatarFallback>
-                              </Avatar>
-                              <Link href={`/user/${follower.username}`} className="font-medium hover:text-primary">
-                                {follower.name || follower.username}
-                              </Link>
-                              <p className="text-xs text-muted-foreground">@{follower.username}</p>
-                              {follower.bio && (
-                                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{follower.bio}</p>
-                              )}
-                              <Button size="sm" variant="outline" className="mt-2 w-full" asChild>
-                                <Link href={`/user/${follower.username}`}>View Profile</Link>
-                              </Button>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-12 bg-muted/30 rounded-lg">
-                        <h3 className="text-xl font-semibold mb-2">No followers yet</h3>
-                        <p className="text-muted-foreground">This user doesn't have any followers yet.</p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Following Section */}
-                  <div id="following">
-                    <h3 className="text-xl font-semibold mb-4">Following</h3>
-                    {followingLoading ? (
-                      <div className="flex justify-center items-center h-40">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                      </div>
-                    ) : following.length > 0 ? (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                        {following.map((follow) => (
-                          <Card key={follow.id}>
-                            <CardContent className="p-4 flex flex-col items-center text-center">
-                              <Avatar className="h-16 w-16 mb-2">
-                                <AvatarImage src={follow.image || "/placeholder-user.jpg"} alt={follow.name || follow.username} />
-                                <AvatarFallback>{(follow.name || follow.username || "U").charAt(0)}</AvatarFallback>
-                              </Avatar>
-                              <Link href={`/user/${follow.username}`} className="font-medium hover:text-primary">
-                                {follow.name || follow.username}
-                              </Link>
-                              <p className="text-xs text-muted-foreground">@{follow.username}</p>
-                              {follow.bio && (
-                                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{follow.bio}</p>
-                              )}
-                              <Button size="sm" variant="outline" className="mt-2 w-full" asChild>
-                                <Link href={`/user/${follow.username}`}>View Profile</Link>
-                              </Button>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-12 bg-muted/30 rounded-lg">
-                        <h3 className="text-xl font-semibold mb-2">Not following anyone</h3>
-                        <p className="text-muted-foreground">This user isn't following anyone yet.</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </motion.div>
-            </TabsContent>
-          </Tabs>
-        )}
-      </main>
-
-      {/* Footer */}
-      <SiteFooter />
-    </div>
-  )
+        {/* Footer */}
+        <SiteFooter />
+      </div>
+    </>
+  );
 }
 

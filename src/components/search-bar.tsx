@@ -11,14 +11,16 @@ interface SearchBarProps {
   onSearch: (query: string) => void
   className?: string
   placeholder?: string
+  defaultValue?: string
 }
 
 export default function SearchBar({
   onSearch,
   className = "",
   placeholder = "Search stories, authors, genres, or tags...",
+  defaultValue = "",
 }: SearchBarProps) {
-  const [query, setQuery] = useState("")
+  const [query, setQuery] = useState(defaultValue)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()

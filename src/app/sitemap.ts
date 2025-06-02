@@ -1,5 +1,6 @@
 import { MetadataRoute } from 'next'
 import { prisma } from '@/lib/auth/db-adapter'
+import { generateBrowseSitemapEntries } from '@/lib/seo/sitemap-utils'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.space'
@@ -137,11 +138,27 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.6,
       }))
 
+    // Generate category and search pages
+    const browseSitemapEntries = generateBrowseSitemapEntries()
+    const browsePages: MetadataRoute.Sitemap = browseSitemapEntries.map(entry => ({
+      url: entry.url,
+      lastModified: entry.lastModified || new Date(),
+      changeFrequency: entry.changeFrequency || 'weekly',
+      priority: entry.priority || 0.6
+    }))
+
     // Combine all pages
-    return [...staticPages, ...storyPages, ...chapterPages, ...userPages]
+    return [...staticPages, ...browsePages, ...storyPages, ...chapterPages, ...userPages]
   } catch (error) {
     console.error('Error generating sitemap:', error)
-    // Return at least static pages if database query fails
-    return staticPages
+    // Return at least static pages and browse pages if database query fails
+    const browseSitemapEntries = generateBrowseSitemapEntries()
+    const browsePages: MetadataRoute.Sitemap = browseSitemapEntries.map(entry => ({
+      url: entry.url,
+      lastModified: entry.lastModified || new Date(),
+      changeFrequency: entry.changeFrequency || 'weekly',
+      priority: entry.priority || 0.6
+    }))
+    return [...staticPages, ...browsePages]
   }
 }

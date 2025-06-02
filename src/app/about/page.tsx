@@ -1,5 +1,3 @@
-"use client"
-
 import { motion } from "framer-motion"
 import { BookOpen, Sparkles, Users, Tag, Award, MessageSquare, Compass, Heart } from "lucide-react"
 import Link from "next/link"
@@ -7,11 +5,26 @@ import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import Navbar from "@/components/navbar"
 import { SiteFooter } from "@/components/site-footer"
+import { generateAboutMetadata, generateOrganizationStructuredData } from "@/lib/seo/metadata"
+import type { Metadata } from "next"
+
+export const metadata: Metadata = generateAboutMetadata()
 
 export default function AboutPage() {
+  const organizationSchema = generateOrganizationStructuredData()
+
   return (
-    <div className="min-h-screen flex flex-col">
-      <Navbar />
+    <>
+      {/* Organization Schema Structured Data */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(organizationSchema)
+        }}
+      />
+
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
       
       <main className="flex-1 container mx-auto px-8 py-12">
         {/* Hero Section */}
@@ -42,11 +55,62 @@ export default function AboutPage() {
         >
           <h2 className="text-3xl font-bold text-center mb-6">Our Mission</h2>
           <div className="bg-muted/30 rounded-lg p-8 text-center">
-            <p className="text-lg">
-              FableSpace is a platform built for passionate writers and curious readers. 
-              Our mission is to empower creativity, celebrate original storytelling, 
+            <p className="text-lg mb-4">
+              FableSpace is a platform built for passionate writers and curious readers.
+              Our mission is to empower creativity, celebrate original storytelling,
               and connect people through the written word—one story at a time.
             </p>
+            <p className="text-lg font-semibold text-primary">
+              Most importantly, we believe writers should be rewarded for their creativity—without platform fees taking a cut.
+            </p>
+          </div>
+        </motion.section>
+
+        {/* What Makes Us Different */}
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.15 }}
+          className="max-w-4xl mx-auto mb-16"
+        >
+          <h2 className="text-3xl font-bold text-center mb-8">What Makes FableSpace Different</h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 rounded-lg p-6 border border-green-200 dark:border-green-800">
+              <div className="flex items-center mb-4">
+                <div className="p-2 rounded-full bg-green-100 dark:bg-green-900 mr-3">
+                  <Heart className="h-6 w-6 text-green-600 dark:text-green-400" />
+                </div>
+                <h3 className="font-bold text-xl text-green-800 dark:text-green-200">Get Paid by Readers</h3>
+              </div>
+              <p className="text-green-700 dark:text-green-300 mb-3">
+                Readers can directly support their favorite authors through our integrated PayPal donation system.
+                Every dollar goes straight to the writer—no middleman, no platform fees.
+              </p>
+              <p className="text-sm text-green-600 dark:text-green-400 font-medium">
+                ✓ 100% of donations go to authors<br/>
+                ✓ Instant PayPal transfers<br/>
+                ✓ No subscription barriers for readers
+              </p>
+            </div>
+
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 rounded-lg p-6 border border-blue-200 dark:border-blue-800">
+              <div className="flex items-center mb-4">
+                <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-900 mr-3">
+                  <Sparkles className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                </div>
+                <h3 className="font-bold text-xl text-blue-800 dark:text-blue-200">Creator-First Platform</h3>
+              </div>
+              <p className="text-blue-700 dark:text-blue-300 mb-3">
+                Unlike other platforms that prioritize algorithms and ads, we put creators first.
+                Your stories aren't buried under corporate content or paywalled features.
+              </p>
+              <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">
+                ✓ No algorithm manipulation<br/>
+                ✓ All features free for writers<br/>
+                ✓ Reader-focused, distraction-free interface
+              </p>
+            </div>
           </div>
         </motion.section>
         
@@ -58,25 +122,35 @@ export default function AboutPage() {
           className="max-w-4xl mx-auto mb-16"
         >
           <h2 className="text-3xl font-bold text-center mb-8">What You Can Do on FableSpace</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div className="bg-card rounded-lg p-6 shadow-sm border border-border flex items-start space-x-4">
               <div className="p-2 rounded-full bg-primary/10 shrink-0">
                 <Sparkles className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <h3 className="font-semibold text-lg mb-2">Write</h3>
-                <p className="text-muted-foreground">Publish your own stories with our easy-to-use editor</p>
+                <h3 className="font-semibold text-lg mb-2">Write & Publish</h3>
+                <p className="text-muted-foreground">Create and publish your stories with our intuitive editor</p>
               </div>
             </div>
-            
+
+            <div className="bg-card rounded-lg p-6 shadow-sm border border-border flex items-start space-x-4">
+              <div className="p-2 rounded-full bg-green-100 dark:bg-green-900 shrink-0">
+                <Heart className="h-6 w-6 text-green-600 dark:text-green-400" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-lg mb-2">Earn Money</h3>
+                <p className="text-muted-foreground">Receive direct PayPal donations from readers who love your work</p>
+              </div>
+            </div>
+
             <div className="bg-card rounded-lg p-6 shadow-sm border border-border flex items-start space-x-4">
               <div className="p-2 rounded-full bg-primary/10 shrink-0">
                 <BookOpen className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <h3 className="font-semibold text-lg mb-2">Read</h3>
-                <p className="text-muted-foreground">Discover thousands of original works from talented writers</p>
+                <h3 className="font-semibold text-lg mb-2">Read & Discover</h3>
+                <p className="text-muted-foreground">Explore thousands of original stories from talented writers</p>
               </div>
             </div>
             
@@ -129,13 +203,25 @@ export default function AboutPage() {
           transition={{ duration: 0.5, delay: 0.3 }}
           className="max-w-3xl mx-auto mb-16"
         >
-          <h2 className="text-3xl font-bold text-center mb-8">Why FableSpace?</h2>
-          
+          <h2 className="text-3xl font-bold text-center mb-8">Why Choose FableSpace Over Other Platforms?</h2>
+
           <div className="bg-muted/30 rounded-lg p-8">
             <ul className="space-y-4">
               <li className="flex items-center">
+                <div className="h-2 w-2 rounded-full bg-green-500 mr-3"></div>
+                <span><strong>Zero platform fees</strong> — Keep 100% of your earnings</span>
+              </li>
+              <li className="flex items-center">
+                <div className="h-2 w-2 rounded-full bg-green-500 mr-3"></div>
+                <span><strong>Direct PayPal donations</strong> — No complex revenue sharing</span>
+              </li>
+              <li className="flex items-center">
                 <div className="h-2 w-2 rounded-full bg-primary mr-3"></div>
                 <span>Reader-focused, minimal distraction interface</span>
+              </li>
+              <li className="flex items-center">
+                <div className="h-2 w-2 rounded-full bg-primary mr-3"></div>
+                <span>No algorithm manipulation or buried content</span>
               </li>
               <li className="flex items-center">
                 <div className="h-2 w-2 rounded-full bg-primary mr-3"></div>
@@ -147,11 +233,7 @@ export default function AboutPage() {
               </li>
               <li className="flex items-center">
                 <div className="h-2 w-2 rounded-full bg-primary mr-3"></div>
-                <span>Ongoing features like writing challenges and stats</span>
-              </li>
-              <li className="flex items-center">
-                <div className="h-2 w-2 rounded-full bg-primary mr-3"></div>
-                <span>Community-first, creativity-driven</span>
+                <span>Community-first, creativity-driven approach</span>
               </li>
             </ul>
           </div>
@@ -226,6 +308,7 @@ export default function AboutPage() {
       </main>
       
       <SiteFooter />
-    </div>
+      </div>
+    </>
   )
 }
