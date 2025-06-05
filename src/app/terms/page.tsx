@@ -223,7 +223,7 @@ export default function TermsPage() {
                   <section>
                     <h2 className="text-2xl font-semibold mb-4">13. Contact Information</h2>
                     <p>
-                      If you have any questions about these Terms, please contact us at support@fablespace.com.
+                      If you have any questions about these Terms, please contact us at support@fablespace.space.
                     </p>
                   </section>
                 </div>

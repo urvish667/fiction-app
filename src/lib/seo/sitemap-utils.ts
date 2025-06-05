@@ -13,7 +13,7 @@ export interface SitemapEntry {
  * Generate sitemap entries for category pages
  */
 export function generateCategorySitemapEntries(): SitemapEntry[] {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.com'
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.space'
   
   // Main categories with high priority
   const mainCategories = [
@@ -116,7 +116,7 @@ export function generateCategorySitemapEntries(): SitemapEntry[] {
  * Generate sitemap entries for popular search terms
  */
 export function generateSearchSitemapEntries(): SitemapEntry[] {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.com'
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.space'
   
   const popularSearchTerms = [
     'magic',
@@ -155,9 +155,21 @@ export function generateBrowseSitemapEntries(): SitemapEntry[] {
 }
 
 /**
+ * Escape XML entities in URLs for sitemap compatibility
+ */
+function escapeXmlEntities(url: string): string {
+  return url
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;')
+}
+
+/**
  * Validate and sanitize sitemap entries
  */
-export function validateSitemapEntries(entries: SitemapEntry[]): SitemapEntry[] {
+export function validateSitemapEntries(entries: any[]): any[] {
   return entries
     .filter(entry => {
       // Validate URL format
@@ -170,11 +182,15 @@ export function validateSitemapEntries(entries: SitemapEntry[]): SitemapEntry[] 
     })
     .map(entry => ({
       ...entry,
+      // Escape XML entities in URL
+      url: escapeXmlEntities(entry.url),
       // Ensure priority is within valid range
       priority: entry.priority ? Math.max(0, Math.min(1, entry.priority)) : undefined,
-      // Ensure lastModified is not in the future
-      lastModified: entry.lastModified && entry.lastModified > new Date() 
-        ? new Date() 
-        : entry.lastModified
+      // Ensure lastModified is not in the future and is a Date object
+      lastModified: entry.lastModified
+        ? (entry.lastModified instanceof Date
+            ? (entry.lastModified > new Date() ? new Date() : entry.lastModified)
+            : new Date(entry.lastModified))
+        : undefined
     }))
 }

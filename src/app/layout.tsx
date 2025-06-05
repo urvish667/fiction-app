@@ -14,6 +14,7 @@ export const metadata: Metadata = {
     process.env.NEXTAUTH_URL ||
     'http://localhost:3000'
   ),
+  title: "FableSpace - Unleash Your Stories",
   icons: {
     icon: "/favicon.ico",
   }

@@ -431,12 +431,12 @@ function WorksContent({ works, searchQuery, isLoading, onDeleteStory }: WorksCon
                         View Story
                       </DropdownMenuItem>
                     )}
-                    {work.status !== "draft" && (
+                    {/* {work.status !== "draft" && (
                       <DropdownMenuItem onClick={() => handleViewAnalytics(work.id)}>
                         <BarChart3 className="h-4 w-4 mr-2" />
                         Analytics
                       </DropdownMenuItem>
-                    )}
+                    )} */}
                     <DropdownMenuItem>
                       <Copy className="h-4 w-4 mr-2" />
                       Duplicate

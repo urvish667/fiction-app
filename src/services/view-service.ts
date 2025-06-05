@@ -663,9 +663,11 @@ export class ViewService {
         }
       }
 
-      // Get all stories with their IDs (for debugging, include all statuses)
+      // Get all published stories (non-draft) with their IDs
       const stories = await prisma.story.findMany({
-        // Include all stories regardless of status for debugging
+        where: {
+          status: { not: 'draft' } // Only include published stories
+        },
         select: { id: true, status: true },
       });
 

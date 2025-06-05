@@ -23,7 +23,7 @@ export function generateStoryMetadata(story: Story): Metadata {
   const authorName = getAuthorName(story)
   const genreName = getGenreName(story)
   const coverImage = story.coverImage || '/placeholder.svg'
-  const canonicalUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.com'}/story/${story.slug}`
+  const canonicalUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.space'}/story/${story.slug}`
 
   return {
     title,
@@ -104,7 +104,7 @@ export function generateStoryStructuredData(story: Story, tags: string[] = []) {
   const authorName = getAuthorName(story)
   const genreName = getGenreName(story)
   const coverImage = story.coverImage || '/placeholder.svg'
-  const canonicalUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.com'}/story/${story.slug}`
+  const canonicalUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.space'}/story/${story.slug}`
 
   return {
     '@context': 'https://schema.org',
@@ -115,13 +115,13 @@ export function generateStoryStructuredData(story: Story, tags: string[] = []) {
       '@type': 'Person',
       name: authorName,
       url: story.author && typeof story.author === 'object' && story.author.username
-        ? `${process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.com'}/user/${story.author.username}`
+        ? `${process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.space'}/user/${story.author.username}`
         : undefined
     },
     publisher: {
       '@type': 'Organization',
       name: 'FableSpace',
-      url: process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.com'
+      url: process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.space'
     },
     genre: genreName,
     inLanguage: story.language || 'en',
@@ -166,7 +166,7 @@ export function generateStoryStructuredData(story: Story, tags: string[] = []) {
  */
 export function generateStoryBreadcrumbStructuredData(story: Story) {
   const genreName = getGenreName(story)
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.com'
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.space'
 
   return {
     '@context': 'https://schema.org',
@@ -237,7 +237,7 @@ export function generateChapterMetadata(story: Story, chapter: any, chapterNumbe
   const authorName = getAuthorName(story)
   const genreName = getGenreName(story)
   const coverImage = story.coverImage || '/placeholder.svg'
-  const canonicalUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.com'}/story/${story.slug}/chapter/${chapterNumber}`
+  const canonicalUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.space'}/story/${story.slug}/chapter/${chapterNumber}`
 
   return {
     title,
@@ -308,8 +308,8 @@ export function generateChapterStructuredData(story: Story, chapter: any, chapte
   const authorName = getAuthorName(story)
   const genreName = getGenreName(story)
   const coverImage = story.coverImage || '/placeholder.svg'
-  const canonicalUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.com'}/story/${story.slug}/chapter/${chapterNumber}`
-  const storyUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.com'}/story/${story.slug}`
+  const canonicalUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.space'}/story/${story.slug}/chapter/${chapterNumber}`
+  const storyUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.space'}/story/${story.slug}`
 
   return {
     '@context': 'https://schema.org',
@@ -322,7 +322,7 @@ export function generateChapterStructuredData(story: Story, chapter: any, chapte
       '@type': 'Person',
       name: authorName,
       url: story.author && typeof story.author === 'object' && story.author.username
-        ? `${process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.com'}/user/${story.author.username}`
+        ? `${process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.space'}/user/${story.author.username}`
         : undefined
     },
     isPartOf: {
@@ -339,7 +339,7 @@ export function generateChapterStructuredData(story: Story, chapter: any, chapte
     publisher: {
       '@type': 'Organization',
       name: 'FableSpace',
-      url: process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.com'
+      url: process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.space'
     },
     position: chapterNumber,
     inLanguage: story.language || 'en',
@@ -363,7 +363,7 @@ export function generateChapterStructuredData(story: Story, chapter: any, chapte
  */
 export function generateChapterBreadcrumbStructuredData(story: Story, chapter: any, chapterNumber: number) {
   const genreName = getGenreName(story)
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.com'
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.space'
 
   return {
     '@context': 'https://schema.org',
@@ -407,7 +407,7 @@ export function generateChapterBreadcrumbStructuredData(story: Story, chapter: a
  * Generate SEO metadata for homepage
  */
 export function generateHomepageMetadata(): Metadata {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.com'
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.space'
 
   return {
     title: "FableSpace - Unleash Your Stories",
@@ -471,7 +471,7 @@ export function generateHomepageMetadata(): Metadata {
  * Generate structured data for homepage
  */
 export function generateHomepageStructuredData() {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.com'
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.space'
 
   return {
     '@context': 'https://schema.org',
@@ -508,7 +508,7 @@ export function generateHomepageStructuredData() {
  * Generate organization structured data
  */
 export function generateOrganizationStructuredData() {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.com'
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.space'
 
   return {
     '@context': 'https://schema.org',
@@ -592,7 +592,7 @@ export function generateOrganizationStructuredData() {
  * Generate SEO metadata for about page
  */
 export function generateAboutMetadata(): Metadata {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.com'
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.space'
   const canonicalUrl = `${baseUrl}/about`
 
   return {
@@ -708,7 +708,7 @@ export function generateBrowseMetadata(params?: {
   status?: string
   totalStories?: number
 }): Metadata {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.com'
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.space'
 
   let title = "Browse Stories - FableSpace"
   let description = "Discover amazing stories on FableSpace. Browse thousands of fiction stories across all genres including fantasy, romance, science fiction, and more."
@@ -836,7 +836,7 @@ export function generateBrowseStructuredData(params?: {
   totalStories?: number
   stories?: any[]
 }) {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.com'
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.space'
   const genreInfo = params?.genre ? categoryDescriptions[params.genre] : null
 
   // Base structured data
@@ -1001,7 +1001,7 @@ export function generateCategoryWebPageStructuredData(params: {
   totalStories?: number
   language?: string
 }) {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.com'
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.space'
   const genreInfo = categoryDescriptions[params.genre]
 
   return {
@@ -1052,7 +1052,7 @@ export function generateUserProfileMetadata(user: {
   image?: string | null
   location?: string | null
 }): Metadata {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.com'
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.space'
   const displayName = user.name || user.username
   const canonicalUrl = `${baseUrl}/user/${user.username}`
 
@@ -1131,7 +1131,7 @@ export function generateUserProfileStructuredData(user: {
   website?: string | null
   joinedDate?: string | null
 }) {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.com'
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.space'
   const displayName = user.name || user.username
 
   return {

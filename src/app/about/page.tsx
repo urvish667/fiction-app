@@ -1,7 +1,5 @@
-import { motion } from "framer-motion"
 import { BookOpen, Sparkles, Users, Tag, Award, MessageSquare, Compass, Heart } from "lucide-react"
 import Link from "next/link"
-import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import Navbar from "@/components/navbar"
 import { SiteFooter } from "@/components/site-footer"
@@ -25,34 +23,24 @@ export default function AboutPage() {
 
       <div className="min-h-screen flex flex-col">
         <Navbar />
-      
+
       <main className="flex-1 container mx-auto px-8 py-12">
         {/* Hero Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="max-w-4xl mx-auto text-center mb-16"
-        >
+        <div className="max-w-4xl mx-auto text-center mb-16">
           <div className="mb-8 flex justify-center">
             <div className="p-4 rounded-full bg-primary/10">
               <BookOpen className="h-12 w-12 text-primary" />
             </div>
           </div>
-          
+
           <h1 className="text-4xl font-bold mb-6">Welcome to FableSpace – Where Stories Come Alive</h1>
           <p className="text-xl text-muted-foreground">
             A cozy corner of the internet for storytellers, dreamers, and readers alike.
           </p>
-        </motion.div>
-        
+        </div>
+
         {/* Our Mission */}
-        <motion.section
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-          className="max-w-3xl mx-auto mb-16"
-        >
+        <section className="max-w-3xl mx-auto mb-16">
           <h2 className="text-3xl font-bold text-center mb-6">Our Mission</h2>
           <div className="bg-muted/30 rounded-lg p-8 text-center">
             <p className="text-lg mb-4">
@@ -64,15 +52,10 @@ export default function AboutPage() {
               Most importantly, we believe writers should be rewarded for their creativity—without platform fees taking a cut.
             </p>
           </div>
-        </motion.section>
+        </section>
 
         {/* What Makes Us Different */}
-        <motion.section
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.15 }}
-          className="max-w-4xl mx-auto mb-16"
-        >
+        <section className="max-w-4xl mx-auto mb-16">
           <h2 className="text-3xl font-bold text-center mb-8">What Makes FableSpace Different</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -112,15 +95,10 @@ export default function AboutPage() {
               </p>
             </div>
           </div>
-        </motion.section>
+        </section>
         
         {/* What You Can Do */}
-        <motion.section
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="max-w-4xl mx-auto mb-16"
-        >
+        <section className="max-w-4xl mx-auto mb-16">
           <h2 className="text-3xl font-bold text-center mb-8">What You Can Do on FableSpace</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -194,15 +172,10 @@ export default function AboutPage() {
               </div>
             </div>
           </div>
-        </motion.section>
+        </section>
         
         {/* Why FableSpace */}
-        <motion.section
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-          className="max-w-3xl mx-auto mb-16"
-        >
+        <section className="max-w-3xl mx-auto mb-16">
           <h2 className="text-3xl font-bold text-center mb-8">Why Choose FableSpace Over Other Platforms?</h2>
 
           <div className="bg-muted/30 rounded-lg p-8">
@@ -237,15 +210,10 @@ export default function AboutPage() {
               </li>
             </ul>
           </div>
-        </motion.section>
+        </section>
         
         {/* Our Story */}
-        <motion.section
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-          className="max-w-3xl mx-auto mb-16"
-        >
+        <section className="max-w-3xl mx-auto mb-16">
           <h2 className="text-3xl font-bold text-center mb-6">Our Story</h2>
           <div className="bg-muted/30 rounded-lg p-8 text-center">
             <p className="text-lg mb-4">
@@ -254,15 +222,10 @@ export default function AboutPage() {
               That dream became FableSpace.
             </p>
           </div>
-        </motion.section>
+        </section>
         
         {/* Community & Values */}
-        <motion.section
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.5 }}
-          className="max-w-3xl mx-auto mb-16"
-        >
+        <section className="max-w-3xl mx-auto mb-16">
           <h2 className="text-3xl font-bold text-center mb-8">Community & Values</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -286,15 +249,10 @@ export default function AboutPage() {
               <p className="text-muted-foreground">We support diverse voices and perspectives in storytelling</p>
             </div>
           </div>
-        </motion.section>
+        </section>
         
         {/* Call to Action */}
-        <motion.section
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.6 }}
-          className="max-w-3xl mx-auto text-center"
-        >
+        <section className="max-w-3xl mx-auto text-center">
           <h2 className="text-3xl font-bold mb-6">Ready to write your first story?</h2>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button asChild size="lg">
@@ -304,7 +262,7 @@ export default function AboutPage() {
               <Link href="/browse">Explore Stories</Link>
             </Button>
           </div>
-        </motion.section>
+        </section>
       </main>
       
       <SiteFooter />

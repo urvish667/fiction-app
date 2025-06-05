@@ -72,7 +72,7 @@ export default function LikeShareFollow({ story }: LikeShareFollowProps) {
 
   const handleCopyLink = () => {
     // In a real app, this would copy the actual URL
-    navigator.clipboard.writeText(`https://fablespace.com/story/${story.id}`)
+    navigator.clipboard.writeText(`https://fablespace.space/story/${story.id}`)
     setCopied(true)
 
     toast({

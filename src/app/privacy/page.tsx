@@ -278,7 +278,7 @@ export default function PrivacyPolicyPage() {
                   <section>
                     <h2 className="text-2xl font-semibold mb-4">11. Contact Information</h2>
                     <p>
-                      If you have any questions about this Privacy Policy, please contact us at privacy@fablespace.com.
+                      If you have any questions about this Privacy Policy, please contact us at support@fablespace.space.
                     </p>
                   </section>
                 </div>

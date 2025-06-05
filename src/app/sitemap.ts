@@ -1,6 +1,6 @@
 import { MetadataRoute } from 'next'
 import { prisma } from '@/lib/auth/db-adapter'
-import { generateBrowseSitemapEntries } from '@/lib/seo/sitemap-utils'
+import { generateBrowseSitemapEntries, validateSitemapEntries } from '@/lib/seo/sitemap-utils'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.space'
@@ -147,8 +147,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: entry.priority || 0.6
     }))
 
-    // Combine all pages
-    return [...staticPages, ...browsePages, ...storyPages, ...chapterPages, ...userPages]
+    // Combine all pages and validate/sanitize URLs
+    const allPages = [...staticPages, ...browsePages, ...storyPages, ...chapterPages, ...userPages]
+    const validatedPages = validateSitemapEntries(allPages)
+    return validatedPages
   } catch (error) {
     console.error('Error generating sitemap:', error)
     // Return at least static pages and browse pages if database query fails
@@ -159,6 +161,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: entry.changeFrequency || 'weekly',
       priority: entry.priority || 0.6
     }))
-    return [...staticPages, ...browsePages]
+    const fallbackPages = [...staticPages, ...browsePages]
+    const validatedFallbackPages = validateSitemapEntries(fallbackPages)
+    return validatedFallbackPages
   }
 }

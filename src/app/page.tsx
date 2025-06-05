@@ -1,107 +1,17 @@
 import { Metadata } from "next"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Heart, Flame, Eye } from "lucide-react"
-import Image from "next/image"
 import Link from "next/link"
 import Navbar from "@/components/navbar"
 import { SiteFooter } from "@/components/site-footer"
 import { generateHomepageMetadata, generateHomepageStructuredData, generateOrganizationStructuredData } from "@/lib/seo/metadata"
-import { prisma } from "@/lib/auth/db-adapter"
-import { ViewService } from "@/services/view-service"
+import MostViewedStories from "@/components/most-viewed-stories"
 
 // Generate metadata for SEO
 export async function generateMetadata(): Promise<Metadata> {
   return generateHomepageMetadata()
 }
 
-// Server component to fetch most viewed stories
-async function getMostViewedStories() {
-  try {
-    // Get most viewed story IDs using the optimized ViewService
-    const mostViewedStoryIds = await ViewService.getMostViewedStories(4, 'all')
-
-    if (mostViewedStoryIds.length === 0) {
-      return []
-    }
-
-    // Find stories by IDs
-    const stories = await prisma.story.findMany({
-      where: {
-        id: { in: mostViewedStoryIds },
-        status: { not: 'draft' } // Only include published stories
-      },
-      include: {
-        author: {
-          select: {
-            id: true,
-            name: true,
-            username: true,
-            image: true,
-          },
-        },
-        genre: true,
-        tags: {
-          include: {
-            tag: true
-          }
-        },
-        _count: {
-          select: {
-            likes: true,
-            comments: true,
-            bookmarks: true,
-            chapters: true,
-          },
-        },
-      },
-    })
-
-    // Get combined view counts (story + chapter views) for these stories
-    const viewCountMap = await ViewService.getBatchCombinedViewCounts(
-      mostViewedStoryIds,
-      'all'
-    )
-
-    // Sort stories by view count (descending)
-    const sortedStories = [...stories].sort((a, b) => {
-      const viewsA = viewCountMap.get(a.id) || 0
-      const viewsB = viewCountMap.get(b.id) || 0
-      return viewsB - viewsA
-    })
-
-    // Transform stories to include counts and format tags
-    const formattedStories = sortedStories.map((story) => {
-      // Extract tags safely
-      const tags = Array.isArray(story.tags)
-        ? story.tags.map(storyTag => storyTag.tag?.name || '').filter(Boolean)
-        : []
-
-      // Get view count from our map
-      const viewCount = viewCountMap.get(story.id) || 0
-
-      return {
-        ...story,
-        tags,
-        likeCount: story._count.likes,
-        commentCount: story._count.comments,
-        bookmarkCount: story._count.bookmarks,
-        chapterCount: story._count.chapters,
-        viewCount,
-        _count: undefined,
-      }
-    })
-
-    return formattedStories
-  } catch (error) {
-    console.error('Error fetching most viewed stories:', error)
-    return []
-  }
-}
-
-export default async function Home() {
-  const stories = await getMostViewedStories()
+export default function Home() {
   const homepageStructuredData = generateHomepageStructuredData()
   const organizationStructuredData = generateOrganizationStructuredData()
 
@@ -157,43 +67,7 @@ export default async function Home() {
         </section>
 
         {/* Most Viewed Stories Section */}
-        <section className="py-16 px-8 bg-background">
-          <div className="container mx-auto">
-            <div className="flex justify-between items-center mb-10">
-              <div>
-                <h2 className="text-3xl font-bold">Most Viewed Stories</h2>
-                <p className="text-muted-foreground mt-1">Our most popular stories</p>
-              </div>
-              <Link href="/browse?sortBy=mostRead">
-                <Button variant="ghost">View All</Button>
-              </Link>
-            </div>
-
-            {stories.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">No stories available yet. Start reading or writing to see stories here!</p>
-                <div className="mt-4 flex justify-center gap-4">
-                  <Link href="/browse">
-                    <Button>Browse Stories</Button>
-                  </Link>
-                  <Link href="/write/story-info">
-                    <Button variant="outline">Start Writing</Button>
-                  </Link>
-                </div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {stories.map((story, index) => (
-                  <StoryCard
-                    key={story.id}
-                    story={story}
-                    isTopStory={index === 0}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        </section>
+        <MostViewedStories />
 
         {/* Explore Categories Section */}
         <section className="py-16 px-8 bg-muted/50">
@@ -248,56 +122,6 @@ export default async function Home() {
     </>
   )
 }
-
-// StoryCard component for server-side rendering
-function StoryCard({ story, isTopStory = false }: { story: any, isTopStory?: boolean }) {
-  return (
-    <Link href={`/story/${story.slug || story.id}`}>
-      <Card className={`h-full overflow-hidden flex flex-col hover:shadow-lg transition-shadow cursor-pointer ${isTopStory ? 'ring-2 ring-primary' : ''}`}>
-        <div className="relative aspect-[3/2] overflow-hidden">
-          <Image
-            src={story.coverImage || "/placeholder.svg"}
-            alt={story.title}
-            fill
-            className="object-cover transition-transform hover:scale-105"
-            unoptimized={true}
-          />
-          <Badge className="absolute top-2 right-2">
-            {typeof story.genre === 'object' && story.genre !== null
-              ? (story.genre as {name: string}).name
-              : (typeof story.genre === 'string' ? story.genre : 'General')}
-          </Badge>
-          {isTopStory && (
-            <div className="absolute top-2 left-2 bg-primary text-primary-foreground px-2 py-1 rounded-md flex items-center gap-1">
-              <Flame size={14} />
-              <span className="text-xs font-medium">Most Read</span>
-            </div>
-          )}
-        </div>
-        <CardHeader className="pb-2">
-          <h3 className="font-bold text-lg line-clamp-1">{story.title}</h3>
-          <p className="text-sm text-muted-foreground">by {typeof story.author === 'object' ?
-            (story.author?.name || story.author?.username || "Unknown Author") :
-            story.author}</p>
-        </CardHeader>
-        <CardContent className="pb-2 flex-grow">
-          <p className="text-sm text-muted-foreground line-clamp-2">{story.description || story.excerpt}</p>
-        </CardContent>
-        <CardFooter className="pt-0 flex justify-between">
-          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-            <Heart size={16} className="text-muted-foreground" />
-            <span>{(story.likeCount || story.likes || 0).toLocaleString()}</span>
-          </div>
-          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-            <Eye size={16} className="text-muted-foreground" />
-            <span>{(typeof story.viewCount === 'number' ? story.viewCount : story.readCount || 0).toLocaleString()} views</span>
-          </div>
-        </CardFooter>
-      </Card>
-    </Link>
-  )
-}
-
 
 
 const categories = [
