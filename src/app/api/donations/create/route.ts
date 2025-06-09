@@ -4,6 +4,7 @@ import { authOptions } from '../../auth/[...nextauth]/route';
 import { z } from 'zod';
 import { PaymentService } from '@/lib/payment/paymentService';
 import { logger } from '@/lib/logger';
+import { requireCompleteProfile } from '@/lib/auth/auth-utils';
 
 // Schema for the request body
 const donationSchema = z.object({
@@ -26,6 +27,12 @@ export async function POST(req: Request) {
         error: 'Unauthorized',
         message: 'You must be logged in to make a donation'
       }, { status: 401 });
+    }
+
+    // 1.5. Check if user profile is complete
+    const profileError = await requireCompleteProfile(session.user.id);
+    if (profileError) {
+      return NextResponse.json(profileError, { status: 403 });
     }
 
     // 2. Validate request body

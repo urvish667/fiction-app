@@ -6,6 +6,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { logger } from "@/lib/logger";
 import { withCsrfProtection } from "@/lib/security/csrf";
 import { sanitizeText } from "@/lib/security/input-validation";
+import { requireCompleteProfile } from "@/lib/auth/auth-utils";
 
 // Validation schema for creating a comment
 const createCommentSchema = z.object({
@@ -142,6 +143,12 @@ export const POST = withCsrfProtection(async (request: NextRequest) => {
         { error: "Unauthorized" },
         { status: 401 }
       );
+    }
+
+    // Check if user profile is complete
+    const profileError = await requireCompleteProfile(session.user.id);
+    if (profileError) {
+      return NextResponse.json(profileError, { status: 403 });
     }
 
     // Find the story and chapter

@@ -5,6 +5,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { calculateStoryStatus } from "@/lib/story-helpers";
 import { Chapter } from "@/types/story";
 import { logError } from "@/lib/error-logger";
+import { requireCompleteProfile } from "@/lib/auth/auth-utils";
 
 // Define the params type for route handlers
 type StoryRouteParams = { params: Promise<{ id: string }> };
@@ -25,6 +26,12 @@ export async function POST(
         { error: "Unauthorized" },
         { status: 401 }
       );
+    }
+
+    // Check if user profile is complete
+    const profileError = await requireCompleteProfile(session.user.id);
+    if (profileError) {
+      return NextResponse.json(profileError, { status: 403 });
     }
 
     // Find the story
@@ -120,6 +127,12 @@ export async function DELETE(
         { error: "Unauthorized" },
         { status: 401 }
       );
+    }
+
+    // Check if user profile is complete
+    const profileError = await requireCompleteProfile(session.user.id);
+    if (profileError) {
+      return NextResponse.json(profileError, { status: 403 });
     }
 
     // Find the like

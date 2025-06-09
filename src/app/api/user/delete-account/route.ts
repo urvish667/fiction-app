@@ -66,24 +66,87 @@ export async function DELETE(request: NextRequest) {
       }
     }
 
-    // Delete user's sessions first
-    await prisma.session.deleteMany({
-      where: { userId: user.id },
-    })
+    // Delete user's related data in the correct order to avoid foreign key constraints
+    // Use a transaction to ensure all operations succeed or fail together
+    await prisma.$transaction(async (tx) => {
+      // 1. Delete user's likes (stories and chapters)
+      await tx.like.deleteMany({
+        where: { userId: user.id },
+      })
 
-    // Delete user's accounts (OAuth connections)
-    await prisma.account.deleteMany({
-      where: { userId: user.id },
-    })
+      // 2. Delete user's comment likes
+      await tx.commentLike.deleteMany({
+        where: { userId: user.id },
+      })
 
-    // Delete user's notifications
-    await prisma.notification.deleteMany({
-      where: { userId: user.id },
-    })
+      // 3. Delete user's bookmarks
+      await tx.bookmark.deleteMany({
+        where: { userId: user.id },
+      })
 
-    // Delete the user
-    await prisma.user.delete({
-      where: { id: user.id },
+      // 4. Delete user's reading progress
+      await tx.readingProgress.deleteMany({
+        where: { userId: user.id },
+      })
+
+      // 5. Delete follow relationships (both as follower and following)
+      await tx.follow.deleteMany({
+        where: {
+          OR: [
+            { followerId: user.id },
+            { followingId: user.id }
+          ]
+        },
+      })
+
+      // 6. Delete user's comments (this will cascade delete comment likes due to schema)
+      await tx.comment.deleteMany({
+        where: { userId: user.id },
+      })
+
+      // 7. Handle stories - Delete user's stories (this will cascade delete related data)
+      // Note: This is a destructive operation. Consider business requirements.
+      await tx.story.deleteMany({
+        where: { authorId: user.id },
+      })
+
+      // 8. Handle donations - Keep donation records for financial/legal compliance
+      // but remove personal identifiers by setting user references to null
+      // Note: This requires schema changes to make donorId and recipientId nullable
+      // For now, we'll delete donations to avoid constraint issues
+      await tx.donation.deleteMany({
+        where: {
+          OR: [
+            { donorId: user.id },
+            { recipientId: user.id }
+          ]
+        },
+      })
+
+      // 9. Delete user's sessions
+      await tx.session.deleteMany({
+        where: { userId: user.id },
+      })
+
+      // 10. Delete user's accounts (OAuth connections)
+      await tx.account.deleteMany({
+        where: { userId: user.id },
+      })
+
+      // 11. Delete user's notifications (both received and acted upon)
+      await tx.notification.deleteMany({
+        where: {
+          OR: [
+            { userId: user.id },
+            { actorId: user.id }
+          ]
+        },
+      })
+
+      // 12. Finally, delete the user
+      await tx.user.delete({
+        where: { id: user.id },
+      })
     })
 
     return NextResponse.json({ message: "Account deleted successfully" })
@@ -103,6 +166,20 @@ export async function DELETE(request: NextRequest) {
         { error: "Validation error", fields: fieldErrors },
         { status: 400 }
       )
+    }
+
+    // Log the error for debugging
+    console.error("Account deletion error:", error)
+
+    // Check if it's a Prisma error
+    if (error && typeof error === 'object' && 'code' in error) {
+      const prismaError = error as any
+      if (prismaError.code === 'P2003') {
+        return NextResponse.json(
+          { error: "Cannot delete account due to existing data dependencies. Please contact support." },
+          { status: 400 }
+        )
+      }
     }
 
     return NextResponse.json(

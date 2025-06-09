@@ -96,6 +96,25 @@ export async function isProfileComplete(userId: string) {
 }
 
 /**
+ * Middleware function to check if user profile is complete for social interactions
+ * Returns an error response if profile is incomplete, null if complete
+ */
+export async function requireCompleteProfile(userId: string) {
+  const profileComplete = await isProfileComplete(userId);
+
+  if (!profileComplete) {
+    return {
+      error: "Profile incomplete",
+      message: "Please complete your profile to perform this action. You need to set a username, birthdate, and pronoun.",
+      code: "PROFILE_INCOMPLETE",
+      redirectTo: "/complete-profile"
+    };
+  }
+
+  return null;
+}
+
+/**
  * Handle OAuth account linking
  */
 export async function linkOAuthAccount(userId: string, account: {

@@ -486,6 +486,10 @@ export const StoryService = {
 
     if (!response.ok) {
       const error = await response.json();
+      // For profile completion errors, throw the full error object
+      if (response.status === 403 && error.code === 'PROFILE_INCOMPLETE') {
+        throw error;
+      }
       throw new Error(error.error || "Failed to follow user");
     }
 
@@ -502,6 +506,10 @@ export const StoryService = {
 
     if (!response.ok) {
       const error = await response.json();
+      // For profile completion errors, throw the full error object
+      if (response.status === 403 && error.code === 'PROFILE_INCOMPLETE') {
+        throw error;
+      }
       throw new Error(error.error || "Failed to unfollow user");
     }
   },

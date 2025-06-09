@@ -23,6 +23,9 @@ export default function CompleteProfilePage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
+  // Get callback URL from query params
+  const [callbackUrl, setCallbackUrl] = useState<string>('/')
+
   const [formData, setFormData] = useState({
     username: "",
     birthdate: null as Date | null,
@@ -40,10 +43,15 @@ export default function CompleteProfilePage() {
     isChecking: false,
   })
 
-  // Redirect if profile is already complete
+  // Get callback URL from query params and redirect if profile is already complete
   useEffect(() => {
+    // Get callback URL from query params
+    const urlParams = new URLSearchParams(window.location.search);
+    const callback = urlParams.get('callbackUrl') || '/';
+    setCallbackUrl(callback);
+
     if (session?.user?.isProfileComplete) {
-      router.push("/")
+      router.push(callback)
     }
   }, [session, router])
 
@@ -201,7 +209,7 @@ export default function CompleteProfilePage() {
       } else {
         // Update the session to reflect completed profile
         await update()
-        router.push("/")
+        router.push(callbackUrl)
       }
     } catch (error) {
       logError(error, { context: 'Completing profile' })

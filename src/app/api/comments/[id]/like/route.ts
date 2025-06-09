@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/auth/db-adapter";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { logger } from "@/lib/logger";
+import { requireCompleteProfile } from "@/lib/auth/auth-utils";
 
 // POST endpoint to like a comment
 export async function POST(
@@ -23,9 +24,23 @@ export async function POST(
       );
     }
 
-    // Find the comment
+    // Check if user profile is complete
+    const profileError = await requireCompleteProfile(session.user.id);
+    if (profileError) {
+      return NextResponse.json(profileError, { status: 403 });
+    }
+
+    // Find the comment with story details
     const comment = await prisma.comment.findUnique({
       where: { id: commentId },
+      include: {
+        story: {
+          select: {
+            title: true,
+            slug: true,
+          },
+        },
+      },
     });
 
     if (!comment) {
@@ -113,6 +128,12 @@ export async function DELETE(
         { error: "Unauthorized" },
         { status: 401 }
       );
+    }
+
+    // Check if user profile is complete
+    const profileError = await requireCompleteProfile(session.user.id);
+    if (profileError) {
+      return NextResponse.json(profileError, { status: 403 });
     }
 
     // Use a transaction for deleting like and updating count

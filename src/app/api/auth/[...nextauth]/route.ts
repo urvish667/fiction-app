@@ -456,17 +456,20 @@ export const authOptions: NextAuthOptions = {
 
         authLogger.debug("DB User after upsert", { userId: dbUser.id });
 
-        // Check if profile completion is needed
-        const needsProfileCompletion = !dbUser.username || !dbUser.birthdate || !dbUser.pronoun;
+        // Check if profile completion is needed for OAuth users
+        const needsProfileCompletion = !dbUser.username || !dbUser.birthdate || !dbUser.pronoun || !dbUser.termsAccepted;
         if (needsProfileCompletion) {
           await prisma.user.update({
             where: { id: dbUser.id },
-            data: { isProfileComplete: false },
+            data: {
+              isProfileComplete: false,
+              // Ensure these fields are properly set for profile completion check
+            },
           });
 
-          // Set a flag to redirect to profile completion page
-          // Use token.needsProfileCompletion in the jwt callback instead
-          // This avoids modifying the user object directly
+          // Mark user as needing profile completion
+          // This will be picked up by the JWT callback and middleware
+          user.needsProfileCompletion = true;
         }
 
       } catch (error) {
@@ -641,6 +644,11 @@ export const authOptions: NextAuthOptions = {
         token.unreadNotifications = dbUser.unreadNotifications;
         token.lastUpdated = Date.now();
 
+        // Set needsProfileCompletion flag for OAuth users without complete profiles
+        if (!dbUser.isProfileComplete || !dbUser.username) {
+          token.needsProfileCompletion = true;
+        }
+
         authLogger.debug('Initial token created with unread notifications', {
           userId: dbUser.id,
           count: dbUser.unreadNotifications
@@ -708,6 +716,13 @@ export const authOptions: NextAuthOptions = {
             token.emailVerified = dbUser.emailVerified;
             token.unreadNotifications = dbUser.unreadNotifications;
             token.lastUpdated = Date.now();
+
+            // Update needsProfileCompletion flag based on current profile state
+            if (!dbUser.isProfileComplete || !dbUser.username) {
+              token.needsProfileCompletion = true;
+            } else {
+              token.needsProfileCompletion = false;
+            }
 
             authLogger.debug('Updated token with unread notifications count', {
               userId: token.id,

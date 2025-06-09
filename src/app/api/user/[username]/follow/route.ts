@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/auth/db-adapter";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { logError } from "@/lib/error-logger";
+import { requireCompleteProfile } from "@/lib/auth/auth-utils";
 
 // Define the params type for route handlers
 type UserRouteParams = { params: Promise<{ username: string }> };
@@ -23,6 +24,12 @@ export async function POST(
         { error: "Unauthorized" },
         { status: 401 }
       );
+    }
+
+    // Check if user profile is complete
+    const profileError = await requireCompleteProfile(session.user.id);
+    if (profileError) {
+      return NextResponse.json(profileError, { status: 403 });
     }
 
     // Find the target user by username
@@ -91,7 +98,7 @@ export async function POST(
 
 // DELETE endpoint to unfollow a user
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: UserRouteParams
 ) {
   try {
@@ -105,6 +112,12 @@ export async function DELETE(
         { error: "Unauthorized" },
         { status: 401 }
       );
+    }
+
+    // Check if user profile is complete
+    const profileError = await requireCompleteProfile(session.user.id);
+    if (profileError) {
+      return NextResponse.json(profileError, { status: 403 });
     }
 
     // Find the target user by username

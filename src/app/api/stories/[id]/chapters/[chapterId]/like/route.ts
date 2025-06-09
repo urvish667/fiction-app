@@ -4,6 +4,7 @@ import { prisma } from "@/lib/auth/db-adapter";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { logger } from "@/lib/logger";
 import { withCsrfProtection } from "@/lib/security/csrf";
+import { requireCompleteProfile } from "@/lib/auth/auth-utils";
 
 // Define the params type for route handlers
 type ChapterRouteParams = { params: { id: string; chapterId: string } };
@@ -26,6 +27,12 @@ export const POST = withCsrfProtection(async (
         { error: "Unauthorized" },
         { status: 401 }
       );
+    }
+
+    // Check if user profile is complete
+    const profileError = await requireCompleteProfile(session.user.id);
+    if (profileError) {
+      return NextResponse.json(profileError, { status: 403 });
     }
 
     // Find the story and chapter
@@ -205,6 +212,12 @@ export const DELETE = withCsrfProtection(async (
         { error: "Unauthorized" },
         { status: 401 }
       );
+    }
+
+    // Check if user profile is complete
+    const profileError = await requireCompleteProfile(session.user.id);
+    if (profileError) {
+      return NextResponse.json(profileError, { status: 403 });
     }
 
     // Find the like

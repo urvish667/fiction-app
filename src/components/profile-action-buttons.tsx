@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { UserPlus, UserCheck, Share2, Check, Loader2 } from "lucide-react"
 import { StoryService } from "@/services/story-service"
 import { useToast } from "@/hooks/use-toast"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { logError } from "@/lib/error-logger"
+import { useProfileCompletionHandler } from "@/lib/profile-completion-handler"
 
 interface ProfileActionButtonsProps {
   username: string
@@ -16,7 +18,9 @@ interface ProfileActionButtonsProps {
 
 export default function ProfileActionButtons({ username, isCurrentUser }: ProfileActionButtonsProps) {
   const { data: session } = useSession()
+  const router = useRouter()
   const { toast } = useToast()
+  const { handleApiError } = useProfileCompletionHandler()
   const [isFollowing, setIsFollowing] = useState(false)
   const [followLoading, setFollowLoading] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -41,11 +45,7 @@ export default function ProfileActionButtons({ username, isCurrentUser }: Profil
   // Handle follow/unfollow
   const handleFollow = async () => {
     if (!session) {
-      toast({
-        title: "Sign in required",
-        description: "Please sign in to follow this user",
-        variant: "destructive"
-      })
+      router.push(`/login?callbackUrl=/user/${username}`)
       return
     }
 
@@ -67,11 +67,17 @@ export default function ProfileActionButtons({ username, isCurrentUser }: Profil
           description: `You are now following @${username}`
         })
       }
-    } catch (err) {
+    } catch (err: any) {
+      // Check if it's a profile incomplete error
+      if (handleApiError(err, `/user/${username}`)) {
+        // Error was handled by profile completion handler
+        return
+      }
+
       logError(err, { context: "Error updating follow status", username })
       toast({
         title: "Error",
-        description: "Failed to update follow status. Please try again.",
+        description: err.message || "Failed to update follow status. Please try again.",
         variant: "destructive"
       })
     } finally {

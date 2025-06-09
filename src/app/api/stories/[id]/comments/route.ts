@@ -4,6 +4,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/auth/db-adapter";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { logError } from "@/lib/error-logger";
+import { requireCompleteProfile } from "@/lib/auth/auth-utils";
 
 // Validation schema for creating a comment
 const createCommentSchema = z.object({
@@ -133,6 +134,12 @@ export async function POST(
         { error: "Unauthorized" },
         { status: 401 }
       );
+    }
+
+    // Check if user profile is complete
+    const profileError = await requireCompleteProfile(session.user.id);
+    if (profileError) {
+      return NextResponse.json(profileError, { status: 403 });
     }
 
     // Find the story

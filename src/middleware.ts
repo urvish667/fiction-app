@@ -17,8 +17,8 @@ const protectedRoutes = [
 ];
 
 // Routes that require profile completion
+// Only require profile completion for content creation and user management
 const profileRequiredRoutes = [
-  '/user',
   '/write',
   '/settings',
   '/dashboard',
@@ -253,9 +253,25 @@ export async function middleware(request: NextRequest) {
   // Check if user needs to complete their profile
   if (token &&
       profileRequiredRoutes.some(route => pathname.startsWith(route)) &&
-      (!token.isProfileComplete || token.needsProfileCompletion)) {
+      (!token.isProfileComplete || token.needsProfileCompletion || !token.username)) {
     // Redirect to profile completion page
     return NextResponse.redirect(new URL('/complete-profile', request.url));
+  }
+
+  // Also check for social interaction pages that require complete profiles
+  // These are pages where users would typically perform social actions
+  const socialInteractionPages = [
+    '/user/', // User profile pages where you can follow
+    '/story/', // Story pages where you can like/comment
+  ];
+
+  if (token &&
+      socialInteractionPages.some(route => pathname.startsWith(route)) &&
+      (!token.isProfileComplete || token.needsProfileCompletion || !token.username)) {
+    // For social interaction pages, redirect to profile completion with return URL
+    const completeProfileUrl = new URL('/complete-profile', request.url);
+    completeProfileUrl.searchParams.set('callbackUrl', pathname);
+    return NextResponse.redirect(completeProfileUrl);
   }
 
   // Check if email verification is required
