@@ -1,5 +1,6 @@
 import { Metadata } from "next"
 import { Story } from "@/types/story"
+import { categoryDescriptions } from "./genre-descriptions"
 
 /**
  * Safely convert a date to ISO string, handling both Date objects and string dates
@@ -660,43 +661,6 @@ export function generateAboutMetadata(): Metadata {
   }
 }
 
-/**
- * Category-specific SEO content for enhanced metadata
- */
-const categoryDescriptions: Record<string, { description: string; keywords: string[] }> = {
-  'Fantasy': {
-    description: 'Immerse yourself in magical worlds filled with dragons, wizards, and epic adventures. Discover the best fantasy stories on FableSpace.',
-    keywords: ['fantasy fiction', 'magic stories', 'dragons', 'wizards', 'epic fantasy', 'sword and sorcery', 'magical realism']
-  },
-  'Science Fiction': {
-    description: 'Explore the future with cutting-edge sci-fi stories. From space exploration to dystopian futures, find your next favorite science fiction read.',
-    keywords: ['sci-fi', 'space opera', 'dystopian', 'cyberpunk', 'time travel', 'aliens', 'future fiction']
-  },
-  'Romance': {
-    description: 'Fall in love with heartwarming romance stories. From contemporary love stories to historical romance, discover your perfect romantic escape.',
-    keywords: ['romance novels', 'love stories', 'contemporary romance', 'historical romance', 'romantic fiction']
-  },
-  'Mystery': {
-    description: 'Solve puzzles and uncover secrets with thrilling mystery stories. From cozy mysteries to hard-boiled detective fiction.',
-    keywords: ['mystery novels', 'detective fiction', 'crime stories', 'thriller', 'suspense', 'whodunit']
-  },
-  'Horror': {
-    description: 'Experience spine-chilling horror stories that will keep you on the edge of your seat. From psychological horror to supernatural scares.',
-    keywords: ['horror fiction', 'scary stories', 'supernatural horror', 'psychological thriller', 'ghost stories']
-  },
-  'Young Adult': {
-    description: 'Discover coming-of-age stories perfect for young adult readers. From high school drama to dystopian adventures.',
-    keywords: ['YA fiction', 'teen stories', 'coming of age', 'young adult romance', 'teen fantasy']
-  },
-  'Historical': {
-    description: 'Journey through time with captivating historical fiction. Experience different eras through compelling storytelling.',
-    keywords: ['historical fiction', 'period drama', 'historical romance', 'war stories', 'ancient history']
-  },
-  'Thriller': {
-    description: 'Get your adrenaline pumping with heart-pounding thriller stories. From psychological thrillers to action-packed adventures.',
-    keywords: ['thriller novels', 'suspense fiction', 'action thriller', 'psychological thriller', 'crime thriller']
-  }
-}
 
 /**
  * Generate SEO metadata for browse page with enhanced category-based optimization

@@ -10,6 +10,7 @@ import { AlertCircle, Loader2, AtSign, Link, MessageSquare } from "lucide-react"
 import { useToast } from "@/hooks/use-toast";
 import { ProfileFormValuesSubset } from "../ProfileSettings";
 import { logError } from "@/lib/error-logger";
+import { LocationSelector } from "./LocationSelector";
 
 interface ProfileInfoFormProps {
   form: UseFormReturn<ProfileFormValuesSubset>;
@@ -161,21 +162,14 @@ export const ProfileInfoForm = ({ form, isUpdating, saveProfileInfo }: ProfileIn
             )}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="location">Location</Label>
-            <Input
-              id="location"
-              placeholder="City, Country"
-              {...register("location")}
-              aria-invalid={!!errors.location}
-            />
-            {errors.location && (
-              <p className="text-xs text-destructive flex items-center gap-1">
-                <AlertCircle className="h-3 w-3" />
-                {errors.location.message?.toString()}
-              </p>
-            )}
-          </div>
+          <LocationSelector
+            value={getValues('location') || ""}
+            onChange={(location) => {
+              form.setValue('location', location, { shouldDirty: true });
+            }}
+            error={errors.location?.message?.toString()}
+            disabled={isUpdating}
+          />
 
           <div className="space-y-2">
             <Label htmlFor="website">Website</Label>
