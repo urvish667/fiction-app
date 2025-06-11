@@ -301,7 +301,7 @@ export default function NotificationsPage() {
                     >
                       <div className={`p-4 rounded-lg border ${!notification.read ? "bg-primary/5 border-primary/20" : "bg-card"}`}>
                       <div className="flex gap-4">
-                        {notification.actor && (
+                        {notification.actor && notification.actor.username && (
                           <Link href={`/user/${notification.actor.username}`}>
                             <Avatar className="h-10 w-10">
                               <AvatarImage

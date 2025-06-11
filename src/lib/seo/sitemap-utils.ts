@@ -24,12 +24,14 @@ export function generateCategorySitemapEntries(): SitemapEntry[] {
     'Horror',
     'Young Adult',
     'Historical',
-    'Thriller'
+    'Thriller',
+    'Adventure',
+    'Slice of Life',
+    'Fanfiction'
   ]
 
   // Additional categories with medium priority
   const additionalCategories = [
-    'Adventure',
     'Drama',
     'Comedy',
     'Non-Fiction',
@@ -44,8 +46,6 @@ export function generateCategorySitemapEntries(): SitemapEntry[] {
     'Urban',
     'Paranormal',
     'Dystopian',
-    'Slice of Life',
-    'Fanfiction'
   ]
 
   const entries: SitemapEntry[] = []
