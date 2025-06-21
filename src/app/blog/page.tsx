@@ -28,7 +28,6 @@ export default function BlogPage() {
           <h1 className="text-4xl font-bold mb-6">FableSpace Blog</h1>
           
           <div className="bg-muted/30 rounded-lg p-8 mb-8">
-            <h2 className="text-2xl font-semibold mb-4">Coming Soon...</h2>
             <p className="text-lg text-muted-foreground mb-6">
               We're working on a blog to share writing tips, author interviews, 
               platform updates, and insights into the world of storytelling.

@@ -131,6 +131,14 @@ export default async function StoryInfoPage({ params }: StoryPageProps) {
       logError(viewCountError, { context: 'Getting combined view count', storyId: story.id });
     }
 
+    // Fetch chapters for this story
+    const chaptersData = await StoryService.getChapters(story.id)
+
+    // Always filter out draft and scheduled chapters for the public story page
+    const publishedChapters = chaptersData.filter(chapter =>
+      chapter.status === 'published'
+    );
+
     // Create a properly formatted story response
     const formattedStory: StoryResponse = {
       id: story.id,
@@ -143,8 +151,8 @@ export default async function StoryInfoPage({ params }: StoryPageProps) {
       isMature: story.isMature,
       status: story.status,
       license: story.license,
-      wordCount: story.wordCount,
-      readCount: story.readCount,
+      wordCount: publishedChapters.reduce((total, chapter) => total + chapter.wordCount, 0),
+      readCount: publishedChapters.reduce((total, chapter) => total + chapter.readCount, 0),
       authorId: story.authorId,
       createdAt: story.createdAt,
       updatedAt: story.updatedAt,
@@ -171,14 +179,6 @@ export default async function StoryInfoPage({ params }: StoryPageProps) {
       isLiked,
       isBookmarked,
     };
-
-    // Fetch chapters for this story
-    const chaptersData = await StoryService.getChapters(story.id)
-
-    // Always filter out draft and scheduled chapters for the public story page
-    const publishedChapters = chaptersData.filter(chapter =>
-      chapter.status === 'published'
-    );
 
     // Extract tags for structured data - handle nested format from Prisma
     const storyTags = Array.isArray(story.tags)
