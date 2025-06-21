@@ -250,7 +250,7 @@ export default function StoryInfoPage() {
   }, [popularTags, tags]);
 
   const handleTagKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (["Enter", ",", " "].includes(e.key)) {
+    if (["Enter", ","].includes(e.key)) {
       e.preventDefault();
       addTag(tagInput);
     }
@@ -262,7 +262,7 @@ export default function StoryInfoPage() {
   // Tag validation helper
   const validateTags = useCallback(() => {
     if (tags.length < 3) {
-      setTagError("Add at least 3 tags.");
+      setTagError("Please add tags for SEO optimization.");
       return false;
     }
     if (tags.length > 10) {

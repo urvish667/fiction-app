@@ -43,7 +43,8 @@ export async function GET(
     // Extract just the tag names
     const tags = storyTags.map(storyTag => ({
       id: storyTag.tag.id,
-      name: storyTag.tag.name
+      name: storyTag.tag.name,
+      slug: storyTag.tag.slug,
     }));
 
     // Create response with cache headers

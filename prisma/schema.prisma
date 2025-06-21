@@ -294,7 +294,10 @@ model Follow {
 model Tag {
   id      String     @id @default(cuid())
   name    String     @unique
+  slug    String?    @unique    // URL‑safe, e.g. “rom‑com”
   stories StoryTag[]
+
+  @@index([slug])
 }
 
 model StoryTag {

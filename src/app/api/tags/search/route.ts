@@ -34,10 +34,15 @@ export async function GET(request: Request) {
           contains: q,
           mode: "insensitive",
         },
+        slug: { 
+          contains: q, 
+          mode: "insensitive" 
+        },
       },
       select: {
         id: true,
         name: true,
+        slug: true,
         _count: { select: { stories: true } },
       },
       orderBy: [

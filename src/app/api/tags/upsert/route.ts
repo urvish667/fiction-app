@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { z } from 'zod';
+import slugify from "slugify";
 
 // Input validation schema
 const upsertTagsSchema = z.object({
@@ -36,9 +37,9 @@ export async function POST(req: NextRequest) {
       )
     );
 
-    // Allow 0 tags (for clearing) or 3-10 tags
-    if (normalized.length > 0 && (normalized.length < 3 || normalized.length > 10)) {
-      return NextResponse.json({ error: 'Must provide either 0 tags (to clear) or 3-10 unique tags.' }, { status: 400 });
+    // Allow 0 to 10 tags (inclusive)
+    if (normalized.length > 10) {
+      return NextResponse.json({ error: 'Maximum 10 unique tags allowed.' }, { status: 400 });
     }
 
     // Verify story exists
@@ -59,9 +60,19 @@ export async function POST(req: NextRequest) {
     if (normalized.length > 0) {
       // Upsert tags
       const tagRecords = await Promise.all(
-        normalized.map(async (name) =>
-          prisma.tag.upsert({ where: { name }, update: {}, create: { name } })
-        )
+        normalized.map(async (name) => {
+          const normalizedName = name.trim();
+          const normalizedSlug = slugify(normalizedName, { lower: true, strict: true });
+
+          return await prisma.tag.upsert({
+            where: { slug: normalizedSlug },
+            update: {},
+            create: {
+              name: normalizedName,
+              slug: normalizedSlug,
+            },
+          });
+        })
       );
 
       // Create new relations
