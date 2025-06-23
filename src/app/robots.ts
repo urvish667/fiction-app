@@ -12,7 +12,7 @@ export default function robots(): MetadataRoute.Robots {
           '/story/*',
           '/user/*',
           '/browse',
-          '/browse?*', // Allow category and search pages
+          '/browse*', // Allow category and search pages
           '/about',
           '/contact',
           '/privacy',

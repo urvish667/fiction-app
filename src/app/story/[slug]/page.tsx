@@ -30,8 +30,17 @@ export async function generateMetadata({ params }: StoryPageProps): Promise<Meta
         description: "The story you're looking for could not be found."
       }
     }
-
-    return generateStoryMetadata(story)
+    // Extract tags from the story (handle both array of objects and strings)
+    let tags: string[] = [];
+    if (Array.isArray(story.tags)) {
+      tags = story.tags.map((tag: any) => {
+        if (tag && typeof tag === 'object' && tag.name) return tag.name;
+        if (typeof tag === 'string') return tag;
+        if (tag && tag.tag && tag.tag.name) return tag.tag.name;
+        return '';
+      }).filter(Boolean);
+    }
+    return generateStoryMetadata(story, tags)
   } catch (error) {
     return {
       title: "Story Not Found - FableSpace",

@@ -24,10 +24,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { ArrowLeft, Upload, Trash2, AlertCircle, Eye, BookOpen, Plus, FileText, Clock, CheckCircle2, Edit, X } from "lucide-react"
+import { ArrowLeft, Upload, Trash2, AlertCircle, Eye, BookOpen, Plus, FileText, Clock, CheckCircle2, Edit, X, Save, RefreshCw } from "lucide-react"
 import Navbar from "@/components/navbar"
 import { SiteFooter } from "@/components/site-footer"
-import { useDebounce } from "@/hooks/use-debounce"
 import { StoryService } from "@/services/story-service"
 import { CreateStoryRequest, UpdateStoryRequest } from "@/types/story"
 import { fetchWithCsrf } from "@/lib/client/csrf"
@@ -69,11 +68,15 @@ interface TagData {
   name: string;
 }
 
+// --- Save Status Type ---
+type SaveStatus = 'idle' | 'unsaved' | 'saving' | 'success' | 'error';
+
 export default function StoryInfoPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { data: session, status } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isInitialLoad = useRef(true);
 
   // Reference data state
   const [genres, setGenres] = useState<{ id: string; name: string }[]>([]);
@@ -86,8 +89,6 @@ export default function StoryInfoPage() {
   const [popularTags, setPopularTags] = useState<TagData[]>([]);
   const [tagError, setTagError] = useState<string>("");
   const [isSavingTags, setIsSavingTags] = useState(false);
-
-
 
   // Story data state
   const [storyData, setStoryData] = useState<StoryFormData>({
@@ -118,14 +119,130 @@ export default function StoryInfoPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [chapterToDelete, setChapterToDelete] = useState<{id: string, title: string} | null>(null);
-  const [hasChanges, setHasChanges] = useState(false);
   const [justCreatedStory, setJustCreatedStory] = useState(false);
   const [chapters, setChapters] = useState<ChapterData[]>([]);
 
-  // Create debounced version of storyData for auto-save
-  const debouncedStoryData = useDebounce(storyData, 2000);
+  // --- Refactored: Unified State Management ---
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
+  // --- Move validateForm above saveAllStoryData ---
+  const validateForm = useCallback(() => {
+    const newErrors = {
+      title: "",
+      description: "",
+      genre: "",
+    }
+    let isValid = true
+    if (!storyData.title.trim()) {
+      newErrors.title = "Title is required"
+      isValid = false
+    } else if (storyData.title.length > 100) {
+      newErrors.title = "Title must be less than 100 characters"
+      isValid = false
+    }
+    if (!storyData.description.trim()) {
+      newErrors.description = "Description is required"
+      isValid = false
+    } else if (storyData.description.length > 1000) {
+      newErrors.description = "Description must be less than 1000 characters"
+      isValid = false
+    }
+    if (!storyData.genre) {
+      newErrors.genre = "Please select a genre"
+      isValid = false
+    }
+    setErrors(newErrors)
+    return isValid
+  }, [storyData.title, storyData.description, storyData.genre]);
 
+  // --- Unified Save Function and State Handlers (move above all useEffect and usages) ---
+  const saveAllStoryData = useCallback(async (dataToSave: StoryFormData, tagsToSave: string[], showToastMessages: boolean = false) => {
+    if (saveStatus === 'saving') return;
+    setSaveStatus('saving');
+    if (showToastMessages) {
+      toast({ title: "Saving...", description: "Please wait." });
+    }
+    try {
+      if (!validateForm()) {
+        setSaveStatus('error');
+        if (showToastMessages) {
+          toast({
+            title: "Validation Error",
+            description: "Please fill in all required story details.",
+            variant: "destructive",
+          });
+        }
+        return;
+      }
+      const isPlaceholder = dataToSave.coverImage?.startsWith('/placeholder');
+      const coverImageValue = isPlaceholder ? undefined : dataToSave.coverImage;
+      const storyRequest: CreateStoryRequest | UpdateStoryRequest = {
+        title: dataToSave.title,
+        description: dataToSave.description,
+        coverImage: coverImageValue,
+        genre: dataToSave.genre || undefined,
+        language: dataToSave.language || undefined,
+        isMature: dataToSave.isMature,
+        status: dataToSave.status || "draft",
+        license: dataToSave.license || "ALL_RIGHTS_RESERVED",
+      };
+      let savedStory;
+      if (dataToSave.id) {
+        savedStory = await StoryService.updateStory(dataToSave.id, storyRequest);
+      } else {
+        savedStory = await StoryService.createStory(storyRequest as CreateStoryRequest);
+      }
+      const storyId = savedStory.id;
+      await fetchWithCsrf('/api/tags/upsert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ storyId, tags: tagsToSave }),
+      });
+      setStoryData(prev => ({
+        ...prev,
+        id: storyId,
+        slug: savedStory.slug,
+        lastSaved: new Date(),
+        description: savedStory.description || prev.description,
+        coverImage: savedStory.coverImage || prev.coverImage,
+      }));
+      setLastSaved(new Date());
+      setSaveStatus('success');
+      if (showToastMessages) {
+        toast({
+          title: "Changes saved!",
+          description: "Your story has been successfully updated.",
+        });
+      }
+      setTimeout(() => setSaveStatus('idle'), 2000);
+      return savedStory;
+    } catch (error) {
+      logError(error, { context: 'saveAllStoryData', storyId: dataToSave.id });
+      setSaveStatus('error');
+      if (showToastMessages) {
+        toast({
+          title: "Save Failed",
+          description: error instanceof Error ? error.message : "Failed to save your changes. Please try again.",
+          variant: "destructive",
+        });
+      }
+      return null;
+    }
+  }, [saveStatus, toast, validateForm]);
+
+  const handleStateChange = useCallback((update: Partial<StoryFormData>) => {
+    setStoryData(prev => ({ ...prev, ...update }));
+    if (!isInitialLoad.current) {
+      setSaveStatus('unsaved');
+    }
+  }, []);
+  const handleTagChange = useCallback((newTags: string[]) => {
+    setTags(newTags);
+    if (!isInitialLoad.current) {
+      setSaveStatus('unsaved');
+    }
+  }, []);
 
   // Fetch genres/languages/tags on mount
   useEffect(() => {
@@ -162,84 +279,16 @@ export default function StoryInfoPage() {
       setTagError("You can add up to 10 tags.");
       return;
     }
-
-    // Update tags state
-    const newTags = [...tags, tag];
-    setTags(newTags);
+    handleTagChange([...tags, tag]);
     setTagInput("");
     setTagError("");
-
-    // Mark that we have unsaved changes when adding a tag
-    setHasChanges(true);
-
-    // Immediate auto-save for tags
-    if (storyData.id && !isSaving && !isSavingTags) {
-      setTimeout(async () => {
-        try {
-          setIsSavingTags(true);
-          const response = await fetchWithCsrf('/api/tags/upsert', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ storyId: storyData.id, tags: newTags }),
-          });
-
-          if (!response.ok) {
-            const errorData = await response.json();
-            logError(new Error(`Failed to save tags: ${errorData.error}`), {
-              context: 'Immediate tag save after add',
-              storyId: storyData.id,
-              tags: newTags
-            });
-          }
-        } catch (err) {
-          logError(err, { context: 'Immediate tag save after add', storyId: storyData.id, tags: newTags });
-        } finally {
-          setIsSavingTags(false);
-        }
-      }, 100); // Very short delay to ensure state is updated
-    }
-  }, [tags, storyData.id, isSaving, isSavingTags]);
+  }, [tags, handleTagChange]);
 
   const removeTag = useCallback((idx: number) => {
-    // Update tags state
     const newTags = tags.filter((_, i) => i !== idx);
-    setTags(newTags);
+    handleTagChange(newTags);
     setTagError("");
-
-    // Mark that we have unsaved changes when removing a tag
-    setHasChanges(true);
-
-    // Immediate auto-save for tags
-    if (storyData.id && !isSaving && !isSavingTags) {
-      setTimeout(async () => {
-        try {
-          setIsSavingTags(true);
-          const response = await fetchWithCsrf('/api/tags/upsert', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ storyId: storyData.id, tags: newTags }),
-          });
-
-          if (!response.ok) {
-            const errorData = await response.json();
-            logError(new Error(`Failed to save tags: ${errorData.error}`), {
-              context: 'Immediate tag save after remove',
-              storyId: storyData.id,
-              tags: newTags
-            });
-          }
-        } catch (err) {
-          logError(err, { context: 'Immediate tag save after remove', storyId: storyData.id, tags: newTags });
-        } finally {
-          setIsSavingTags(false);
-        }
-      }, 100); // Very short delay to ensure state is updated
-    }
-  }, [tags, storyData.id, isSaving, isSavingTags]);
+  }, [tags, handleTagChange]);
 
   const handleTagInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setTagInput(e.target.value);
@@ -279,58 +328,15 @@ export default function StoryInfoPage() {
     validateTags();
   }, [tags, validateTags]);
 
-  // Auto-save effect with improved conditions
+  // --- Optimized Auto-save Effect ---
   useEffect(() => {
-    // Only auto-save if all required fields are valid
-    const valid = debouncedStoryData.title.trim() &&
-                  debouncedStoryData.description.trim() &&
-                  debouncedStoryData.genre;
-
-    // Additional checks to prevent excessive auto-saving
-    const shouldAutoSave = valid &&
-                          hasChanges &&
-                          !isSaving &&
-                          !justCreatedStory &&
-                          debouncedStoryData.id; // Only auto-save existing stories
-
-    if (shouldAutoSave) {
-      const autoSaveTimeout = setTimeout(async () => {
-        try {
-          // Use the debounced data for auto-save to avoid race conditions
-          const savedStory = await saveStoryData(false, debouncedStoryData);
-          if (savedStory) {
-            // Upsert tags after save
-            const response = await fetchWithCsrf('/api/tags/upsert', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ storyId: savedStory.id, tags }),
-            });
-
-            if (!response.ok) {
-              const errorData = await response.json();
-              logError(new Error(`Auto-save failed to save tags: ${errorData.error}`), {
-                context: 'Auto-save tags',
-                storyId: savedStory.id,
-                tags
-              });
-            }
-          }
-        } catch (error) {
-          logError(error, {
-            context: 'Auto-save',
-            storyId: debouncedStoryData.id,
-            hasChanges,
-            isSaving,
-            justCreatedStory,
-            tags
-          });
-        }
-      }, 500); // Reduced delay for more responsive auto-save
+    if (saveStatus === 'unsaved' && !isSaving && !justCreatedStory) {
+      const autoSaveTimeout = setTimeout(() => {
+        saveAllStoryData(storyData, tags, false);
+      }, 1500);
       return () => clearTimeout(autoSaveTimeout);
     }
-  }, [debouncedStoryData, hasChanges, isSaving, justCreatedStory, tags]);
+  }, [saveStatus, storyData, tags, isSaving, justCreatedStory, saveAllStoryData]);
 
   // Load existing story data if editing
   useEffect(() => {
@@ -457,149 +463,6 @@ export default function StoryInfoPage() {
     }
   }, [toast]);
 
-  // Handle input changes
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
-
-    // Update the story data
-    setStoryData((prev) => ({
-      ...prev,
-      [name]: value,
-      lastSaved: null, // Mark as unsaved
-    }))
-
-    // Mark that we have unsaved changes
-    setHasChanges(true);
-
-    // Clear error for this field if it exists
-    if (errors[name as keyof typeof errors]) {
-      setErrors((prev) => ({
-        ...prev,
-        [name]: "",
-      }))
-    }
-  }, [errors]);
-
-  // Handle select changes
-  const handleSelectChange = useCallback((name: string, value: string) => {
-    setStoryData((prev) => ({
-      ...prev,
-      [name]: value,
-      lastSaved: null, // Mark as unsaved
-    }));
-
-    // Mark that we have unsaved changes
-    setHasChanges(true);
-
-    // Clear error for this field if it exists
-    if (errors[name as keyof typeof errors]) {
-      setErrors((prev) => ({
-        ...prev,
-        [name]: "",
-      }))
-    }
-
-    // For genre and language changes, save immediately to avoid auto-save issues
-    if (name === 'genre' || name === 'language') {
-      // Use setTimeout to ensure state is updated before saving
-      setTimeout(() => {
-        // Force a save with the current state including the new genre/language value
-        const currentState = { ...storyData, [name]: value };
-        saveStoryData(true, currentState); // Show toast to confirm save
-      }, 100);
-    }
-  }, [errors, storyData]);
-
-  // Handle switch changes
-  const handleSwitchChange = useCallback(async (name: string, checked: boolean) => {
-    // Special handling for status change to "completed"
-    if (name === "status") {
-      if (checked) { // checked means changing to "completed"
-        // Check if the story has any draft chapters
-        if (storyData.id) {
-          try {
-            const chapters = await StoryService.getChapters(storyData.id);
-
-            // Check if there are any chapters at all
-            if (chapters.length === 0) {
-              toast({
-                title: "Cannot mark as completed",
-                description: "This story has no chapters. Please add at least one published chapter before marking the story as completed.",
-                variant: "destructive",
-              });
-              return; // Don't update the status
-            }
-
-            // Check for draft chapters
-            const draftChapters = chapters.filter(chapter => chapter.status === 'draft' || chapter.status === 'scheduled');
-            if (draftChapters.length > 0) {
-              toast({
-                title: "Cannot mark as completed",
-                description: `This story has ${draftChapters.length} draft ${draftChapters.length === 1 ? "chapter" : "chapters"}. Please publish all draft chapters before marking the story as completed.`,
-                variant: "destructive",
-              });
-              return; // Don't update the status
-            }
-
-            // Check if there are any published chapters
-            const publishedChapters = chapters.filter(chapter => chapter.status === 'published');
-            if (publishedChapters.length === 0) {
-              toast({
-                title: "Cannot mark as completed",
-                description: "This story has no published chapters. Please publish at least one chapter before marking the story as completed.",
-                variant: "destructive",
-              });
-              return; // Don't update the status
-            }
-          } catch (error) {
-            logError(error, { context: 'Checking draft chapters', storyId: storyData.id });
-            toast({
-              title: "Error",
-              description: "Failed to check draft chapters. Please try again.",
-              variant: "destructive",
-            });
-            return; // Don't update the status
-          }
-        }
-
-        // If all checks pass, update the status to "completed"
-        setStoryData((prev) => ({
-          ...prev,
-          status: "completed",
-          lastSaved: null, // Mark as unsaved
-        }));
-      } else {
-        // Changing from "completed" to "ongoing"
-        setStoryData((prev) => ({
-          ...prev,
-          status: "ongoing",
-          lastSaved: null, // Mark as unsaved
-        }));
-      }
-
-      // Mark that we have unsaved changes
-      setHasChanges(true);
-
-      // Save the changes immediately to avoid auto-save conflicts
-      setTimeout(() => {
-        setStoryData(currentState => {
-          saveStoryData(false, currentState);
-          return currentState; // Don't actually change the state
-        });
-      }, 100);
-    } else {
-      // For other switches (like isMature), just update the state normally
-      setStoryData((prev) => ({
-        ...prev,
-        [name]: checked,
-        lastSaved: null, // Mark as unsaved
-      }));
-
-      // Mark that we have unsaved changes
-      setHasChanges(true);
-    }
-  }, [storyData.id, toast]);
-
   // Handle cover image upload
   const handleCoverImageClick = useCallback(() => {
     fileInputRef.current?.click()
@@ -672,15 +535,12 @@ export default function StoryInfoPage() {
         lastSaved: null, // Mark as unsaved
       }));
 
-      // Explicitly trigger a save after image upload
-      setHasChanges(true); // Mark that we have unsaved changes
-
       // Force a save immediately instead of waiting for auto-save
       setTimeout(() => {
         // Get the latest state to ensure we have the most up-to-date data
         setStoryData(currentState => {
           // Save with the current state to ensure we have the latest data
-          saveStoryData(false, currentState);
+          saveAllStoryData(currentState, tags, true);
           return currentState; // Don't actually change the state
         });
       }, 500);
@@ -694,7 +554,7 @@ export default function StoryInfoPage() {
     } finally {
       setIsUploading(false)
     }
-  }, [storyData.id, toast]);
+  }, [storyData.id, toast, tags, saveAllStoryData]);
 
   // Remove cover image
   const handleRemoveCoverImage = useCallback(async () => {
@@ -732,8 +592,6 @@ export default function StoryInfoPage() {
           lastSaved: new Date()
         }));
 
-        setHasChanges(false);
-
         toast({
           title: "Cover image removed",
           description: "The cover image has been removed successfully."
@@ -745,8 +603,6 @@ export default function StoryInfoPage() {
           coverImage: "/placeholder.svg?height=1600&width=900",
           lastSaved: null
         }));
-
-        setHasChanges(true);
       }
     } catch (error) {
       logError(error, { context: 'Removing cover image', storyId: storyData.id });
@@ -759,198 +615,6 @@ export default function StoryInfoPage() {
       setIsSaving(false);
     }
   }, [storyData.id, toast]);
-
-  // Validate form
-  const validateForm = useCallback(() => {
-    const newErrors = {
-      title: "",
-      description: "",
-      genre: "",
-    }
-
-    let isValid = true
-
-    if (!storyData.title.trim()) {
-      newErrors.title = "Title is required"
-      isValid = false
-    } else if (storyData.title.length > 100) {
-      newErrors.title = "Title must be less than 100 characters"
-      isValid = false
-    }
-
-    if (!storyData.description.trim()) {
-      newErrors.description = "Description is required"
-      isValid = false
-    } else if (storyData.description.length > 1000) {
-      newErrors.description = "Description must be less than 1000 characters"
-      isValid = false
-    }
-
-    if (!storyData.genre) {
-      newErrors.genre = "Please select a genre"
-      isValid = false
-    }
-
-    setErrors(newErrors)
-    return isValid
-  }, [storyData.title, storyData.description, storyData.genre]);
-
-  // Save story data
-  const saveStoryData = useCallback(async (showToast = true, dataToSave = storyData) => {
-    if (isSaving) return null;
-
-    setIsSaving(true);
-
-    try {
-      // Determine how to handle the coverImage field
-      const isPlaceholder = dataToSave.coverImage === "/placeholder.svg" ||
-                          dataToSave.coverImage === "/placeholder.svg?height=1600&width=900";
-
-      // If we have a real image, include it. If it's a placeholder and we're updating an existing story,
-      // we need to handle it differently. For TypeScript compatibility, we'll use undefined instead of null.
-      let coverImageValue: string | undefined;
-      if (!dataToSave.coverImage) {
-        coverImageValue = undefined; // Omit if empty
-      } else if (isPlaceholder && dataToSave.id) {
-        // For existing stories with placeholder, we'll handle this specially in the API call
-        coverImageValue = undefined; // Will be handled separately for existing stories
-      } else if (isPlaceholder) {
-        coverImageValue = undefined; // Omit the field for new stories with placeholder
-      } else {
-        coverImageValue = dataToSave.coverImage; // Include real image URL
-      }
-
-      const storyRequest: CreateStoryRequest | UpdateStoryRequest = {
-        title: dataToSave.title,
-        description: dataToSave.description,
-        coverImage: coverImageValue,
-        genre: dataToSave.genre || undefined,
-        language: dataToSave.language || undefined,
-        isMature: dataToSave.isMature,
-        status: dataToSave.status || "draft", // Include the story status
-        license: dataToSave.license || "ALL_RIGHTS_RESERVED", // Include the license
-      };
-
-      let savedStory;
-
-      if (dataToSave.id) {
-        // Update existing story
-        savedStory = await StoryService.updateStory(dataToSave.id, storyRequest);
-      } else {
-        // Check if we're already in the process of creating this story
-        if (isSaving) {
-          return null;
-        }
-
-        // Create new story
-        savedStory = await StoryService.createStory(storyRequest as CreateStoryRequest);
-      }
-
-      // Update state with the saved story data
-      const updatedStoryData = {
-        ...dataToSave,
-        id: savedStory.id,
-        slug: savedStory.slug,
-        lastSaved: new Date(),
-        // Make sure to include the latest description from the server response
-        description: savedStory.description || dataToSave.description,
-        // Preserve the coverImage from the server response if it exists
-        coverImage: savedStory.coverImage || dataToSave.coverImage,
-      };
-
-      // Only update the state if the current data matches what we tried to save
-      // This prevents overwriting newer changes that happened during the save operation
-      setStoryData(prevData => {
-        // Create a new object with the saved data
-        const newData = { ...updatedStoryData };
-
-        // Preserve user changes that might have happened during saving
-        // For each field that could change during saving, check if it's different
-        // from what we sent to the server
-
-        // Description (text field)
-        if (prevData.description !== dataToSave.description) {
-          newData.description = prevData.description;
-        }
-
-        // Genre (select field)
-        if (prevData.genre !== dataToSave.genre) {
-          newData.genre = prevData.genre;
-        }
-
-        // Mature content (toggle)
-        if (prevData.isMature !== dataToSave.isMature) {
-          newData.isMature = prevData.isMature;
-        }
-
-        // Language (select field)
-        if (prevData.language !== dataToSave.language) {
-          newData.language = prevData.language;
-        }
-
-        // Status (toggle)
-        if (prevData.status !== dataToSave.status) {
-          newData.status = prevData.status;
-        }
-
-        // License (select field)
-        if (prevData.license !== dataToSave.license) {
-          newData.license = prevData.license;
-        }
-
-        // Cover image
-        if (prevData.coverImage !== dataToSave.coverImage) {
-          newData.coverImage = prevData.coverImage;
-        }
-
-        return newData;
-      });
-
-      setHasChanges(false); // Reset changes flag
-
-      // Upsert tags after save (if not handled by autosave)
-      if (updatedStoryData.id) {
-        try {
-          const response = await fetchWithCsrf('/api/tags/upsert', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ storyId: updatedStoryData.id, tags }),
-          });
-
-          if (!response.ok) {
-            const errorData = await response.json();
-            logError(new Error(`Manual save failed to save tags: ${errorData.error}`), {
-              context: 'Manual save tags',
-              storyId: updatedStoryData.id,
-              tags
-            });
-          }
-        } catch (err) {
-          logError(err, { context: 'Saving tags', storyId: updatedStoryData.id, tags })
-        }
-      }
-
-      if (showToast) {
-        toast({
-          title: "Draft saved",
-          description: "Your story has been saved as a draft.",
-        });
-      }
-
-      // Return the updated story data for immediate use
-      return updatedStoryData;
-    } catch (error) {
-      logError(error, { context: 'Saving story', storyId: dataToSave.id });
-      toast({
-        title: "Save failed",
-        description: error instanceof Error ? error.message : "Failed to save your story. Please try again.",
-        variant: "destructive",
-      });
-      return null;
-    } finally {
-      setIsSaving(false);
-    }
-  }, [isSaving, storyData, tags, toast]);
 
   // Format date for display
   const formatDate = useCallback((date: Date) => {
@@ -978,7 +642,7 @@ export default function StoryInfoPage() {
       setJustCreatedStory(true);
 
       try {
-        const savedStory = await saveStoryData(false)
+        const savedStory = await saveAllStoryData(storyData, tags, true)
         if (savedStory) {
           // Navigate to editor with new chapter using new URL pattern
           router.push(`/write/editor/${savedStory.id}/new-chapter`)
@@ -991,7 +655,7 @@ export default function StoryInfoPage() {
       // Navigate to editor with new chapter using new URL pattern
       router.push(`/write/editor/${storyData.id}/new-chapter`)
     }
-  }, [router, saveStoryData, storyData.id, toast, validateForm]);
+  }, [router, saveAllStoryData, storyData.id, toast, validateForm]);
 
   // Handle editing an existing chapter
   const handleEditChapter = useCallback((chapterId: string) => {
@@ -1042,13 +706,13 @@ export default function StoryInfoPage() {
   useEffect(() => {
     // Only redirect if we're sure the user is not authenticated
     // Don't redirect during loading state
-    if (status === "unauthenticated") {
+    if (sessionStatus === "unauthenticated") {
       router.push('/login?callbackUrl=/write/story-info')
     }
-  }, [session, status, router])
+  }, [session, sessionStatus, router])
 
   // Show loading state while session is being restored
-  if (status === "loading") {
+  if (sessionStatus === "loading") {
     return (
       <div className="min-h-screen flex flex-col">
         <Navbar />
@@ -1061,6 +725,14 @@ export default function StoryInfoPage() {
     );
   }
 
+  const isFormDisabled = saveStatus === 'saving' || sessionStatus !== 'authenticated';
+
+  // Ensure auto-save is enabled after first render, even for new stories
+  useEffect(() => {
+    isInitialLoad.current = false;
+  }, []);
+  
+  const isActuallySaving = saveStatus === 'saving';
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -1077,21 +749,12 @@ export default function StoryInfoPage() {
 
           <div className="flex flex-wrap items-center gap-4">
             {/* Auto-save status with single loading animation */}
-            {isSaving ? (
-              <div className="text-sm text-muted-foreground flex items-center gap-1">
-                <span className="animate-spin h-3 w-3 border-t-2 border-b-2 border-primary rounded-full"></span>
-                Auto-saving...
-              </div>
-            ) : storyData.lastSaved ? (
-              <div className="text-sm text-muted-foreground flex items-center gap-1">
-                <Clock size={14} />
-                Auto-saved: {storyData.lastSaved.toLocaleString()}
-              </div>
-            ) : hasChanges ? (
-              <div className="text-sm text-muted-foreground">
-                Unsaved changes
-              </div>
-            ) : null}
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              {isActuallySaving && <><RefreshCw size={14} className="animate-spin" /><span>Saving...</span></>}
+              {saveStatus === 'success' && <><CheckCircle2 size={14} className="text-green-500" /><span>All changes saved!</span></>}
+              {saveStatus === 'error' && <><AlertCircle size={14} className="text-destructive" /><span>Save failed.</span></>}
+              {saveStatus === 'unsaved' && lastSaved && <><Clock size={14} /><span>Last saved: {lastSaved.toLocaleTimeString()}</span></>}
+            </div>
 
             {/* Story status badge */}
             {storyData.id && storyData.status !== "draft" && (
@@ -1099,6 +762,17 @@ export default function StoryInfoPage() {
                 {storyData.status === "completed" ? "Completed" : "Ongoing"}
               </div>
             )}
+
+            {/* --- New: Manual Save/Retry Button --- */}
+            <Button 
+              onClick={() => saveAllStoryData(storyData, tags, true)}
+              disabled={isFormDisabled || isActuallySaving}
+              size="icon"
+              variant="outline"
+              className="rounded-full"
+            >
+              {saveStatus === 'error' ? <RefreshCw size={16} /> : <Save size={16} />}
+            </Button>
           </div>
         </div>
 
@@ -1180,7 +854,7 @@ export default function StoryInfoPage() {
                   id="title"
                   name="title"
                   value={storyData.title}
-                  onChange={handleInputChange}
+                  onChange={(e) => handleStateChange({ title: e.target.value })}
                   placeholder="Enter your story title"
                   maxLength={100}
                 />
@@ -1206,12 +880,12 @@ export default function StoryInfoPage() {
                   id="description"
                   name="description"
                   value={storyData.description}
-                  onChange={handleInputChange}
+                  onChange={(e) => handleStateChange({ description: e.target.value })}
                   placeholder="Write a compelling description for your story"
                   className="min-h-[150px]"
                   maxLength={1000}
                   // Disable the textarea during saving to prevent race conditions
-                  disabled={isSaving && !hasChanges}
+                  disabled={isFormDisabled}
                 />
                 <div className="flex justify-between">
                   <div className="flex items-center gap-2">
@@ -1240,8 +914,8 @@ export default function StoryInfoPage() {
                 <div className="relative">
                   <Select
                     value={storyData.genre}
-                    onValueChange={(value) => handleSelectChange("genre", value)}
-                    disabled={isSaving && !hasChanges}
+                    onValueChange={(value) => handleStateChange({ genre: value })}
+                    disabled={isFormDisabled}
                   >
                     <SelectTrigger id="genre">
                       <SelectValue placeholder="Select a genre" />
@@ -1271,8 +945,8 @@ export default function StoryInfoPage() {
                 <div className="relative">
                   <Select
                     value={storyData.language}
-                    onValueChange={(value) => handleSelectChange("language", value)}
-                    disabled={isSaving && !hasChanges}
+                    onValueChange={(value) => handleStateChange({ language: value })}
+                    disabled={isFormDisabled}
                   >
                     <SelectTrigger id="language">
                       <SelectValue placeholder="Select a language" />
@@ -1296,8 +970,8 @@ export default function StoryInfoPage() {
                 <div className="relative">
                   <Select
                     value={storyData.license}
-                    onValueChange={(value) => handleSelectChange("license", value)}
-                    disabled={isSaving && !hasChanges}
+                    onValueChange={(value) => handleStateChange({ license: value })}
+                    disabled={isFormDisabled}
                   >
                     <SelectTrigger id="license">
                       <SelectValue placeholder="Select a license" />
@@ -1400,8 +1074,8 @@ export default function StoryInfoPage() {
                   <Switch
                     id="mature-content"
                     checked={storyData.isMature}
-                    onCheckedChange={(checked) => handleSwitchChange("isMature", checked)}
-                    disabled={isSaving && !hasChanges}
+                    onCheckedChange={(checked) => handleStateChange({ isMature: checked })}
+                    disabled={isFormDisabled}
                   />
                 </div>
               </div>
@@ -1424,8 +1098,8 @@ export default function StoryInfoPage() {
                   <Switch
                     id="story-status"
                     checked={storyData.status === "completed"}
-                    onCheckedChange={(checked) => handleSwitchChange("status", checked)}
-                    disabled={isSaving} // Always disable during saving to prevent toggle flicker
+                    onCheckedChange={(checked) => handleStateChange({ status: checked ? "completed" : "ongoing" })}
+                    disabled={isFormDisabled} // Always disable during saving to prevent toggle flicker
                   />
                 </div>
               </div>

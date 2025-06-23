@@ -694,23 +694,22 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
                 <div className="flex items-center gap-2 mt-2 ml-2">
                   <Button
                     variant="ghost"
-                    size="sm"
-                    className="h-8 px-2 text-xs"
+                    size="icon"
+                    className="rounded-full h-8 w-8"
                     onClick={() => handleLike(comment.id)}
                     disabled={likingComment[comment.id]}
+                    title={likingComment[comment.id] ? 'Liking...' : (comment.isLiked ? 'Unlike' : 'Like')}
                   >
                     <Heart
                       size={14}
-                      className={`mr-1 ${comment.isLiked ? 'fill-current text-red-500' : ''}`}
+                      className={comment.isLiked ? 'fill-current text-red-500' : ''}
                     />
-                    {likingComment[comment.id] ? 'Liking...' :
-                      comment.isLiked ? `${comment.likeCount || 1} Liked` : 'Like'}
                   </Button>
 
                   <Button
                     variant="ghost"
-                    size="sm"
-                    className="h-8 px-2 text-xs"
+                    size="icon"
+                    className="rounded-full h-8 w-8"
                     onClick={() => {
                       if (!session) {
                         router.push(`/login?callbackUrl=/story/${storyId}`);
@@ -719,9 +718,9 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
                       setReplyingTo(comment.id);
                       setReplyContent("");
                     }}
+                    title="Reply"
                   >
-                    <Reply size={14} className="mr-1" />
-                    Reply
+                    <Reply size={14} />
                   </Button>
                 </div>
 
@@ -879,17 +878,16 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
                           <div className="flex items-center gap-2 mt-1 ml-1">
                             <Button
                               variant="ghost"
-                              size="sm"
-                              className="h-6 px-2 text-xs"
+                              size="icon"
+                              className="rounded-full h-6 w-6"
                               onClick={() => handleLike(reply.id, true)}
                               disabled={likingComment[reply.id]}
+                              title={likingComment[reply.id] ? 'Liking...' : (reply.isLiked ? 'Unlike' : 'Like')}
                             >
                               <Heart
                                 size={12}
-                                className={`mr-1 ${reply.isLiked ? 'fill-current text-red-500' : ''}`}
+                                className={reply.isLiked ? 'fill-current text-red-500' : ''}
                               />
-                              {likingComment[reply.id] ? 'Liking...' :
-                                reply.isLiked ? `${reply.likeCount || 1} Liked` : 'Like'}
                             </Button>
                           </div>
                         </div>

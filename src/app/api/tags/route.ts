@@ -10,7 +10,7 @@ const CACHE_VALUE = 'public, max-age=300, stale-while-revalidate=60'; // 5 minut
 export async function GET() {
   try {
     const tags = await prisma.tag.findMany({
-      select: { id: true, name: true, _count: { select: { stories: true } } },
+      select: { id: true, name: true, slug: true, _count: { select: { stories: true } } },
       orderBy: [{ stories: { _count: 'desc' } }, { name: 'asc' }],
       take: 25,
     });

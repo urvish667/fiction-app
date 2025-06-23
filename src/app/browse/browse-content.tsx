@@ -39,9 +39,18 @@ type BrowseStory = {
   tags?: string[]
 }
 
+// Tag type
+interface TagOption {
+  id: string;
+  name: string;
+  slug: string;
+}
+
 interface BrowseContentProps {
   initialParams: {
     genre?: string
+    tag?: string
+    tags?: string
     search?: string
     page?: string
     sortBy?: string
@@ -61,7 +70,7 @@ export default function BrowseContent({ initialParams }: BrowseContentProps) {
   const [selectedGenres, setSelectedGenres] = useState<string[]>(
     initialParams.genre ? [decodeURIComponent(initialParams.genre)] : []
   )
-  const [selectedTags, setSelectedTags] = useState<string[]>([])
+  const [allTags, setAllTags] = useState<TagOption[]>([])
   const [selectedLanguage, setSelectedLanguage] = useState<string>(initialParams.language || "")
   const [storyStatus, setStoryStatus] = useState<"all" | "ongoing" | "completed">(
     (initialParams.status as "all" | "ongoing" | "completed") || "all"
@@ -75,6 +84,43 @@ export default function BrowseContent({ initialParams }: BrowseContentProps) {
   const storiesPerPage = 16
 
   const isMobile = useMediaQuery("(max-width: 768px)")
+
+  // Fetch all tags on mount
+  useEffect(() => {
+    async function fetchTags() {
+      try {
+        const response = await fetch('/api/tags')
+        if (response.ok) {
+          const data = await response.json()
+          setAllTags(data)
+        }
+      } catch (e) {
+        // fallback: do nothing
+      }
+    }
+    fetchTags()
+  }, [])
+
+  // Initialize selectedTags from tag/tags params, using slug-to-name mapping
+  const [selectedTags, setSelectedTags] = useState<string[]>(() => {
+    if (initialParams.tag && allTags.length > 0) {
+      const found = allTags.find(t => t.slug === decodeURIComponent(initialParams.tag!))
+      return found ? [found.name] : []
+    } else if (initialParams.tags) {
+      return initialParams.tags.split(',').map(t => decodeURIComponent(t.trim())).filter(Boolean)
+    }
+    return []
+  })
+
+  // When allTags or initialParams.tag changes, update selectedTags if needed
+  useEffect(() => {
+    if (initialParams.tag && allTags.length > 0) {
+      const found = allTags.find(t => t.slug === decodeURIComponent(initialParams.tag!))
+      if (found && (!selectedTags.length || selectedTags[0] !== found.name)) {
+        setSelectedTags([found.name])
+      }
+    }
+  }, [initialParams.tag, allTags])
 
   // Function to update URL based on current filters
   const updateURL = useCallback(() => {
@@ -450,6 +496,7 @@ export default function BrowseContent({ initialParams }: BrowseContentProps) {
                     onLanguageChange={handleLanguageChange}
                     onStatusChange={handleStatusChange}
                     onSortChange={handleSortChange}
+                    tags={allTags}
                   />
                 </motion.div>
               )}

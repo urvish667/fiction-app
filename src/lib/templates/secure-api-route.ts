@@ -54,15 +54,17 @@ export async function exampleSecureGetWithApiKey(req: NextRequest) {
     return NextResponse.json({ message: 'Secure GET endpoint with API key' });
   }
   
-  // Apply middleware
-  return withErrorHandlingAndMiddleware(
-    handler,
-    withApiLogging,
-    withSecurityMonitoring,
-    withApiKey(ApiKeyType.EXTERNAL_SERVICE),
-    withApiSecurityHeaders(CacheControl.NO_STORE),
-    withRateLimit(rateLimitConfigs.default)
-  )(req);
+  // Apply middleware by composing them in the correct order
+  const handlerWithMiddleware = withErrorHandler(
+    withRateLimit(handler, rateLimitConfigs.default)
+  );
+  
+  const handlerWithHeaders = withApiSecurityHeaders(handlerWithMiddleware, CacheControl.NO_STORE);
+  const handlerWithApiKey = withApiKey(handlerWithHeaders, ApiKeyType.EXTERNAL_SERVICE);
+  const handlerWithSecurity = withSecurityMonitoring(handlerWithApiKey);
+  const finalHandler = withApiLogging(handlerWithSecurity);
+  
+  return finalHandler(req);
 }
 
 /**
@@ -88,20 +90,20 @@ export async function exampleSecurePostWithAuth(req: NextRequest) {
     });
   }
   
-  // Apply middleware
-  return withErrorHandlingAndMiddleware(
-    handler,
-    withApiLogging,
-    withSecurityMonitoring,
-    withRequestValidation({
-      body: bodySchema,
-      allowedMethods: [HttpMethod.POST],
-    }),
-    withCsrfProtection,
-    withAuth,
-    withApiSecurityHeaders(CacheControl.NO_STORE),
-    withRateLimit(rateLimitConfigs.default)
-  )(req);
+  // Apply middleware by composing them in the correct order
+  const handlerWithValidation = withRequestValidation({
+    body: bodySchema,
+    allowedMethods: [HttpMethod.POST],
+  }, handler);
+  
+  const handlerWithAuth = withAuth(handlerWithValidation);
+  const handlerWithCsrf = withCsrfProtection(handlerWithAuth);
+  const handlerWithHeaders = withApiSecurityHeaders(handlerWithCsrf, CacheControl.NO_STORE);
+  const handlerWithRateLimit = withRateLimit(handlerWithHeaders, rateLimitConfigs.default);
+  const handlerWithSecurity = withSecurityMonitoring(handlerWithRateLimit);
+  const finalHandler = withErrorHandler(withApiLogging(handlerWithSecurity));
+  
+  return finalHandler(req);
 }
 
 /**
@@ -147,28 +149,25 @@ export async function exampleSecurePutWithRoles(req: NextRequest) {
     };
   }
   
-  // Apply middleware
-  return withErrorHandlingAndMiddleware(
-    (req: NextRequest, validated: { body?: any }) => {
-      // Create a handler that includes the validated data
-      const handlerWithValidation = handlerWrapper(req, validated);
-      
-      // Apply authentication middleware
-      return withAuthAndRoles(
-        handlerWithValidation,
-        ['admin', 'editor']
-      )(req);
-    },
-    withApiLogging,
-    withSecurityMonitoring,
-    withRequestValidation({
-      body: bodySchema,
-      allowedMethods: [HttpMethod.PUT],
-    }),
-    withCsrfProtection,
-    withApiSecurityHeaders(CacheControl.NO_STORE),
-    withRateLimit(rateLimitConfigs.contentCreation)
-  )(req);
+  // Create the validation handler
+  const validationHandler = (req: NextRequest, validated: { body?: any }) => {
+    const handlerWithValidation = handlerWrapper(req, validated);
+    return withAuthAndRoles(handlerWithValidation, ['admin', 'editor'])(req);
+  };
+  
+  // Apply middleware by composing them in the correct order
+  const handlerWithValidation = withRequestValidation({
+    body: bodySchema,
+    allowedMethods: [HttpMethod.PUT],
+  }, validationHandler);
+  
+  const handlerWithCsrf = withCsrfProtection(handlerWithValidation);
+  const handlerWithHeaders = withApiSecurityHeaders(handlerWithCsrf, CacheControl.NO_STORE);
+  const handlerWithRateLimit = withRateLimit(handlerWithHeaders, rateLimitConfigs.contentCreation);
+  const handlerWithSecurity = withSecurityMonitoring(handlerWithRateLimit);
+  const finalHandler = withErrorHandler(withApiLogging(handlerWithSecurity));
+  
+  return finalHandler(req);
 }
 
 /**
@@ -211,25 +210,25 @@ export async function exampleSecureDeleteWithSession(req: NextRequest) {
     };
   }
   
-  // Apply middleware
-  return withErrorHandlingAndMiddleware(
-    (req: NextRequest, validated: { query?: any }) => {
-      // Create a handler that includes the validated data
-      const handlerWithValidation = handlerWrapper(req, validated);
-      
-      // Apply session middleware
-      return withSession(handlerWithValidation)(req);
-    },
-    withApiLogging,
-    withSecurityMonitoring,
-    withRequestValidation({
-      query: querySchema,
-      allowedMethods: [HttpMethod.DELETE],
-    }),
-    withCsrfProtection,
-    withApiSecurityHeaders(CacheControl.NO_STORE),
-    withRateLimit(rateLimitConfigs.default)
-  )(req);
+  // Create the validation handler
+  const validationHandler = (req: NextRequest, validated: { query?: any }) => {
+    const handlerWithValidation = handlerWrapper(req, validated);
+    return withSession(handlerWithValidation)(req);
+  };
+  
+  // Apply middleware by composing them in the correct order
+  const handlerWithValidation = withRequestValidation({
+    query: querySchema,
+    allowedMethods: [HttpMethod.DELETE],
+  }, validationHandler);
+  
+  const handlerWithCsrf = withCsrfProtection(handlerWithValidation);
+  const handlerWithHeaders = withApiSecurityHeaders(handlerWithCsrf, CacheControl.NO_STORE);
+  const handlerWithRateLimit = withRateLimit(handlerWithHeaders, rateLimitConfigs.default);
+  const handlerWithSecurity = withSecurityMonitoring(handlerWithRateLimit);
+  const finalHandler = withErrorHandler(withApiLogging(handlerWithSecurity));
+  
+  return finalHandler(req);
 }
 
 /**
@@ -248,14 +247,13 @@ export async function exampleSecurePublicEndpoint(req: NextRequest) {
     });
   }
   
-  // Apply middleware
-  return withErrorHandlingAndMiddleware(
-    handler,
-    withApiLogging,
-    withSecurityMonitoring,
-    withApiSecurityHeaders(CacheControl.SHORT),
-    withRateLimit(rateLimitConfigs.default)
-  )(req);
+  // Apply middleware by composing them in the correct order
+  const handlerWithRateLimit = withRateLimit(handler, rateLimitConfigs.default);
+  const handlerWithHeaders = withApiSecurityHeaders(handlerWithRateLimit, CacheControl.SHORT);
+  const handlerWithSecurity = withSecurityMonitoring(handlerWithHeaders);
+  const finalHandler = withErrorHandler(withApiLogging(handlerWithSecurity));
+  
+  return finalHandler(req);
 }
 
 // Mock function to fetch a resource

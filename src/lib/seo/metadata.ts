@@ -15,7 +15,7 @@ function toISOString(date: Date | string | undefined): string | undefined {
 /**
  * Generate SEO metadata for a story page
  */
-export function generateStoryMetadata(story: Story): Metadata {
+export function generateStoryMetadata(story: Story, tags: string[] = []): Metadata {
   const title = `${story.title} - FableSpace`
   const description = story.description
     ? story.description.slice(0, 160) + (story.description.length > 160 ? '...' : '')
@@ -38,7 +38,8 @@ export function generateStoryMetadata(story: Story): Metadata {
       'reading',
       'FableSpace',
       ...(story.language ? [story.language] : []),
-      ...(story.status ? [story.status] : [])
+      ...(story.status ? [story.status] : []),
+      ...tags
     ].filter(Boolean).join(', '),
     authors: [{ name: authorName }],
     creator: authorName,
@@ -65,7 +66,7 @@ export function generateStoryMetadata(story: Story): Metadata {
       publishedTime: toISOString(story.createdAt),
       modifiedTime: toISOString(story.updatedAt),
       section: genreName,
-      tags: [], // Will be populated with actual tags if available
+      tags: tags || [],
     },
     twitter: {
       card: 'summary_large_image',
@@ -667,6 +668,7 @@ export function generateAboutMetadata(): Metadata {
  */
 export function generateBrowseMetadata(params?: {
   genre?: string
+  tag?: string
   search?: string
   language?: string
   status?: string
@@ -694,7 +696,7 @@ export function generateBrowseMetadata(params?: {
     const genreInfo = categoryDescriptions[params.genre]
     const genreLower = params.genre.toLowerCase()
 
-    title = `${params.genre} Stories - Browse ${params.genre} Fiction - FableSpace`
+    title = `${params.genre} Stories - FableSpace`
     description = genreInfo?.description ||
       `Discover the best ${genreLower} stories on FableSpace. Read engaging ${genreLower} fiction from talented writers around the world.`
 
@@ -707,6 +709,7 @@ export function generateBrowseMetadata(params?: {
       `${genreLower} stories`,
       `${genreLower} books`,
       `read ${genreLower}`,
+      `${genreLower} FableSpace`,
       ...(genreInfo?.keywords || [])
     ]
 
@@ -715,6 +718,39 @@ export function generateBrowseMetadata(params?: {
       title = `${params.status === 'completed' ? 'Completed' : 'Ongoing'} ${params.genre} Stories - FableSpace`
       description = `Find ${params.status} ${genreLower} stories on FableSpace. ${genreInfo?.description || `Browse ${genreLower} fiction that is ${params.status}.`}`
       keywords.push(`${params.status} ${genreLower}`, `${params.status} stories`)
+    }
+  }
+
+  if (params?.tag) {
+    const tag = params.tag
+    const tagDisplay = tag.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+
+    title = `${tagDisplay} Stories - FableSpace`
+    description = `Discover the best ${tagDisplay.toLowerCase()} stories on FableSpace. Read engaging ${tagDisplay.toLowerCase()} fiction from talented writers around the world.`
+    canonicalUrl = `${baseUrl}/browse?tag=${encodeURIComponent(tag)}`
+    keywords = [
+      'browse stories',
+      'fiction stories',
+      'online reading',
+      'story discovery',
+      'creative writing',
+      'FableSpace',
+      'free stories',
+      'indie authors',
+      'digital library',
+      tagDisplay.toLowerCase(),
+      `${tagDisplay.toLowerCase()} fiction`,
+      `${tagDisplay.toLowerCase()} stories`,
+      `${tagDisplay.toLowerCase()} books`,
+      `${tagDisplay.toLowerCase()} FableSpace`,
+      `read ${tagDisplay.toLowerCase()}`
+    ]
+
+    // Add status-specific keywords if present
+    if (params.status && params.status !== 'all') {
+      title = `${params.status === 'completed' ? 'Completed' : 'Ongoing'} ${tagDisplay} Stories - FableSpace`
+      description = `Find ${params.status} ${tagDisplay.toLowerCase()} stories on FableSpace. Browse ${tagDisplay.toLowerCase()} fiction that is ${params.status}.`
+      keywords.push(`${params.status} ${tagDisplay.toLowerCase()}`, `${params.status} stories`)
     }
   }
 
@@ -791,30 +827,43 @@ export function generateBrowseMetadata(params?: {
 }
 
 /**
- * Generate enhanced structured data for browse page with category-specific optimization
+ * Generate enhanced structured data for browse page with category or tag-specific optimization
  */
 export function generateBrowseStructuredData(params?: {
   genre?: string
+  tag?: string
   language?: string
   status?: string
   totalStories?: number
   stories?: any[]
 }) {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.space'
-  const genreInfo = params?.genre ? categoryDescriptions[params.genre] : null
+  const isTag = !!params?.tag
+  const isGenre = !!params?.genre && !isTag
+  const genreInfo = isGenre ? categoryDescriptions[params.genre!] : null
+  const tag = params?.tag
+  const tagDisplay = tag ? tag.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : undefined
 
   // Base structured data
   const structuredData: any = {
     '@context': 'https://schema.org',
     '@type': 'CollectionPage',
-    name: params?.genre ? `${params.genre} Stories` : 'Browse Stories',
-    description: genreInfo?.description ||
-      (params?.genre
-        ? `Collection of ${params.genre.toLowerCase()} stories on FableSpace`
-        : 'Browse and discover amazing fiction stories on FableSpace'),
-    url: params?.genre
-      ? `${baseUrl}/browse?genre=${encodeURIComponent(params.genre)}`
-      : `${baseUrl}/browse`,
+    name: isTag
+      ? `${tagDisplay} Stories`
+      : isGenre
+        ? `${params?.genre} Stories`
+        : 'Browse Stories',
+    description: isTag
+      ? `Collection of ${tagDisplay?.toLowerCase()} stories on FableSpace`
+      : genreInfo?.description ||
+        (isGenre
+          ? `Collection of ${params?.genre?.toLowerCase()} stories on FableSpace`
+          : 'Browse and discover amazing fiction stories on FableSpace'),
+    url: isTag
+      ? `${baseUrl}/browse?tag=${encodeURIComponent(tag!)}`
+      : isGenre
+        ? `${baseUrl}/browse?genre=${encodeURIComponent(params?.genre!)}`
+        : `${baseUrl}/browse`,
     isPartOf: {
       '@type': 'WebSite',
       name: 'FableSpace',
@@ -846,12 +895,22 @@ export function generateBrowseStructuredData(params?: {
           name: 'Browse Stories',
           item: `${baseUrl}/browse`
         },
-        ...(params?.genre ? [{
-          '@type': 'ListItem',
-          position: 3,
-          name: params.genre,
-          item: `${baseUrl}/browse?genre=${encodeURIComponent(params.genre)}`
-        }] : [])
+        ...(isGenre
+          ? [{
+              '@type': 'ListItem',
+              position: 3,
+              name: params?.genre,
+              item: `${baseUrl}/browse?genre=${encodeURIComponent(params?.genre!)}`
+            }]
+          : []),
+        ...(isTag
+          ? [{
+              '@type': 'ListItem',
+              position: 3,
+              name: tagDisplay,
+              item: `${baseUrl}/browse?tag=${encodeURIComponent(tag!)}`
+            }]
+          : [])
       ]
     }
   }
@@ -862,7 +921,7 @@ export function generateBrowseStructuredData(params?: {
   }
 
   // Add genre-specific keywords
-  if (params?.genre && genreInfo?.keywords) {
+  if (isGenre && genreInfo?.keywords) {
     structuredData.keywords = genreInfo.keywords.join(', ')
   }
 

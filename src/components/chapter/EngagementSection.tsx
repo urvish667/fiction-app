@@ -6,7 +6,7 @@ import { useSession } from "next-auth/react"
 import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Heart, Share2, Bell, MessageCircle } from "lucide-react"
+import { Heart, Share2, MessageCircle, UserPlus } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import CommentSection from "@/components/comment-section"
 import { SupportButton } from "@/components/SupportButton"
@@ -197,23 +197,17 @@ export function EngagementSection({
           {chapter && (
             <Button
               variant={isChapterLiked ? "default" : "outline"}
-              size="sm"
+              size="icon"
               onClick={handleChapterLike}
               disabled={chapterLikeLoading}
-              className="flex items-center gap-1 sm:gap-2 h-9 sm:h-10 text-xs sm:text-sm px-3 sm:px-4"
-              title={!session ? "Sign in to like this chapter" : undefined}
+              className="rounded-full h-9 w-9"
+              title={!session ? "Sign in to like this chapter" : (isChapterLiked ? "Unlike chapter" : "Like chapter")}
             >
               {chapterLikeLoading ? (
-                <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-t-2 border-b-2 border-current"></div>
+                <div className="animate-spin rounded-full h-3 w-3 border-t-2 border-b-2 border-current"></div>
               ) : (
                 <Heart size={14} className={isChapterLiked ? "fill-current" : ""} />
               )}
-              <span className="hidden xs:inline">
-                {isChapterLiked ? "Liked Chapter" : "Like Chapter"}
-              </span>
-              <span className="xs:hidden">
-                {isChapterLiked ? "Liked" : "Like"}
-              </span>
             </Button>
           )}
 
@@ -221,23 +215,26 @@ export function EngagementSection({
           {chapter && (
             <Button
               variant="outline"
-              size="sm"
+              size="icon"
               onClick={() => {
                 setShowChapterComments(!showChapterComments)
               }}
-              className="flex items-center gap-1 sm:gap-2 h-9 sm:h-10 text-xs sm:text-sm px-3 sm:px-4"
+              className="rounded-full h-9 w-9"
+              title="Chapter comments"
             >
               <MessageCircle size={14} />
-              <span className="hidden xs:inline">Chapter Comments</span>
-              <span className="xs:hidden">Comments</span>
             </Button>
           )}
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="flex items-center gap-1 sm:gap-2 h-9 sm:h-10 text-xs sm:text-sm px-3 sm:px-4">
+              <Button 
+                variant="outline" 
+                size="icon" 
+                className="rounded-full h-9 w-9"
+                title="Share"
+              >
                 <Share2 size={14} />
-                Share
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -269,22 +266,17 @@ export function EngagementSection({
          session.user.id !== story.author.id ? (
           <Button
             variant={isFollowing ? "default" : "outline"}
-            size="sm"
+            size="icon"
             onClick={handleFollow}
             disabled={followLoading}
-            className="flex items-center gap-1 sm:gap-2 h-9 sm:h-10 text-xs sm:text-sm px-3 sm:px-4 w-full sm:w-auto"
+            className="rounded-full h-9 w-9"
+            title={!session ? "Sign in to follow author" : (isFollowing ? "Unfollow author" : "Follow author")}
           >
             {followLoading ? (
-              <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-t-2 border-b-2 border-current"></div>
+              <div className="animate-spin rounded-full h-3 w-3 border-t-2 border-b-2 border-current"></div>
             ) : (
-              <Bell size={14} />
+              <UserPlus size={14} />
             )}
-            <span className="hidden sm:inline">
-              {isFollowing ? "Following Author" : "Follow Author"}
-            </span>
-            <span className="sm:hidden">
-              {isFollowing ? "Following" : "Follow"}
-            </span>
           </Button>
         ) : null}
       </div>
@@ -301,7 +293,12 @@ export function EngagementSection({
             transition={{ duration: 0.3 }}
             className="mb-8 sm:mb-12"
           >
-            <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Chapter Comments</h2>
+            <div className="flex flex-col gap-2 mb-4 sm:mb-6">
+              <h2 className="text-xl sm:text-2xl font-bold">Chapter Comments</h2>
+              <p className="text-sm text-muted-foreground">
+                Discuss this specific chapter. For general story feedback, please use the comments section on the main story page.
+              </p>
+            </div>
             <CommentSection
               storyId={story.id}
               chapterId={chapter.id}

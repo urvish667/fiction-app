@@ -55,6 +55,13 @@ const defaultLanguages = [
   "Hindi",
 ]
 
+// Tag type
+interface TagOption {
+  id: string;
+  name: string;
+  slug: string;
+}
+
 interface FilterPanelProps {
   selectedGenres: string[]
   onGenreChange: (genres: string[]) => void
@@ -66,6 +73,7 @@ interface FilterPanelProps {
   onStatusChange?: (status: "all" | "ongoing" | "completed") => void
   sortBy: string
   onSortChange: (sort: string) => void
+  tags?: TagOption[]
 }
 
 export default function FilterPanel({
@@ -81,7 +89,7 @@ export default function FilterPanel({
   onSortChange
 }: FilterPanelProps) {
   const [genres, setGenres] = useState<string[]>(defaultGenres)
-  const [tags, setTags] = useState<string[]>(defaultTags)
+  const [tags, setTags] = useState<TagOption[]>([])
   const [languages, setLanguages] = useState<string[]>(defaultLanguages)
   const [loadingGenres, setLoadingGenres] = useState(false)
   const [loadingTags, setLoadingTags] = useState(false)
@@ -124,17 +132,16 @@ export default function FilterPanel({
         const response = await fetch('/api/tags')
         if (response.ok) {
           const data = await response.json()
-          // Extract tag names from the response
-          const tagNames = data.map((tag: { name: string }) => tag.name)
-          setTags(tagNames)
+          // Store tags as {id, name, slug}
+          setTags(data)
         } else {
           // Fall back to default tags if API fails
-          setTags(defaultTags)
+          setTags(defaultTags.map((name, i) => ({ id: String(i), name, slug: name.toLowerCase().replace(/\s+/g, '-') })))
         }
       } catch (error) {
         logError(error, { context: 'Fetching tags' })
         // Fall back to default tags if API fails
-        setTags(defaultTags)
+        setTags(defaultTags.map((name, i) => ({ id: String(i), name, slug: name.toLowerCase().replace(/\s+/g, '-') })))
       } finally {
         setLoadingTags(false)
       }
@@ -362,15 +369,15 @@ export default function FilterPanel({
               ) : (
                 <>
                   <div className="grid grid-cols-2 gap-2">
-                    {tags.slice(0, 20).map((tag) => (
-                      <div key={tag} className="flex items-center space-x-2">
+                    {tags.map((tag) => (
+                      <div key={tag.id} className="flex items-center space-x-2">
                         <Checkbox
-                          id={`tag-${tag}`}
-                          checked={selectedTags.includes(tag)}
-                          onCheckedChange={() => handleTagToggle(tag)}
+                          id={`tag-${tag.name}`}
+                          checked={selectedTags.includes(tag.name)}
+                          onCheckedChange={() => handleTagToggle(tag.name)}
                         />
-                        <Label htmlFor={`tag-${tag}`} className="text-sm truncate max-w-[100px]" title={tag}>
-                          {tag}
+                        <Label htmlFor={`tag-${tag.name}`} className="text-sm truncate max-w-[100px]" title={tag.name}>
+                          {tag.name}
                         </Label>
                       </div>
                     ))}

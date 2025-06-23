@@ -162,9 +162,14 @@ export default function StoryCard({ story, viewMode = "grid" }: StoryCardProps) 
             </div>
 
             {/* Share Button */}
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleActionClick}>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="rounded-full h-8 w-8" 
+              onClick={handleActionClick}
+              title="Share"
+            >
               <Share2 size={16} className="text-muted-foreground" />
-              <span className="sr-only">Share</span>
             </Button>
           </CardFooter>
         </div>

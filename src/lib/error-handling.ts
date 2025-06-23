@@ -22,6 +22,7 @@ export enum ErrorCode {
   VALIDATION_ERROR = 'VALIDATION_ERROR',
   INVALID_INPUT = 'INVALID_INPUT',
   MISSING_REQUIRED_FIELD = 'MISSING_REQUIRED_FIELD',
+  METHOD_NOT_ALLOWED = 'METHOD_NOT_ALLOWED',
 
   // Resource errors
   RESOURCE_NOT_FOUND = 'RESOURCE_NOT_FOUND',
@@ -55,6 +56,7 @@ export const ErrorStatusCodes: Record<ErrorCode, number> = {
   [ErrorCode.VALIDATION_ERROR]: 400,
   [ErrorCode.INVALID_INPUT]: 400,
   [ErrorCode.MISSING_REQUIRED_FIELD]: 400,
+  [ErrorCode.METHOD_NOT_ALLOWED]: 405,
 
   // Resource errors
   [ErrorCode.RESOURCE_NOT_FOUND]: 404,
@@ -142,6 +144,8 @@ function getDefaultErrorMessage(code: ErrorCode): string {
       return 'The input data is invalid';
     case ErrorCode.MISSING_REQUIRED_FIELD:
       return 'A required field is missing';
+    case ErrorCode.METHOD_NOT_ALLOWED:
+      return 'The requested HTTP method is not allowed for this endpoint';
 
     // Resource errors
     case ErrorCode.RESOURCE_NOT_FOUND:

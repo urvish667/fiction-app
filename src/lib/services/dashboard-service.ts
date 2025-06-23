@@ -361,9 +361,9 @@ export async function getTopStories(userId: string, limit: number = 5, sortBy: s
       genre: story.genreId || "",
       genreName: genreName,
       slug: story.slug || story.id, // Use slug if available, fallback to ID
-      viewCount: viewCountMap.get(story.id) || 0,
-      likeCount: story._count.likes,
-      commentCount: story._count.comments,
+      reads: viewCountMap.get(story.id) || 0,
+      likes: story._count.likes,
+      comments: story._count.comments,
       date: story.updatedAt.toISOString(),
       earnings: storyEarnings,
     };
@@ -371,7 +371,7 @@ export async function getTopStories(userId: string, limit: number = 5, sortBy: s
 
   // Apply custom sorting for views and earnings
   if (sortBy === 'reads') {
-    formattedStories = formattedStories.sort((a, b) => b.viewCount - a.viewCount).slice(0, limit);
+    formattedStories = formattedStories.sort((a, b) => b.reads - a.reads).slice(0, limit);
   } else if (sortBy === 'earnings') {
     formattedStories = formattedStories.sort((a, b) => b.earnings - a.earnings).slice(0, limit);
   }

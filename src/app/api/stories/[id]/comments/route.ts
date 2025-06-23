@@ -36,6 +36,7 @@ export async function GET(
     const where = {
       storyId,
       parentId: parentId === "null" ? null : parentId,
+      chapterId: null, // Only get story-level comments
     } as const;
 
     // Execute query with count

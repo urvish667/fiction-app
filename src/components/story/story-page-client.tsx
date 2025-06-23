@@ -490,7 +490,12 @@ export default function StoryPageClient({
                 transition={{ duration: 0.5, delay: 0.6 }}
                 className="mb-8 sm:mb-12"
               >
-                <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Comments</h2>
+                <div className="flex flex-col gap-2 mb-4 sm:mb-6">
+                  <h2 className="text-xl sm:text-2xl font-bold">Story Comments</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Share your thoughts about the story as a whole. For chapter-specific comments, please use the comment section available in each chapter.
+                  </p>
+                </div>
                 <CommentSection storyId={story.id} />
               </motion.div>
             </motion.div>

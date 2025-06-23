@@ -11,10 +11,12 @@ import {
   generateCategoryWebPageStructuredData
 } from "@/lib/seo/metadata"
 import BrowseContent from "./browse-content"
+import { getAllGenreNames } from "@/lib/seo/genre-descriptions"
 
 interface BrowsePageProps {
   searchParams: Promise<{
     genre?: string
+    tag?: string
     search?: string
     page?: string
     sortBy?: string
@@ -27,6 +29,14 @@ interface BrowsePageProps {
 export async function generateMetadata({ searchParams }: BrowsePageProps): Promise<Metadata> {
   const params = await searchParams
 
+  if (params.tag) {
+    return generateBrowseMetadata({
+      tag: params.tag,
+      language: params.language,
+      status: params.status
+    })
+  }
+
   return generateBrowseMetadata({
     genre: params.genre,
     search: params.search,
@@ -38,28 +48,36 @@ export async function generateMetadata({ searchParams }: BrowsePageProps): Promi
 export default async function BrowsePage({ searchParams }: BrowsePageProps) {
   const params = await searchParams
 
-  // Generate enhanced structured data
-  const browseStructuredData = generateBrowseStructuredData({
-    genre: params.genre,
-    language: params.language,
-    status: params.status
-  })
+  let browseStructuredData: any
+  const additionalStructuredData: any[] = []
 
-  // Generate additional structured data for category pages
-  const additionalStructuredData = []
-
-  if (params.genre) {
-    // Add FAQ structured data for popular genres
-    const popularGenres = ['Fantasy', 'Science Fiction', 'Romance', 'Mystery', 'Horror', 'Young Adult', 'Historical', 'Thriller']
-    if (popularGenres.includes(params.genre)) {
-      additionalStructuredData.push(generateCategoryFAQStructuredData(params.genre))
-    }
-
-    // Add WebPage structured data for category
-    additionalStructuredData.push(generateCategoryWebPageStructuredData({
+  if (params.tag) {
+    browseStructuredData = generateBrowseStructuredData({
+      tag: params.tag,
+      language: params.language,
+      status: params.status
+    })
+    // Optionally, add tag-specific FAQ or WebPage structured data here if desired
+  } else {
+    browseStructuredData = generateBrowseStructuredData({
       genre: params.genre,
-      language: params.language
-    }))
+      language: params.language,
+      status: params.status
+    })
+
+    if (params.genre) {
+      // Add FAQ structured data for popular genres
+      const allGenres = getAllGenreNames();
+      if (allGenres.includes(params.genre)) {
+        additionalStructuredData.push(generateCategoryFAQStructuredData(params.genre))
+      }
+
+      // Add WebPage structured data for category
+      additionalStructuredData.push(generateCategoryWebPageStructuredData({
+        genre: params.genre,
+        language: params.language
+      }))
+    }
   }
 
   return (
