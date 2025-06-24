@@ -515,6 +515,7 @@ export function generateOrganizationStructuredData() {
   return {
     '@context': 'https://schema.org',
     '@type': 'Organization',
+    '@id': `${baseUrl}#organization`,
     name: 'FableSpace',
     alternateName: 'FableSpace Fiction Platform',
     description: 'A cozy corner of the internet for storytellers, dreamers, and readers alike. FableSpace is a creative fiction-sharing platform where writers publish original stories, earn money through direct PayPal donations, and readers explore immersive worlds—all with zero platform fees.',
@@ -528,13 +529,23 @@ export function generateOrganizationStructuredData() {
     },
     foundingDate: '2024',
     sameAs: [
-      'https://discord.gg/JVMr2TRXY7'
+      'https://discord.gg/JVMr2TRXY7',
+      'https://twitter.com/FableSpace',
+      'https://www.linkedin.com/company/fablespace',
+      'https://www.medium.com/@fablespace',
+      'https://www.instagram.com/fable.space_/'
     ],
     contactPoint: {
       '@type': 'ContactPoint',
       contactType: 'customer service',
       url: `${baseUrl}/contact`,
       availableLanguage: ['English']
+    },
+    address: {
+      '@type': 'PostalAddress',
+      addressCountry: 'IN',
+      addressLocality: 'Surat',
+      addressRegion: 'Gujarat',
     },
     knowsAbout: [
       'Creative Writing',
@@ -594,73 +605,82 @@ export function generateOrganizationStructuredData() {
  * Generate SEO metadata for about page
  */
 export function generateAboutMetadata(): Metadata {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.space'
+  const baseUrl =
+    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') ||
+    'https://fablespace.space'
   const canonicalUrl = `${baseUrl}/about`
 
+  const title = 'About FableSpace – Fair Pay for Fiction Writers'
+  const description =
+    'At FableSpace, storytellers keep 100% of reader donations and, soon, a share of ad revenue too. Learn about our mission to empower creators, reward original storytelling, and build a thriving writing community.'
+
+  const keywords = [
+    'FableSpace about',
+    'fiction writing platform',
+    'writers earn money',
+    'reader donations',
+    'no platform fees',
+    'ad revenue sharing',
+    'creative community',
+    'online storytelling',
+    'writer monetization',
+    'digital publishing',
+    'story platform',
+    'novel writers',
+    'flash fiction',
+    'creative writers',
+    'writing website',
+    'support indie authors',
+    'best writing platforms'
+  ].join(', ')
+
   return {
-    title: "About FableSpace - Where Stories Come Alive",
-    description: "Learn about FableSpace, where writers earn money through direct PayPal donations with zero platform fees. Discover our mission to empower creativity and reward storytellers fairly.",
-    keywords: [
-      'about FableSpace',
-      'fiction platform',
-      'earn money writing',
-      'PayPal donations',
-      'zero platform fees',
-      'writer monetization',
-      'creative writing community',
-      'storytelling platform',
-      'online fiction',
-      'writing platform',
-      'story sharing',
-      'creative writing',
-      'fiction writers',
-      'reading community',
-      'digital publishing',
-      'original stories',
-      'Wattpad alternative',
-      'no fees writing platform'
-    ].join(', '),
+    title,
+    description,
+    keywords,
     authors: [{ name: 'FableSpace Team' }],
     creator: 'FableSpace',
     publisher: 'FableSpace',
-    alternates: {
-      canonical: canonicalUrl
-    },
+    alternates: { canonical: canonicalUrl },
+
     openGraph: {
-      title: "About FableSpace - Where Stories Come Alive",
-      description: "Learn about FableSpace, where writers earn money through direct PayPal donations with zero platform fees. Discover our mission to empower creativity and reward storytellers fairly.",
-      type: 'website',
+      title,
+      description,
       url: canonicalUrl,
       siteName: 'FableSpace',
+      type: 'website',
       images: [
         {
           url: `${baseUrl}/og-about.jpg`,
           width: 1200,
           height: 630,
-          alt: 'About FableSpace - Creative Fiction Platform',
+          alt: 'About FableSpace – Fair Pay for Fiction Writers'
         }
-      ],
+      ]
     },
+
     twitter: {
       card: 'summary_large_image',
-      title: "About FableSpace - Where Stories Come Alive",
-      description: "Learn about FableSpace, where writers earn money through direct PayPal donations with zero platform fees. Discover our mission to empower creativity and reward storytellers fairly.",
+      title,
+      description,
       images: [`${baseUrl}/og-about.jpg`],
       site: '@FableSpace'
     },
+
     robots: {
       index: true,
       follow: true,
       googleBot: {
         index: true,
         follow: true,
-        'max-video-preview': -1,
-        'max-image-preview': 'large',
         'max-snippet': -1,
-      },
+        'max-image-preview': 'large',
+        'max-video-preview': -1
+      }
     }
   }
 }
+
 
 
 /**

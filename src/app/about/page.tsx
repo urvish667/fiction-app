@@ -44,12 +44,16 @@ export default function AboutPage() {
           <h2 className="text-3xl font-bold text-center mb-6">Our Mission</h2>
           <div className="bg-muted/30 rounded-lg p-8 text-center">
             <p className="text-lg mb-4">
-              FableSpace is a platform built for passionate writers and curious readers.
-              Our mission is to empower creativity, celebrate original storytelling,
-              and connect people through the written word—one story at a time.
+              At FableSpace, we believe in the power of storytelling—and in the storytellers who bring worlds to life. Our mission is to create a space where writers can share their imagination freely, connect with readers, and eventually earn from their creative work.
+            </p>
+            <p className="text-lg mb-4">
+              Right now, we sustain FableSpace through Google Ads to keep the platform alive and growing. While we aren't yet able to share ad revenue, writers receive 100% of reader donations, ensuring that your support goes directly to them.
+            </p>
+            <p className="text-lg mb-4">
+              But this is just the beginning. As our community grows, so will our support for writers. We're committed to launching new ways for creators to earn—starting with ad revenue sharing once we reach scale, and expanding into more features designed to help writers thrive.
             </p>
             <p className="text-lg font-semibold text-primary">
-              Most importantly, we believe writers should be rewarded for their creativity—without platform fees taking a cut.
+              FableSpace is more than a platform—it's a promise to uplift the voices of tomorrow. 🌱✍️
             </p>
           </div>
         </section>

@@ -108,39 +108,40 @@ export const EditorHeader = React.memo(function EditorHeader({
             {chapter.status === "published" ? (
               <Button
                 variant="outline"
+                size="icon"
                 onClick={() => saveChapter(true, false, true)}
                 disabled={isSaving}
-                className="flex items-center gap-2"
+                className="h-9 w-9 rounded-full"
                 title="Update published chapter"
                 aria-label="Update chapter"
                 aria-busy={isSaving}
               >
                 <Save size={16} />
-                Update Chapter
               </Button>
             ) : (
               <Button
                 variant="outline"
+                size="icon"
                 onClick={() => saveChapter(true, true)}
                 disabled={isSaving}
-                className="flex items-center gap-2"
+                className="h-9 w-9 rounded-full"
                 title="Save as draft (only visible to you)"
                 aria-label="Save as draft"
                 aria-busy={isSaving}
               >
                 <Save size={16} />
-                Save Draft
               </Button>
             )}
 
             <Button
               variant="outline"
+              size="icon"
               onClick={() => setShowPreview(!showPreview)}
-              className="flex items-center gap-2"
+              className="h-9 w-9 rounded-full"
               aria-label={showPreview ? "Switch to edit mode" : "Preview chapter"}
+              title={showPreview ? "Switch to edit mode" : "Preview chapter"}
             >
               <Eye size={16} />
-              {showPreview ? "Edit" : "Preview"}
             </Button>
 
             <Button

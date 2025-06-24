@@ -5,6 +5,7 @@ import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import Providers from "./providers"
 import { Toaster } from "@/components/ui/toaster"
+import Script from "next/script"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -30,9 +31,12 @@ export default function RootLayout({
       <head>
         {/* Google AdSense Account Verification Meta Tag */}
         {process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_ID && (
-          <meta
-            name="google-adsense-account"
-            content={process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_ID}
+          <Script
+            id="adsense-script"
+            strategy="afterInteractive"
+            async
+            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_ID}`}
+            crossOrigin="anonymous"
           />
         )}
 

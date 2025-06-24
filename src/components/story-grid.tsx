@@ -79,6 +79,7 @@ export default function StoryGrid({ stories, viewMode, showAds = false, isLoadin
               <AdBanner
                 type="interstitial"
                 className="w-full h-32 sm:h-40"
+                slot="6596765108"
               />
             </div>
           )

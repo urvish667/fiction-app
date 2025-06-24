@@ -123,17 +123,12 @@ export function generateSearchSitemapEntries(): SitemapEntry[] {
     'romance',
     'adventure',
     'mystery',
-    'dragons',
+    'dragon',
     'space',
-    'love story',
-    'detective',
-    'supernatural',
-    'teen fiction',
-    'historical romance',
     'sci-fi',
     'fantasy adventure',
-    'young adult romance',
-    'mystery thriller'
+    'fantasy',
+    'magic system'
   ]
 
   return popularSearchTerms.map(term => ({

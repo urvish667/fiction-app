@@ -124,7 +124,7 @@ export default async function BrowsePage({ searchParams }: BrowsePageProps) {
 
         {/* Fixed Bottom Banner Ad */}
         <div className="sticky bottom-0 w-full z-40">
-          <AdBanner type="banner" className="w-full h-16" />
+          <AdBanner type="banner" className="w-full min-h-[90px]" slot="6596765108" />
         </div>
 
         <SiteFooter />

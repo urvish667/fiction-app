@@ -541,7 +541,7 @@ export default function BrowseContent({ initialParams }: BrowseContentProps) {
 
                   {/* Ad Banner */}
                   <div className="my-8">
-                    <AdBanner type="banner" className="w-full h-24" />
+                    <AdBanner type="banner" className="w-full h-24" slot="6596765108" />
                   </div>
 
                   {/* Pagination */}

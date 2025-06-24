@@ -130,7 +130,7 @@ export function ChapterContent({
           />
 
           {/* First ad after 1/3 of content */}
-          <AdBanner type="interstitial" className="my-6 sm:my-8 w-full h-24 sm:h-32" />
+          <AdBanner type="interstitial" className="my-6 sm:my-8 w-full h-24 sm:h-32" slot="6596765108" />
 
           {/* Second third of content */}
           <div
@@ -148,7 +148,7 @@ export function ChapterContent({
           />
 
           {/* Second ad after 2/3 of content */}
-          <AdBanner type="interstitial" className="my-6 sm:my-8 w-full h-24 sm:h-32" />
+          <AdBanner type="interstitial" className="my-6 sm:my-8 w-full h-24 sm:h-32" slot="6596765108" />
 
           {/* Final third of content */}
           <div
@@ -184,7 +184,7 @@ export function ChapterContent({
           />
 
           {/* Ad in the middle */}
-          <AdBanner type="interstitial" className="my-6 sm:my-8 w-full h-24 sm:h-32" />
+          <AdBanner type="interstitial" className="my-6 sm:my-8 w-full h-24 sm:h-32" slot="6596765108" />
 
           {/* Second half of content */}
           <div
@@ -216,7 +216,7 @@ export function ChapterContent({
           />
 
           {/* Ad at the end */}
-          <AdBanner type="interstitial" className="my-6 sm:my-8 w-full h-24 sm:h-32" />
+          <AdBanner type="interstitial" className="my-6 sm:my-8 w-full h-24 sm:h-32" slot="6596765108" />
         </>
       )}
     </motion.div>

@@ -469,7 +469,7 @@ export default function StoryPageClient({
 
               {/* Interstitial Ad between Description and Table of Contents */}
               <div className="mb-4 sm:mb-6">
-                <AdBanner type="interstitial" className="w-full h-24 sm:h-32" />
+                <AdBanner type="interstitial" className="w-full h-24 sm:h-32" slot="6596765108" />
               </div>
 
               {/* Chapters */}
@@ -529,7 +529,7 @@ export default function StoryPageClient({
 
       {/* Fixed Bottom Banner Ad */}
       <div className="sticky bottom-0 w-full z-40">
-        <AdBanner type="banner" className="w-full h-16" />
+        <AdBanner type="banner" className="w-full min-h-[90px]" slot="6596765108"/>
       </div>
 
       {/* Footer */}
