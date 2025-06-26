@@ -21,6 +21,7 @@ import { Story as StoryType, Chapter as ChapterType } from "@/types/story"
 import { SupportButton } from "@/components/SupportButton"
 import MatureContentDialog, { needsMatureContentConsent } from "@/components/mature-content-dialog"
 import { logError } from "@/lib/error-logger"
+import { DesktopSqaureAd } from "../desktop-square-ad"
 
 interface StoryPageClientProps {
   initialStory: StoryType
@@ -468,16 +469,14 @@ export default function StoryPageClient({
               </div>
 
               {/* Interstitial Ad between Description and Table of Contents */}
-              <div className="mb-4 sm:mb-6">
-                <AdBanner type="interstitial" className="w-full h-24 sm:h-32" slot="6596765108" />
-              </div>
+              <DesktopSqaureAd />
 
               {/* Chapters */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.4 }}
-                className="mb-8 sm:mb-12"
+                className="mb-8 sm:mb-12 py-4"
               >
                 <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Table of Contents</h2>
                 <ChapterList chapters={chapters} storySlug={slug} currentChapter={null} />
@@ -528,9 +527,7 @@ export default function StoryPageClient({
       </main>
 
       {/* Fixed Bottom Banner Ad */}
-      <div className="sticky bottom-0 w-full z-40">
-        <AdBanner type="banner" className="w-full min-h-[90px]" slot="6596765108"/>
-      </div>
+      {/* <DesktopBottomAd /> */}
 
       {/* Footer */}
       <SiteFooter />

@@ -540,8 +540,14 @@ export default function BrowseContent({ initialParams }: BrowseContentProps) {
                   <StoryGrid stories={stories} viewMode={viewMode} />
 
                   {/* Ad Banner */}
-                  <div className="my-8">
-                    <AdBanner type="banner" className="w-full h-24" slot="6596765108" />
+                  <div className="w-full py-4">
+                    <div className="bg-muted/30 border border-dashed border-muted-foreground/20 rounded flex items-center justify-center">
+                      <AdBanner
+                        type="banner"
+                        className="w-full max-w-[720px] h-[90px] mx-auto"
+                        slot="6596765108"
+                        />
+                    </div>
                   </div>
 
                   {/* Pagination */}

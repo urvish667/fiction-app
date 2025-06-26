@@ -483,11 +483,6 @@ export default function ChapterPageClient({
         </div>
       </main>
 
-      {/* Fixed Bottom Banner Ad */}
-      <div className="sticky bottom-0 w-full z-40">
-        <AdBanner type="banner" className="w-full h-16" slot="6596765108" />
-      </div>
-
       {/* Footer */}
       <SiteFooter />
     </div>

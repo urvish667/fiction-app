@@ -610,7 +610,7 @@ export function generateAboutMetadata(): Metadata {
     'https://fablespace.space'
   const canonicalUrl = `${baseUrl}/about`
 
-  const title = 'About FableSpace – Fair Pay for Fiction Writers'
+  const title = 'About Us - FableSpace'
   const description =
     'At FableSpace, storytellers keep 100% of reader donations and, soon, a share of ad revenue too. Learn about our mission to empower creators, reward original storytelling, and build a thriving writing community.'
 

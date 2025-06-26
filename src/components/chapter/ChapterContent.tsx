@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion"
 import { useEffect, useState } from "react"
-import AdBanner from "@/components/ad-banner"
+import { DesktopSqaureAd } from "../desktop-square-ad"
 import { Chapter } from "@/types/story"
 
 interface ChapterContentProps {
@@ -130,7 +130,7 @@ export function ChapterContent({
           />
 
           {/* First ad after 1/3 of content */}
-          <AdBanner type="interstitial" className="my-6 sm:my-8 w-full h-24 sm:h-32" slot="6596765108" />
+          <DesktopSqaureAd />
 
           {/* Second third of content */}
           <div
@@ -148,7 +148,7 @@ export function ChapterContent({
           />
 
           {/* Second ad after 2/3 of content */}
-          <AdBanner type="interstitial" className="my-6 sm:my-8 w-full h-24 sm:h-32" slot="6596765108" />
+          <DesktopSqaureAd />
 
           {/* Final third of content */}
           <div
@@ -184,7 +184,7 @@ export function ChapterContent({
           />
 
           {/* Ad in the middle */}
-          <AdBanner type="interstitial" className="my-6 sm:my-8 w-full h-24 sm:h-32" slot="6596765108" />
+          <DesktopSqaureAd />
 
           {/* Second half of content */}
           <div
@@ -216,7 +216,7 @@ export function ChapterContent({
           />
 
           {/* Ad at the end */}
-          <AdBanner type="interstitial" className="my-6 sm:my-8 w-full h-24 sm:h-32" slot="6596765108" />
+          <DesktopSqaureAd />
         </>
       )}
     </motion.div>

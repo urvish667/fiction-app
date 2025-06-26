@@ -12,6 +12,7 @@ import {
 } from "@/lib/seo/metadata"
 import BrowseContent from "./browse-content"
 import { getAllGenreNames } from "@/lib/seo/genre-descriptions"
+import { DesktopBottomAd } from "@/components/desktop-bottom-ad"
 
 interface BrowsePageProps {
   searchParams: Promise<{
@@ -122,10 +123,7 @@ export default async function BrowsePage({ searchParams }: BrowsePageProps) {
           <BrowseContent initialParams={params} />
         </Suspense>
 
-        {/* Fixed Bottom Banner Ad */}
-        <div className="sticky bottom-0 w-full z-40">
-          <AdBanner type="banner" className="w-full min-h-[90px]" slot="6596765108" />
-        </div>
+        <DesktopBottomAd />
 
         <SiteFooter />
       </div>

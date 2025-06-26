@@ -15,7 +15,8 @@ export const securityHeaders = {
   // Content Security Policy - Comprehensive Google AdSense Support
   'Content-Security-Policy':
     "default-src 'self'; " +
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://connect.facebook.net https://www.googletagmanager.com https://js.stripe.com https://www.paypal.com https://www.paypalobjects.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://securepubads.g.doubleclick.net https://*.adtrafficquality.google https://*.googlesyndication.com https://*.googleadservices.com https://*.doubleclick.net; " +
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://connect.facebook.net https://www.googletagmanager.com https://js.stripe.com https://www.paypal.com https://www.paypalobjects.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://securepubads.g.doubleclick.net https://*.adtrafficquality.google https://*.googlesyndication.com https://*.googleadservices.com https://*.doubleclick.net https://fundingchoicesmessages.google.com;" +
+    "fenced-frame-src 'self' blob: data: https://*.googlesyndication.com https://*.doubleclick.net https://fundingchoicesmessages.google.com https://googleads.g.doubleclick.net https://*.google.com;" + // Added https://*.google.com
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
     "img-src 'self' data: https: blob:; " +
     "font-src 'self' https://fonts.gstatic.com; " +
@@ -69,5 +70,3 @@ export function withSecurityHeaders(
     return applySecurityHeaders(response);
   };
 }
-
-

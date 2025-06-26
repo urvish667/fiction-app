@@ -13,9 +13,12 @@ interface AdBannerProps {
   type: "banner" | "interstitial" | "sidebar"
   className?: string
   slot?: string // AdSense ad slot ID
+  width?: number
+  height?: number
 }
 
-export default function AdBanner({ type, className = "", slot }: AdBannerProps) {
+
+export default function AdBanner({ type, className = "", slot, width, height }: AdBannerProps) {
   const adRef = useRef<HTMLModElement>(null)
 
   useEffect(() => {
@@ -57,10 +60,13 @@ export default function AdBanner({ type, className = "", slot }: AdBannerProps) 
       <ins
         ref={adRef}
         className="adsbygoogle"
-        style={{ display: 'block' }}
+        style={{
+          display: "inline-block",
+          width: width ?? 720,     // For desktop
+          height: height ?? 90
+        }}
         data-ad-client={process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_ID}
         data-ad-slot={slot}
-        data-ad-format="auto"
         data-full-width-responsive="true"
       />
     </div>
