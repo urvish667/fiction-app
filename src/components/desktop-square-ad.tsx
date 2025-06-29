@@ -19,13 +19,6 @@ export function DesktopSqaureAd() {
 
   return (
     <div className="bg-muted/30 border border-dashed border-muted-foreground/20 rounded flex items-center justify-center">
-      {/* "Why ads" button */}
-      <a
-        href="/about#faq"
-        className="absolute top-1 right-2 text-xs text-muted-foreground underline hover:text-primary transition"
-      >
-        why ads?
-      </a>
       <div className="w-full flex justify-center items-start gap-8 py-4">
         <AdBanner type="interstitial" className="w-[300px] h-[250px]" slot="6596765108" />
         <AdBanner type="interstitial" className="w-[300px] h-[250px]" slot="6596765108" />

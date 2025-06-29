@@ -234,6 +234,9 @@ export default function PrivacyPolicyPage() {
                     <p className="mb-4">
                       You can instruct your browser to refuse all cookies or to indicate when a cookie is being sent. However, if you do not accept cookies, you may not be able to use some portions of our service.
                     </p>
+                    <div className="mt-4">
+                      <span id="ezoic-privacy-policy-embed"></span>
+                    </div>
                   </section>
                   
                   <Separator />

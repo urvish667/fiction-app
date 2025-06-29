@@ -12,15 +12,14 @@ import type { NextRequest } from 'next/server';
  * Security header configuration
  */
 export const securityHeaders = {
-  // Content Security Policy - Comprehensive Google AdSense Support
   'Content-Security-Policy':
     "default-src 'self'; " +
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://connect.facebook.net https://www.googletagmanager.com https://js.stripe.com https://www.paypal.com https://www.paypalobjects.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://securepubads.g.doubleclick.net https://*.adtrafficquality.google https://*.googlesyndication.com https://*.googleadservices.com https://*.doubleclick.net https://fundingchoicesmessages.google.com;" +
-    "fenced-frame-src 'self' blob: data: https://*.googlesyndication.com https://*.doubleclick.net https://fundingchoicesmessages.google.com https://googleads.g.doubleclick.net https://*.google.com;" + // Added https://*.google.com
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://connect.facebook.net https://www.googletagmanager.com https://js.stripe.com https://www.paypal.com https://www.paypalobjects.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://securepubads.g.doubleclick.net https://*.adtrafficquality.google https://*.googlesyndication.com https://*.googleadservices.com https://*.doubleclick.net https://fundingchoicesmessages.google.com https://go.ezoic.net https://g.ezoic.net https://go.ezodn.com https://www.ezojs.com https://cmp.gatekeeperconsent.com https://the.gatekeeperconsent.com https://secure.quantserve.com https://rules.quantcount.com;" +
+    "fenced-frame-src 'self' blob: data: https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com https://*.googleadservices.com https://*.ezoic.net https://*.ezodn.com https://*.ezojs.com https://*.gatekeeperconsent.com https://*.adtrafficquality.google https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://ad.doubleclick.net https://adservice.google.com https://securepubads.g.doubleclick.net https://tpc.googlesyndication.com;" +
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
-    "img-src 'self' data: https: blob:; " +
+    "img-src 'self' data: https: blob: https://go.ezoic.net https://g.ezoic.net https://go.ezodn.com https://pixel.quantcount.com;" +
     "font-src 'self' https://fonts.gstatic.com; " +
-    "connect-src 'self' ws: wss: https://apis.google.com https://www.googleapis.com https://securetoken.googleapis.com https://api.stripe.com https://api.paypal.com https://www.sandbox.paypal.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://securepubads.g.doubleclick.net https://*.google.com https://*.googlesyndication.com https://*.googleadservices.com https://*.adtrafficquality.google https://*.doubleclick.net; " +
+    "connect-src 'self' ws: wss: https://apis.google.com https://www.googleapis.com https://securetoken.googleapis.com https://api.stripe.com https://api.paypal.com https://www.sandbox.paypal.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://securepubads.g.doubleclick.net https://*.google.com https://*.googlesyndication.com https://*.googleadservices.com https://*.adtrafficquality.google https://*.doubleclick.net https://go.ezoic.net https://g.ezoic.net https://go.ezodn.com https://www.ezojs.com https://cmp.gatekeeperconsent.com https://the.gatekeeperconsent.com https://pixel.quantcount.com https://pixel.quantserve.com;" +
     "frame-src 'self' https://www.youtube.com https://www.facebook.com https://connect.facebook.net https://checkout.stripe.com https://js.stripe.com https://www.paypal.com https://www.sandbox.paypal.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://securepubads.g.doubleclick.net https://*.googlesyndication.com https://*.doubleclick.net https://*.adtrafficquality.google https://www.google.com;" +
     "object-src 'none';",
 
@@ -56,7 +55,7 @@ export function applySecurityHeaders(response: NextResponse): NextResponse {
 
 /**
  * Middleware to apply security headers to all responses
- * @param request The incoming request
+ * @param handler The incoming request
  * @returns The response with security headers
  */
 export function withSecurityHeaders(
