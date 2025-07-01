@@ -7,6 +7,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Check } from "lucide-react"
+import { PayPalIcon, StripeIcon } from '@/components/icons/payment-icons';
 
 // Donation Settings Types
 interface DonationSettingsData {
@@ -89,6 +90,7 @@ const MonetizationSettings: React.FC<MonetizationSettingsProps> = ({
                 >
                   <Label htmlFor="paypal" className="flex items-center space-x-3 p-4 border rounded-md cursor-pointer hover:bg-muted/50 transition-colors">
                     <RadioGroupItem value="PAYPAL" id="paypal" />
+                    <PayPalIcon className="w-6 h-6" />
                     <div className="space-y-1">
                       <span className="font-medium">PayPal</span>
                       <p className="text-sm text-muted-foreground">Receive payments directly to your PayPal account</p>
@@ -96,6 +98,7 @@ const MonetizationSettings: React.FC<MonetizationSettingsProps> = ({
                   </Label>
                   <Label htmlFor="stripe" className={`flex items-center space-x-3 p-4 border rounded-md transition-colors ${!process.env.NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-muted/50'}`}>
                     <RadioGroupItem value="STRIPE" id="stripe" disabled={!process.env.NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID} />
+                    <StripeIcon className="w-6 h-6" />
                     <div className="space-y-1">
                       <span className="font-medium">Stripe</span>
                       <p className="text-sm text-muted-foreground">Receive payments directly to your bank account</p>
