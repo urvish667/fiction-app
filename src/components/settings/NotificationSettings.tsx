@@ -76,16 +76,16 @@ const NotificationSettings: React.FC<NotificationSettingsProps> = ({
 
     // Use a timeout to debounce frequent session changes
     const timeoutId = setTimeout(() => {
-      if (session?.user?.preferences?.emailNotifications) {
+      if ((session?.user as any).preferences?.emailNotifications) {
         setLocalPreferences({
           ...defaultPreferences.emailNotifications,
-          ...session.user.preferences.emailNotifications
+          ...(session?.user as any).preferences.emailNotifications
         });
       }
     }, 50); // Small delay to batch updates
 
     return () => clearTimeout(timeoutId);
-  }, [session?.user?.preferences]);
+  }, [session]);
 
   // Helper function to get preference value safely - memoized
   // Not used since notifications are disabled, but kept for future implementation
@@ -96,14 +96,14 @@ const NotificationSettings: React.FC<NotificationSettingsProps> = ({
     }
 
     // Then check session data
-    if (session?.user?.preferences?.emailNotifications &&
-        typeof session.user.preferences.emailNotifications[key] === 'boolean') {
-      return session.user.preferences.emailNotifications[key];
+    if ((session?.user as any).preferences?.emailNotifications &&
+        typeof (session?.user as any).preferences.emailNotifications[key] === 'boolean') {
+      return (session?.user as any).preferences.emailNotifications[key];
     }
 
     // Finally fall back to defaults
     return defaultPreferences.emailNotifications[key];
-  }, [localPreferences, session?.user?.preferences?.emailNotifications]);
+  }, [localPreferences, session]);
 
   // Not used since marketing emails are disabled, but kept for future implementation
   const [_localMarketingOptIn, _setLocalMarketingOptIn] = useState(false);

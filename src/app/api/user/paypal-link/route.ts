@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { prisma } from '@/lib/auth/db-adapter';
+import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 
 /**
@@ -55,7 +55,7 @@ export async function GET(req: Request) {
       }, { status: 400 });
     }
 
-    if (user.donationMethod !== 'paypal' || !user.donationLink) {
+    if (user.donationMethod !== 'PAYPAL' || !user.donationLink) {
       return NextResponse.json({
         error: 'PayPal Not Configured',
         message: 'This user has not configured PayPal'

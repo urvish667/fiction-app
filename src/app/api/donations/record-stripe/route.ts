@@ -21,12 +21,6 @@ const recordStripeSchema = z.object({
  * matching the robustness of the PayPal flow
  */
 export async function POST(req: Request) {
-  // Stripe is temporarily disabled
-  return NextResponse.json({
-    error: 'Stripe Disabled',
-    message: 'Stripe payments are temporarily disabled'
-  }, { status: 503 });
-
   try {
     // 1. Authenticate user
     const session = await getServerSession(authOptions);

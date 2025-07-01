@@ -1,39 +1,45 @@
-import "next-auth"
-import { User as PrismaUser } from "@prisma/client"
-import { UserPreferences } from "./user"
+import type { UserPreferences } from "./user";
 
 declare module "next-auth" {
-  interface User extends Omit<PrismaUser, "preferences"> {
-    preferences?: UserPreferences
+  /**
+   * Returned by `useSession`, `getSession` and received as a prop on the `SessionProvider` React Context
+   */
+  interface Session {
+    user?: {
+      id: string;
+      name?: string | null;
+      email?: string | null;
+      image?: string | null;
+      username?: string | null;
+      isProfileComplete?: boolean;
+      unreadNotifications: number;
+      preferences?: UserPreferences;
+    } & {
+      id: string;
+    };
   }
 
-  interface Session {
-    user: {
-      id: string
-      name?: string | null
-      email?: string | null
-      image?: string | null
-      bannerImage?: string | null
-      username?: string | null
-      isProfileComplete?: boolean
-      unreadNotifications: number
-      preferences?: UserPreferences
-      marketingOptIn?: boolean
-      provider?: string
-    }
-    expires: string
+  interface User {
+    username?: string | null;
+    isProfileComplete?: boolean;
+    preferences?: UserPreferences;
+    needsProfileCompletion?: boolean;
   }
 }
 
 declare module "next-auth/jwt" {
+  /** Returned by the `jwt` callback and `getToken`, when using JWT sessions */
   interface JWT {
-    id: string
-    username?: string | null
-    isProfileComplete?: boolean
-    unreadNotifications: number
-    preferences?: UserPreferences
-    marketingOptIn?: boolean
-    provider?: string
-    bannerImage?: string | null
+    /** OpenID ID Token */
+    id?: string;
+    username?: string | null;
+    isProfileComplete?: boolean;
+    preferences?: UserPreferences;
+    lastUpdated?: number;
+    needsProfileCompletion?: boolean;
+    bannerImage?: string | null;
+    provider?: string;
+    marketingOptIn?: boolean;
+    unreadNotifications?: number;
   }
 }

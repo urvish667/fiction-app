@@ -70,16 +70,16 @@ export async function POST(req: Request) {
     }
 
     // 6. Return appropriate response based on payment processor
-    if (paymentResponse.processorType === 'stripe') {
+    if (paymentResponse.processorType === 'STRIPE') {
       return NextResponse.json({
-        processorType: 'stripe',
+        processorType: 'STRIPE',
         clientSecret: paymentResponse.clientSecret,
         donationId: paymentResponse.donationId,
         status: 'success'
       });
-    } else if (paymentResponse.processorType === 'paypal') {
+    } else if (paymentResponse.processorType === 'PAYPAL') {
       return NextResponse.json({
-        processorType: 'paypal',
+        processorType: 'PAYPAL',
         donationId: paymentResponse.donationId,
         status: 'success'
       });

@@ -9,34 +9,7 @@ const PAYPAL_API_BASE = process.env.NODE_ENV === 'production'
   : 'https://api-m.sandbox.paypal.com';
 
 // Get PayPal access token
-async function getPayPalAccessToken(): Promise<string> {
-  const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
-  const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
-
-  if (!clientId || !clientSecret) {
-    throw new Error('PayPal credentials are not configured');
-  }
-
-  const auth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
-
-  const response = await fetch(`${PAYPAL_API_BASE}/v1/oauth2/token`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Authorization': `Basic ${auth}`,
-    },
-    body: 'grant_type=client_credentials',
-  });
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    logger.error('Failed to get PayPal access token:', data);
-    throw new Error('Failed to authenticate with PayPal');
-  }
-
-  return data.access_token;
-}
+import { getPayPalAccessToken } from '@/lib/paypal';
 
 // Verify PayPal order
 async function verifyPayPalOrder(orderId: string, accessToken: string) {

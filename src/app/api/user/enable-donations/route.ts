@@ -4,22 +4,19 @@ import { z } from 'zod';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/auth/db-adapter';
 
-// Define the expected request body schema using Zod
+// Validate the input
 const enableDonationsSchema = z.object({
-  method: z.literal('paypal'), // For now, only handling PayPal
-  link: z.string().min(1, { message: 'PayPal link cannot be empty' })
-    .refine(val => {
-      // Valid formats:
-      // 1. PayPal.me link (with or without https://)
-      // 2. PayPal.me username
-      // 3. PayPal email address
-      return (
-        val.includes('paypal.me/') || // Full PayPal.me link
-        /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val) || // Email address
-        /^[\w-]+$/.test(val) // Just a username
-      );
-    }, { message: 'Please enter a valid PayPal.me link, username, or PayPal email address' }),
+  method: z.union([z.literal('PAYPAL'), z.literal('STRIPE')]),
+  link: z.string().optional(),
 });
+
+const isValidPaypalLink = (link: string) => {
+  return (
+    link.includes('paypal.me/') ||                          // Full PayPal.me link
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(link) ||              // Email address
+    /^[\w-]+$/.test(link)                                   // Just a username
+  );
+};
 
 export async function POST(req: Request) {
   try {
@@ -37,38 +34,41 @@ export async function POST(req: Request) {
     }
 
     const { method, link } = validation.data;
-
-    // Format the PayPal link correctly
     let formattedLink = link;
 
-    // If it's a PayPal.me link, ensure it's stored in a consistent format
-    // We'll store it without the https:// prefix to keep it simple
-    if (formattedLink.includes('paypal.me/')) {
-      // Extract the username from the PayPal.me link
-      const match = formattedLink.match(/paypal\.me\/([\w-]+)/);
-      if (match && match[1]) {
-        formattedLink = match[1];
+    if (method === 'PAYPAL') {
+      if (!link || !isValidPaypalLink(link)) {
+        return NextResponse.json({
+          error: "Please enter a valid PayPal.me link, username, or email address"
+        }, { status: 400 });
+      }
+
+      // Normalize PayPal link to username if it's a full link
+      if (link.includes('paypal.me/')) {
+        const match = link.match(/paypal\.me\/([\w-]+)/);
+        if (match && match[1]) {
+          formattedLink = match[1];
+        }
       }
     }
 
-    // Update user in the database
     await prisma.user.update({
       where: { id: session.user.id },
       data: {
         donationsEnabled: true,
         donationMethod: method,
-        donationLink: formattedLink,
-        updatedAt: new Date(), // Explicitly update updatedAt
+        donationLink: formattedLink ?? null,
+        updatedAt: new Date(),
       },
     });
 
     return NextResponse.json({ message: 'Donations enabled successfully.' }, { status: 200 });
 
   } catch (error) {
-    // Handle potential Prisma errors or other issues
     if (error instanceof z.ZodError) {
       return NextResponse.json({ errors: error.errors }, { status: 400 });
     }
+
     return NextResponse.json(
       { error: "An error occurred while enabling donations" },
       { status: 500 }

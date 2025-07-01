@@ -134,7 +134,7 @@ export async function GET(
         username: story.author.username,
         image: story.author.image,
         donationsEnabled: story.author.donationsEnabled,
-        donationMethod: story.author.donationMethod as 'paypal' | 'stripe' | null,
+        donationMethod: story.author.donationMethod as 'PAYPAL' | 'STRIPE' | null,
         donationLink: story.author.donationLink,
       } : undefined,
 

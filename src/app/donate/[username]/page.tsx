@@ -36,7 +36,7 @@ interface Writer {
   followers: number
   following: number
   donationsEnabled?: boolean | null
-  donationMethod: 'stripe' | 'paypal' | null
+  donationMethod: 'STRIPE' | 'PAYPAL' | null
   donationLink?: string | null
 }
 
@@ -198,13 +198,13 @@ export default function DonatePage() {
       }
 
       // 4. Handle response based on payment processor type
-      if (data.processorType === 'stripe' && data.clientSecret) {
-        // Handle Stripe payment
+      if (data.processorType === 'STRIPE' && data.clientSecret) {
+        // Handle STRIPE payment
         setClientSecret(data.clientSecret)
       } else if (data.processorType === 'paypal') {
-        // For PayPal, we'll use the UnifiedPaymentForm component
-        // which will render the PayPalPaymentForm
-        setClientSecret('paypal') // This is a hack to trigger the UnifiedPaymentForm
+        // For PAYPAL, we'll use the UnifiedPaymentForm component
+        // which will render the PAYPALPaymentForm
+        setClientSecret(null) // No client secret for PayPal, but we trigger the form
       } else {
         throw new Error('Invalid payment response')
       }
@@ -404,8 +404,10 @@ export default function DonatePage() {
                   />
                 </div>
 
-                {clientSecret ? (
+                {isProcessing ? (
                   <UnifiedPaymentForm
+                    paymentMethod={writer.donationMethod!}
+                    clientSecret={clientSecret}
                     recipientId={writer.id}
                     amount={donationAmount === "custom" ? Math.round(Number.parseFloat(customAmount) * 100) : Math.round(Number.parseFloat(donationAmount) * 100)}
                     message={message}
@@ -443,4 +445,3 @@ export default function DonatePage() {
     </div>
   )
 }
-

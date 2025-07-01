@@ -31,9 +31,6 @@ async function getStoryTitle(storyId: string): Promise<string | undefined> {
 }
 
 export async function POST(req: Request) {
-  // Stripe is temporarily disabled
-  return new NextResponse('Stripe webhooks are temporarily disabled', { status: 503 });
-
   try {
     const body = await req.text();
     const signature = req.headers.get('stripe-signature');
@@ -58,30 +55,49 @@ export async function POST(req: Request) {
       case 'payment_intent.succeeded': {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
 
-        // Update donation status in our database
-        await prisma.donation.update({
+        // Check if a donation record already exists
+        let donation = await prisma.donation.findUnique({
           where: { stripePaymentIntentId: paymentIntent.id },
-          data: {
-            status: 'succeeded',
-            updatedAt: new Date(),
+          include: {
+            donor: { select: { id: true, username: true, name: true } },
+            recipient: { select: { id: true, username: true, name: true } },
+            story: { select: { id: true, title: true, slug: true } },
           },
         });
 
-        // Create a notification for the recipient (backup notification creation)
-        const donation = await prisma.donation.findUnique({
-          where: { stripePaymentIntentId: paymentIntent.id },
-          include: {
-            donor: {
-              select: { id: true, username: true, name: true }
+        // If no donation record exists, create one
+        if (!donation) {
+          const { donorId, recipientId, message, storyId } = paymentIntent.metadata;
+          const storyTitle = storyId ? await getStoryTitle(storyId) : undefined;
+
+          donation = await prisma.donation.create({
+            data: {
+              donorId,
+              recipientId,
+              amount: paymentIntent.amount,
+              message,
+              storyId,
+              stripePaymentIntentId: paymentIntent.id,
+              status: 'succeeded',
             },
-            recipient: {
-              select: { id: true, username: true, name: true }
+            include: {
+              donor: { select: { id: true, username: true, name: true } },
+              recipient: { select: { id: true, username: true, name: true } },
+              story: { select: { id: true, title: true, slug: true } },
             },
-            story: {
-              select: { id: true, title: true, slug: true }
-            }
-          },
-        });
+          });
+        } else {
+          // If donation already exists, update its status
+          donation = await prisma.donation.update({
+            where: { id: donation.id },
+            data: { status: 'succeeded', updatedAt: new Date() },
+            include: {
+              donor: { select: { id: true, username: true, name: true } },
+              recipient: { select: { id: true, username: true, name: true } },
+              story: { select: { id: true, title: true, slug: true } },
+            },
+          });
+        }
 
         if (donation) {
           try {

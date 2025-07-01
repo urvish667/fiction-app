@@ -7,6 +7,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum PayoutProvider {
+  PAYPAL
+  STRIPE
+}
+
 model Account {
   id                 String  @id @default(cuid())
   userId             String
@@ -64,8 +69,8 @@ model User {
   updatedAt           DateTime          @updatedAt
   lastLogin           DateTime?
   preferences         Json?             @default("{\"privacySettings\": {\"showEmail\": false, \"showLocation\": false, \"allowMessages\": false, \"publicProfile\": false}, \"emailNotifications\": {\"newLike\": false, \"newChapter\": false, \"newComment\": false, \"newFollower\": false}}")
-  donationLink        String?
-  donationMethod      String?
+  donationLink        String? // Will store Stripe Account ID or PayPal Merchant ID
+  donationMethod      PayoutProvider? // Will store 'STRIPE' or 'PAYPAL'
   donationsEnabled    Boolean           @default(false)
   country             String?           @default("US")
   accounts            Account[]

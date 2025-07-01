@@ -261,7 +261,6 @@ export function PayPalPaymentForm({
 
         // Add a small delay before calling onSuccess to ensure the user sees the toast
         setTimeout(() => {
-
           onSuccess();
         }, 1500);
       } else {

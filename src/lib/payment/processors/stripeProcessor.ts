@@ -26,7 +26,7 @@ export class StripePaymentProcessor implements PaymentProcessor {
       if (!this.validatePaymentSetup(recipient)) {
         return {
           success: false,
-          processorType: 'stripe',
+          processorType: 'STRIPE',
           donationId: '',
           error: 'Stripe not properly configured for this recipient',
           errorCode: 'STRIPE_NOT_CONFIGURED'
@@ -40,7 +40,7 @@ export class StripePaymentProcessor implements PaymentProcessor {
       if (!stripeAccountId) {
         return {
           success: false,
-          processorType: 'stripe',
+          processorType: 'STRIPE',
           donationId: '',
           error: 'Stripe account ID is missing',
           errorCode: 'STRIPE_ACCOUNT_MISSING'
@@ -81,7 +81,7 @@ export class StripePaymentProcessor implements PaymentProcessor {
       // Return successful response
       return {
         success: true,
-        processorType: 'stripe',
+        processorType: 'STRIPE',
         donationId: '',
         clientSecret: paymentIntent.client_secret || undefined,
       };
@@ -101,7 +101,7 @@ export class StripePaymentProcessor implements PaymentProcessor {
 
         return {
           success: false,
-          processorType: 'stripe',
+          processorType: 'STRIPE',
           donationId: '',
           error: errorMessage,
           errorCode: error.code || 'STRIPE_ERROR'
@@ -111,7 +111,7 @@ export class StripePaymentProcessor implements PaymentProcessor {
       // Handle generic errors
       return {
         success: false,
-        processorType: 'stripe',
+        processorType: 'STRIPE',
         donationId: '',
         error: error instanceof Error ? error.message : 'An unexpected error occurred',
         errorCode: 'PAYMENT_PROCESSING_ERROR'
@@ -124,7 +124,7 @@ export class StripePaymentProcessor implements PaymentProcessor {
    */
   validatePaymentSetup(recipient: PaymentRecipient): boolean {
     return (
-      recipient.donationMethod === 'stripe' &&
+      recipient.donationMethod === 'STRIPE' &&
       !!recipient.donationLink &&
       recipient.donationsEnabled
     );

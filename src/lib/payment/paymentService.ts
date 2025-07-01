@@ -52,14 +52,17 @@ export class PaymentService {
       // 4. Process payment based on recipient's preferred method
       let paymentResponse: PaymentResponse;
 
-      if (recipient.donationMethod === 'stripe') {
-        // Stripe is temporarily disabled
-        return this.createErrorResponse('Stripe payments are temporarily disabled. Please contact the creator for alternative payment methods.', 'STRIPE_DISABLED');
-      } else if (recipient.donationMethod === 'paypal') {
+      if (recipient.donationMethod === 'STRIPE') {
+        if (!this.stripeProcessor.validatePaymentSetup(recipient)) {
+          return this.createErrorResponse('Stripe not properly configured for this recipient', 'STRIPE_NOT_CONFIGURED');
+        }
+        paymentResponse = await this.stripeProcessor.processPayment(request, recipient);
+      } else if (recipient.donationMethod === 'PAYPAL') {
         if (!this.paypalProcessor.validatePaymentSetup(recipient)) {
           return this.createErrorResponse('PayPal not properly configured for this recipient', 'PAYPAL_NOT_CONFIGURED');
         }
         paymentResponse = await this.paypalProcessor.processPayment(request, recipient);
+        paymentResponse.processorType = 'PAYPAL';
       } else {
         return this.createErrorResponse('Invalid payment method', 'INVALID_PAYMENT_METHOD');
       }
@@ -128,7 +131,7 @@ export class PaymentService {
       updatedAt: new Date() // Always update the timestamp
     };
 
-    if (response.processorType === 'stripe' && response.clientSecret) {
+    if (response.processorType === 'STRIPE' && response.clientSecret) {
       // Extract payment intent ID from client secret
       const paymentIntentId = response.clientSecret.split('_secret')[0];
       updateData.stripePaymentIntentId = paymentIntentId;
@@ -150,7 +153,7 @@ export class PaymentService {
   private createErrorResponse(message: string, code?: string): PaymentResponse {
     return {
       success: false,
-      processorType: 'stripe', // Default, will be ignored
+      processorType: 'STRIPE', // Default, will be ignored
       donationId: '', // Will be filled in by the caller
       error: message,
       errorCode: code

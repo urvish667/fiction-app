@@ -16,9 +16,6 @@ import { useRouter } from 'next/navigation';
 import { fetchWithCsrf } from "@/lib/client/csrf";
 import { logError } from "@/lib/error-logger"
 
-// UI Imports needed for the main settings page
-import { Button } from '@/components/ui/button';
-
 // Import the new settings components
 import ProfileSettings from "@/components/settings/ProfileSettings"
 import AccountSettings from "@/components/settings/AccountSettings"
@@ -41,9 +38,6 @@ const settingsFormSchema = z.object({
     instagram: z.union([z.literal(''), z.string().url("Please enter a valid URL")]).optional().nullable(),
     facebook: z.union([z.literal(''), z.string().url("Please enter a valid URL")]).optional().nullable(),
   }).optional().nullable(),
-  // Keep language and theme here if they might be used elsewhere in SettingsPage or are global settings
-  // language: z.enum(["en", "es", "fr", "de", "it", "pt", "ru", "zh", "ja", "ko"]).optional().default("en"),
-  // theme: z.enum(["light", "dark", "system"]).optional().default("system"),
 })
 
 type SettingsFormValues = z.infer<typeof settingsFormSchema>
@@ -51,7 +45,7 @@ type SettingsFormValues = z.infer<typeof settingsFormSchema>
 // --- Donation Settings Types (Copied from donations/page.tsx) ---
 interface DonationSettingsData {
   donationsEnabled: boolean;
-  donationMethod: 'paypal' | 'stripe' | null;
+  donationMethod: 'PAYPAL' | 'STRIPE' | null;
   donationLink: string | null;
 }
 // --- End Donation Settings Types ---
@@ -71,7 +65,7 @@ function TabParamsHandler({
   router: any;
   setActiveTab: (tab: string) => void;
   setEnableDonations: (enabled: boolean) => void;
-  setDonationMethod: (method: 'paypal' | 'stripe' | null) => void;
+  setDonationMethod: (method: 'PAYPAL' | 'STRIPE' | null) => void;
   donationSettings: DonationSettingsData | null;
 }) {
   const searchParams = useSearchParams();
@@ -91,7 +85,7 @@ function TabParamsHandler({
       });
       // Update state and clear query params
       setEnableDonations(true);
-      setDonationMethod('stripe');
+      setDonationMethod('STRIPE');
       router.replace('/settings?tab=monetization', { scroll: false });
     }
 
@@ -139,8 +133,9 @@ export default function SettingsPage() {
   const [isSavingDonations, setIsSavingDonations] = useState(false);
   const [donationError, setDonationError] = useState<string | null>(null);
   const [enableDonations, setEnableDonations] = useState(false);
-  const [donationMethod, setDonationMethod] = useState<'paypal' | 'stripe' | null>(null);
+  const [donationMethod, setDonationMethod] = useState<'PAYPAL' | 'STRIPE' | null>(null);
   const [paypalLink, setPaypalLink] = useState('');
+  const isStripeConnected = donationSettings?.donationMethod === 'STRIPE' && !!donationSettings?.donationLink;
   // --- End Donation Settings State ---
 
   const form = useForm<SettingsFormValues>({
@@ -233,7 +228,7 @@ export default function SettingsPage() {
           // Initialize donation form state
           setEnableDonations(data.donationsEnabled);
           setDonationMethod(data.donationMethod);
-          setPaypalLink(data.donationMethod === 'paypal' && data.donationLink ? data.donationLink : '');
+          setPaypalLink(data.donationMethod === 'PAYPAL' && data.donationLink ? data.donationLink : '');
 
         } catch (err) {
           const errorMsg = err instanceof Error ? err.message : 'An unknown error occurred';
@@ -630,21 +625,15 @@ export default function SettingsPage() {
       setDonationMethod(null);
       setPaypalLink('');
     } else {
-      if (!donationMethod) setDonationMethod('paypal'); // Default to paypal if enabling
+      if (!donationMethod) setDonationMethod('PAYPAL'); // Default to paypal if enabling
     }
   };
 
   const handleDonationMethodChange = (value: string) => {
-    setDonationMethod(value as 'paypal' | 'stripe');
+    setDonationMethod(value as 'PAYPAL' | 'STRIPE');
   };
 
   const handleConnectStripe = async () => {
-    // Stripe is temporarily disabled
-    setDonationError('Stripe is temporarily disabled.');
-    toast({ title: 'Stripe Disabled', description: 'Stripe payments are temporarily disabled. Please use PayPal instead.', variant: 'destructive' });
-    setIsSavingDonations(false);
-    return;
-
     setIsSavingDonations(true);
     const clientId = process.env.NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID;
     const redirectUri = `${window.location.origin}/api/stripe/oauth/callback`;
@@ -674,11 +663,11 @@ export default function SettingsPage() {
     } catch (error) {
       logError(error, { context: 'Error initiating Stripe Connect flow' });
       setDonationError('Failed to initiate Stripe Connect flow');
-      // toast({
-      //   title: 'Error',
-      //   description: error instanceof Error ? error.message : 'Failed to initiate Stripe Connect flow',
-      //   variant: 'destructive'
-      // });
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to initiate Stripe Connect flow',
+        variant: 'destructive'
+      });
       setIsSavingDonations(false);
     }
   };
@@ -691,15 +680,19 @@ export default function SettingsPage() {
       if (!enableDonations) {
         response = await fetchWithCsrf('/api/user/disable-donations', { method: 'POST' });
       } else {
-        if (donationMethod === 'paypal') {
+        if (donationMethod === 'PAYPAL') {
           response = await fetchWithCsrf('/api/user/enable-donations', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ method: 'paypal', link: paypalLink }),
+            body: JSON.stringify({ method: 'PAYPAL', link: paypalLink }),
           });
-        } else if (donationMethod === 'stripe') {
-          // Stripe is temporarily disabled
-          throw new Error('Stripe payments are temporarily disabled. Please use PayPal instead.');
+        } else if (donationMethod === 'STRIPE') {
+          // Stripe connection is handled via the button, so we just need to enable it.
+          response = await fetchWithCsrf('/api/user/enable-donations', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ method: 'STRIPE' }),
+          });
         } else {
           throw new Error('Please select a valid donation method.');
         }
@@ -724,16 +717,14 @@ export default function SettingsPage() {
       // Update local state to match saved state
       let finalDonationLink: string | null = null;
       if (enableDonations) {
-        if (donationMethod === 'paypal') {
+        if (donationMethod === 'PAYPAL') {
           finalDonationLink = paypalLink;
-        } else if (donationMethod === 'stripe') {
+        } else if (donationMethod === 'STRIPE') {
           // Keep existing Stripe link if available, otherwise null
           finalDonationLink = donationSettings?.donationLink ?? null;
         }
         // If method is null (shouldn't happen if enabled), link remains null
       }
-      // If !enableDonations, link remains null
-
       setDonationSettings({
         donationsEnabled: enableDonations,
         donationMethod: enableDonations ? donationMethod : null,
@@ -837,13 +828,13 @@ export default function SettingsPage() {
                 enableDonations={enableDonations}
                 donationMethod={donationMethod}
                 paypalLink={paypalLink}
+                setPaypalLink={setPaypalLink}
                 handleEnableDonationToggle={handleEnableDonationToggle}
                 handleDonationMethodChange={handleDonationMethodChange}
-                // handleConnectStripe={handleConnectStripe}
+                handleConnectStripe={handleConnectStripe}
                 handleSaveDonationChanges={handleSaveDonationChanges}
                 setIsSavingDonations={setIsSavingDonations}
                 setDonationError={setDonationError}
-                setPaypalLink={setPaypalLink}
               />
             </TabsContent>
           </motion.div>
@@ -852,4 +843,3 @@ export default function SettingsPage() {
     </div>
   )
 }
-

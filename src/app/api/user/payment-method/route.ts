@@ -56,7 +56,7 @@ export async function GET(req: Request) {
 
     // 4. Return the user's payment method
     return NextResponse.json({
-      paymentMethod: user.donationMethod || 'stripe', // Default to Stripe if not set
+      paymentMethod: user.donationMethod || 'STRIPE', // Default to Stripe if not set
       donationsEnabled: user.donationsEnabled,
     });
 

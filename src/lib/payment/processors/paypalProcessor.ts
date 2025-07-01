@@ -20,7 +20,7 @@ export class PayPalPaymentProcessor implements PaymentProcessor {
       if (!this.validatePaymentSetup(recipient)) {
         return {
           success: false,
-          processorType: 'paypal',
+          processorType: 'PAYPAL',
           donationId: '',
           error: 'PayPal not properly configured for this recipient',
           errorCode: 'PAYPAL_NOT_CONFIGURED'
@@ -37,8 +37,9 @@ export class PayPalPaymentProcessor implements PaymentProcessor {
       // The actual PayPal order creation will happen in the PayPalPaymentForm component
       return {
         success: true,
-        processorType: 'paypal',
+        processorType: 'PAYPAL',
         donationId: '',
+        // recipientPayPalId: recipient.donationLink, // Pass the merchant ID to the frontend
       };
     } catch (error) {
       logger.error('PayPal payment processing error:', error);
@@ -46,7 +47,7 @@ export class PayPalPaymentProcessor implements PaymentProcessor {
       // Handle generic errors
       return {
         success: false,
-        processorType: 'paypal',
+        processorType: 'PAYPAL',
         donationId: '',
         error: error instanceof Error ? error.message : 'An unexpected error occurred',
         errorCode: 'PAYMENT_PROCESSING_ERROR'
@@ -59,7 +60,7 @@ export class PayPalPaymentProcessor implements PaymentProcessor {
    */
   validatePaymentSetup(recipient: PaymentRecipient): boolean {
     return (
-      recipient.donationMethod === 'paypal' &&
+      recipient.donationMethod === 'PAYPAL' &&
       !!recipient.donationLink &&
       recipient.donationsEnabled
     );

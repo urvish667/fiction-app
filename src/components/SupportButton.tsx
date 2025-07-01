@@ -9,7 +9,7 @@ import { logError } from '@/lib/error-logger';
 
 interface SupportButtonProps {
   authorId: string;
-  donationMethod: 'paypal' | 'stripe' | null;
+  donationMethod: 'PAYPAL' | 'STRIPE' | null;
   donationLink: string | null;
   authorName?: string;
   authorUsername?: string;

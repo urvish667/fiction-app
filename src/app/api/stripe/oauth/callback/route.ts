@@ -5,14 +5,12 @@ import { prisma } from '@/lib/prisma';
 import { getStripeClient } from '@/lib/stripe';
 import { logger } from '@/lib/logger';
 import { cookies } from 'next/headers';
+import { PayoutProvider } from '@prisma/client';
 
 // Get the Stripe client from the singleton
 const stripe = getStripeClient();
 
 export async function GET(req: NextRequest) {
-  // Stripe is temporarily disabled
-  return NextResponse.redirect(new URL('/settings?tab=monetization&error=stripe_disabled', req.url));
-
   const session = await getServerSession(authOptions);
 
   if (!session?.user?.id) {
@@ -60,7 +58,7 @@ export async function GET(req: NextRequest) {
       where: { id: session.user.id },
       data: {
         donationsEnabled: true,
-        donationMethod: 'stripe',
+        donationMethod: PayoutProvider.STRIPE,
         donationLink: stripeAccountId, // Store the Stripe Account ID here
         updatedAt: new Date(),
       },

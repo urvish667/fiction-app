@@ -36,6 +36,6 @@ export interface UserSummary {
   image?: string | null;
   // Add donation fields needed for SupportButton
   donationsEnabled?: boolean | null;
-  donationMethod?: 'paypal' | 'stripe' | null;
+  donationMethod?: 'PAYPAL' | 'STRIPE' | null;
   donationLink?: string | null;
 }
