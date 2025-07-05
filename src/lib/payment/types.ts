@@ -24,9 +24,11 @@ export interface PaymentRequest {
 export interface PaymentResponse {
   success: boolean;
   processorType: PaymentMethod;
-  donationId: string;
+  donationId?: string; // Optional, as it's created after the processor runs
   // For Stripe
   clientSecret?: string;
+  // For PayPal
+  paypalOrderId?: string;
   // Error information
   error?: string;
   errorCode?: string;

@@ -81,6 +81,7 @@ export async function POST(req: Request) {
       return NextResponse.json({
         processorType: 'PAYPAL',
         donationId: paymentResponse.donationId,
+        paypalOrderId: paymentResponse.paypalOrderId,
         status: 'success'
       });
     }

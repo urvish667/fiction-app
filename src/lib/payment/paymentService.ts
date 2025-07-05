@@ -5,9 +5,8 @@ import { PayPalPaymentProcessor } from './processors/paypalProcessor';
 import { logger } from '@/lib/logger';
 
 /**
- * Unified Payment Service that orchestrates payment processing
- * regardless of the underlying payment processor
- * Implemented as a singleton for better resource management
+ * Unified Payment Service that orchestrates payment processing.
+ * Implemented as a singleton.
  */
 export class PaymentService {
   private static instance: PaymentService;
@@ -19,9 +18,6 @@ export class PaymentService {
     this.paypalProcessor = new PayPalPaymentProcessor();
   }
 
-  /**
-   * Get the singleton instance of PaymentService
-   */
   public static getInstance(): PaymentService {
     if (!PaymentService.instance) {
       PaymentService.instance = new PaymentService();
@@ -29,54 +25,61 @@ export class PaymentService {
     return PaymentService.instance;
   }
 
-  /**
-   * Process a payment using the appropriate payment processor
-   * based on the recipient's preferences
-   */
   async processPayment(request: PaymentRequest): Promise<PaymentResponse> {
     try {
-      // 1. Validate the request
+      // 1. Validate request and recipient
       if (!request.recipientId || !request.donorId || request.amount <= 0) {
         return this.createErrorResponse('Invalid payment request');
       }
-
-      // 2. Get recipient details
       const recipient = await this.getRecipient(request.recipientId);
       if (!recipient || !recipient.donationsEnabled) {
         return this.createErrorResponse('Recipient not found or donations not enabled', 'RECIPIENT_NOT_FOUND');
       }
 
-      // 3. Create donation record
-      const donation = await this.createDonationRecord(request, recipient.donationMethod);
+      // 2. Select and run the payment processor
+      const processor = recipient.donationMethod === 'STRIPE' ? this.stripeProcessor : this.paypalProcessor;
+      if (!processor.validatePaymentSetup(recipient)) {
+        return this.createErrorResponse(`${recipient.donationMethod} not configured`, `${recipient.donationMethod}_NOT_CONFIGURED`);
+      }
+      const paymentResponse = await processor.processPayment(request, recipient);
 
-      // 4. Process payment based on recipient's preferred method
-      let paymentResponse: PaymentResponse;
-
-      if (recipient.donationMethod === 'STRIPE') {
-        if (!this.stripeProcessor.validatePaymentSetup(recipient)) {
-          return this.createErrorResponse('Stripe not properly configured for this recipient', 'STRIPE_NOT_CONFIGURED');
+      // For PayPal, ensure paypalOrderId is present before creating donation record
+      if (recipient.donationMethod === 'PAYPAL') {
+        if (!paymentResponse.success) {
+          return paymentResponse;
         }
-        paymentResponse = await this.stripeProcessor.processPayment(request, recipient);
-      } else if (recipient.donationMethod === 'PAYPAL') {
-        if (!this.paypalProcessor.validatePaymentSetup(recipient)) {
-          return this.createErrorResponse('PayPal not properly configured for this recipient', 'PAYPAL_NOT_CONFIGURED');
+        if (!paymentResponse.paypalOrderId) {
+          return {
+            success: false,
+            processorType: 'PAYPAL',
+            error: paymentResponse.error || 'PayPal order ID missing from payment processor.',
+            errorCode: paymentResponse.errorCode || 'PAYPAL_ORDER_ID_MISSING',
+          };
         }
-        paymentResponse = await this.paypalProcessor.processPayment(request, recipient);
-        paymentResponse.processorType = 'PAYPAL';
       } else {
-        return this.createErrorResponse('Invalid payment method', 'INVALID_PAYMENT_METHOD');
+        if (!paymentResponse.success) {
+          return paymentResponse;
+        }
       }
 
-      // 5. Update donation record with payment details
+      // 3. Create the donation record with the PayPal Order ID if available
+      const donation = await this.createDonationRecord(
+        request,
+        recipient.donationMethod,
+        paymentResponse.paypalOrderId
+      );
+      
+      // 4. Update the donation record with other details (e.g., Stripe Payment Intent)
       await this.updateDonationRecord(donation.id, paymentResponse);
 
-      // 6. Return response with donation ID
+      // 5. Return the final response with our internal donation ID
       return {
         ...paymentResponse,
-        donationId: donation.id
+        donationId: donation.id,
       };
+
     } catch (error) {
-      logger.error('Payment processing error:', error);
+      logger.error('Payment processing error:', { error });
       return this.createErrorResponse(
         error instanceof Error ? error.message : 'An unexpected error occurred',
         'PAYMENT_PROCESSING_ERROR'
@@ -84,9 +87,6 @@ export class PaymentService {
     }
   }
 
-  /**
-   * Get recipient details from the database
-   */
   private async getRecipient(recipientId: string): Promise<PaymentRecipient | null> {
     return prisma.user.findUnique({
       where: { id: recipientId },
@@ -96,15 +96,16 @@ export class PaymentService {
         email: true,
         donationMethod: true,
         donationLink: true,
-        donationsEnabled: true
-      }
+        donationsEnabled: true,
+      },
     });
   }
 
-  /**
-   * Create a donation record in the database
-   */
-  private async createDonationRecord(request: PaymentRequest, paymentMethod: PaymentMethod | null) {
+  private async createDonationRecord(
+    request: PaymentRequest,
+    paymentMethod: PaymentMethod | null,
+    paypalOrderId?: string
+  ) {
     return prisma.donation.create({
       data: {
         donorId: request.donorId,
@@ -114,27 +115,18 @@ export class PaymentService {
         storyId: request.storyId || null,
         status: 'pending',
         paymentMethod: paymentMethod || undefined,
-      }
+        paypalOrderId: paypalOrderId || null, // Store the PayPal Order ID
+      },
     });
   }
 
-  /**
-   * Update donation record with payment details
-   */
   private async updateDonationRecord(donationId: string, response: PaymentResponse) {
-    // Define a properly typed update data object
-    const updateData: {
-      stripePaymentIntentId?: string;
-      status?: 'failed';
-      updatedAt?: Date;
-    } = {
-      updatedAt: new Date() // Always update the timestamp
+    const updateData: { [key: string]: any } = {
+      updatedAt: new Date(),
     };
 
     if (response.processorType === 'STRIPE' && response.clientSecret) {
-      // Extract payment intent ID from client secret
-      const paymentIntentId = response.clientSecret.split('_secret')[0];
-      updateData.stripePaymentIntentId = paymentIntentId;
+      updateData.stripePaymentIntentId = response.clientSecret.split('_secret')[0];
     }
 
     if (!response.success) {
@@ -143,20 +135,16 @@ export class PaymentService {
 
     await prisma.donation.update({
       where: { id: donationId },
-      data: updateData
+      data: updateData,
     });
   }
 
-  /**
-   * Create an error response
-   */
   private createErrorResponse(message: string, code?: string): PaymentResponse {
     return {
       success: false,
-      processorType: 'STRIPE', // Default, will be ignored
-      donationId: '', // Will be filled in by the caller
+      processorType: 'STRIPE', // Default, not critical for error responses
       error: message,
-      errorCode: code
+      errorCode: code,
     };
   }
 }

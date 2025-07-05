@@ -8,6 +8,7 @@ type PaymentMethod = 'STRIPE' | 'PAYPAL';
 interface UnifiedPaymentFormProps {
   paymentMethod: PaymentMethod;
   clientSecret?: string | null; // Optional: only for Stripe
+  paypalOrderId?: string | null; // Optional: only for PayPal
   recipientId: string;
   amount: number; // in cents
   message?: string;
@@ -25,6 +26,7 @@ interface UnifiedPaymentFormProps {
 export function UnifiedPaymentForm({
   paymentMethod,
   clientSecret,
+  paypalOrderId,
   recipientId,
   amount,
   message,
@@ -55,8 +57,13 @@ export function UnifiedPaymentForm({
   }
 
   if (paymentMethod === 'PAYPAL') {
+    if (!paypalOrderId) {
+      onError(new Error('PayPal Order ID is missing.'));
+      return null;
+    }
     return (
       <PayPalPaymentForm
+        paypalOrderId={paypalOrderId}
         recipientId={recipientId}
         amount={amount}
         message={message}

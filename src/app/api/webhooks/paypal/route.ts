@@ -333,7 +333,7 @@ export async function POST(req: Request) {
         const donation = await prisma.donation.findFirst({
           where: {
             paypalOrderId: sanitizedOrderId,
-            paymentMethod: 'paypal', // Ensure it's a PayPal donation
+            paymentMethod: 'PAYPAL', // Ensure it's a PayPal donation
             status: { in: ['pending', 'succeeded'] } // Process both pending and succeeded donations
           },
           include: {
@@ -490,7 +490,7 @@ export async function POST(req: Request) {
         const donation = await prisma.donation.findFirst({
           where: {
             paypalOrderId: sanitizedOrderId,
-            paymentMethod: 'paypal'
+            paymentMethod: 'PAYPAL'
           }
         });
 

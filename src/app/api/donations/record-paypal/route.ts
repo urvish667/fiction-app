@@ -63,144 +63,82 @@ export async function POST(req: Request) {
       }, { status: 404 });
     }
 
-    // 5. Check if this payment has already been recorded
-    const existingDonation = await prisma.donation.findFirst({
+    // 5. Find the donation by PayPal Order ID and update it.
+    // This prevents creating duplicate records.
+    const donation = await prisma.donation.findFirst({
       where: {
         paypalOrderId: paypalOrderId,
+        // Security check: ensure the donor is the one who initiated it
+        donorId: session.user.id,
       },
     });
 
-    if (existingDonation) {
-      // Update the existing donation record
-      const updatedDonation = await prisma.donation.update({
-        where: { id: existingDonation.id },
-        data: {
-          status: 'succeeded',
-          updatedAt: new Date(),
-        },
-        include: {
-          donor: {
-            select: { id: true, username: true, name: true }
-          },
-          recipient: {
-            select: { id: true, username: true, name: true }
-          },
-          story: {
-            select: { id: true, title: true, slug: true }
-          }
-        }
+    if (!donation) {
+      logger.error('PayPal record: No matching pending donation found for order ID.', {
+        paypalOrderId,
+        donorId: session.user.id,
       });
-
-      // Create notification for updated donation if it doesn't exist
-      try {
-        // Check if notification already exists
-        const existingNotification = await prisma.notification.findFirst({
-          where: {
-            userId: updatedDonation.recipientId,
-            type: 'donation',
-            content: {
-              path: ['donationId'],
-              equals: updatedDonation.id
-            }
-          }
-        });
-
-        if (!existingNotification) {
-          const actorUsername = updatedDonation.donor.username || updatedDonation.donor.name;
-          await createDonationNotification({
-            recipientId: updatedDonation.recipientId,
-            actorId: updatedDonation.donorId,
-            actorUsername: actorUsername || 'Anonymous',
-            donationId: updatedDonation.id,
-            amount: updatedDonation.amount,
-            message: updatedDonation.message || undefined,
-            storyId: updatedDonation.storyId || undefined,
-            storyTitle: updatedDonation.story?.title,
-            storySlug: updatedDonation.story?.slug,
-          });
-
-          logger.info('PayPal donation notification created for updated donation', {
-            donationId: updatedDonation.id,
-            recipientId: updatedDonation.recipientId,
-            donorId: updatedDonation.donorId
-          });
-        }
-      } catch (notificationError) {
-        logger.error('Failed to create notification for updated PayPal donation', {
-          error: notificationError instanceof Error ? notificationError.message : String(notificationError),
-          donationId: updatedDonation.id
-        });
-        // Don't fail the request if notification creation fails
-      }
-
+      // We don't create a new record here because the initial record
+      // should have been created by the PaymentService. If it's missing,
+      // something went wrong earlier in the process.
       return NextResponse.json({
-        success: true,
-        donationId: existingDonation.id,
-        message: 'Payment record updated successfully'
-      });
+        error: 'Not Found',
+        message: 'No matching pending donation found. The transaction may have already been processed or failed to initiate.'
+      }, { status: 404 });
     }
 
-    // 6. Create a new donation record
-    const donation = await prisma.donation.create({
+    // 6. Update the donation status to 'succeeded'
+    const updatedDonation = await prisma.donation.update({
+      where: { id: donation.id },
       data: {
-        donorId: session.user.id,
-        recipientId,
-        amount,
-        message: message || null,
-        storyId: storyId || null,
         status: 'succeeded',
-        paymentMethod: 'paypal',
-        paypalOrderId,
+        updatedAt: new Date(),
       },
       include: {
-        donor: {
-          select: { id: true, username: true, name: true }
-        },
-        recipient: {
-          select: { id: true, username: true, name: true }
-        },
-        story: {
-          select: { id: true, title: true, slug: true }
-        }
-      }
+        donor: { select: { id: true, username: true, name: true } },
+        recipient: { select: { id: true, username: true, name: true } },
+        story: { select: { id: true, title: true, slug: true } },
+      },
     });
 
-    // 7. Create notification for the new donation
+    // 7. Create notification for the donation
     try {
-      const actorUsername = donation.donor.username || donation.donor.name;
-      await createDonationNotification({
-        recipientId: donation.recipientId,
-        actorId: donation.donorId,
-        actorUsername: actorUsername || 'Anonymous',
-        donationId: donation.id,
-        amount: donation.amount,
-        message: donation.message || undefined,
-        storyId: donation.storyId || undefined,
-        storyTitle: donation.story?.title,
-        storySlug: donation.story?.slug,
+      // Check if a notification already exists to prevent duplicates
+      const existingNotification = await prisma.notification.findFirst({
+        where: {
+          userId: updatedDonation.recipientId,
+          type: 'donation',
+          content: { path: ['donationId'], equals: updatedDonation.id },
+        },
       });
 
-      logger.info('PayPal donation notification created for new donation', {
-        donationId: donation.id,
-        recipientId: donation.recipientId,
-        donorId: donation.donorId,
-        amount: donation.amount
-      });
+      if (!existingNotification) {
+        const actorUsername = updatedDonation.donor.username || updatedDonation.donor.name;
+        await createDonationNotification({
+          recipientId: updatedDonation.recipientId,
+          actorId: updatedDonation.donorId,
+          actorUsername: actorUsername || 'Anonymous',
+          donationId: updatedDonation.id,
+          amount: updatedDonation.amount,
+          message: updatedDonation.message || undefined,
+          storyId: updatedDonation.storyId || undefined,
+          storyTitle: updatedDonation.story?.title,
+          storySlug: updatedDonation.story?.slug,
+        });
+        logger.info('PayPal donation notification created', { donationId: updatedDonation.id });
+      }
     } catch (notificationError) {
-      logger.error('Failed to create notification for new PayPal donation', {
+      logger.error('Failed to create notification for PayPal donation', {
         error: notificationError instanceof Error ? notificationError.message : String(notificationError),
-        donationId: donation.id,
-        recipientId: donation.recipientId,
-        donorId: donation.donorId
+        donationId: updatedDonation.id,
       });
-      // Don't fail the request if notification creation fails
     }
 
     // 8. Return success response
     return NextResponse.json({
       success: true,
-      donationId: donation.id,
-      message: 'Payment recorded successfully'
+      donationId: updatedDonation.id,
+      message: 'Payment recorded successfully',
     });
 
   } catch (error) {
