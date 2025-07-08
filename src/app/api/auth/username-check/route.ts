@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
       available: !existingUser,
       error: existingUser ? "Username is already taken" : null,
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { available: false, error: "Error checking username availability" },
       { status: 500 }

@@ -24,7 +24,7 @@ export async function POST() {
 
     return NextResponse.json({ message: 'Donations disabled successfully.' }, { status: 200 });
 
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "An error occurred while disabling donations" },
       { status: 500 }

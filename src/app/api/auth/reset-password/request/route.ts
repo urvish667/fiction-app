@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     await sendPasswordResetEmail(email, token);
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "An error occurred while sending reset email" },
       { status: 500 }

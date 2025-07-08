@@ -7,6 +7,7 @@ import { logger } from "@/lib/logger";
 import { withCsrfProtection } from "@/lib/security/csrf";
 import { sanitizeText } from "@/lib/security/input-validation";
 import { requireCompleteProfile } from "@/lib/auth/auth-utils";
+import { Prisma } from "@prisma/client";
 
 // Validation schema for creating a comment
 const createCommentSchema = z.object({
@@ -38,7 +39,7 @@ export async function GET(
     const skip = (page - 1) * limit;
 
     // Build filter conditions
-    const where: any = {
+    const where: Prisma.CommentWhereInput = {
       storyId,
       chapterId,
       parentId: parentId === "null" ? null : parentId,
@@ -225,7 +226,7 @@ export const POST = withCsrfProtection(async (request: NextRequest) => {
     };
 
     const comment = await prisma.comment.create({
-      data: commentData as any, // Type assertion to bypass TypeScript checking
+      data: commentData as Prisma.CommentUncheckedCreateInput, // Type assertion to bypass TypeScript checking
       include: {
         user: {
           select: {

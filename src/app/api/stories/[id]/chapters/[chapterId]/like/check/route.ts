@@ -3,7 +3,6 @@ import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/auth/db-adapter";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { logger } from "@/lib/logger";
-import { withCsrfProtection } from "@/lib/security/csrf";
 
 // Define the params type for route handlers
 type ChapterRouteParams = { params: { id: string; chapterId: string } };

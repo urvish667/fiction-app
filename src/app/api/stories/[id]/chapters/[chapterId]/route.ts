@@ -296,7 +296,7 @@ export async function PUT(
 
       // Remove content from data as it's not stored in DB
       // Destructure to remove content property from the data going to DB
-      const { content, ...dataForDb } = validatedData;
+      const { ...dataForDb } = validatedData;
       dataToUpdate = {
         ...dataForDb,
         wordCount: newWordCount

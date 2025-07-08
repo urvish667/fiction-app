@@ -30,7 +30,7 @@ export default function ChallengesPage() {
           <div className="bg-muted/30 rounded-lg p-8 mb-8">
             <h2 className="text-2xl font-semibold mb-4">Coming Soon...</h2>
             <p className="text-lg text-muted-foreground mb-6">
-              We're working on exciting writing challenges to help you improve your skills, 
+              We&apos;re working on exciting writing challenges to help you improve your skills, 
               connect with other writers, and unleash your creativity.
             </p>
             <p className="text-muted-foreground mb-8">

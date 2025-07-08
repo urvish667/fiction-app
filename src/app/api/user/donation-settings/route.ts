@@ -29,7 +29,7 @@ export async function GET() {
       donationMethod: user.donationMethod,
       donationLink: user.donationLink,
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "An error occurred while fetching donation settings" },
       { status: 500 }

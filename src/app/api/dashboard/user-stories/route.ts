@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { getUserStories } from "@/lib/services/dashboard-service";
-import { ApiResponse } from "@/types/dashboard";
+import { ApiResponse, StoryData } from "@/types/dashboard";
 import { logger } from "@/lib/logger";
 
 // Create a dedicated logger for this endpoint
@@ -52,7 +52,7 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       data: stories,
-    } as ApiResponse<any>, { headers });
+    } as ApiResponse<StoryData[]>, { headers });
   } catch (error) {
     userStoriesLogger.error('Error fetching user stories', {
       error: error instanceof Error ? error.message : String(error),

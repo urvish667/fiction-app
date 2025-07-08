@@ -98,7 +98,7 @@ export async function GET(
     let parsedSocialLinks: ExpectedSocialLinks | null = null;
     if (user.socialLinks) {
       try {
-        let tempLinks = typeof user.socialLinks === 'string'
+        const tempLinks = typeof user.socialLinks === 'string'
           ? JSON.parse(user.socialLinks)
           : user.socialLinks;
 
@@ -109,7 +109,7 @@ export async function GET(
             parsedSocialLinks = tempLinks as ExpectedSocialLinks;
           }
         }
-      } catch (error) {
+      } catch {
         // Silently fall back to null if parsing fails
       }
     }
@@ -139,7 +139,7 @@ export async function GET(
 
     return NextResponse.json(formattedUser);
 
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "An error occurred while retrieving the profile" },
       { status: 500 }

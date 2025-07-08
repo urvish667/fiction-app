@@ -43,7 +43,7 @@ export async function POST() {
       success: true,
       emailVerified: user.emailVerified
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Failed to update session" },
       { status: 500 }

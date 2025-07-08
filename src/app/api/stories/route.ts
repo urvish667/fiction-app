@@ -146,7 +146,7 @@ export async function GET(request: NextRequest) {
       // Use AND condition to combine with existing status filter if it exists
       if (where.status) {
         // Check if status is an object with 'in' property
-        const statusObj = where.status as any;
+        const statusObj = where.status as Prisma.StringFilter;
         if (statusObj.in) {
           where.status = {
             in: statusObj.in.filter((s: string) => s !== 'draft')

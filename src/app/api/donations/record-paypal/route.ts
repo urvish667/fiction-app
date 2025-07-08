@@ -44,7 +44,7 @@ export async function POST(req: Request) {
     }
 
     // 3. Extract validated data
-    const { recipientId, amount, message, storyId, paypalOrderId } = validation.data;
+    const { recipientId, paypalOrderId } = validation.data;
 
     // 4. Fetch recipient's donation settings
     const recipient = await prisma.user.findUnique({

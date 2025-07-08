@@ -25,9 +25,6 @@ export async function GET(request: NextRequest) {
     // Calculate pagination
     const skip = (page - 1) * limit;
 
-    // Check if the requested user is the current user or if we're viewing someone else's profile
-    const isCurrentUser = userId === session.user.id;
-
     // Find bookmarked stories
     const [bookmarks, total] = await Promise.all([
       prisma.bookmark.findMany({
@@ -93,7 +90,7 @@ export async function GET(request: NextRequest) {
         totalPages: Math.ceil(total / limit),
       },
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "An error occurred while fetching bookmarked stories" },
       { status: 500 }

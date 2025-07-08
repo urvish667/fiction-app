@@ -8,7 +8,7 @@ import { NextRequest } from 'next/server';
  * implementation, consider using a dedicated WebSocket server or a
  * service like Pusher, Socket.io, or similar.
  */
-export async function GET(request: NextRequest) {
+export async function GET() {
   // Return a message explaining the situation
   return new Response(
     JSON.stringify({

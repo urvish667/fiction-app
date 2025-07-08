@@ -2,7 +2,6 @@ import { Metadata } from "next"
 import { Suspense } from "react"
 import Navbar from "@/components/navbar"
 import { SiteFooter } from "@/components/site-footer"
-import AdBanner from "@/components/ad-banner"
 import StoryCardSkeleton from "@/components/story-card-skeleton"
 import {
   generateBrowseMetadata,
@@ -11,7 +10,8 @@ import {
   generateCategoryWebPageStructuredData
 } from "@/lib/seo/metadata"
 import BrowseContent from "./browse-content"
-import { getAllGenreNames } from "@/lib/seo/genre-descriptions"
+import { getAllGenreNames }
+from "@/lib/seo/genre-descriptions"
 import { DesktopBottomAd } from "@/components/desktop-bottom-ad"
 
 interface BrowsePageProps {
@@ -49,8 +49,8 @@ export async function generateMetadata({ searchParams }: BrowsePageProps): Promi
 export default async function BrowsePage({ searchParams }: BrowsePageProps) {
   const params = await searchParams
 
-  let browseStructuredData: any
-  const additionalStructuredData: any[] = []
+  let browseStructuredData: ReturnType<typeof generateBrowseStructuredData>
+  const additionalStructuredData: (ReturnType<typeof generateCategoryFAQStructuredData> | ReturnType<typeof generateCategoryWebPageStructuredData>)[] = []
 
   if (params.tag) {
     browseStructuredData = generateBrowseStructuredData({

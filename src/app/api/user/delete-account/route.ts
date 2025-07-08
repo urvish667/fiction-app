@@ -173,7 +173,7 @@ export async function DELETE(request: NextRequest) {
 
     // Check if it's a Prisma error
     if (error && typeof error === 'object' && 'code' in error) {
-      const prismaError = error as any
+      const prismaError = error as { code: string };
       if (prismaError.code === 'P2003') {
         return NextResponse.json(
           { error: "Cannot delete account due to existing data dependencies. Please contact support." },

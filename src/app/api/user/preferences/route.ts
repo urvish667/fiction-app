@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/auth/db-adapter'
 import { z } from 'zod'
-import { UserPreferences, defaultPreferences } from '@/types/user'
+import { defaultPreferences } from '@/types/user'
 
 const preferencesSchema = z.object({
   emailNotifications: z.object({
@@ -58,13 +58,13 @@ export async function GET() {
           ...defaultPreferences,
           ...prefsData
         };
-      } catch (error) {
+      } catch {
         // Silently fall back to default preferences if parsing fails
       }
     }
 
     return NextResponse.json({ preferences });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: 'An error occurred while fetching preferences' },
       { status: 500 }

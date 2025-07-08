@@ -31,7 +31,7 @@ export const GET = withApiLogging(async (request: NextRequest) => {
     // Parse query parameters
     const page = parseInt(searchParams.get("page") || "1");
     const limit = Math.min(parseInt(searchParams.get("limit") || "20"), 100); // Add upper limit for safety
-    let type = searchParams.get("type") || undefined;
+    const type = searchParams.get("type") || undefined;
     const readStatus = searchParams.get("read");
 
     // Handle chapter type (temporarily disabled)

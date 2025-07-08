@@ -1,37 +1,5 @@
-import { NextRequest, NextResponse } from "next/server"
-import { z } from "zod"
-import { prisma } from "@/lib/auth/db-adapter"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/app/api/auth/[...nextauth]/route"
-
-// Validation schema for social links
-const socialLinksSchema = z.object({
-  twitter: z.union([z.literal(''), z.string().url()]).nullish(),
-  instagram: z.union([z.literal(''), z.string().url()]).nullish(),
-  facebook: z.union([z.literal(''), z.string().url()]).nullish(),
-}).nullish()
-
-// Validation schema for profile update
-const profileUpdateSchema = z.object({
-  name: z.string().max(50, "Name is too long").optional().nullable(),
-  username: z.string()
-    .min(3, "Username must be at least 3 characters")
-    .max(30, "Username must be less than 30 characters")
-    .regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, underscores, and hyphens")
-    .optional(), // Make username optional for image updates
-  bio: z.string().max(500, "Bio must be less than 500 characters").optional().nullable(),
-  location: z.string().max(100, "Location must be less than 100 characters").optional().nullable(),
-  website: z.union([z.literal(''), z.string().url("Please enter a valid URL")]).optional().nullable(),
-  socialLinks: socialLinksSchema,
-  language: z.enum(["en", "es", "fr", "de", "it", "pt", "ru", "zh", "ja", "ko"]).optional().default("en"),
-  theme: z.enum(["light", "dark", "system"]).optional().default("system"),
-  marketingOptIn: z.boolean().optional(),
-  image: z.string().optional().nullable(),
-  bannerImage: z.string().optional().nullable(),
-})
-
 // GET method to retrieve user profile
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     // Get the session
     const session = await getServerSession(authOptions);
@@ -68,7 +36,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(user)
 
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "An error occurred while retrieving your profile" },
       { status: 500 }

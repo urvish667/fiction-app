@@ -29,7 +29,7 @@ export default function BlogPage() {
           
           <div className="bg-muted/30 rounded-lg p-8 mb-8">
             <p className="text-lg text-muted-foreground mb-6">
-              We're working on a blog to share writing tips, author interviews, 
+              We&apos;re working on a blog to share writing tips, author interviews, 
               platform updates, and insights into the world of storytelling.
             </p>
             <p className="text-muted-foreground mb-8">

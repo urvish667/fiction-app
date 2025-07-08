@@ -6,9 +6,6 @@ import { logger } from "@/lib/logger";
 import { withCsrfProtection } from "@/lib/security/csrf";
 import { requireCompleteProfile } from "@/lib/auth/auth-utils";
 
-// Define the params type for route handlers
-type ChapterRouteParams = { params: { id: string; chapterId: string } };
-
 // POST endpoint to like a chapter
 export const POST = withCsrfProtection(async (
   request: NextRequest
@@ -162,7 +159,7 @@ export const POST = withCsrfProtection(async (
     // Use safe defaults for logging
     let errorStoryId = 'unknown';
     let errorChapterId = 'unknown';
-    let userId = 'unauthenticated';
+    const userId = 'unauthenticated';
 
     try {
       // Try to extract params from the URL
@@ -170,7 +167,7 @@ export const POST = withCsrfProtection(async (
       const pathParts = url.pathname.split('/');
       errorStoryId = pathParts[3] || 'unknown'; // [id] is at index 3
       errorChapterId = pathParts[5] || 'unknown'; // [chapterId] is at index 5
-    } catch (paramError) {
+    } catch {
       // Ignore errors when trying to extract params
     }
 
@@ -278,7 +275,7 @@ export const DELETE = withCsrfProtection(async (
     // Use safe defaults for logging
     let errorStoryId = 'unknown';
     let errorChapterId = 'unknown';
-    let userId = 'unauthenticated';
+    const userId = 'unauthenticated';
 
     try {
       // Try to extract params from the URL
@@ -286,7 +283,7 @@ export const DELETE = withCsrfProtection(async (
       const pathParts = url.pathname.split('/');
       errorStoryId = pathParts[3] || 'unknown'; // [id] is at index 3
       errorChapterId = pathParts[5] || 'unknown'; // [chapterId] is at index 5
-    } catch (paramError) {
+    } catch {
       // Ignore errors when trying to extract params
     }
 

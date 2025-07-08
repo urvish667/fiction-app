@@ -94,7 +94,7 @@ export default function BrowseContent({ initialParams }: BrowseContentProps) {
           const data = await response.json()
           setAllTags(data)
         }
-      } catch (e) {
+      } catch {
         // fallback: do nothing
       }
     }
@@ -192,7 +192,7 @@ export default function BrowseContent({ initialParams }: BrowseContentProps) {
   }
 
   // Helper function to map API story to BrowseStory type
-  const formatStory = (story: Record<string, any>): BrowseStory => {
+  const formatStory = useCallback((story: Record<string, any>): BrowseStory => {
     let genreName = "General";
     if (story.genre) {
       if (typeof story.genre === 'object') {
@@ -280,7 +280,7 @@ export default function BrowseContent({ initialParams }: BrowseContentProps) {
           (story.language &&
            (typeof story.language === 'string'
             ? story.language === selectedLanguage
-            : (story.language as any).name === selectedLanguage));
+            : (story.language as { name: string }).name === selectedLanguage));
 
         const matchesStatus = storyStatus === "all" ||
           (story.status === storyStatus);

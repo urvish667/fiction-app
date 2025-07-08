@@ -1,4 +1,4 @@
-import { BookOpen, Sparkles, Users, Tag, Award, MessageSquare, Compass, Heart, ChevronDown } from "lucide-react";
+import { Sparkles, Heart } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import Navbar from "@/components/navbar";
@@ -32,12 +32,12 @@ export default function AboutPage() {
     {
       question: "What is FableSpace?",
       answer:
-        "FableSpace is a creative platform where writers share original stories and readers discover immersive fiction. It’s a space built to connect storytellers with their audience and make supporting your favorite authors easy and meaningful."
+        "FableSpace is a creative platform where writers share original stories and readers discover immersive fiction. It's a space built to connect storytellers with their audience and make supporting your favorite authors easy and meaningful."
     },
     {
       question: "How do I start writing?",
       answer:
-        "Getting started is simple—just sign up and click the 'Start Writing' button. You’ll be taken to our clean, distraction-free editor where you can begin crafting and publishing your stories right away."
+        "Getting started is simple—just sign up and click the 'Start Writing' button. You'll be taken to our clean, distraction-free editor where you can begin crafting and publishing your stories right away."
     },
     {
       question: "Why are there ads on FableSpace?",
@@ -77,7 +77,7 @@ export default function AboutPage() {
     {
       question: "Can I delete my account and stories if I want to leave?",
       answer:
-        "Yes, you’re always in control. You can delete your stories at any time, and if you decide to leave FableSpace, your account and data can be permanently removed on request."
+        "Yes, you're always in control. You can delete your stories at any time, and if you decide to leave FableSpace, your account and data can be permanently removed on request."
     }
   ]
 
@@ -132,13 +132,13 @@ export default function AboutPage() {
                 At FableSpace, we believe in the power of storytelling—and in the storytellers who bring worlds to life. Our mission is to create a space where writers can share their imagination freely, connect with readers, and eventually earn from their creative work.
               </p>
               <p className="text-lg mb-4">
-                Right now, we sustain FableSpace through Google Ads to keep the platform alive and growing. While we aren't yet able to share ad revenue, writers receive 100% of reader donations, ensuring that your support goes directly to them.
+                Right now, we sustain FableSpace through Google Ads to keep the platform alive and growing. While we aren&apos;t yet able to share ad revenue, writers receive 100% of reader donations, ensuring that your support goes directly to them.
               </p>
               <p className="text-lg mb-4">
-                But this is just the beginning. As our community grows, so will our support for writers. We're committed to launching new ways for creators to earn—starting with ad revenue sharing once we reach scale, and expanding into more features designed to help writers thrive.
+                But this is just the beginning. As our community grows, so will our support for writers. We&apos;re committed to launching new ways for creators to earn—starting with ad revenue sharing once we reach scale, and expanding into more features designed to help writers thrive.
               </p>
               <p className={`${ubuntu.className} text-lg font-semibold text-primary`}>
-                FableSpace is more than a platform—it's a promise to uplift the voices of tomorrow. 🌱✍️
+                FableSpace is more than a platform—it&apos;s a promise to uplift the voices of tomorrow. 🌱✍️
               </p>
             </div>
           </section>
@@ -190,7 +190,7 @@ export default function AboutPage() {
                 </div>
                 <p className="text-blue-700 dark:text-blue-300 mb-3">
                   Unlike other platforms that prioritize algorithms and ads, we put creators first.
-                  Your stories aren't buried under corporate content or paywalled features.
+                  Your stories aren&apos;t buried under corporate content or paywalled features.
                 </p>
                 <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">
                   ✓ No algorithm manipulation<br/>

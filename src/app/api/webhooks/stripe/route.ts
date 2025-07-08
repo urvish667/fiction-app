@@ -68,7 +68,6 @@ export async function POST(req: Request) {
         // If no donation record exists, create one
         if (!donation) {
           const { donorId, recipientId, message, storyId } = paymentIntent.metadata;
-          const storyTitle = storyId ? await getStoryTitle(storyId) : undefined;
 
           donation = await prisma.donation.create({
             data: {

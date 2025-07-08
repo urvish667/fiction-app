@@ -79,7 +79,7 @@ export default function ContactPage() {
 
           <h1 className="text-4xl font-bold text-center mb-6">Contact Us</h1>
           <p className="text-center text-muted-foreground mb-8">
-            Have questions, suggestions, or feedback? We'd love to hear from you!
+            Have questions, suggestions, or feedback? We&apos;d love to hear from you!
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-6 bg-muted/30 rounded-lg p-8">

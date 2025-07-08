@@ -3,6 +3,8 @@
 import { PayPalPaymentForm } from "./PayPalPaymentForm"
 import { StripePaymentForm } from "./StripePaymentForm"
 
+// File: `src/components/payments/UnifiedPaymentForm.tsx`
+
 type PaymentMethod = 'STRIPE' | 'PAYPAL';
 
 interface UnifiedPaymentFormProps {

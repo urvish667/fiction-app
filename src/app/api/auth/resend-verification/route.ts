@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     await sendVerificationEmail(email, token);
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "An error occurred while sending verification email" },
       { status: 500 }

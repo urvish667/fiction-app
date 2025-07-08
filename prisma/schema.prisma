@@ -7,11 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum PayoutProvider {
-  PAYPAL
-  STRIPE
-}
-
 model Account {
   id                 String  @id @default(cuid())
   userId             String
@@ -332,8 +327,11 @@ model Language {
 model Donation {
   id                    String   @id @default(cuid())
   amount                Int
+  platformFee           Int      @default(0) // Fee taken by your platform (optional)
+  processorFee          Int?     // Fee charged by PayPal or Stripe (can be null initially)
+  netAmount             Int      // amount - platformFee - processorFee
   message               String?
-  status                String   @default("pending")
+  status                DonationStatus   @default("pending")
   stripePaymentIntentId String?  @unique
   donorId               String
   recipientId           String
@@ -358,12 +356,9 @@ model Donation {
 model Payout {
   id           String   @id @default(cuid())
   userId       String   // the author
-  donationId   String?  @unique // links back to Donation
-  amount       Int      // gross or placeholder in cents
-  feeAmount    Int?     // PayPal fee in cents
-  netAmount    Int?     // what author actually receives
+  totalAmount  Int      // gross or placeholder in cents
   method       PayoutProvider
-  status       String   @default("pending") // pending → ready → success → failed
+  status       PayoutStatus   @default("pending") // pending → ready → success → failed
   externalId   String?  // PayPal batch or item ID
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -436,4 +431,21 @@ model CommentLike {
   @@unique([userId, commentId])
   @@index([userId])
   @@index([commentId])
+}
+
+enum PayoutProvider {
+  PAYPAL
+  STRIPE
+}
+
+enum DonationStatus {
+  pending
+  collected
+  failed
+}
+
+enum PayoutStatus {
+  pending
+  paid_out
+  failed
 }

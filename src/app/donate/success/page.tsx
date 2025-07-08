@@ -43,7 +43,7 @@ export default function DonationSuccessPage() {
           // If no donation details found, set flag to redirect
           setShouldRedirect(true);
         }
-      } catch (error) {
+      } catch {
         setShouldRedirect(true);
       } finally {
         setIsLoading(false);
@@ -129,7 +129,7 @@ export default function DonationSuccessPage() {
                 )}
                 {donation.message && (
                   <p className="text-muted-foreground mt-2 italic">
-                    Your message: "{donation.message}"
+                    Your message: &quot;{donation.message}&quot;
                   </p>
                 )}
                 <p className="text-sm text-muted-foreground mt-4">

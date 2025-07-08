@@ -3,6 +3,7 @@ import { logger } from '@/lib/logger';
 
 /**
  * PayPal payment processor implementation
+ * File: src/lib/payment/processors/paypalProcessor.ts
  */
 export class PayPalPaymentProcessor implements PaymentProcessor {
   private getApiBaseUrl(): string {
