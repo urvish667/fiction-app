@@ -28,4 +28,4 @@ jobs:
           PAYPAL_API_BASE: ${{ secrets.PAYPAL_API_BASE }}
           NEXT_PUBLIC_PAYPAL_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_PAYPAL_CLIENT_ID }}
           PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_CLIENT_SECRET }}
-        run: node scripts/paypal-payout.js
+        run: node scripts/paypal-payout.mjs
