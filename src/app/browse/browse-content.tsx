@@ -251,7 +251,7 @@ export default function BrowseContent({ initialParams }: BrowseContentProps) {
       slug: story.slug,
       tags: tags
     };
-  }
+  }, [])
 
   // Apply client-side filtering and sorting to stories
   const applyClientFilters = (stories: BrowseStory[]): BrowseStory[] => {
@@ -350,7 +350,7 @@ export default function BrowseContent({ initialParams }: BrowseContentProps) {
       try {
         const params = formatApiParams()
         const response = await StoryService.getStories(params)
-        const formattedStories = response.stories.map(formatStory);
+        const formattedStories = response.stories.map(story => formatStory(story));
         const filteredStories = applyClientFilters(formattedStories);
 
         setStories(filteredStories)

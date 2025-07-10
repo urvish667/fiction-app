@@ -73,11 +73,11 @@ export async function POST(req: Request) {
             data: {
               donorId,
               recipientId,
-              amount: paymentIntent.amount,
+              amountCents: paymentIntent.amount,
               message,
               storyId,
               stripePaymentIntentId: paymentIntent.id,
-              status: 'succeeded',
+              status: 'collected',
             },
             include: {
               donor: { select: { id: true, username: true, name: true } },
@@ -89,7 +89,7 @@ export async function POST(req: Request) {
           // If donation already exists, update its status
           donation = await prisma.donation.update({
             where: { id: donation.id },
-            data: { status: 'succeeded', updatedAt: new Date() },
+            data: { status: 'collected', updatedAt: new Date() },
             include: {
               donor: { select: { id: true, username: true, name: true } },
               recipient: { select: { id: true, username: true, name: true } },
@@ -126,7 +126,7 @@ export async function POST(req: Request) {
                 actorId: donation.donorId,
                 actorUsername: actorUsername || 'Anonymous',
                 donationId: donation.id,
-                amount: donation.amount,
+                amount: donation.amountCents,
                 message: donation.message || undefined,
                 storyId: donation.storyId || undefined,
                 storyTitle: donation.story?.title,

@@ -326,48 +326,43 @@ model Language {
 
 model Donation {
   id                    String   @id @default(cuid())
-  amount                Int
-  platformFee           Int      @default(0) // Fee taken by your platform (optional)
-  processorFee          Int?     // Fee charged by PayPal or Stripe (can be null initially)
-  netAmount             Int      // amount - platformFee - processorFee
+  amountCents           Int      @default(0)
+  platformFeeCents      Int      @default(0)
+  processorFeeCents     Int?      
+  netAmountCents        Int      @default(0)
   message               String?
-  status                DonationStatus   @default("pending")
+  status                DonationStatus  @default(pending)
   stripePaymentIntentId String?  @unique
+  paypalOrderId         String?  @unique
+  paymentMethod         PaymentMethod?
   donorId               String
   recipientId           String
+  storyId               String?
+  payoutId              String?
+
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
-  storyId               String?
-  paymentMethod         String?
-  paypalOrderId         String?  @unique
-  donor                 User     @relation("DonationsMade", fields: [donorId], references: [id])
-  recipient             User     @relation("DonationsReceived", fields: [recipientId], references: [id])
-  story                 Story?   @relation(fields: [storyId], references: [id])
-  payout                Payout?
+  capturedAt            DateTime?
+  paidOutAt             DateTime?
 
-  @@index([donorId])
-  @@index([recipientId])
-  @@index([storyId])
-  @@index([status])
-  @@index([createdAt])
-  @@index([paypalOrderId])
+  donor       User     @relation("DonationsMade", fields: [donorId], references: [id])
+  recipient   User     @relation("DonationsReceived", fields: [recipientId], references: [id])
+  payout      Payout?  @relation("DonationToPayout", fields: [payoutId], references: [id])
+  story       Story?   @relation(fields: [storyId], references: [id])
 }
 
 model Payout {
-  id           String   @id @default(cuid())
-  userId       String   // the author
-  totalAmount  Int      // gross or placeholder in cents
-  method       PayoutProvider
-  status       PayoutStatus   @default("pending") // pending → ready → success → failed
-  externalId   String?  // PayPal batch or item ID
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  user         User     @relation(fields: [userId], references: [id])
-  donation     Donation? @relation(fields: [donationId], references: [id])
+  id                 String     @id @default(cuid())
+  userId             String
+  totalAmountCents   Int
+  status             PayoutStatus @default(pending)
+  method             PayoutMethod
+  externalId         String?
+  createdAt          DateTime @default(now())
+  completedAt        DateTime?
 
-  @@index([userId])
-  @@index([status])
-  @@index([externalId])
+  user        User       @relation(fields: [userId], references: [id])
+  donations   Donation[] @relation("DonationToPayout")
 }
 
 model StoryRecommendation {
@@ -433,11 +428,6 @@ model CommentLike {
   @@index([commentId])
 }
 
-enum PayoutProvider {
-  PAYPAL
-  STRIPE
-}
-
 enum DonationStatus {
   pending
   collected
@@ -448,4 +438,21 @@ enum PayoutStatus {
   pending
   paid_out
   failed
+}
+
+enum PayoutProvider {
+  PAYPAL
+  STRIPE
+}
+
+enum PaymentMethod {
+  PAYPAL
+  STRIPE
+  MANUAL
+}
+
+enum PayoutMethod {
+  PAYPAL_EMAIL
+  STRIPE_ACCOUNT
+  BANK_TRANSFER
 }

@@ -53,6 +53,7 @@ export default function DonatePage() {
   const [error, setError] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
   const [clientSecret, setClientSecret] = useState<string | null>(null)
+  const [paypalOrderId, setPaypalOrderId] = useState<string | null>(null)
   const [storyId, setStoryId] = useState<string | null>(null)
   const [storyTitle, setStoryTitle] = useState<string | null>(null)
   const [storySlug, setStorySlug] = useState<string | null>(null)
@@ -201,10 +202,11 @@ export default function DonatePage() {
       if (data.processorType === 'STRIPE' && data.clientSecret) {
         // Handle STRIPE payment
         setClientSecret(data.clientSecret)
-      } else if (data.processorType === 'PAYPAL') {
+      } else if (data.processorType === 'PAYPAL' && data.paypalOrderId) {
         // For PAYPAL, we'll use the UnifiedPaymentForm component
         // which will render the PAYPALPaymentForm
-        setClientSecret(null) // No client secret for PayPal, but we trigger the form
+        setClientSecret(null) // No client secret for PayPal
+        setPaypalOrderId(data.paypalOrderId)
       } else {
         throw new Error('Invalid payment response')
       }
@@ -296,6 +298,7 @@ export default function DonatePage() {
     // Reset processing state and client secret
     setIsProcessing(false)
     setClientSecret(null)
+    setPaypalOrderId(null)
   }
 
   // If loading or writer not found
@@ -404,10 +407,11 @@ export default function DonatePage() {
                   />
                 </div>
 
-                {isProcessing ? (
+                {(clientSecret || paypalOrderId) ? (
                   <UnifiedPaymentForm
                     paymentMethod={writer.donationMethod!}
                     clientSecret={clientSecret}
+                    paypalOrderId={paypalOrderId}
                     recipientId={writer.id}
                     amount={donationAmount === "custom" ? Math.round(Number.parseFloat(customAmount) * 100) : Math.round(Number.parseFloat(donationAmount) * 100)}
                     message={message}
@@ -417,6 +421,7 @@ export default function DonatePage() {
                     onError={handlePaymentError}
                     onCancel={() => {
                       setClientSecret(null);
+                      setPaypalOrderId(null);
                       setIsProcessing(false);
                     }}
                   />

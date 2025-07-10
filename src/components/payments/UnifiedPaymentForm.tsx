@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect } from "react";
 import { PayPalPaymentForm } from "./PayPalPaymentForm"
 import { StripePaymentForm } from "./StripePaymentForm"
 
@@ -38,10 +39,17 @@ export function UnifiedPaymentForm({
   onError,
   onCancel,
 }: UnifiedPaymentFormProps) {
+  useEffect(() => {
+    if (paymentMethod === 'STRIPE' && !clientSecret) {
+      onError(new Error('Stripe client secret is missing.'));
+    }
+    if (paymentMethod === 'PAYPAL' && !paypalOrderId) {
+      onError(new Error('PayPal Order ID is missing.'));
+    }
+  }, [paymentMethod, clientSecret, paypalOrderId, onError]);
+
   if (paymentMethod === 'STRIPE') {
     if (!clientSecret) {
-      // Handle the case where clientSecret is missing for Stripe
-      onError(new Error('Stripe client secret is missing.'));
       return null; // Or return an error message component
     }
     return (
@@ -60,7 +68,6 @@ export function UnifiedPaymentForm({
 
   if (paymentMethod === 'PAYPAL') {
     if (!paypalOrderId) {
-      onError(new Error('PayPal Order ID is missing.'));
       return null;
     }
     return (

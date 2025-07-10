@@ -110,7 +110,7 @@ export class PaymentService {
       data: {
         donorId: request.donorId,
         recipientId: request.recipientId,
-        amount: request.amount,
+        amountCents: request.amount,
         message: request.message || null,
         storyId: request.storyId || null,
         status: 'pending',

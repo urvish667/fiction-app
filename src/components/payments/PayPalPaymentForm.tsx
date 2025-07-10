@@ -55,27 +55,6 @@ const PayPalButtonsComponent = (props: PayPalPaymentFormProps) => {
       logInfo('PayPal payment captured:', { details })
 
       if (details?.status === "COMPLETED") {
-        const response = await fetchWithCsrf('/api/donations/record-paypal', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            recipientId: recipientId,
-            amount: amount,
-            message: message,
-            storyId: storyId,
-            paypalOrderId: data.orderID,
-            paypalTransactionId: details.purchase_units[0]?.payments?.captures[0]?.id,
-          }),
-        })
-
-        const responseData = await response.json()
-
-        if (!response.ok) {
-          logError(new Error('Failed to record PayPal payment'), { details: responseData })
-        }
-
         toast({
           title: "Payment Successful!",
           description: "Your donation has been processed successfully. Thank you for your support!",
