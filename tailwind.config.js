@@ -59,9 +59,13 @@ module.exports = {
   				'4': '#87CEEB',
   				'5': '#B0E0E6'
   			}
-  		}
+  		},
+		fontFamily: {
+        	helvetica: ['"Helvetica Neue"', 'Helvetica', 'Arial', 'sans-serif'],
+      	},
+		
   	}
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [require("tailwindcss-animate"), require('@tailwindcss/typography')],
 }
 

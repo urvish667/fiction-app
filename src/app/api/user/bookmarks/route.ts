@@ -50,6 +50,7 @@ export async function GET(request: NextRequest) {
                   comments: true,
                   bookmarks: true,
                   chapters: true,
+                  views: true,
                 },
               },
             },
@@ -75,6 +76,7 @@ export async function GET(request: NextRequest) {
         commentCount: story._count.comments,
         bookmarkCount: story._count.bookmarks,
         chapterCount: story._count.chapters,
+        viewCount: story._count.views,
         isBookmarked: true,
         _count: undefined,
       };

@@ -1,11 +1,11 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Search, X } from "lucide-react"
+import { useDebounce } from "@/hooks/use-debounce"
 
 interface SearchBarProps {
   onSearch: (query: string) => void
@@ -21,11 +21,11 @@ export default function SearchBar({
   defaultValue = "",
 }: SearchBarProps) {
   const [query, setQuery] = useState(defaultValue)
+  const debouncedQuery = useDebounce(query, 300)
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    onSearch(query)
-  }
+  useEffect(() => {
+    onSearch(debouncedQuery)
+  }, [debouncedQuery, onSearch])
 
   const clearSearch = () => {
     setQuery("")
@@ -33,7 +33,7 @@ export default function SearchBar({
   }
 
   return (
-    <form onSubmit={handleSubmit} className={`relative ${className}`}>
+    <div className={`relative ${className}`}>
       <Input
         type="text"
         placeholder={placeholder}
@@ -55,11 +55,9 @@ export default function SearchBar({
           <span className="sr-only">Clear search</span>
         </Button>
       )}
-      <Button type="submit" variant="ghost" size="icon" className="absolute right-0 top-0 h-full">
-        <Search className="h-4 w-4" />
-        <span className="sr-only">Search</span>
-      </Button>
-    </form>
+      <div className="absolute right-0 top-0 h-full flex items-center">
+        <Search className="h-4 w-4 text-muted-foreground" />
+      </div>
+    </div>
   )
 }
-

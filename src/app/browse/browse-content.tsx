@@ -253,65 +253,6 @@ export default function BrowseContent({ initialParams }: BrowseContentProps) {
     };
   }, [])
 
-  // Apply client-side filtering and sorting to stories
-  const applyClientFilters = (stories: BrowseStory[]): BrowseStory[] => {
-    let filteredStories = stories;
-
-    if (selectedGenres.length > 0 || selectedTags.length > 0 || searchQuery || selectedLanguage || storyStatus !== "all") {
-      filteredStories = stories.filter(story => {
-        const matchesGenre = selectedGenres.length > 0
-          ? selectedGenres.includes(story.genre || 'General')
-          : true;
-
-        let matchesTags = true;
-        if (selectedTags.length > 0) {
-          if (!Array.isArray(story.tags) || story.tags.length === 0) {
-            matchesTags = false;
-          } else {
-            matchesTags = story.tags.some(tag =>
-              selectedTags.some(selectedTag =>
-                selectedTag.toLowerCase() === tag.toLowerCase()
-              )
-            );
-          }
-        }
-
-        const matchesLanguage = !selectedLanguage ||
-          (story.language &&
-           (typeof story.language === 'string'
-            ? story.language === selectedLanguage
-            : (story.language as { name: string }).name === selectedLanguage));
-
-        const matchesStatus = storyStatus === "all" ||
-          (story.status === storyStatus);
-
-        let matchesSearch = true;
-        if (searchQuery) {
-          const query = searchQuery.toLowerCase();
-          const title = (story.title || '').toLowerCase();
-          const description = (story.description || '').toLowerCase();
-          const authorName = typeof story.author === 'object'
-            ? ((story.author?.name || story.author?.username || '').toLowerCase())
-            : (story.author || '').toLowerCase();
-          const genre = (story.genre || '').toLowerCase();
-          const tags = Array.isArray(story.tags)
-            ? story.tags.map(tag => tag.toLowerCase())
-            : [];
-
-          matchesSearch =
-            title.includes(query) ||
-            description.includes(query) ||
-            authorName.includes(query) ||
-            genre.includes(query) ||
-            tags.some(tag => tag.includes(query));
-        }
-
-        return matchesGenre && matchesTags && matchesLanguage && matchesStatus && matchesSearch;
-      });
-    }
-
-    return sortStories(filteredStories, sortBy);
-  }
 
   // Sort stories based on the selected sort option
   const sortStories = (stories: BrowseStory[], sortOption: string): BrowseStory[] => {
@@ -351,13 +292,12 @@ export default function BrowseContent({ initialParams }: BrowseContentProps) {
         const params = formatApiParams()
         const response = await StoryService.getStories(params)
         const formattedStories = response.stories.map(story => formatStory(story));
-        const filteredStories = applyClientFilters(formattedStories);
 
-        setStories(filteredStories)
+        setStories(formattedStories)
 
         if (selectedGenres.length > 0 || selectedTags.length > 0) {
-          setTotalStories(filteredStories.length)
-          setTotalPages(Math.ceil(filteredStories.length / storiesPerPage))
+          setTotalStories(response.pagination.total)
+          setTotalPages(response.pagination.totalPages)
         } else {
           setTotalPages(response.pagination.totalPages)
           setTotalStories(response.pagination.total)

@@ -4,9 +4,11 @@ import { logError } from "@/lib/error-logger"
 
 /**
  * Custom hook for fetching user stories
+ * @param timeRange The time range for filtering data
+ * @param sortBy The field to sort the stories by
  * @returns User stories data, loading state, and error state
  */
-export function useUserStories() {
+export function useUserStories(timeRange: string = 'all') {
   const [data, setData] = useState<any[] | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -17,7 +19,7 @@ export function useUserStories() {
       setError(null);
 
       try {
-        const response = await fetch('/api/dashboard/user-stories');
+        const response = await fetch(`/api/dashboard/user-stories?timeRange=${timeRange}`);
         const result = await response.json() as ApiResponse<any[]>;
 
         if (!result.success || !result.data) {
@@ -26,7 +28,7 @@ export function useUserStories() {
 
         setData(result.data);
       } catch (err) {
-        logError(err, { context: 'Error fetching user stories' }); 
+        logError(err, { context: 'Error fetching user stories' });
         setError(err instanceof Error ? err.message : 'An unknown error occurred');
         setData([]);
       } finally {
@@ -35,7 +37,7 @@ export function useUserStories() {
     };
 
     fetchData();
-  }, []);
+  }, [timeRange]);
 
   return { data, isLoading, error };
 }

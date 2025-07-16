@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { getUserStories } from "@/lib/services/dashboard-service";
-import { ApiResponse, StoryData } from "@/types/dashboard";
+import { ApiResponse, DashboardStory } from "@/types/dashboard";
 import { logger } from "@/lib/logger";
 
 // Create a dedicated logger for this endpoint
@@ -12,8 +12,10 @@ const userStoriesLogger = logger.child('dashboard-user-stories-api');
  * GET /api/dashboard/user-stories
  * Fetches all stories for the current user
  */
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const url = new URL(request.url);
+    const timeRange = url.searchParams.get('timeRange') || 'all';
     // Check authentication
     const session = await getServerSession(authOptions);
 
@@ -36,12 +38,12 @@ export async function GET() {
       }, { status: 400 });
     }
 
-    userStoriesLogger.info('Fetching user stories', { userId });
+    userStoriesLogger.info('Fetching user stories', { userId, timeRange });
 
     // Fetch user stories
-    const stories = await getUserStories(userId);
+    const stories = await getUserStories(userId, timeRange);
 
-    userStoriesLogger.debug('User stories retrieved successfully', { userId, count: stories.length });
+    userStoriesLogger.debug('User stories retrieved successfully', { userId, count: stories.length, timeRange });
 
     // Set cache headers for better performance
     // Cache for 5 minutes on client, revalidate every hour on server
@@ -52,7 +54,7 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       data: stories,
-    } as ApiResponse<StoryData[]>, { headers });
+    } as ApiResponse<DashboardStory[]>, { headers });
   } catch (error) {
     userStoriesLogger.error('Error fetching user stories', {
       error: error instanceof Error ? error.message : String(error),

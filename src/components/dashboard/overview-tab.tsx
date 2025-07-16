@@ -252,15 +252,15 @@ export function OverviewTab({ timeRange }: OverviewTabProps) {
                   <div className="grid grid-cols-2 gap-4 text-xs">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Reads:</span>
-                      <span className="font-medium">{formatStatNumber(story.viewCount || 0)}</span>
+                      <span className="font-medium">{formatStatNumber(story.reads || 0)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Likes:</span>
-                      <span className="font-medium">{formatStatNumber(story.likeCount || 0)}</span>
+                      <span className="font-medium">{formatStatNumber(story.likes || 0)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Comments:</span>
-                      <span className="font-medium">{formatStatNumber(story.commentCount || 0)}</span>
+                      <span className="font-medium">{formatStatNumber(story.comments || 0)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Earnings:</span>
@@ -294,9 +294,9 @@ export function OverviewTab({ timeRange }: OverviewTabProps) {
                           {story.genreName || 'General'}
                         </div>
                       </td>
-                      <td className="text-right py-3 px-2">{formatStatNumber(story.viewCount || 0)}</td>
-                      <td className="text-right py-3 px-2">{formatStatNumber(story.likeCount || 0)}</td>
-                      <td className="text-right py-3 px-2">{formatStatNumber(story.commentCount || 0)}</td>
+                      <td className="text-right py-3 px-2">{formatStatNumber(story.reads || 0)}</td>
+                      <td className="text-right py-3 px-2">{formatStatNumber(story.likes || 0)}</td>
+                      <td className="text-right py-3 px-2">{formatStatNumber(story.comments || 0)}</td>
                       <td className="text-right py-3 px-2">${formatStatNumber(story.earnings || 0)}</td>
                     </tr>
                   ))}

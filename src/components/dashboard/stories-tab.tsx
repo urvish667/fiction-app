@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { BookText, AlertCircle } from "lucide-react"
+import { BookText, AlertCircle, ArrowUp, ArrowDown } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -11,10 +11,40 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 import { useUserStories } from "@/hooks/use-user-stories"
 import { useIsMobile } from "@/hooks/use-mobile"
+import { useState, useMemo } from "react"
 
-export function StoriesTab() {
-  const { data: stories, isLoading, error } = useUserStories();
+type SortKey = "title" | "status" | "reads" | "likes" | "comments" | "updatedAt";
+
+interface StoriesTabProps {
+  timeRange: string;
+}
+
+export function StoriesTab({ timeRange }: StoriesTabProps) {
+  const { data: stories, isLoading, error } = useUserStories(timeRange);
   const isMobile = useIsMobile();
+  const [sortKey, setSortKey] = useState<SortKey>("updatedAt");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+
+  const sortedStories = useMemo(() => {
+    if (!stories) return [];
+    return [...stories].sort((a, b) => {
+      const aValue = a[sortKey];
+      const bValue = b[sortKey];
+
+      if (aValue < bValue) return sortDirection === "asc" ? -1 : 1;
+      if (aValue > bValue) return sortDirection === "asc" ? 1 : -1;
+      return 0;
+    });
+  }, [stories, sortKey, sortDirection]);
+
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortKey(key);
+      setSortDirection("desc");
+    }
+  };
 
   // Format date for display
   const formatDate = (dateString: string | undefined | null) => {
@@ -40,13 +70,15 @@ export function StoriesTab() {
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
         <h2 className="text-xl md:text-2xl font-bold">Your Stories</h2>
-        <Button asChild className="w-full sm:w-auto">
-          <Link href="/works">
-            <BookText className="h-4 w-4 mr-2" />
-            <span className="hidden sm:inline">Manage All Stories</span>
-            <span className="sm:hidden">Manage All</span>
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button asChild className="w-full sm:w-auto">
+            <Link href="/works">
+              <BookText className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">Manage All Stories</span>
+              <span className="sm:hidden">Manage All</span>
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {error && (
@@ -72,7 +104,7 @@ export function StoriesTab() {
                 <Skeleton className="h-20 w-full" />
                 <Skeleton className="h-20 w-full" />
               </div>
-            ) : !stories || stories.length === 0 ? (
+            ) : !sortedStories || sortedStories.length === 0 ? (
               <div className="text-center py-6 text-muted-foreground">
                 <p>You don't have any stories yet.</p>
                 <Button asChild className="mt-4">
@@ -84,7 +116,7 @@ export function StoriesTab() {
             ) : isMobile ? (
               // Mobile card layout
               <div className="space-y-3 p-4">
-                {stories.map((story) => (
+                {sortedStories.map((story) => (
                   <div key={story.id} className="border rounded-lg p-4 space-y-3">
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
@@ -102,15 +134,15 @@ export function StoriesTab() {
                     <div className="grid grid-cols-2 gap-3 text-xs">
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Reads:</span>
-                        <span className="font-medium">{(story.viewCount || 0).toLocaleString()}</span>
+                        <span className="font-medium">{(story.reads || 0).toLocaleString()}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Likes:</span>
-                        <span className="font-medium">{(story.likeCount || 0).toLocaleString()}</span>
+                        <span className="font-medium">{(story.likes || 0).toLocaleString()}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Comments:</span>
-                        <span className="font-medium">{(story.commentCount || 0).toLocaleString()}</span>
+                        <span className="font-medium">{(story.comments || 0).toLocaleString()}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Updated:</span>
@@ -125,16 +157,28 @@ export function StoriesTab() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b">
-                    <th className="text-left py-4 px-6">Story</th>
-                    <th className="text-center py-4 px-4">Status</th>
-                    <th className="text-right py-4 px-4">Reads</th>
-                    <th className="text-right py-4 px-4">Likes</th>
-                    <th className="text-right py-4 px-4">Comments</th>
-                    <th className="text-right py-4 px-4">Last Updated</th>
+                    <th className="text-left py-4 px-6 cursor-pointer" onClick={() => handleSort("title")}>
+                      Story {sortKey === "title" && (sortDirection === "asc" ? <ArrowUp className="inline h-4 w-4" /> : <ArrowDown className="inline h-4 w-4" />)}
+                    </th>
+                    <th className="text-center py-4 px-4 cursor-pointer" onClick={() => handleSort("status")}>
+                      Status {sortKey === "status" && (sortDirection === "asc" ? <ArrowUp className="inline h-4 w-4" /> : <ArrowDown className="inline h-4 w-4" />)}
+                    </th>
+                    <th className="text-right py-4 px-4 cursor-pointer" onClick={() => handleSort("reads")}>
+                      Reads {sortKey === "reads" && (sortDirection === "asc" ? <ArrowUp className="inline h-4 w-4" /> : <ArrowDown className="inline h-4 w-4" />)}
+                    </th>
+                    <th className="text-right py-4 px-4 cursor-pointer" onClick={() => handleSort("likes")}>
+                      Likes {sortKey === "likes" && (sortDirection === "asc" ? <ArrowUp className="inline h-4 w-4" /> : <ArrowDown className="inline h-4 w-4" />)}
+                    </th>
+                    <th className="text-right py-4 px-4 cursor-pointer" onClick={() => handleSort("comments")}>
+                      Comments {sortKey === "comments" && (sortDirection === "asc" ? <ArrowUp className="inline h-4 w-4" /> : <ArrowDown className="inline h-4 w-4" />)}
+                    </th>
+                    <th className="text-right py-4 px-4 cursor-pointer" onClick={() => handleSort("updatedAt")}>
+                      Last Updated {sortKey === "updatedAt" && (sortDirection === "asc" ? <ArrowUp className="inline h-4 w-4" /> : <ArrowDown className="inline h-4 w-4" />)}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {stories.map((story) => (
+                  {sortedStories.map((story) => (
                     <tr key={story.id} className="border-b hover:bg-muted/50">
                       <td className="py-4 px-6">
                         <Link href={`/story/${story.slug || story.id}`} className="font-medium hover:text-primary">
@@ -147,9 +191,9 @@ export function StoriesTab() {
                           {story.status === "ongoing" ? "Ongoing" : story.status === "completed" ? "Completed" : story.status}
                         </Badge>
                       </td>
-                      <td className="text-right py-4 px-4">{(story.viewCount || 0).toLocaleString()}</td>
-                      <td className="text-right py-4 px-4">{(story.likeCount || 0).toLocaleString()}</td>
-                      <td className="text-right py-4 px-4">{(story.commentCount || 0).toLocaleString()}</td>
+                      <td className="text-right py-4 px-4">{(story.reads || 0).toLocaleString()}</td>
+                      <td className="text-right py-4 px-4">{(story.likes || 0).toLocaleString()}</td>
+                      <td className="text-right py-4 px-4">{(story.comments || 0).toLocaleString()}</td>
                       <td className="text-right py-4 px-4">{formatDate(story.updatedAt)}</td>
                     </tr>
                   ))}

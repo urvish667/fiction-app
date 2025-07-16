@@ -428,6 +428,17 @@ model CommentLike {
   @@index([commentId])
 }
 
+model Admin {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  password    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  blogs       Blog[]
+
+  @@index([email])
+}
+
 enum DonationStatus {
   pending
   collected
@@ -455,4 +466,31 @@ enum PayoutMethod {
   PAYPAL_EMAIL
   STRIPE_ACCOUNT
   BANK_TRANSFER
+}
+
+enum BlogCategory {
+  ANNOUNCEMENT
+  WRITING_TIPS
+  AUTHOR_INTERVIEWS
+  PLATFORM_UPDATES
+  STORYTELLING_INSIGHTS
+}
+
+model Blog {
+  id          String       @id @default(cuid())
+  title       String
+  slug        String       @unique
+  excerpt     String?
+  content     String
+  imageUrl    String?
+  category    BlogCategory
+  tags        String[]
+  status      String       @default("draft")
+  authorId    String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  author      Admin        @relation(fields: [authorId], references: [id])
+
+  @@index([authorId])
+  @@index([category])
 }

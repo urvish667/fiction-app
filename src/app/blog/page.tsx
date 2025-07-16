@@ -1,61 +1,282 @@
 "use client"
 
-import { motion } from "framer-motion"
-import { BookText } from "lucide-react"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
+import type React from "react"
+
+import { useState, useEffect } from "react"
+import { motion, AnimatePresence } from "framer-motion"
 import Navbar from "@/components/navbar"
+import BlogCard from "@/components/blog-card"
+import BlogFilters from "@/components/blog-filters"
+import AdBanner from "@/components/ad-banner"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Search, Grid, List } from "lucide-react"
+import { BlogPost, BlogCategory } from "@/types/blog"
 import { SiteFooter } from "@/components/site-footer"
 
+const formatString = (str: string) => {
+  return str
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ")
+}
+
 export default function BlogPage() {
+  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([])
+  const [filteredPosts, setFilteredPosts] = useState<BlogPost[]>([])
+  const [searchQuery, setSearchQuery] = useState("")
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [selectedTag, setSelectedTag] = useState<string | null>(null)
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
+  const [currentPage, setCurrentPage] = useState(1)
+  const postsPerPage = 9
+
+  useEffect(() => {
+    const fetchBlogs = async () => {
+      try {
+        const response = await fetch("/api/blogs");
+        const data = await response.json();
+        setBlogPosts(data);
+        setFilteredPosts(data);
+      } catch (error) {
+        console.error("Failed to fetch blogs:", error);
+      }
+    };
+
+    fetchBlogs();
+  }, []);
+
+  // Filter posts based on search, category, and tags
+  useEffect(() => {
+    let results = [...blogPosts]
+
+    // Apply search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase()
+      results = results.filter(
+        (post) =>
+          post.title.toLowerCase().includes(query) ||
+          post.excerpt.toLowerCase().includes(query) ||
+          post.author.toLowerCase().includes(query) ||
+          post.category.toLowerCase().includes(query) ||
+          post.tags.some((tag) => tag.toLowerCase().includes(query)),
+      )
+    }
+
+    // Apply category filter
+    if (selectedCategory) {
+      results = results.filter((post) => post.category === selectedCategory)
+    }
+
+    // Apply tag filter
+    if (selectedTag) {
+      results = results.filter((post) => post.tags.includes(selectedTag))
+    }
+
+    setFilteredPosts(results)
+    setCurrentPage(1)
+  }, [searchQuery, selectedCategory, selectedTag, blogPosts])
+
+  // Get unique categories and tags
+  const categories = Object.values(BlogCategory)
+  const allTags = Array.from(new Set(blogPosts.flatMap((post) => post.tags)))
+
+  // Calculate pagination
+  const indexOfLastPost = currentPage * postsPerPage
+  const indexOfFirstPost = indexOfLastPost - postsPerPage
+  const currentPosts = filteredPosts.slice(indexOfFirstPost, indexOfLastPost)
+  const totalPages = Math.ceil(filteredPosts.length / postsPerPage)
+
+  // Handle search
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+  }
+
+  // Clear all filters
+  const clearFilters = () => {
+    setSearchQuery("")
+    setSelectedCategory(null)
+    setSelectedTag(null)
+  }
+
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen">
       <Navbar />
-      
-      <main className="flex-1 container mx-auto px-8 py-12">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="max-w-3xl mx-auto text-center"
-        >
-          <div className="mb-8 flex justify-center">
-            <div className="p-4 rounded-full bg-primary/10">
-              <BookText className="h-12 w-12 text-primary" />
-            </div>
-          </div>
-          
-          <h1 className="text-4xl font-bold mb-6">FableSpace Blog</h1>
-          
-          <div className="bg-muted/30 rounded-lg p-8 mb-8">
-            <p className="text-lg text-muted-foreground mb-6">
-              We&apos;re working on a blog to share writing tips, author interviews, 
-              platform updates, and insights into the world of storytelling.
+
+      {/* Hero Section */}
+      <section className="bg-gradient-to-br from-primary/5 to-secondary/5 py-16 px-4">
+        <div className="container mx-auto text-center">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
+            <h1 className="text-4xl md:text-5xl font-bold mb-4">FableSpace Blog</h1>
+            <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
+              Discover writing tips, author interviews, industry insights, and the latest news from the world of
+              storytelling.
             </p>
-            <p className="text-muted-foreground mb-8">
-              Check back soon for articles on improving your craft, finding inspiration, 
-              and connecting with readers!
-            </p>
-            
-            <div className="flex justify-center gap-4">
-              <Button asChild variant="outline">
-                <Link href="/">Return Home</Link>
+
+            {/* Search Bar */}
+            <form onSubmit={handleSearch} className="max-w-md mx-auto relative">
+              <Input
+                type="text"
+                placeholder="Search articles..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pr-12"
+              />
+              <Button type="submit" variant="ghost" size="icon" className="absolute right-0 top-0 h-full">
+                <Search className="h-4 w-4" />
+                <span className="sr-only">Search</span>
               </Button>
-              <Button asChild>
-                <Link href="/browse">Browse Stories</Link>
-              </Button>
+            </form>
+          </motion.div>
+        </div>
+      </section>
+
+      <main className="container mx-auto px-4 py-12">
+        {/* Filters and View Toggle */}
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Sidebar Filters */}
+          <aside className="lg:w-64">
+            <BlogFilters
+              categories={categories.map((category) => formatString(category))}
+              selectedCategory={selectedCategory ? formatString(selectedCategory) : null}
+              onCategoryChange={(category) => {
+                if (category) {
+                  const originalCategory = Object.values(BlogCategory).find(
+                    (cat) => formatString(cat) === category
+                  );
+                  setSelectedCategory(originalCategory || null);
+                } else {
+                  setSelectedCategory(null);
+                }
+              }}
+              onClearFilters={clearFilters}
+            />
+          </aside>
+
+          {/* Main Content */}
+          <div className="flex-1">
+            {/* Results Header */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+              <div>
+                <h2 className="text-2xl font-bold mb-2">
+                  {selectedCategory || selectedTag || searchQuery ? "Filtered Articles" : "Latest Articles"}
+                </h2>
+                <p className="text-muted-foreground">
+                  {filteredPosts.length} {filteredPosts.length === 1 ? "article" : "articles"} found
+                  {searchQuery && <span> for "{searchQuery}"</span>}
+                  {selectedCategory && <span> in {formatString(selectedCategory)}</span>}
+                  {selectedTag && <span> tagged with "{selectedTag}"</span>}
+                </p>
+              </div>
+
+              {/* View Mode Toggle */}
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setViewMode("grid")}
+                  className={viewMode === "grid" ? "bg-primary/10" : ""}
+                >
+                  <Grid className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setViewMode("list")}
+                  className={viewMode === "list" ? "bg-primary/10" : ""}
+                >
+                  <List className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
+
+            {/* Blog Posts Grid */}
+            {filteredPosts.length > 0 ? (
+              <>
+                <motion.div
+                  layout
+                  className={`grid gap-8 ${
+                    viewMode === "grid" ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-3" : "grid-cols-1"
+                  }`}
+                >
+                  <AnimatePresence>
+                    {currentPosts.map((post, index) => (
+                      <motion.div
+                        key={post.id.toString()}
+                        layout
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        transition={{ duration: 0.3, delay: index * 0.1 }}
+                      >
+                        <BlogCard post={post} viewMode={viewMode} />
+
+                        {/* Insert ads after every 6 posts */}
+                        {(index + 1) % 6 === 0 && index !== currentPosts.length - 1 && (
+                          <div className={viewMode === "grid" ? "col-span-full" : ""}>
+                            <AdBanner type="interstitial" className="w-full h-32 mt-8" />
+                          </div>
+                        )}
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </motion.div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="flex justify-center mt-12">
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                        disabled={currentPage === 1}
+                      >
+                        Previous
+                      </Button>
+
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        const pageNum = i + 1
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant={currentPage === pageNum ? "default" : "outline"}
+                            onClick={() => setCurrentPage(pageNum)}
+                            className="w-10"
+                          >
+                            {pageNum}
+                          </Button>
+                        )
+                      })}
+
+                      <Button
+                        variant="outline"
+                        onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                        disabled={currentPage === totalPages}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-16">
+                <h3 className="text-xl font-semibold mb-2">No articles found</h3>
+                <p className="text-muted-foreground mb-6">
+                  Try adjusting your search or filters to find what you're looking for.
+                </p>
+                <Button onClick={clearFilters}>Clear all filters</Button>
+              </div>
+            )}
           </div>
-          
-          <div className="text-sm text-muted-foreground">
-            Have topics you'd like us to cover on the blog? 
-            <Link href="/contact" className="text-primary hover:underline ml-1">
-              Let us know!
-            </Link>
-          </div>
-        </motion.div>
+        </div>
       </main>
-      
+
+      {/* Fixed Bottom Banner Ad */}
+      <div className="sticky bottom-0 w-full z-40">
+        <AdBanner type="banner" className="w-full h-16" />
+      </div>
+
       <SiteFooter />
     </div>
   )

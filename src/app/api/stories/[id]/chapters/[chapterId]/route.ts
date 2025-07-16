@@ -295,11 +295,10 @@ export async function PUT(
       await AzureService.uploadContent(chapter.contentKey, validatedData.content);
 
       // Remove content from data as it's not stored in DB
-      // Destructure to remove content property from the data going to DB
-      const { ...dataForDb } = validatedData;
+      delete (validatedData as { content?: string }).content;
       dataToUpdate = {
-        ...dataForDb,
-        wordCount: newWordCount
+        ...validatedData,
+        wordCount: newWordCount,
       };
     }
 

@@ -256,8 +256,29 @@ export const StoryService = {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || "Failed to update chapter");
+      try {
+        const error = await response.json();
+        logError(error.error || error.message || "Failed to update chapter", {
+          context: 'Updating chapter',
+          storyId: storyId,
+          chapterId: chapterId,
+          status: response.status,
+          statusText: response.statusText,
+          errorDetails: error.details || error,
+          requestData: data
+        });
+        throw new Error(error.error || error.message || "Failed to update chapter");
+      } catch (parseError) {
+        logError(`HTTP ${response.status}: ${response.statusText}`, {
+          context: 'Updating chapter',
+          storyId: storyId,
+          chapterId: chapterId,
+          status: response.status,
+          statusText: response.statusText,
+          requestData: data
+        });
+        throw new Error(`Failed to update chapter: ${response.status} ${response.statusText}`);
+      }
     }
 
     return response.json();

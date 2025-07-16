@@ -94,11 +94,11 @@ export async function getDashboardStats(userId: string, timeRange: string = '30d
   const totalComments = stories.reduce((sum, story) => sum + story._count.comments, 0);
 
   // Calculate total earnings from donations (convert cents to dollars)
-  // Only count donations with 'succeeded' status
+  // Only count donations with 'collected' status
   const totalEarningsInCents = stories.reduce(
     (sum, story) => sum + story.donations
-      .filter(d => d.status === 'succeeded')
-      .reduce((dSum, d) => dSum + d.amount, 0),
+      .filter(d => d.status === 'collected')
+      .reduce((dSum, d) => dSum + d.amountCents, 0),
     0
   );
 
@@ -151,20 +151,20 @@ export async function getDashboardStats(userId: string, timeRange: string = '30d
     },
   });
 
-  // Get previous period earnings (only succeeded payments)
+  // Get previous period earnings (only collected payments)
   const previousPeriodEarnings = await prisma.donation.aggregate({
     where: {
       story: {
         authorId: userId,
       },
-      status: 'succeeded',
+      status: 'collected',
       createdAt: {
         gte: previousStartDate,
         lt: previousEndDate,
       },
     },
     _sum: {
-      amount: true,
+      amountCents: true,
     },
   });
 
@@ -216,19 +216,19 @@ export async function getDashboardStats(userId: string, timeRange: string = '30d
     },
   });
 
-  // Get current period earnings (only succeeded payments)
+  // Get current period earnings (only collected payments)
   const currentPeriodEarnings = await prisma.donation.aggregate({
     where: {
       story: {
         authorId: userId,
       },
-      status: 'succeeded',
+      status: 'collected',
       createdAt: {
         gte: startDate,
       },
     },
     _sum: {
-      amount: true,
+      amountCents: true,
     },
   });
 
@@ -253,8 +253,8 @@ export async function getDashboardStats(userId: string, timeRange: string = '30d
   );
 
   // Convert cents to dollars for earnings change calculation
-  const currentEarnings = (currentPeriodEarnings._sum.amount || 0) / 100;
-  const previousEarnings = (previousPeriodEarnings._sum.amount || 0) / 100;
+  const currentEarnings = (currentPeriodEarnings._sum.amountCents || 0) / 100;
+  const previousEarnings = (previousPeriodEarnings._sum.amountCents || 0) / 100;
 
   const earningsChange = calculateChange(
     currentEarnings,
@@ -284,39 +284,8 @@ export async function getDashboardStats(userId: string, timeRange: string = '30d
  * @returns Array of dashboard stories
  */
 export async function getTopStories(userId: string, limit: number = 5, sortBy: string = 'reads', timeRange: string = '30days'): Promise<DashboardStory[]> {
-  // Determine the order by field based on sortBy parameter
-  let orderBy: any = {};
-
-  // For reads, we'll need to sort after fetching since we're using StoryView
-  if (sortBy === 'reads') {
-    orderBy = {
-      updatedAt: "desc", // Default ordering until we apply the view count sort
-    };
-  } else if (sortBy === 'likes') {
-    orderBy = {
-      likes: {
-        _count: "desc",
-      },
-    };
-  } else if (sortBy === 'comments') {
-    orderBy = {
-      comments: {
-        _count: "desc",
-      },
-    };
-  } else if (sortBy === 'earnings') {
-    // For earnings, we'll need to sort after fetching since it's calculated
-    orderBy = {
-      updatedAt: "desc",
-    };
-  } else {
-    // Default to reads
-    orderBy = {
-      views: {
-        _count: "desc",
-      },
-    };
-  }
+  // Calculate date range
+  const { startDate } = calculateDateRanges(timeRange);
 
   // Get the user's stories
   const stories = await prisma.story.findMany({
@@ -324,30 +293,60 @@ export async function getTopStories(userId: string, limit: number = 5, sortBy: s
       authorId: userId,
     },
     include: {
-      _count: {
-        select: {
-          views: true,
-          likes: true,
-          comments: true,
+      donations: {
+        where: {
+          createdAt: {
+            gte: startDate,
+          },
         },
       },
-      donations: true,
       genre: true, // Include genre to get the name
     },
-    orderBy,
-    take: limit,
   });
 
-  // Get view counts for each story using the optimized ViewService with combined story + chapter views
   const storyIds = stories.map(story => story.id);
-  const viewCountMap = await ViewService.getBatchCombinedViewCounts(storyIds, timeRange);
+
+  // Get view counts for the specified time range
+  const viewCountMap = await ViewService.getBatchCombinedViewCounts(storyIds, 'custom', startDate);
+
+  // Get like counts for the specified time range
+  const likesCount = await prisma.like.groupBy({
+    by: ['storyId'],
+    where: {
+      storyId: { in: storyIds },
+      createdAt: {
+        gte: startDate,
+      },
+    },
+    _count: {
+      storyId: true,
+    },
+  });
+
+  // Get comment counts for the specified time range
+  const commentsCount = await prisma.comment.groupBy({
+    by: ['storyId'],
+    where: {
+      storyId: { in: storyIds },
+      createdAt: {
+        gte: startDate,
+      },
+    },
+    _count: {
+      storyId: true,
+    },
+  });
+
+  // Create maps for quick lookup
+  const likesMap = new Map(likesCount.map(like => [like.storyId, like._count.storyId]));
+  const commentsMap = new Map(commentsCount.map(comment => [comment.storyId, comment._count.storyId]));
 
   // Format stories data
   let formattedStories: DashboardStory[] = stories.map(story => {
-    // Calculate earnings in cents (only succeeded payments)
+    // Calculate earnings in cents (only collected payments)
     const storyEarningsInCents = story.donations
-      .filter(donation => donation.status === 'succeeded')
-      .reduce((sum, donation) => sum + donation.amount, 0);
+      .filter(donation => donation.status === 'collected')
+      .reduce((sum, donation) => sum + donation.amountCents, 0);
 
     // Convert cents to dollars
     const storyEarnings = storyEarningsInCents / 100;
@@ -362,21 +361,25 @@ export async function getTopStories(userId: string, limit: number = 5, sortBy: s
       genreName: genreName,
       slug: story.slug || story.id, // Use slug if available, fallback to ID
       reads: viewCountMap.get(story.id) || 0,
-      likes: story._count.likes,
-      comments: story._count.comments,
+      likes: likesMap.get(story.id) || 0,
+      comments: commentsMap.get(story.id) || 0,
       date: story.updatedAt.toISOString(),
       earnings: storyEarnings,
     };
   });
 
-  // Apply custom sorting for views and earnings
+  // Apply custom sorting for views, likes, comments, and earnings
   if (sortBy === 'reads') {
-    formattedStories = formattedStories.sort((a, b) => b.reads - a.reads).slice(0, limit);
+    formattedStories.sort((a, b) => b.reads - a.reads);
+  } else if (sortBy === 'likes') {
+    formattedStories.sort((a, b) => b.likes - a.likes);
+  } else if (sortBy === 'comments') {
+    formattedStories.sort((a, b) => b.comments - a.comments);
   } else if (sortBy === 'earnings') {
-    formattedStories = formattedStories.sort((a, b) => b.earnings - a.earnings).slice(0, limit);
+    formattedStories.sort((a, b) => b.earnings - a.earnings);
   }
 
-  return formattedStories;
+  return formattedStories.slice(0, limit);
 }
 
 /**
@@ -618,9 +621,11 @@ export async function getEngagementChartData(userId: string, timeRange: string =
 /**
  * Get all stories for a user with detailed information
  * @param userId The ID of the user
+ * @param timeRange The time range for the data
  * @returns Array of user stories with detailed information
  */
-export async function getUserStories(userId: string) {
+export async function getUserStories(userId: string, timeRange: string = 'all') {
+  const { startDate } = calculateDateRanges(timeRange);
   // Get all stories for the user
   const stories = await prisma.story.findMany({
     where: {
@@ -629,26 +634,66 @@ export async function getUserStories(userId: string) {
     include: {
       _count: {
         select: {
-          likes: true,
-          comments: true,
           chapters: true,
         },
       },
+      donations: {
+        where: {
+          createdAt: {
+            gte: startDate,
+          },
+        },
+      },
       genre: true, // Include genre to get the name
-    },
-    orderBy: {
-      updatedAt: "desc",
     },
   });
 
   // Get view counts for each story using the optimized ViewService with combined story + chapter views
   const storyIds = stories.map(story => story.id);
-  const viewCountMap = await ViewService.getBatchCombinedViewCounts(storyIds);
+  const viewCountMap = await ViewService.getBatchCombinedViewCounts(storyIds, 'custom', startDate);
+
+    // Get like counts for the specified time range
+    const likesCount = await prisma.like.groupBy({
+      by: ['storyId'],
+      where: {
+        storyId: { in: storyIds },
+        createdAt: {
+          gte: startDate,
+        },
+      },
+      _count: {
+        storyId: true,
+      },
+    });
+  
+    // Get comment counts for the specified time range
+    const commentsCount = await prisma.comment.groupBy({
+      by: ['storyId'],
+      where: {
+        storyId: { in: storyIds },
+        createdAt: {
+          gte: startDate,
+        },
+      },
+      _count: {
+        storyId: true,
+      },
+    });
+  
+    // Create maps for quick lookup
+    const likesMap = new Map(likesCount.map(like => [like.storyId, like._count.storyId]));
+    const commentsMap = new Map(commentsCount.map(comment => [comment.storyId, comment._count.storyId]));
 
   // Format stories data
   const formattedStories = stories.map(story => {
     // Get genre name if available
     const genreName = story.genre?.name || "General";
+    const storyEarningsInCents = story.donations
+    .filter(donation => donation.status === 'collected')
+    .reduce((sum, donation) => sum + donation.amountCents, 0);
+
+  // Convert cents to dollars
+  const storyEarnings = storyEarningsInCents / 100;
 
     return {
       id: story.id,
@@ -657,9 +702,11 @@ export async function getUserStories(userId: string) {
       genreName: genreName,
       slug: story.slug || story.id, // Use slug if available, fallback to ID
       status: story.status,
-      viewCount: viewCountMap.get(story.id) || 0,
-      likeCount: story._count.likes,
-      commentCount: story._count.comments,
+      reads: viewCountMap.get(story.id) || 0,
+      likes: likesMap.get(story.id) || 0,
+      comments: commentsMap.get(story.id) || 0,
+      date: story.updatedAt.toISOString(),
+      earnings: storyEarnings,
       chapters: story._count.chapters,
       updatedAt: story.updatedAt,
       createdAt: story.createdAt,
@@ -706,11 +753,11 @@ export async function getEarningsData(
   const storyIds = stories.map(story => story.id);
   const viewCountMap = await ViewService.getBatchCombinedViewCounts(storyIds);
 
-  // Calculate total earnings (all time) - only succeeded payments
+  // Calculate total earnings (all time) - only collected payments
   const totalEarningsInCents = stories.reduce(
     (sum, story) => sum + story.donations
-      .filter(d => d.status === 'succeeded')
-      .reduce((dSum, d) => dSum + d.amount, 0),
+      .filter(d => d.status === 'collected')
+      .reduce((dSum, d) => dSum + d.amountCents, 0),
     0
   );
 
@@ -725,9 +772,9 @@ export async function getEarningsData(
   const thisMonthEarningsInCents = stories.reduce(
     (sum, story) => {
       const monthlyDonations = story.donations.filter(
-        (d) => d.status === 'succeeded' && new Date(d.createdAt) >= thisMonthStart
+        (d) => d.status === 'collected' && new Date(d.createdAt) >= thisMonthStart
       );
-      return sum + monthlyDonations.reduce((dSum, d) => dSum + d.amount, 0);
+      return sum + monthlyDonations.reduce((dSum, d) => dSum + d.amountCents, 0);
     },
     0
   );
@@ -747,10 +794,10 @@ export async function getEarningsData(
       const monthlyDonations = story.donations.filter(
         (d) => {
           const date = new Date(d.createdAt);
-          return d.status === 'succeeded' && date >= lastMonthStart && date <= lastMonthEnd;
+          return d.status === 'collected' && date >= lastMonthStart && date <= lastMonthEnd;
         }
       );
-      return sum + monthlyDonations.reduce((dSum, d) => dSum + d.amount, 0);
+      return sum + monthlyDonations.reduce((dSum, d) => dSum + d.amountCents, 0);
     },
     0
   );
@@ -768,10 +815,10 @@ export async function getEarningsData(
 
   // Format stories data with earnings
   const storiesWithEarnings = stories.map(story => {
-    // Calculate earnings in cents (only succeeded payments)
+    // Calculate earnings in cents (only collected payments)
     const storyEarningsInCents = story.donations
-      .filter(donation => donation.status === 'succeeded')
-      .reduce((sum, donation) => sum + donation.amount, 0);
+      .filter(donation => donation.status === 'collected' && new Date(donation.createdAt) >= startDate)
+      .reduce((sum, donation) => sum + donation.amountCents, 0);
 
     // Convert cents to dollars
     const storyEarnings = storyEarningsInCents / 100;
@@ -802,7 +849,7 @@ export async function getEarningsData(
       story: {
         authorId: userId,
       },
-      status: 'succeeded',
+      status: 'collected',
       ...(timeRange !== 'all' && { createdAt: { gte: startDate } }),
     },
   });
@@ -820,7 +867,7 @@ export async function getEarningsData(
       story: {
         authorId: userId,
       },
-      status: 'succeeded',
+      status: 'collected',
       ...(timeRange !== 'all' && { createdAt: { gte: startDate } }),
     },
     include: {
@@ -855,7 +902,7 @@ export async function getEarningsData(
     storyId: donation.storyId || undefined,
     storyTitle: donation.story?.title,
     storySlug: donation.story?.slug || donation.story?.id,
-    amount: donation.amount / 100, // Convert cents to dollars
+    amount: donation.amountCents / 100, // Convert cents to dollars
     message: donation.message || undefined,
     createdAt: donation.createdAt.toISOString(),
   }));
@@ -919,10 +966,10 @@ export async function getEarningsChartData(userId: string, timeRange: string = '
   const donations = await prisma.donation.findMany({
     where: {
       storyId: { in: userStoryIds },
-      status: 'succeeded', // Only include succeeded payments
+      status: 'collected', // Only include collected payments
     },
     select: {
-      amount: true,
+      amountCents: true,
       createdAt: true,
     },
   });
@@ -939,7 +986,7 @@ export async function getEarningsChartData(userId: string, timeRange: string = '
     );
 
     // Sum up donation amounts for this month (in cents)
-    const totalAmountInCents = monthDonations.reduce((sum, donation) => sum + donation.amount, 0);
+    const totalAmountInCents = monthDonations.reduce((sum, donation) => sum + donation.amountCents, 0);
 
     // Convert cents to dollars
     const earningsInDollars = totalAmountInCents / 100;

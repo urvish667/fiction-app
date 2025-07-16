@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { getEarningsData } from "@/lib/services/dashboard-service";
-import { ApiResponse, EarningsData } from "@/types/dashboard";
+import { ApiResponse } from "@/types/dashboard";
 import { logger } from "@/lib/logger";
 
 // Valid time range options
@@ -87,7 +87,7 @@ export async function GET(request: Request) {
     const headers = new Headers();
     headers.set('Cache-Control', 'public, max-age=300, s-maxage=3600');
 
-    return NextResponse.json<ApiResponse<EarningsData>>(
+    return NextResponse.json<ApiResponse<any>>(
       {
         success: true,
         data: earningsData,

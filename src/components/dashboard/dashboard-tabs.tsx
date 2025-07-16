@@ -25,7 +25,7 @@ export function DashboardTabs({ activeTab, setActiveTab, timeRange }: DashboardT
       </TabsContent>
 
       <TabsContent value="stories">
-        <StoriesTab />
+        <StoriesTab timeRange={timeRange} />
       </TabsContent>
 
       <TabsContent value="earnings">

@@ -61,9 +61,10 @@ export class PayPalPaymentProcessor implements PaymentProcessor {
               currency_code: 'USD',
               value: amountInDollars,
             },
-            payee: {
-              email_address: recipient.donationLink, // The payee email is stored in donationLink
-            },
+            // Uncomment this part when implementing market place
+            // payee: {
+            //   email_address: recipient.donationLink, // The payee email is stored in donationLink
+            // },
           },
         ],
       };

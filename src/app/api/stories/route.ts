@@ -117,25 +117,21 @@ export async function GET(request: NextRequest) {
     }
 
     if (search) {
-      where.OR = [
-        // Search in story title and description
-        { title: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
-
-        // Search by author name or username
-        { author: {
-          OR: [
-            { name: { contains: search, mode: 'insensitive' } },
-            { username: { contains: search, mode: 'insensitive' } }
-          ]
-        }},
-
-        // Search by genre name
-        { genre: { name: { contains: search, mode: 'insensitive' } } },
-
-        // Search by tag name
-        { tags: { some: { tag: { name: { contains: search, mode: 'insensitive' } } } } }
-      ];
+      const sanitizedSearch = search.replace(/[\s&|!:'()]/g, ' ').trim().split(' ').join(' & ');
+      where.AND.push({
+        OR: [
+          { title: { contains: search, mode: 'insensitive' } },
+          { description: { contains: search, mode: 'insensitive' } },
+          { author: {
+            OR: [
+              { name: { contains: search, mode: 'insensitive' } },
+              { username: { contains: search, mode: 'insensitive' } }
+            ]
+          }},
+          { genre: { name: { contains: search, mode: 'insensitive' } } },
+          { tags: { some: { tag: { name: { contains: search, mode: 'insensitive' } } } } }
+        ]
+      });
     }
 
     // Get session to check if user is requesting their own drafts
