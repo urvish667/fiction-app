@@ -25,13 +25,13 @@ const createStorySchema = z.object({
 function getOrderByFromSortOption(sortBy: string): Prisma.StoryOrderByWithRelationInput {
   switch (sortBy) {
     case 'newest':
-      return { createdAt: Prisma.SortOrder.desc };
+      return { updatedAt: Prisma.SortOrder.desc };
     case 'popular':
       return { likes: { _count: Prisma.SortOrder.desc } };
     case 'mostRead':
       return { readCount: Prisma.SortOrder.desc };
     default:
-      return { createdAt: Prisma.SortOrder.desc };
+      return { updatedAt: Prisma.SortOrder.desc };
   }
 }
 

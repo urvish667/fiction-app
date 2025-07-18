@@ -252,35 +252,6 @@ export default function BrowseContent({ initialParams }: BrowseContentProps) {
     };
   }, [])
 
-
-  // Sort stories based on the selected sort option
-  const sortStories = (stories: BrowseStory[], sortOption: string): BrowseStory[] => {
-    const storiesCopy = [...stories];
-
-    switch (sortOption) {
-      case 'newest':
-        return storiesCopy.sort((a, b) => {
-          const dateA = a.createdAt || new Date();
-          const dateB = b.createdAt || new Date();
-          return dateB.getTime() - dateA.getTime();
-        });
-      case 'popular':
-        return storiesCopy.sort((a, b) => {
-          const likesA = a.likeCount || 0;
-          const likesB = b.likeCount || 0;
-          return likesB - likesA;
-        });
-      case 'mostRead':
-        return storiesCopy.sort((a, b) => {
-          const viewsA = a.viewCount || 0;
-          const viewsB = b.viewCount || 0;
-          return viewsB - viewsA;
-        });
-      default:
-        return storiesCopy;
-    }
-  }
-
   // Fetch stories from the API
   useEffect(() => {
     const fetchStories = async () => {

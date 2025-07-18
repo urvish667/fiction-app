@@ -1,1 +1,7 @@
 google.com, pub-3804028469877557, DIRECT, f08c47fec0942fa0
+
+# Adsterra 
+profitableratecpm.com, pl27195411, DIRECT
+highperformanceformat.com, 19b927b6ebc0e02a8566d41ab4cb5490, DIRECT
+highperformanceformat.com, 16a085233005dc5261de25a129a9405f, DIRECT
+highperformanceformat.com, f3e7eb1dc45a98ed6b8fb1c4dadbbe00, DIRECT

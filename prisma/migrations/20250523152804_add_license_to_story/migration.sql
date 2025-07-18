@@ -1,5 +1,0 @@
--- CreateEnum
-CREATE TYPE "License" AS ENUM ('ALL_RIGHTS_RESERVED', 'CC_BY', 'CC_BY_SA', 'CC_BY_NC', 'CC_BY_ND', 'CC_BY_NC_SA', 'CC_BY_NC_ND', 'CC0');
-
--- AlterTable
-ALTER TABLE "Story" ADD COLUMN     "license" "License" NOT NULL DEFAULT 'ALL_RIGHTS_RESERVED';

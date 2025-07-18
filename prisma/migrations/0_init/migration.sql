@@ -1,3 +1,24 @@
+-- CreateEnum
+CREATE TYPE "License" AS ENUM ('ALL_RIGHTS_RESERVED', 'CC_BY', 'CC_BY_SA', 'CC_BY_NC', 'CC_BY_ND', 'CC_BY_NC_SA', 'CC_BY_NC_ND', 'CC0');
+
+-- CreateEnum
+CREATE TYPE "DonationStatus" AS ENUM ('pending', 'collected', 'failed');
+
+-- CreateEnum
+CREATE TYPE "PayoutStatus" AS ENUM ('pending', 'paid_out', 'failed');
+
+-- CreateEnum
+CREATE TYPE "PayoutProvider" AS ENUM ('PAYPAL', 'STRIPE', 'BMC', 'KOFI');
+
+-- CreateEnum
+CREATE TYPE "PaymentMethod" AS ENUM ('PAYPAL', 'STRIPE', 'MANUAL');
+
+-- CreateEnum
+CREATE TYPE "PayoutMethod" AS ENUM ('PAYPAL_EMAIL', 'STRIPE_ACCOUNT', 'BANK_TRANSFER');
+
+-- CreateEnum
+CREATE TYPE "BlogCategory" AS ENUM ('WRITING_TIPS', 'AUTHOR_INTERVIEWS', 'PLATFORM_UPDATES', 'STORYTELLING_INSIGHTS', 'ANNOUNCEMENT');
+
 -- CreateTable
 CREATE TABLE "Account" (
     "id" TEXT NOT NULL,
@@ -56,9 +77,9 @@ CREATE TABLE "User" (
     "lastLogin" TIMESTAMP(3),
     "preferences" JSONB DEFAULT '{"privacySettings": {"showEmail": false, "showLocation": false, "allowMessages": false, "publicProfile": false}, "emailNotifications": {"newLike": false, "newChapter": false, "newComment": false, "newFollower": false}}',
     "donationLink" TEXT,
-    "donationMethod" TEXT,
     "donationsEnabled" BOOLEAN NOT NULL DEFAULT false,
     "country" TEXT DEFAULT 'US',
+    "donationMethod" "PayoutProvider",
 
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
 );
@@ -120,6 +141,7 @@ CREATE TABLE "Story" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "genreId" TEXT,
     "languageId" TEXT,
+    "license" "License" NOT NULL DEFAULT 'ALL_RIGHTS_RESERVED',
 
     CONSTRAINT "Story_pkey" PRIMARY KEY ("id")
 );
@@ -202,6 +224,7 @@ CREATE TABLE "Follow" (
 CREATE TABLE "Tag" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
+    "slug" TEXT NOT NULL,
 
     CONSTRAINT "Tag_pkey" PRIMARY KEY ("id")
 );
@@ -234,19 +257,39 @@ CREATE TABLE "Language" (
 -- CreateTable
 CREATE TABLE "Donation" (
     "id" TEXT NOT NULL,
-    "amount" INTEGER NOT NULL,
     "message" TEXT,
-    "status" TEXT NOT NULL DEFAULT 'pending',
     "stripePaymentIntentId" TEXT,
     "donorId" TEXT NOT NULL,
     "recipientId" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "storyId" TEXT,
-    "paymentMethod" TEXT,
     "paypalOrderId" TEXT,
+    "amountCents" INTEGER NOT NULL DEFAULT 0,
+    "capturedAt" TIMESTAMP(3),
+    "netAmountCents" INTEGER NOT NULL DEFAULT 0,
+    "paidOutAt" TIMESTAMP(3),
+    "payoutId" TEXT,
+    "platformFeeCents" INTEGER NOT NULL DEFAULT 0,
+    "processorFeeCents" INTEGER,
+    "status" "DonationStatus" NOT NULL DEFAULT 'pending',
+    "paymentMethod" "PaymentMethod",
 
     CONSTRAINT "Donation_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Payout" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "externalId" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "completedAt" TIMESTAMP(3),
+    "totalAmountCents" INTEGER NOT NULL,
+    "method" "PayoutMethod" NOT NULL,
+    "status" "PayoutStatus" NOT NULL DEFAULT 'pending',
+
+    CONSTRAINT "Payout_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -295,6 +338,35 @@ CREATE TABLE "CommentLike" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "CommentLike_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Admin" (
+    "id" TEXT NOT NULL,
+    "email" TEXT NOT NULL,
+    "password" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Admin_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Blog" (
+    "id" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "slug" TEXT NOT NULL,
+    "content" TEXT NOT NULL,
+    "imageUrl" TEXT,
+    "category" "BlogCategory" NOT NULL,
+    "tags" TEXT[],
+    "authorId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "status" TEXT NOT NULL DEFAULT 'draft',
+    "excerpt" TEXT,
+
+    CONSTRAINT "Blog_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
@@ -454,6 +526,12 @@ CREATE UNIQUE INDEX "Follow_followerId_followingId_key" ON "Follow"("followerId"
 CREATE UNIQUE INDEX "Tag_name_key" ON "Tag"("name");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "Tag_slug_key" ON "Tag"("slug");
+
+-- CreateIndex
+CREATE INDEX "Tag_slug_idx" ON "Tag"("slug");
+
+-- CreateIndex
 CREATE INDEX "StoryTag_tagId_idx" ON "StoryTag"("tagId");
 
 -- CreateIndex
@@ -469,22 +547,7 @@ CREATE UNIQUE INDEX "Language_name_key" ON "Language"("name");
 CREATE UNIQUE INDEX "Donation_stripePaymentIntentId_key" ON "Donation"("stripePaymentIntentId");
 
 -- CreateIndex
-CREATE INDEX "Donation_donorId_idx" ON "Donation"("donorId");
-
--- CreateIndex
-CREATE INDEX "Donation_recipientId_idx" ON "Donation"("recipientId");
-
--- CreateIndex
-CREATE INDEX "Donation_storyId_idx" ON "Donation"("storyId");
-
--- CreateIndex
-CREATE INDEX "Donation_status_idx" ON "Donation"("status");
-
--- CreateIndex
-CREATE INDEX "Donation_createdAt_idx" ON "Donation"("createdAt");
-
--- CreateIndex
-CREATE INDEX "Donation_paypalOrderId_idx" ON "Donation"("paypalOrderId");
+CREATE UNIQUE INDEX "Donation_paypalOrderId_key" ON "Donation"("paypalOrderId");
 
 -- CreateIndex
 CREATE INDEX "StoryRecommendation_storyId_idx" ON "StoryRecommendation"("storyId");
@@ -531,6 +594,21 @@ CREATE INDEX "CommentLike_commentId_idx" ON "CommentLike"("commentId");
 -- CreateIndex
 CREATE UNIQUE INDEX "CommentLike_userId_commentId_key" ON "CommentLike"("userId", "commentId");
 
+-- CreateIndex
+CREATE UNIQUE INDEX "Admin_email_key" ON "Admin"("email");
+
+-- CreateIndex
+CREATE INDEX "Admin_email_idx" ON "Admin"("email");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Blog_slug_key" ON "Blog"("slug");
+
+-- CreateIndex
+CREATE INDEX "Blog_authorId_idx" ON "Blog"("authorId");
+
+-- CreateIndex
+CREATE INDEX "Blog_category_idx" ON "Blog"("category");
+
 -- AddForeignKey
 ALTER TABLE "Account" ADD CONSTRAINT "Account_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
@@ -553,22 +631,22 @@ ALTER TABLE "Story" ADD CONSTRAINT "Story_languageId_fkey" FOREIGN KEY ("languag
 ALTER TABLE "Chapter" ADD CONSTRAINT "Chapter_storyId_fkey" FOREIGN KEY ("storyId") REFERENCES "Story"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "Comment" ADD CONSTRAINT "Comment_chapterId_fkey" FOREIGN KEY ("chapterId") REFERENCES "Chapter"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "Comment" ADD CONSTRAINT "Comment_parentId_fkey" FOREIGN KEY ("parentId") REFERENCES "Comment"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Comment" ADD CONSTRAINT "Comment_storyId_fkey" FOREIGN KEY ("storyId") REFERENCES "Story"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Comment" ADD CONSTRAINT "Comment_chapterId_fkey" FOREIGN KEY ("chapterId") REFERENCES "Chapter"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "Comment" ADD CONSTRAINT "Comment_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Like" ADD CONSTRAINT "Like_storyId_fkey" FOREIGN KEY ("storyId") REFERENCES "Story"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "Like" ADD CONSTRAINT "Like_chapterId_fkey" FOREIGN KEY ("chapterId") REFERENCES "Chapter"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Like" ADD CONSTRAINT "Like_chapterId_fkey" FOREIGN KEY ("chapterId") REFERENCES "Chapter"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "Like" ADD CONSTRAINT "Like_storyId_fkey" FOREIGN KEY ("storyId") REFERENCES "Story"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Like" ADD CONSTRAINT "Like_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -601,10 +679,16 @@ ALTER TABLE "StoryTag" ADD CONSTRAINT "StoryTag_tagId_fkey" FOREIGN KEY ("tagId"
 ALTER TABLE "Donation" ADD CONSTRAINT "Donation_donorId_fkey" FOREIGN KEY ("donorId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "Donation" ADD CONSTRAINT "Donation_payoutId_fkey" FOREIGN KEY ("payoutId") REFERENCES "Payout"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "Donation" ADD CONSTRAINT "Donation_recipientId_fkey" FOREIGN KEY ("recipientId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Donation" ADD CONSTRAINT "Donation_storyId_fkey" FOREIGN KEY ("storyId") REFERENCES "Story"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Payout" ADD CONSTRAINT "Payout_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "StoryRecommendation" ADD CONSTRAINT "StoryRecommendation_recommendedStoryId_fkey" FOREIGN KEY ("recommendedStoryId") REFERENCES "Story"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -629,3 +713,7 @@ ALTER TABLE "CommentLike" ADD CONSTRAINT "CommentLike_commentId_fkey" FOREIGN KE
 
 -- AddForeignKey
 ALTER TABLE "CommentLike" ADD CONSTRAINT "CommentLike_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Blog" ADD CONSTRAINT "Blog_authorId_fkey" FOREIGN KEY ("authorId") REFERENCES "Admin"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
