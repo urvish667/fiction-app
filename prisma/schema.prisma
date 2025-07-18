@@ -64,10 +64,10 @@ model User {
   updatedAt           DateTime          @updatedAt
   lastLogin           DateTime?
   preferences         Json?             @default("{\"privacySettings\": {\"showEmail\": false, \"showLocation\": false, \"allowMessages\": false, \"publicProfile\": false}, \"emailNotifications\": {\"newLike\": false, \"newChapter\": false, \"newComment\": false, \"newFollower\": false}}")
-  donationLink        String? // Will store Stripe Account ID or PayPal Merchant ID
-  donationMethod      PayoutProvider? // Will store 'STRIPE' or 'PAYPAL'
+  donationLink        String?
   donationsEnabled    Boolean           @default(false)
   country             String?           @default("US")
+  donationMethod      PayoutProvider?
   accounts            Account[]
   bookmarks           Bookmark[]
   chapterViews        ChapterView[]
@@ -79,11 +79,11 @@ model User {
   followers           Follow[]          @relation("Followers")
   likes               Like[]
   notificationsActed  Notification[]    @relation("NotificationActor")
+  payouts             Payout[]
   readingProgresses   ReadingProgress[]
   sessions            Session[]
   stories             Story[]
   storyViews          StoryView[]
-  payouts             Payout[]
 
   @@index([email])
   @@index([username])
@@ -121,7 +121,7 @@ model Notification {
   actorId   String?
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
-  actor     User?    @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  actor     User?    @relation("NotificationActor", fields: [actorId], references: [id])
 
   @@index([userId])
   @@index([actorId])
@@ -133,7 +133,7 @@ model Notification {
 model NotificationBatch {
   id        String   @id @default(cuid())
   type      String
-  status    String   // 'processing', 'completed', 'failed'
+  status    String
   metadata  Json
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -141,17 +141,6 @@ model NotificationBatch {
   @@index([type])
   @@index([status])
   @@index([createdAt])
-}
-
-enum License {
-  ALL_RIGHTS_RESERVED
-  CC_BY
-  CC_BY_SA
-  CC_BY_NC
-  CC_BY_ND
-  CC_BY_NC_SA
-  CC_BY_NC_ND
-  CC0
 }
 
 model Story {
@@ -162,7 +151,6 @@ model Story {
   coverImage      String?
   isMature        Boolean               @default(false)
   status          String                @default("ongoing")
-  license         License               @default(ALL_RIGHTS_RESERVED)
   wordCount       Int                   @default(0)
   readCount       Int                   @default(0)
   authorId        String
@@ -170,6 +158,7 @@ model Story {
   updatedAt       DateTime              @updatedAt
   genreId         String?
   languageId      String?
+  license         License               @default(ALL_RIGHTS_RESERVED)
   bookmarks       Bookmark[]
   chapters        Chapter[]
   comments        Comment[]
@@ -203,9 +192,9 @@ model Chapter {
   updatedAt         DateTime          @updatedAt
   story             Story             @relation(fields: [storyId], references: [id], onDelete: Cascade)
   views             ChapterView[]
-  readingProgresses ReadingProgress[]
   comments          Comment[]
   likes             Like[]
+  readingProgresses ReadingProgress[]
 
   @@unique([storyId, number])
   @@index([storyId])
@@ -222,10 +211,10 @@ model Comment {
   parentId  String?
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
+  chapter   Chapter?      @relation(fields: [chapterId], references: [id], onDelete: Cascade)
   parent    Comment?      @relation("CommentToReply", fields: [parentId], references: [id])
   replies   Comment[]     @relation("CommentToReply")
   story     Story         @relation(fields: [storyId], references: [id], onDelete: Cascade)
-  chapter   Chapter?      @relation(fields: [chapterId], references: [id], onDelete: Cascade)
   user      User          @relation(fields: [userId], references: [id])
   likes     CommentLike[]
 
@@ -241,11 +230,10 @@ model Like {
   storyId   String
   chapterId String?
   createdAt DateTime @default(now())
-  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
   chapter   Chapter? @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id])
 
-  // Add unique constraint for userId and storyId when chapterId is null
   @@unique([userId, storyId, chapterId], name: "userId_storyId_chapterId_unique")
   @@index([userId])
   @@index([storyId])
@@ -295,7 +283,7 @@ model Follow {
 model Tag {
   id      String     @id @default(cuid())
   name    String     @unique
-  slug    String     @unique    // URL‑safe, e.g. “rom‑com”
+  slug    String     @unique
   stories StoryTag[]
 
   @@index([slug])
@@ -325,44 +313,41 @@ model Language {
 }
 
 model Donation {
-  id                    String   @id @default(cuid())
-  amountCents           Int      @default(0)
-  platformFeeCents      Int      @default(0)
-  processorFeeCents     Int?      
-  netAmountCents        Int      @default(0)
+  id                    String         @id @default(cuid())
   message               String?
-  status                DonationStatus  @default(pending)
-  stripePaymentIntentId String?  @unique
-  paypalOrderId         String?  @unique
-  paymentMethod         PaymentMethod?
+  stripePaymentIntentId String?        @unique
   donorId               String
   recipientId           String
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
   storyId               String?
-  payoutId              String?
-
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  paypalOrderId         String?        @unique
+  amountCents           Int            @default(0)
   capturedAt            DateTime?
+  netAmountCents        Int            @default(0)
   paidOutAt             DateTime?
-
-  donor       User     @relation("DonationsMade", fields: [donorId], references: [id])
-  recipient   User     @relation("DonationsReceived", fields: [recipientId], references: [id])
-  payout      Payout?  @relation("DonationToPayout", fields: [payoutId], references: [id])
-  story       Story?   @relation(fields: [storyId], references: [id])
+  payoutId              String?
+  platformFeeCents      Int            @default(0)
+  processorFeeCents     Int?
+  status                DonationStatus @default(pending)
+  paymentMethod         PaymentMethod?
+  donor                 User           @relation("DonationsMade", fields: [donorId], references: [id])
+  payout                Payout?        @relation("DonationToPayout", fields: [payoutId], references: [id])
+  recipient             User           @relation("DonationsReceived", fields: [recipientId], references: [id])
+  story                 Story?         @relation(fields: [storyId], references: [id])
 }
 
 model Payout {
-  id                 String     @id @default(cuid())
-  userId             String
-  totalAmountCents   Int
-  status             PayoutStatus @default(pending)
-  method             PayoutMethod
-  externalId         String?
-  createdAt          DateTime @default(now())
-  completedAt        DateTime?
-
-  user        User       @relation(fields: [userId], references: [id])
-  donations   Donation[] @relation("DonationToPayout")
+  id               String       @id @default(cuid())
+  userId           String
+  externalId       String?
+  createdAt        DateTime     @default(now())
+  completedAt      DateTime?
+  totalAmountCents Int
+  method           PayoutMethod
+  status           PayoutStatus @default(pending)
+  donations        Donation[]   @relation("DonationToPayout")
+  user             User         @relation(fields: [userId], references: [id])
 }
 
 model StoryRecommendation {
@@ -429,14 +414,44 @@ model CommentLike {
 }
 
 model Admin {
-  id          String   @id @default(cuid())
-  email       String   @unique
-  password    String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  blogs       Blog[]
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  blogs     Blog[]
 
   @@index([email])
+}
+
+model Blog {
+  id        String       @id @default(cuid())
+  title     String
+  slug      String       @unique
+  content   String
+  imageUrl  String?
+  category  BlogCategory
+  tags      String[]
+  authorId  String
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  status    String       @default("draft")
+  excerpt   String?
+  author    Admin        @relation(fields: [authorId], references: [id])
+
+  @@index([authorId])
+  @@index([category])
+}
+
+enum License {
+  ALL_RIGHTS_RESERVED
+  CC_BY
+  CC_BY_SA
+  CC_BY_NC
+  CC_BY_ND
+  CC_BY_NC_SA
+  CC_BY_NC_ND
+  CC0
 }
 
 enum DonationStatus {
@@ -454,6 +469,8 @@ enum PayoutStatus {
 enum PayoutProvider {
   PAYPAL
   STRIPE
+  BMC
+  KOFI
 }
 
 enum PaymentMethod {
@@ -469,28 +486,9 @@ enum PayoutMethod {
 }
 
 enum BlogCategory {
-  ANNOUNCEMENT
   WRITING_TIPS
   AUTHOR_INTERVIEWS
   PLATFORM_UPDATES
   STORYTELLING_INSIGHTS
-}
-
-model Blog {
-  id          String       @id @default(cuid())
-  title       String
-  slug        String       @unique
-  excerpt     String?
-  content     String
-  imageUrl    String?
-  category    BlogCategory
-  tags        String[]
-  status      String       @default("draft")
-  authorId    String
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  author      Admin        @relation(fields: [authorId], references: [id])
-
-  @@index([authorId])
-  @@index([category])
+  ANNOUNCEMENT
 }

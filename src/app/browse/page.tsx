@@ -123,8 +123,6 @@ export default async function BrowsePage({ searchParams }: BrowsePageProps) {
           <BrowseContent initialParams={params} />
         </Suspense>
 
-        <DesktopBottomAd />
-
         <SiteFooter />
       </div>
     </>

@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion"
 import { useEffect, useState } from "react"
-import { DesktopSqaureAd } from "../desktop-square-ad"
+import { AdSlot } from "../ad-slot"
 import { Chapter } from "@/types/story"
 
 interface ChapterContentProps {
@@ -130,7 +130,7 @@ export function ChapterContent({
           />
 
           {/* First ad after 1/3 of content */}
-          <DesktopSqaureAd />
+          <AdSlot id="chapter-mid-banner" page="chapter" adType="banner" className="my-6" />
 
           {/* Second third of content */}
           <div
@@ -148,7 +148,7 @@ export function ChapterContent({
           />
 
           {/* Second ad after 2/3 of content */}
-          <DesktopSqaureAd />
+          <AdSlot id="chapter-mid-banner" page="chapter" adType="banner" className="my-6" />
 
           {/* Final third of content */}
           <div
@@ -184,7 +184,7 @@ export function ChapterContent({
           />
 
           {/* Ad in the middle */}
-          <DesktopSqaureAd />
+          <AdSlot id="chapter-mid-banner" page="chapter" adType="banner" className="my-6" />
 
           {/* Second half of content */}
           <div
@@ -216,7 +216,7 @@ export function ChapterContent({
           />
 
           {/* Ad at the end */}
-          <DesktopSqaureAd />
+          <AdSlot id="chapter-banner-bottom" page="chapter" adType="banner" className="my-6" />
         </>
       )}
     </motion.div>

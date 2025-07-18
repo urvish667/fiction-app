@@ -10,13 +10,20 @@ import { useToast } from "@/hooks/use-toast"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { logError } from "@/lib/error-logger"
 import { useProfileCompletionHandler } from "@/lib/profile-completion-handler"
+import { SupportButton } from "./SupportButton"
 
 interface ProfileActionButtonsProps {
   username: string
   isCurrentUser: boolean
+  author: {
+    id: string;
+    name: string;
+    donationMethod: 'PAYPAL' | 'STRIPE' | 'BMC' | 'KOFI' | null;
+    donationLink: string | null;
+  }
 }
 
-export default function ProfileActionButtons({ username, isCurrentUser }: ProfileActionButtonsProps) {
+export default function ProfileActionButtons({ username, isCurrentUser, author }: ProfileActionButtonsProps) {
   const { data: session } = useSession()
   const router = useRouter()
   const { toast } = useToast()
@@ -120,6 +127,17 @@ export default function ProfileActionButtons({ username, isCurrentUser }: Profil
 
   return (
     <div className="flex gap-2">
+      {/* Support Button */}
+      {!isCurrentUser && author.donationMethod && author.donationLink && (
+        <SupportButton
+          authorId={author.id}
+          authorName={author.name}
+          authorUsername={username}
+          donationMethod={author.donationMethod}
+          donationLink={author.donationLink}
+        />
+      )}
+
       {/* Don't show follow button for own profile */}
       {!isCurrentUser && (
         <TooltipProvider>

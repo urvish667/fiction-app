@@ -22,6 +22,15 @@ const recordStripeSchema = z.object({
  */
 export async function POST(req: Request) {
   try {
+    // 0. Donationation Disabled
+    // { DONATION DISABLED COMMENT }
+    if (!process.env.ENABLE_DONATION) {
+      return NextResponse.json({
+        error: 'Forbidden',
+        message: 'Donations are disabled'
+      }, { status: 403 })
+    }
+
     // 1. Authenticate user
     const session = await getServerSession(authOptions);
 
@@ -76,7 +85,7 @@ export async function POST(req: Request) {
       const updatedDonation = await prisma.donation.update({
         where: { id: existingDonation.id },
         data: {
-          status: 'succeeded',
+          status: 'collected',
           updatedAt: new Date(),
         },
         include: {
@@ -113,7 +122,7 @@ export async function POST(req: Request) {
             actorId: updatedDonation.donorId,
             actorUsername: actorUsername || 'Anonymous',
             donationId: updatedDonation.id,
-            amount: updatedDonation.amount,
+            amount: updatedDonation.amountCents,
             message: updatedDonation.message || undefined,
             storyId: updatedDonation.storyId || undefined,
             storyTitle: updatedDonation.story?.title,
@@ -148,11 +157,11 @@ export async function POST(req: Request) {
       data: {
         donorId: session.user.id,
         recipientId,
-        amount,
+        // amountCents?,
         message: message || null,
         storyId: storyId || null,
-        status: 'succeeded',
-        paymentMethod: 'stripe',
+        status: 'collected',
+        paymentMethod: 'STRIPE',
         stripePaymentIntentId,
       },
       include: {
@@ -170,24 +179,24 @@ export async function POST(req: Request) {
 
     // 7. Create notification for the new donation
     try {
-      const actorUsername = donation.donor.username || donation.donor.name;
-      await createDonationNotification({
-        recipientId: donation.recipientId,
-        actorId: donation.donorId,
-        actorUsername: actorUsername || 'Anonymous',
-        donationId: donation.id,
-        amount: donation.amount,
-        message: donation.message || undefined,
-        storyId: donation.storyId || undefined,
-        storyTitle: donation.story?.title,
-        storySlug: donation.story?.slug,
-      });
+      // const actorUsername = donation.donor.username || donation.donor.name;
+      // await createDonationNotification({
+      //   recipientId: donation.recipientId,
+      //   actorId: donation.donorId,
+      //   actorUsername: actorUsername || 'Anonymous',
+      //   donationId: donation.id,
+      //   amount: donation.amountCents,
+      //   message: donation.message || undefined,
+      //   storyId: donation.storyId || undefined,
+      //   storyTitle: donation.story?.title,
+      //   storySlug: donation.story?.slug,
+      // });
 
       logger.info('Stripe donation notification created for new donation', {
         donationId: donation.id,
         recipientId: donation.recipientId,
         donorId: donation.donorId,
-        amount: donation.amount,
+        amount: donation.amountCents,
         paymentIntentId: stripePaymentIntentId
       });
     } catch (notificationError) {

@@ -14,7 +14,6 @@ import MatureContentDialog, { needsMatureContentConsent } from "@/components/mat
 
 // App Components
 import Navbar from "@/components/navbar"
-import AdBanner from "@/components/ad-banner"
 import { SiteFooter } from "@/components/site-footer"
 
 // Custom Components

@@ -3,6 +3,8 @@
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Label } from "@/components/ui/label"
 import { X } from "lucide-react"
 
 interface BlogFiltersProps {
@@ -59,19 +61,26 @@ export default function BlogFilters({
           <CardTitle className="text-sm">Categories</CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
-          <div className="space-y-2">
+          <RadioGroup
+            value={selectedCategory || ""}
+            onValueChange={(value) => onCategoryChange(value || null)}
+            className="space-y-2"
+          >
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="" id="all-categories" />
+              <Label htmlFor="all-categories" className="text-sm font-medium">
+                All
+              </Label>
+            </div>
             {categories.map((category) => (
-              <Button
-                key={category}
-                variant={selectedCategory === category ? "default" : "ghost"}
-                size="sm"
-                onClick={() => onCategoryChange(selectedCategory === category ? null : category)}
-                className="w-full justify-start text-sm"
-              >
-                {category}
-              </Button>
+              <div key={category} className="flex items-center space-x-2">
+                <RadioGroupItem value={category} id={category} />
+                <Label htmlFor={category} className="text-sm font-medium">
+                  {category}
+                </Label>
+              </div>
             ))}
-          </div>
+          </RadioGroup>
         </CardContent>
       </Card>
     </div>

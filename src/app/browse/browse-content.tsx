@@ -7,7 +7,6 @@ import SearchBar from "@/components/search-bar"
 import FilterPanel from "@/components/filter-panel"
 import StoryGrid from "@/components/story-grid"
 import StoryCardSkeleton from "@/components/story-card-skeleton"
-import AdBanner from "@/components/ad-banner"
 import Pagination from "@/components/pagination"
 import CategoryDescription from "@/components/category-description"
 import { Button } from "@/components/ui/button"
@@ -478,17 +477,6 @@ export default function BrowseContent({ initialParams }: BrowseContentProps) {
                   </div>
 
                   <StoryGrid stories={stories} viewMode={viewMode} />
-
-                  {/* Ad Banner */}
-                  <div className="w-full py-4">
-                    <div className="bg-muted/30 border border-dashed border-muted-foreground/20 rounded flex items-center justify-center">
-                      <AdBanner
-                        type="banner"
-                        className="w-full max-w-[720px] h-[90px] mx-auto"
-                        slot="6596765108"
-                        />
-                    </div>
-                  </div>
 
                   {/* Pagination */}
                   {totalPages > 1 && (

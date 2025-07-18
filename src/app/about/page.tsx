@@ -47,7 +47,7 @@ export default function AboutPage() {
     {
       question: "How do donations work?",
       answer:
-        "Readers can support writers directly via PayPal. While PayPal may apply its standard transaction fee, FableSpace does not take any cut. Writers keep 100% of their donations (minus PayPal's processing fee)."
+        "Readers can support writers directly through external platforms like Buy Me a Coffee and Ko-fi. FableSpace does not take any cut from these donations. We are also actively developing direct integration for PayPal and Stripe to provide more seamless payment options."
     },
     {
       question: "Is FableSpace free to use?",
@@ -62,7 +62,7 @@ export default function AboutPage() {
     {
       question: "Will other payment options be supported in the future?",
       answer:
-        "Currently, donations are handled via PayPal to keep things simple and direct. As the platform grows, support for additional payment methods may be introduced based on community feedback."
+        "Yes! We are actively working on integrating Stripe and PayPal directly into the platform. This will allow for more straightforward and secure transactions. In the meantime, writers can connect their Buy Me a Coffee and Ko-fi accounts."
     },
     {
       question: "Are there any content guidelines?",
@@ -171,13 +171,13 @@ export default function AboutPage() {
                   <h3 className={`${ubuntu.className} font-bold text-xl text-green-800 dark:text-green-200`}>Get Paid by Readers</h3>
                 </div>
                 <p className="text-green-700 dark:text-green-300 mb-3">
-                  Readers can directly support their favorite authors through our integrated PayPal donation system.
-                  Every dollar goes straight to the writer—no middleman, no platform fees.
+                  Readers can directly support their favorite authors through platforms like Buy Me a Coffee and Ko-fi.
+                  We are also working on direct PayPal and Stripe integration for a more seamless experience.
                 </p>
                 <p className="text-sm text-green-600 dark:text-green-400 font-medium">
                   ✓ 100% of donations go to authors<br/>
-                  ✓ Instant PayPal transfers<br/>
-                  ✓ No subscription barriers for readers
+                  ✓ Connect your existing accounts<br/>
+                  ✓ More payment options coming soon
                 </p>
               </div>
 

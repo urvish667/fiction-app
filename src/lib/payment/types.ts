@@ -2,7 +2,7 @@
  * Common payment types and interfaces for the unified payment gateway
  */
 
-export type PaymentMethod = 'STRIPE' | 'PAYPAL';
+export type PaymentMethod = 'STRIPE' | 'PAYPAL' | 'BMC' | 'KOFI';
 
 export interface PaymentRecipient {
   id: string;

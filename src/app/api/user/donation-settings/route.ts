@@ -25,6 +25,7 @@ export async function GET() {
     }
 
     return NextResponse.json({
+      id: session.user.id, // Add user ID for webhook URL generation
       donationsEnabled: user.donationsEnabled ?? false,
       donationMethod: user.donationMethod,
       donationLink: user.donationLink,

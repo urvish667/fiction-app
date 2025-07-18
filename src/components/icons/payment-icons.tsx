@@ -19,3 +19,25 @@ export const StripeIcon = (props: React.ImgHTMLAttributes<HTMLImageElement>) => 
     {...props}
   />
 );
+
+export const BuyMeACoffeeIcon = (props: React.ImgHTMLAttributes<HTMLImageElement>) => (
+  <img 
+    src="https://cdn.buymeacoffee.com/"
+    alt="Buy Me A Coffee"
+    width={24}
+    height={24}
+    style={{ objectFit: 'contain' }}
+    {...props}
+  />
+);
+
+export const KofiIcon = (props: React.ImgHTMLAttributes<HTMLImageElement>) => (
+  <img 
+    src="https://storage.ko-fi.com/cdn/kofi_stroke_cup.svg"
+    alt="Ko-fi"
+    width={24}
+    height={24}
+    style={{ objectFit: 'contain' }}
+    {...props}
+  />
+);

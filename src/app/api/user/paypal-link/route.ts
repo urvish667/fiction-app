@@ -9,6 +9,15 @@ import { logger } from '@/lib/logger';
  */
 export async function GET(req: Request) {
   try {
+    // 0. Donations Disabled
+    // { DONATION DISABLED COMMENT }
+    if (!process.env.ENABLE_DONATION) {
+      return NextResponse.json({
+        error: 'Forbidden',
+        message: 'Donations are disabled'
+      }, { status: 403 })
+    }
+
     // 1. Authenticate user
     const session = await getServerSession(authOptions);
 

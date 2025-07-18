@@ -1,14 +1,21 @@
+import { NextResponse, NextRequest } from "next/server"
+import { getServerSession } from "next-auth";
+import { prisma } from "@/lib/auth/db-adapter";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { z } from "zod"
+import { profileUpdateSchema } from "@/lib/validators/profile"
+
 // GET method to retrieve user profile
 export async function GET() {
   try {
     // Get the session
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     // User ID is available from the session
-    const userId = session.user.id;
+    const userId = session.user.id
 
     // Fetch user profile
     const user = await prisma.user.findUnique({
@@ -27,7 +34,7 @@ export async function GET() {
         email: true,
         image: true,
         bannerImage: true,
-      }
+      },
     })
 
     if (!user) {
@@ -35,7 +42,6 @@ export async function GET() {
     }
 
     return NextResponse.json(user)
-
   } catch {
     return NextResponse.json(
       { error: "An error occurred while retrieving your profile" },
@@ -48,13 +54,13 @@ export async function GET() {
 export async function PATCH(request: NextRequest) {
   try {
     // Get the session
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     // User ID is available from the session
-    const userId = session.user.id;
+    const userId = session.user.id
 
     // Parse and validate request body
     const body = await request.json()
@@ -65,7 +71,7 @@ export async function PATCH(request: NextRequest) {
       const existingUser = await prisma.user.findUnique({
         where: {
           username: validatedData.username,
-          NOT: { id: userId }
+          NOT: { id: userId },
         },
       })
 
@@ -78,10 +84,14 @@ export async function PATCH(request: NextRequest) {
     }
 
     // If only updating image or bannerImage, get the current user data
-    if ((validatedData.image !== undefined || validatedData.bannerImage !== undefined) && !validatedData.username) {
+    if (
+      (validatedData.image !== undefined ||
+        validatedData.bannerImage !== undefined) &&
+      !validatedData.username
+    ) {
       const currentUser = await prisma.user.findUnique({
         where: { id: userId },
-        select: { username: true }
+        select: { username: true },
       })
 
       if (currentUser && currentUser.username) {
@@ -98,12 +108,21 @@ export async function PATCH(request: NextRequest) {
         bio: validatedData.bio,
         location: validatedData.location,
         website: validatedData.website,
-        socialLinks: validatedData.socialLinks ? { set: validatedData.socialLinks } : undefined,
+        socialLinks: validatedData.socialLinks
+          ? { set: validatedData.socialLinks }
+          : undefined,
         language: validatedData.language,
         theme: validatedData.theme,
-        marketingOptIn: validatedData.marketingOptIn !== undefined ? validatedData.marketingOptIn : undefined,
-        image: validatedData.image !== undefined ? validatedData.image : undefined,
-        bannerImage: validatedData.bannerImage !== undefined ? validatedData.bannerImage : undefined,
+        marketingOptIn:
+          validatedData.marketingOptIn !== undefined
+            ? validatedData.marketingOptIn
+            : undefined,
+        image:
+          validatedData.image !== undefined ? validatedData.image : undefined,
+        bannerImage:
+          validatedData.bannerImage !== undefined
+            ? validatedData.bannerImage
+            : undefined,
         updatedAt: new Date(),
       },
       select: {
@@ -119,11 +138,10 @@ export async function PATCH(request: NextRequest) {
         marketingOptIn: true,
         image: true,
         bannerImage: true,
-      }
+      },
     })
 
     return NextResponse.json(updatedUser)
-
   } catch (error) {
     if (error instanceof z.ZodError) {
       const fieldErrors: Record<string, string> = {}

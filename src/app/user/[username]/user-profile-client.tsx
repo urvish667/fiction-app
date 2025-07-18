@@ -76,7 +76,7 @@ export default function UserProfileClient({ user }: UserProfileClientProps) {
           // Fetch published stories
           fetch(`/api/stories?authorId=${user.id}&status=ongoing,completed`),
           // Fetch bookmarked stories
-          fetch(`/api/user/bookmarks?userId=${user.id}`)
+          fetch(`/api/user/bookmarks?userId=${user.id}`),
         ])
 
         if (!storiesResponse.ok) {
@@ -88,8 +88,12 @@ export default function UserProfileClient({ user }: UserProfileClientProps) {
         // Format the stories to ensure they have all required fields
         const formattedStories = storiesData.stories.map((story: any) => {
           // Convert date strings to Date objects if they exist
-          const createdAt = story.createdAt ? new Date(story.createdAt) : undefined;
-          const updatedAt = story.updatedAt ? new Date(story.updatedAt) : undefined;
+          const createdAt = story.createdAt
+            ? new Date(story.createdAt)
+            : undefined
+          const updatedAt = story.updatedAt
+            ? new Date(story.updatedAt)
+            : undefined
 
           return {
             ...story,
@@ -101,8 +105,8 @@ export default function UserProfileClient({ user }: UserProfileClientProps) {
             commentCount: story.commentCount || 0,
             viewCount: story.viewCount || 0,
             createdAt,
-            updatedAt
-          };
+            updatedAt,
+          }
         })
 
         setUserStories(formattedStories || [])
@@ -114,8 +118,12 @@ export default function UserProfileClient({ user }: UserProfileClientProps) {
           // Format the bookmarked stories
           const formattedBookmarks = bookmarksData.stories.map((story: any) => {
             // Convert date strings to Date objects if they exist
-            const createdAt = story.createdAt ? new Date(story.createdAt) : undefined;
-            const updatedAt = story.updatedAt ? new Date(story.updatedAt) : undefined;
+            const createdAt = story.createdAt
+              ? new Date(story.createdAt)
+              : undefined
+            const updatedAt = story.updatedAt
+              ? new Date(story.updatedAt)
+              : undefined
 
             return {
               ...story,
@@ -126,17 +134,23 @@ export default function UserProfileClient({ user }: UserProfileClientProps) {
               commentCount: story.commentCount || 0,
               viewCount: story.viewCount || 0,
               createdAt,
-              updatedAt
-            };
+              updatedAt,
+            }
           })
 
           setLibraryStories(formattedBookmarks || [])
         } else {
-          logError(bookmarksResponse, { context: "Failed to fetch bookmarked stories", userId: user.id })
+          logError(bookmarksResponse, {
+            context: "Failed to fetch bookmarked stories",
+            userId: user.id,
+          })
           setLibraryStories([])
         }
       } catch (err) {
-        logError(err, { context: "Error fetching user stories", userId: user.id })
+        logError(err, {
+          context: "Error fetching user stories",
+          userId: user.id,
+        })
       } finally {
         setStoriesLoading(false)
       }
@@ -173,11 +187,22 @@ export default function UserProfileClient({ user }: UserProfileClientProps) {
   }, [user?.username, activeTab])
 
   return (
-    <Tabs defaultValue="stories" value={activeTab} onValueChange={setActiveTab} className="mt-8 md:mt-12">
+    <Tabs
+      defaultValue="stories"
+      value={activeTab}
+      onValueChange={setActiveTab}
+      className="mt-8 md:mt-12"
+    >
       <TabsList className="mb-6 md:mb-8">
-        <TabsTrigger value="stories" className="text-xs sm:text-sm">Published Stories</TabsTrigger>
-        <TabsTrigger value="library" className="text-xs sm:text-sm">Library</TabsTrigger>
-        <TabsTrigger value="followers" className="text-xs sm:text-sm">Followers & Following</TabsTrigger>
+        <TabsTrigger value="stories" className="text-xs sm:text-sm">
+          Published Stories
+        </TabsTrigger>
+        <TabsTrigger value="library" className="text-xs sm:text-sm">
+          Library
+        </TabsTrigger>
+        <TabsTrigger value="followers" className="text-xs sm:text-sm">
+          Followers & Following
+        </TabsTrigger>
       </TabsList>
 
       <TabsContent value="stories">
@@ -202,21 +227,27 @@ export default function UserProfileClient({ user }: UserProfileClientProps) {
       </TabsContent>
 
       <TabsContent value="library">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
           {storiesLoading ? (
             <div className="flex justify-center items-center h-64">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : savedStories.length > 0 ? (
             <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {savedStories.map((story) => (
+              {savedStories.map(story => (
                 <StoryCard key={story.id} story={story} viewMode="grid" />
               ))}
             </div>
           ) : (
             <div className="text-center py-12 bg-muted/30 rounded-lg">
               <h3 className="text-xl font-semibold mb-2">No saved stories</h3>
-              <p className="text-muted-foreground">This user hasn't saved any stories to their library.</p>
+              <p className="text-muted-foreground">
+                This user hasn't saved any stories to their library.
+              </p>
             </div>
           )}
         </motion.div>

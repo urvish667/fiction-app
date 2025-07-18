@@ -19,6 +19,15 @@ const donationSchema = z.object({
  */
 export async function POST(req: Request) {
   try {
+    // 0. Donation is enable
+    // { DONATION DISABLED COMMENT }
+    if (!process.env.ENABLE_DONATION) {
+      return NextResponse.json({
+        error: 'Forbidden',
+        message: 'Donations are disabled'
+      }, { status: 403 })
+    }
+
     // 1. Authenticate user
     const session = await getServerSession(authOptions);
 

@@ -44,8 +44,9 @@ type SettingsFormValues = z.infer<typeof settingsFormSchema>
 
 // --- Donation Settings Types (Copied from donations/page.tsx) ---
 interface DonationSettingsData {
+  id?: string;
   donationsEnabled: boolean;
-  donationMethod: 'PAYPAL' | 'STRIPE' | null;
+  donationMethod: 'PAYPAL' | 'STRIPE' | 'BMC' | 'KOFI' | null;
   donationLink: string | null;
 }
 // --- End Donation Settings Types ---
@@ -65,7 +66,7 @@ function TabParamsHandler({
   router: any;
   setActiveTab: (tab: string) => void;
   setEnableDonations: (enabled: boolean) => void;
-  setDonationMethod: (method: 'PAYPAL' | 'STRIPE' | null) => void;
+  setDonationMethod: (method: 'PAYPAL' | 'STRIPE' | 'BMC' | 'KOFI' | null) => void;
   donationSettings: DonationSettingsData | null;
 }) {
   const searchParams = useSearchParams();
@@ -133,8 +134,8 @@ export default function SettingsPage() {
   const [isSavingDonations, setIsSavingDonations] = useState(false);
   const [donationError, setDonationError] = useState<string | null>(null);
   const [enableDonations, setEnableDonations] = useState(false);
-  const [donationMethod, setDonationMethod] = useState<'PAYPAL' | 'STRIPE' | null>(null);
-  const [paypalLink, setPaypalLink] = useState('');
+  const [donationMethod, setDonationMethod] = useState<'PAYPAL' | 'STRIPE' | 'BMC' | 'KOFI' | null>(null);
+  const [donationLink, setDonationLink] = useState('');
   const isStripeConnected = donationSettings?.donationMethod === 'STRIPE' && !!donationSettings?.donationLink;
   // --- End Donation Settings State ---
 
@@ -212,36 +213,36 @@ export default function SettingsPage() {
   }, [session?.user?.id, form, toast, update, session])
 
   // --- Donation Settings Effects (Copied & Adapted) ---
+  const fetchDonationSettings = async () => {
+    setIsLoadingDonations(true);
+    setDonationError(null);
+    try {
+      const response = await fetch('/api/user/donation-settings');
+      if (!response.ok) {
+        throw new Error('Failed to fetch donation settings.');
+      }
+      const data: DonationSettingsData = await response.json();
+      setDonationSettings(data);
+      // Initialize donation form state
+      setEnableDonations(data.donationsEnabled);
+      setDonationMethod(data.donationMethod);
+      setDonationLink(data.donationLink || '');
+
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'An unknown error occurred';
+      setDonationError(errorMsg);
+      toast({
+        title: 'Error Loading Donation Settings',
+        description: errorMsg,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoadingDonations(false);
+    }
+  };
   // Fetch initial donation settings
   useEffect(() => {
     if (sessionStatus === 'authenticated') {
-      const fetchDonationSettings = async () => {
-        setIsLoadingDonations(true);
-        setDonationError(null);
-        try {
-          const response = await fetch('/api/user/donation-settings');
-          if (!response.ok) {
-            throw new Error('Failed to fetch donation settings.');
-          }
-          const data: DonationSettingsData = await response.json();
-          setDonationSettings(data);
-          // Initialize donation form state
-          setEnableDonations(data.donationsEnabled);
-          setDonationMethod(data.donationMethod);
-          setPaypalLink(data.donationMethod === 'PAYPAL' && data.donationLink ? data.donationLink : '');
-
-        } catch (err) {
-          const errorMsg = err instanceof Error ? err.message : 'An unknown error occurred';
-          setDonationError(errorMsg);
-          toast({
-            title: 'Error Loading Donation Settings',
-            description: errorMsg,
-            variant: 'destructive',
-          });
-        } finally {
-          setIsLoadingDonations(false);
-        }
-      };
       fetchDonationSettings();
     }
     // No redirect needed here as main settings page handles auth
@@ -623,14 +624,16 @@ export default function SettingsPage() {
     setEnableDonations(checked);
     if (!checked) {
       setDonationMethod(null);
-      setPaypalLink('');
+      setDonationLink('');
     } else {
-      if (!donationMethod) setDonationMethod('PAYPAL'); // Default to paypal if enabling
+      // Default to BMC if enabling and no method is set
+      if (!donationMethod) setDonationMethod('BMC');
     }
   };
 
   const handleDonationMethodChange = (value: string) => {
-    setDonationMethod(value as 'PAYPAL' | 'STRIPE');
+    setDonationMethod(value as 'PAYPAL' | 'STRIPE' | 'BMC' | 'KOFI');
+    setDonationLink(''); // Reset link when method changes
   };
 
   const handleConnectStripe = async () => {
@@ -672,30 +675,33 @@ export default function SettingsPage() {
     }
   };
 
-  const handleSaveDonationChanges = async () => {
+  const handleSaveDonationChanges = async (linkOverride?: string) => {
     setIsSavingDonations(true);
     setDonationError(null);
+
+    // Determine the link to save
+    const finalLink = linkOverride ?? donationLink;
+
     try {
       let response: Response | undefined;
       if (!enableDonations) {
         response = await fetchWithCsrf('/api/user/disable-donations', { method: 'POST' });
       } else {
-        if (donationMethod === 'PAYPAL') {
-          response = await fetchWithCsrf('/api/user/enable-donations', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ method: 'PAYPAL', link: paypalLink }),
-          });
-        } else if (donationMethod === 'STRIPE') {
-          // Stripe connection is handled via the button, so we just need to enable it.
-          response = await fetchWithCsrf('/api/user/enable-donations', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ method: 'STRIPE' }),
-          });
-        } else {
+        if (!donationMethod) {
           throw new Error('Please select a valid donation method.');
         }
+        
+        const payload: { method: string; link?: string } = { method: donationMethod };
+
+        if (donationMethod === 'PAYPAL' || donationMethod === 'BMC' || donationMethod === 'KOFI') {
+          payload.link = finalLink;
+        }
+
+        response = await fetchWithCsrf('/api/user/enable-donations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
       }
 
       if (!response) {
@@ -714,22 +720,8 @@ export default function SettingsPage() {
       const result = await response.json();
       toast({ title: 'Success', description: result.message || 'Settings updated.' });
 
-      // Update local state to match saved state
-      let finalDonationLink: string | null = null;
-      if (enableDonations) {
-        if (donationMethod === 'PAYPAL') {
-          finalDonationLink = paypalLink;
-        } else if (donationMethod === 'STRIPE') {
-          // Keep existing Stripe link if available, otherwise null
-          finalDonationLink = donationSettings?.donationLink ?? null;
-        }
-        // If method is null (shouldn't happen if enabled), link remains null
-      }
-      setDonationSettings({
-        donationsEnabled: enableDonations,
-        donationMethod: enableDonations ? donationMethod : null,
-        donationLink: finalDonationLink
-      });
+      // Refetch settings to get the latest data, including the user ID for webhooks
+      await fetchDonationSettings();
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
@@ -827,8 +819,8 @@ export default function SettingsPage() {
                 donationError={donationError}
                 enableDonations={enableDonations}
                 donationMethod={donationMethod}
-                paypalLink={paypalLink}
-                setPaypalLink={setPaypalLink}
+                donationLink={donationLink}
+                setDonationLink={setDonationLink}
                 handleEnableDonationToggle={handleEnableDonationToggle}
                 handleDonationMethodChange={handleDonationMethodChange}
                 handleConnectStripe={handleConnectStripe}

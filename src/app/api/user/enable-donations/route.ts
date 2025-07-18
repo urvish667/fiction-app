@@ -6,7 +6,12 @@ import { prisma } from '@/lib/auth/db-adapter';
 
 // Validate the input
 const enableDonationsSchema = z.object({
-  method: z.union([z.literal('PAYPAL'), z.literal('STRIPE')]),
+  method: z.union([
+    z.literal('PAYPAL'),
+    z.literal('STRIPE'),
+    z.literal('BMC'),
+    z.literal('KOFI'),
+  ]),
   link: z.string().optional(),
 });
 
@@ -50,6 +55,20 @@ export async function POST(req: Request) {
           formattedLink = match[1];
         }
       }
+    } else if (method === 'BMC' || method === 'KOFI') {
+      if (!link) {
+        return NextResponse.json({
+          error: `Please enter your ${method === 'BMC' ? 'Buy Me a Coffee' : 'Ko-fi'} username.`
+        }, { status: 400 });
+      }
+      // Basic validation for username format
+      const usernameRegex = /^[a-zA-Z0-9-_]+$/;
+      if (!usernameRegex.test(link)) {
+        return NextResponse.json({
+          error: `Invalid ${method === 'BMC' ? 'Buy Me a Coffee' : 'Ko-fi'} username format.`
+        }, { status: 400 });
+      }
+      formattedLink = link;
     }
 
     await prisma.user.update({

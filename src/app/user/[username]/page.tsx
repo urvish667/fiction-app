@@ -276,6 +276,12 @@ export default async function UserProfilePage({ params }: UserPageParams) {
                 <ProfileActionButtons
                   username={user.username}
                   isCurrentUser={user.isCurrentUser}
+                  author={{
+                    id: user.id,
+                    name: user.name || user.username,
+                    donationMethod: user.donationMethod as 'PAYPAL' | 'STRIPE' | 'BMC' | 'KOFI' | null,
+                    donationLink: user.donationLink || null,
+                  }}
                 />
               </div>
             </div>
@@ -405,4 +411,3 @@ export default async function UserProfilePage({ params }: UserPageParams) {
     </>
   );
 }
-

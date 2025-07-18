@@ -14,14 +14,13 @@ import Navbar from "@/components/navbar"
 import ChapterList from "@/components/chapter-list"
 import StoryMetadata from "@/components/story-metadata"
 import CommentSection from "@/components/comment-section"
-import AdBanner from "@/components/ad-banner"
+import { AdSlot } from "@/components/ad-slot"
 import { SiteFooter } from "@/components/site-footer"
 import { StoryService } from "@/services/story-service"
 import { Story as StoryType, Chapter as ChapterType } from "@/types/story"
 import { SupportButton } from "@/components/SupportButton"
 import MatureContentDialog, { needsMatureContentConsent } from "@/components/mature-content-dialog"
 import { logError } from "@/lib/error-logger"
-import { DesktopSqaureAd } from "../desktop-square-ad"
 
 interface StoryPageClientProps {
   initialStory: StoryType
@@ -469,7 +468,7 @@ export default function StoryPageClient({
               </div>
 
               {/* Interstitial Ad between Description and Table of Contents */}
-              <DesktopSqaureAd />
+              <AdSlot id="story-banner-top" page="story" adType="banner" className="my-6" />
 
               {/* Chapters */}
               <motion.div

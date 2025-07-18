@@ -14,6 +14,7 @@ declare module "next-auth" {
       isProfileComplete?: boolean;
       unreadNotifications: number;
       preferences?: UserPreferences;
+      emailVerified?: Date | null;
     } & {
       id: string;
     };
@@ -24,6 +25,7 @@ declare module "next-auth" {
     isProfileComplete?: boolean;
     preferences?: UserPreferences;
     needsProfileCompletion?: boolean;
+    emailVerified: Date | null;
   }
 }
 
@@ -41,5 +43,6 @@ declare module "next-auth/jwt" {
     provider?: string;
     marketingOptIn?: boolean;
     unreadNotifications?: number;
+    emailVerified?: Date | null;
   }
 }

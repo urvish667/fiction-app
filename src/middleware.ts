@@ -41,6 +41,11 @@ const authRateLimitedRoutes = [
   '/api/auth/signin/credentials',
   '/api/auth/signin/google',
   '/api/auth/signin/twitter',
+  '/api/auth/reset-password',
+  '/api/auth/complete-profile',
+  '/api/auth/resend-verification',
+  '/api/auth/session-update',
+  '/api/auth/ws-token',
 ];
 
 // Note: We identify editor endpoints dynamically in the middleware function

@@ -79,7 +79,6 @@ export default function BlogPage() {
 
   // Get unique categories and tags
   const categories = Object.values(BlogCategory)
-  const allTags = Array.from(new Set(blogPosts.flatMap((post) => post.tags)))
 
   // Calculate pagination
   const indexOfLastPost = currentPage * postsPerPage
@@ -103,35 +102,22 @@ export default function BlogPage() {
     <div className="min-h-screen">
       <Navbar />
 
-      {/* Hero Section */}
-      <section className="bg-gradient-to-br from-primary/5 to-secondary/5 py-16 px-4">
-        <div className="container mx-auto text-center">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">FableSpace Blog</h1>
-            <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Discover writing tips, author interviews, industry insights, and the latest news from the world of
-              storytelling.
-            </p>
-
-            {/* Search Bar */}
-            <form onSubmit={handleSearch} className="max-w-md mx-auto relative">
-              <Input
-                type="text"
-                placeholder="Search articles..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pr-12"
-              />
-              <Button type="submit" variant="ghost" size="icon" className="absolute right-0 top-0 h-full">
-                <Search className="h-4 w-4" />
-                <span className="sr-only">Search</span>
-              </Button>
-            </form>
-          </motion.div>
-        </div>
-      </section>
-
       <main className="container mx-auto px-4 py-12">
+        <h1 className="text-3xl font-bold mb-6">FableSpace Blog</h1>
+        {/* Search Bar */}
+        <form onSubmit={handleSearch} className="max-w-md relative mb-8">
+          <Input
+            type="text"
+            placeholder="Search articles..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pr-12"
+          />
+          <Button type="submit" variant="ghost" size="icon" className="absolute right-0 top-0 h-full">
+            <Search className="h-4 w-4" />
+            <span className="sr-only">Search</span>
+          </Button>
+        </form>
         {/* Filters and View Toggle */}
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Sidebar Filters */}

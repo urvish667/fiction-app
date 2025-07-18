@@ -6,10 +6,11 @@ import { toast } from '@/components/ui/use-toast';
 import { Loader2, Heart } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { logError } from '@/lib/error-logger';
+import { BuyMeACoffeeIcon, KofiIcon } from '@/components/icons/payment-icons';
 
 interface SupportButtonProps {
   authorId: string;
-  donationMethod: 'PAYPAL' | 'STRIPE' | null;
+  donationMethod: 'PAYPAL' | 'STRIPE' | 'BMC' | 'KOFI' | null;
   donationLink: string | null;
   authorName?: string;
   authorUsername?: string;
@@ -37,6 +38,18 @@ export function SupportButton({
   const handleDonation = async () => {
     setIsProcessing(true);
     try {
+      if (donationMethod === 'BMC') {
+        window.open(`https://www.buymeacoffee.com/${donationLink}`, '_blank');
+        setIsProcessing(false);
+        return;
+      }
+
+      if (donationMethod === 'KOFI') {
+        window.open(`https://ko-fi.com/${donationLink}`, '_blank');
+        setIsProcessing(false);
+        return;
+      }
+
       // Fixed amount for now - $5
       const amountInCents = 500;
 
@@ -69,6 +82,16 @@ export function SupportButton({
   };
 
   const buttonText = `Support ${authorName || 'the Author'}`;
+  const getButtonIcon = () => {
+    switch (donationMethod) {
+      case 'BMC':
+        return <BuyMeACoffeeIcon className="mr-2 h-6 w-6" />;
+      case 'KOFI':
+        return <KofiIcon className="mr-2 h-4 w-4" />;
+      default:
+        return <Heart className="mr-2 h-4 w-4" />;
+    }
+  };
 
   return (
     <Button
@@ -80,7 +103,7 @@ export function SupportButton({
       {isProcessing ? (
         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
       ) : (
-        <Heart className="mr-2 h-4 w-4" />
+        getButtonIcon()
       )}
       {isProcessing ? 'Processing...' : buttonText}
     </Button>

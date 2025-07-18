@@ -21,6 +21,15 @@ const recordPaypalSchema = z.object({
  */
 export async function POST(req: Request) {
   try {
+    // 0. Donation is enabled
+    // { DONATION DISABLED COMMENT }
+    if (!process.env.ENABLE_DONATION) {
+      return NextResponse.json({
+        error: 'Forbidden',
+        message: 'Donations are disabled'
+      }, { status: 403 })
+    }
+
     // 1. Authenticate user
     const session = await getServerSession(authOptions);
 
@@ -91,7 +100,7 @@ export async function POST(req: Request) {
     const updatedDonation = await prisma.donation.update({
       where: { id: donation.id },
       data: {
-        status: 'succeeded',
+        status: 'collected',
         updatedAt: new Date(),
       },
       include: {
@@ -119,7 +128,7 @@ export async function POST(req: Request) {
           actorId: updatedDonation.donorId,
           actorUsername: actorUsername || 'Anonymous',
           donationId: updatedDonation.id,
-          amount: updatedDonation.amount,
+          amount: updatedDonation.amountCents,
           message: updatedDonation.message || undefined,
           storyId: updatedDonation.storyId || undefined,
           storyTitle: updatedDonation.story?.title,

@@ -47,3 +47,6 @@ docs
 # configs
 .eslintrc
 .prettierrc
+
+# kiro
+.kiro

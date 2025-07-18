@@ -7,20 +7,21 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-
-    // Get the session
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+
+    const userIdFromQuery = searchParams.get("userId");
+    const userId = userIdFromQuery || session?.user?.id;
+
+    if (!userId) {
       return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
+        { error: "User ID not provided" },
+        { status: 400 }
       );
     }
 
     // Parse query parameters
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "10");
-    const userId = searchParams.get("userId") || session.user.id;
 
     // Calculate pagination
     const skip = (page - 1) * limit;
