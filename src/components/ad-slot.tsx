@@ -35,7 +35,7 @@ export const AdSlot: React.FC<AdSlotProps> = ({ id, page, adType, className }) =
   const getBannerKey = () => {
     if (page === "story") return isMobile ? "320x50" : "728x90"
     if (page === "chapter") return isMobile ? "320x50" : "300x250"
-    if (page === "browse") return "300x250"
+    if (page === "browse") return "728x90"
     if (page === "home") return "728x90"
     return "300x250"
   }

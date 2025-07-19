@@ -143,13 +143,16 @@ export default function BrowseContent({ initialParams }: BrowseContentProps) {
     if (selectedLanguage) {
       params.set('language', selectedLanguage)
     }
+    if (selectedTags.length > 0) {
+      params.set('tags', selectedTags.join(','))
+    }
 
     const queryString = params.toString()
     const newPath = pathname || '/browse'
     const newURL = queryString ? `${newPath}?${queryString}` : newPath
 
     router.replace(newURL, { scroll: false })
-  }, [pathname, router, selectedGenres, searchQuery, currentPage, sortBy, storyStatus, selectedLanguage])
+  }, [pathname, router, selectedGenres, selectedTags, searchQuery, currentPage, sortBy, storyStatus, selectedLanguage])
 
   // Helper function to format API parameters
   const formatApiParams = () => {

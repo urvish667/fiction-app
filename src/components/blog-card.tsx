@@ -3,10 +3,9 @@
 import { motion } from "framer-motion"
 import Image from "next/image"
 import Link from "next/link"
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Calendar, Clock, User, ArrowRight } from "lucide-react"
+import { Calendar, Clock } from "lucide-react"
 import { BlogPost } from "@/types/blog"
 
 interface BlogCardProps {
@@ -52,9 +51,9 @@ export default function BlogCard({ post, viewMode = "grid" }: BlogCardProps) {
 
   return (
     <motion.div whileHover={{ y: -5 }} transition={{ duration: 0.2 }}>
-      <Card className={`h-full overflow-hidden group ${isGrid ? "flex-col" : "flex-row"} flex`}>
+      <Card className={`h-full overflow-hidden group flex ${isGrid ? "flex-col" : "flex-row"}`}>
         {/* Featured Image */}
-        <div className={`${isGrid ? "w-full" : "w-1/3"} relative overflow-hidden`}>
+        <div className={`relative overflow-hidden ${isGrid ? "w-full" : "w-1/3 flex-shrink-0"}`}>
           <div className={`relative ${isGrid ? "aspect-[16/10]" : "h-full min-h-[200px]"}`}>
             <Image
               src={post.featuredImage || "/placeholder.svg"}
@@ -68,7 +67,7 @@ export default function BlogCard({ post, viewMode = "grid" }: BlogCardProps) {
         </div>
 
         {/* Content */}
-        <div className={`${isGrid ? "w-full" : "w-2/3"} flex flex-col`}>
+        <div className={`flex flex-col flex-grow ${isGrid ? "w-full" : "w-2/3"}`}>
           <CardHeader className="pb-3">
             <div className="flex items-center gap-4 text-sm text-muted-foreground mb-2">
               {formatDate(post.publishDate) && (
@@ -90,7 +89,7 @@ export default function BlogCard({ post, viewMode = "grid" }: BlogCardProps) {
           </CardHeader>
 
           <CardContent className="pb-3 flex-grow">
-            <p className="text-muted-foreground line-clamp-3 mb-4">{post.excerpt}</p>
+            <p className="text-muted-foreground line-clamp-2 mb-4">{post.excerpt}</p>
 
             {/* Tags */}
             <div className="flex flex-wrap gap-2">
@@ -106,15 +105,6 @@ export default function BlogCard({ post, viewMode = "grid" }: BlogCardProps) {
               )}
             </div>
           </CardContent>
-
-          <CardFooter className="pt-0">
-            <Link href={`/blog/${post.slug}`} className="w-full">
-              <Button variant="ghost" className="w-full justify-between group/btn">
-                Read More
-                <ArrowRight size={16} className="transition-transform group-hover/btn:translate-x-1" />
-              </Button>
-            </Link>
-          </CardFooter>
         </div>
       </Card>
     </motion.div>
