@@ -33,11 +33,19 @@ export const AdSlot: React.FC<AdSlotProps> = ({ id, page, adType, className }) =
 
   // Get correct banner size
   const getBannerKey = () => {
-    if (page === "story") return isMobile ? "320x50" : "728x90"
-    if (page === "chapter") return isMobile ? "320x50" : "300x250"
-    if (page === "browse") return "728x90"
-    if (page === "home") return "728x90"
-    return "300x250"
+    if (isMobile) {
+      // For mobile, prioritize square ads
+      if (page === "story" || page === "browse" || page === "chapter" || page === "other") {
+        return "300x250"
+      }
+      return "320x50" // Default mobile banner
+    }
+
+    // For desktop
+    if (page === "story" || page === "browse" || page === "other") {
+      return "728x90"
+    }
+    return "320x50" // Default desktop
   }
 
   // Main insertion logic

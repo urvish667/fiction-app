@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
@@ -37,89 +37,115 @@ export default function MyWorksPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [isLoading, setIsLoading] = useState(true)
   const [myWorks, setMyWorks] = useState<WorkStory[]>([])
+  const [pagination, setPagination] = useState({ page: 1, hasMore: true });
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [storyToDelete, setStoryToDelete] = useState<{id: string, title: string} | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
-  // Fetch user's stories from the database
-  useEffect(() => {
-    // Skip if we don't have a session or if we already have works loaded
-    if (!session?.user?.id) return
+  const fetchStories = useCallback(async (page = 1, isMounted: () => boolean) => {
+    if (!session?.user?.id) return;
 
-    // Track if the component is mounted to prevent state updates after unmount
-    let isMounted = true;
-
-    const fetchStories = async () => {
-      try {
-        setIsLoading(true)
-        const response = await StoryService.getStories({
-          authorId: session.user.id
-        })
-
-        // Create a batch of promises to fetch chapters for all stories
-        const storiesWithChaptersPromises = response.stories.map(async (story) => {
-          try {
-            // Fetch chapters for this story
-            const chapters = await StoryService.getChapters(story.id);
-
-            // Only process if component is still mounted
-            if (!isMounted) return null;
-
-            // Count chapters by status
-            const draftChapters = chapters.filter(chapter => chapter.status === 'draft').length;
-            const scheduledChapters = chapters.filter(chapter => chapter.status === 'scheduled').length;
-            const publishedChapters = chapters.filter(chapter => chapter.status === 'published').length;
-
-            return {
-              ...story,
-              lastEdited: new Date(story.updatedAt),
-              draftChapters,
-              scheduledChapters,
-              publishedChapters
-            };
-          } catch (error) {
-            logError(error, { context: 'Fetching chapters for story', storyId: story.id })
-            // Return the story without chapter counts if fetching chapters fails
-            return {
-              ...story,
-              lastEdited: new Date(story.updatedAt),
-              draftChapters: 0,
-              scheduledChapters: 0,
-              publishedChapters: 0
-            };
-          }
-        });
-
-        // Wait for all chapter fetches to complete
-        const worksWithChapters = await Promise.all(storiesWithChaptersPromises);
-
-        // Only update state if component is still mounted
-        if (isMounted) {
-          // Transform API response to our WorkStory format and filter out any null values
-          const works = worksWithChapters.filter(Boolean) as WorkStory[]
-          setMyWorks(works)
-          setIsLoading(false)
-        }
-      } catch (error) {
-        logError(error, { context: 'Fetching user stories' })
-        if (isMounted) {
-          toast({
-            title: "Error",
-            description: "Failed to load your stories. Please try again.",
-            variant: "destructive"
-          })
-          setIsLoading(false)
-        }
-      }
+    // If we're fetching more, don't show the main loader
+    if (page > 1) {
+      setIsFetchingMore(true);
+    } else {
+      setIsLoading(true);
     }
 
-    fetchStories()
+    try {
+      const response = await StoryService.getStories({
+        authorId: session.user.id,
+        page: page,
+        limit: 12 // Explicitly set limit to match API
+      });
+
+      // Create a batch of promises to fetch chapters for all stories
+      const storiesWithChaptersPromises = response.stories.map(async (story) => {
+        try {
+          // Fetch chapters for this story
+          const chapters = await StoryService.getChapters(story.id);
+
+          // Only process if component is still mounted
+          if (!isMounted()) return null;
+
+          // Count chapters by status
+          const draftChapters = chapters.filter(chapter => chapter.status === 'draft').length;
+          const scheduledChapters = chapters.filter(chapter => chapter.status === 'scheduled').length;
+          const publishedChapters = chapters.filter(chapter => chapter.status === 'published').length;
+
+          return {
+            ...story,
+            lastEdited: new Date(story.updatedAt),
+            draftChapters,
+            scheduledChapters,
+            publishedChapters
+          };
+        } catch (error) {
+          logError(error, { context: 'Fetching chapters for story', storyId: story.id })
+          // Return the story without chapter counts if fetching chapters fails
+          return {
+            ...story,
+            lastEdited: new Date(story.updatedAt),
+            draftChapters: 0,
+            scheduledChapters: 0,
+            publishedChapters: 0
+          };
+        }
+      });
+
+      // Wait for all chapter fetches to complete
+      const worksWithChapters = await Promise.all(storiesWithChaptersPromises);
+
+      // Only update state if component is still mounted
+      if (isMounted()) {
+        const works = worksWithChapters.filter(Boolean) as WorkStory[];
+        
+        // If it's the first page, replace the stories. Otherwise, append them.
+        setMyWorks(prevWorks => (page === 1 ? works : [...prevWorks, ...works]));
+        
+        // Update pagination state
+        setPagination({
+          page: response.pagination.page,
+          hasMore: response.pagination.hasMore,
+        });
+
+        if (page > 1) {
+          setIsFetchingMore(false);
+        } else {
+          setIsLoading(false);
+        }
+      }
+    } catch (error) {
+      logError(error, { context: 'Fetching user stories' })
+      if (isMounted()) {
+        toast({
+          title: "Error",
+          description: "Failed to load your stories. Please try again.",
+          variant: "destructive"
+        })
+        setIsLoading(false)
+      }
+    }
+  }, [session?.user?.id, toast]);
+
+  // Fetch user's stories from the database
+  useEffect(() => {
+    let isMounted = true;
+    fetchStories(1, () => isMounted);
 
     // Cleanup function to prevent state updates after unmount
     return () => {
       isMounted = false;
-    }
-  }, [session?.user?.id, toast])
+    };
+  }, [fetchStories]);
+
+  // Function to load more stories
+  const loadMoreStories = () => {
+    if (!pagination.hasMore || isFetchingMore) return;
+    // We can assume the component is mounted if this is called
+    fetchStories(pagination.page + 1, () => true);
+  };
 
   // Open delete confirmation dialog
   const openDeleteDialog = (story: {id: string, title: string}) => {
@@ -243,6 +269,26 @@ export default function MyWorksPage() {
               isLoading={isLoading}
               onDeleteStory={openDeleteDialog}
             />
+            
+            {/* Load More Button */}
+            {pagination.hasMore && (
+              <div className="text-center mt-8">
+                <Button
+                  onClick={loadMoreStories}
+                  disabled={isFetchingMore}
+                  className="border-2 border-primary"
+                >
+                  {isFetchingMore ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Loading...
+                    </>
+                  ) : (
+                    "Load More"
+                  )}
+                </Button>
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </main>
@@ -503,4 +549,3 @@ function WorksContent({ works, searchQuery, isLoading, onDeleteStory }: WorksCon
     </motion.div>
   )
 }
-

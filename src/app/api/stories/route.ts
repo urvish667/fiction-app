@@ -25,13 +25,13 @@ const createStorySchema = z.object({
 function getOrderByFromSortOption(sortBy: string): Prisma.StoryOrderByWithRelationInput {
   switch (sortBy) {
     case 'newest':
-      return { updatedAt: Prisma.SortOrder.desc };
+      return { createdAt: Prisma.SortOrder.desc };
     case 'popular':
       return { likes: { _count: Prisma.SortOrder.desc } };
     case 'mostRead':
       return { readCount: Prisma.SortOrder.desc };
     default:
-      return { updatedAt: Prisma.SortOrder.desc };
+      return { createdAt: Prisma.SortOrder.desc };
   }
 }
 
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
 
     // Parse query parameters
     const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "10");
+    const limit = parseInt(searchParams.get("limit") || "12");
     const genre = searchParams.get("genre");
     const authorId = searchParams.get("authorId");
     const status = searchParams.get("status");

@@ -7,7 +7,6 @@ import { Switch } from "@/components/ui/switch"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Check } from "lucide-react"
 import { PayPalIcon, StripeIcon, BuyMeACoffeeIcon, KofiIcon } from '@/components/icons/payment-icons';
 
 // Donation Settings Types

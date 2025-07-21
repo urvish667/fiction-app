@@ -2,7 +2,6 @@
 import { motion } from "framer-motion"
 import StoryCard from "@/components/story-card"
 import StoryCardSkeleton from "@/components/story-card-skeleton"
-import { AdSlot } from "@/components/ad-slot"
 
 type StoryItem = {
   id: string | number
@@ -66,15 +65,6 @@ export default function StoryGrid({
           <StoryCard story={item} viewMode={viewMode} />
         </motion.div>
       ))}
-
-      <div className="w-full col-span-full mt-6">
-        <AdSlot
-          id="browse-banner-end"
-          page="browse"
-          adType="banner"
-          className="w-full"
-        />
-      </div>
     </motion.div>
   )
 }
