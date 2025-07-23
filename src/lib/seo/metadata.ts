@@ -2,6 +2,19 @@ import { Metadata } from "next"
 import { Story } from "@/types/story"
 import { categoryDescriptions } from "./genre-descriptions"
 
+// A simplified Blog type based on usage in the page.tsx
+export interface Blog {
+  slug: string;
+  title: string;
+  excerpt: string;
+  content: string;
+  tags: string[];
+  featuredImage?: string | null;
+  category: string;
+  status: "published" | "draft";
+  publishDate?: Date | null;
+}
+
 /**
  * Safely convert a date to ISO string, handling both Date objects and string dates
  */
@@ -97,6 +110,142 @@ export function generateStoryMetadata(story: Story, tags: string[] = []): Metada
       'book:release_date': toISOString(story.createdAt) || '',
     }
   }
+}
+
+/**
+ * Generate SEO metadata for a blog post
+ */
+export function generateBlogMetadata(blog: Blog): Metadata {
+  const title = `${blog.title} - FableSpace Blog`;
+  const description = blog.excerpt;
+  const canonicalUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.space'}/blog/${blog.slug}`;
+  const imageUrl = blog.featuredImage || `${process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.space'}/og-image.jpg`;
+
+  return {
+    title,
+    description,
+    keywords: blog.tags.join(', '),
+    authors: [{ name: 'FableSpace' }],
+    creator: 'FableSpace',
+    publisher: 'FableSpace',
+    category: blog.category,
+    alternates: {
+      canonical: canonicalUrl,
+    },
+    openGraph: {
+      title,
+      description,
+      type: 'article',
+      url: canonicalUrl,
+      siteName: 'FableSpace',
+      images: [
+        {
+          url: imageUrl,
+          width: 1200,
+          height: 630,
+          alt: blog.title,
+        },
+      ],
+      publishedTime: toISOString(blog.publishDate ?? undefined),
+      authors: ['FableSpace'],
+      section: blog.category,
+      tags: blog.tags,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [imageUrl],
+      site: '@FableSpace',
+    },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        'max-video-preview': -1,
+        'max-image-preview': 'large',
+        'max-snippet': -1,
+      },
+    },
+  };
+}
+
+/**
+ * Generate structured data (JSON-LD) for a blog post
+ */
+export function generateBlogStructuredData(blog: Blog) {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.space';
+  const canonicalUrl = `${baseUrl}/blog/${blog.slug}`;
+  const imageUrl = blog.featuredImage || `${baseUrl}/og-image.jpg`;
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: blog.title,
+    name: blog.title,
+    description: blog.excerpt,
+    image: imageUrl,
+    author: {
+      '@type': 'Organization',
+      name: 'FableSpace',
+      url: baseUrl,
+    },
+    publisher: {
+      '@type': 'Organization',
+      name: 'FableSpace',
+      logo: {
+        '@type': 'ImageObject',
+        url: `${baseUrl}/logo.png`,
+      },
+    },
+    datePublished: toISOString(blog.publishDate ?? undefined),
+    mainEntityOfPage: {
+      '@type': 'WebPage',
+      '@id': canonicalUrl,
+    },
+    keywords: blog.tags.join(', '),
+    articleSection: blog.category,
+  };
+}
+
+/**
+ * Generate breadcrumb structured data for a blog post page
+ */
+export function generateBlogBreadcrumbStructuredData(blog: Blog) {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.space';
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: 'Home',
+        item: baseUrl,
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: 'Blog',
+        item: `${baseUrl}/blog`,
+      },
+      {
+        '@type': 'ListItem',
+        position: 3,
+        name: blog.category,
+        item: `${baseUrl}/blog/category/${blog.category.toLowerCase()}`,
+      },
+      {
+        '@type': 'ListItem',
+        position: 4,
+        name: blog.title,
+        item: `${baseUrl}/blog/${blog.slug}`,
+      },
+    ],
+  };
 }
 
 /**
@@ -413,7 +562,7 @@ export function generateHomepageMetadata(): Metadata {
 
   return {
     title: "FableSpace - Unleash Your Stories",
-    description: "Unleash your creativity on FableSpace. Writers publish stories, earn via PayPal, no fees. Readers explore fantasy, romance, and more. Join our community!",
+    description: "Unleash your imagination on FableSpace. Publish original stories, explore fantasy, romance, and more. Connect with readers and writers in a growing creative community—no fees, no limits.",
     keywords: [
       'fiction writing',
       'story sharing',
@@ -435,7 +584,7 @@ export function generateHomepageMetadata(): Metadata {
     },
     openGraph: {
       title: "FableSpace - Unleash Your Stories",
-      description: "Unleash your creativity on FableSpace. Writers publish stories, earn via PayPal, no fees. Readers explore fantasy, romance, and more. Join our community!",
+      description: "Unleash your imagination on FableSpace. Publish original stories, explore fantasy, romance, and more. Connect with readers and writers in a growing creative community—no fees, no limits.",
       type: 'website',
       url: baseUrl,
       siteName: 'FableSpace',
@@ -451,7 +600,7 @@ export function generateHomepageMetadata(): Metadata {
     twitter: {
       card: 'summary_large_image',
       title: "FableSpace - Unleash Your Stories",
-      description: "Unleash your creativity on FableSpace. Writers publish stories, earn via PayPal, no fees. Readers explore fantasy, romance, and more. Join our community!",
+      description: "Unleash your imagination on FableSpace. Publish original stories, explore fantasy, romance, and more. Connect with readers and writers in a growing creative community—no fees, no limits.",
       images: [`${baseUrl}/og-image.jpg`],
       site: '@FableSpace'
     },
@@ -518,7 +667,7 @@ export function generateOrganizationStructuredData() {
     '@id': `${baseUrl}#organization`,
     name: 'FableSpace',
     alternateName: 'FableSpace Fiction Platform',
-    description: 'A cozy corner of the internet for storytellers, dreamers, and readers alike. FableSpace is a creative fiction-sharing platform where writers publish original stories, earn money through direct PayPal donations, and readers explore immersive worlds—all with zero platform fees.',
+    description: 'A cozy corner of the internet for storytellers, dreamers, and readers alike. FableSpace is a creative fiction-sharing platform where writers publish original stories, earn money through direct KoFi/Buy Me a Coffee donations, and readers explore immersive worlds—all with zero platform fees.',
     url: baseUrl,
     logo: {
       '@type': 'ImageObject',
@@ -530,7 +679,7 @@ export function generateOrganizationStructuredData() {
     foundingDate: '2024',
     sameAs: [
       'https://discord.gg/JVMr2TRXY7',
-      'https://twitter.com/FableSpace',
+      'https://twitter.com/FableSpace_',
       'https://www.linkedin.com/company/fablespace',
       'https://www.medium.com/@fablespace',
       'https://www.instagram.com/fable.space_/'
@@ -570,7 +719,7 @@ export function generateOrganizationStructuredData() {
       '@type': 'Offer',
       price: '0',
       priceCurrency: 'USD',
-      description: 'Free platform for publishing and reading fiction stories with direct PayPal monetization for authors'
+      description: 'Free platform for publishing and reading fiction stories with direct KoFi/Buy Me a Coffee monetization for authors'
     },
     hasOfferCatalog: {
       '@type': 'OfferCatalog',
@@ -590,7 +739,7 @@ export function generateOrganizationStructuredData() {
           '@type': 'Offer',
           itemOffered: {
             '@type': 'Service',
-            name: 'PayPal Monetization',
+            name: 'KoFi/Buy Me a Coffee Monetization',
             description: 'Receive direct donations from readers with 100% earnings retention'
           },
           price: '0',

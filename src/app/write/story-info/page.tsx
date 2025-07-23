@@ -8,6 +8,7 @@ import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { Link } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
@@ -232,11 +233,19 @@ export default function StoryInfoPage() {
   }, [saveStatus, toast, validateForm]);
 
   const handleStateChange = useCallback((update: Partial<StoryFormData>) => {
+    if (update.status === 'completed' && chapters.length === 0) {
+      toast({
+        title: "Cannot mark as completed",
+        description: "A story must have at least one chapter to be marked as completed.",
+        variant: "destructive",
+      });
+      return;
+    }
     setStoryData(prev => ({ ...prev, ...update }));
     if (!isInitialLoad.current) {
       setSaveStatus('unsaved');
     }
-  }, []);
+  }, [chapters.length, toast]);
   const handleTagChange = useCallback((newTags: string[]) => {
     setTags(newTags);
     if (!isInitialLoad.current) {
@@ -831,6 +840,17 @@ export default function StoryInfoPage() {
                 </Button>
               </div>
 
+              <div className="bg-green-100 dark:bg-green-900 p-3 rounded-lg text-sm text-green-800 dark:text-green-200">
+                Need help creating a thumbnail?{' '}
+                <a
+                  href="https://fablespace.space/blog/creating-amazing-story-thumbnails-using-perchance-ai-a-complete-beginners-guide"
+                  className="underline hover:text-green-600 dark:hover:text-green-400 font-semibold"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  click here
+                </a>
+              </div>
               <p className="text-xs text-muted-foreground">Recommended size: 1600x900 pixels. Max file size: 5MB.</p>
             </motion.div>
           </div>
@@ -1194,7 +1214,18 @@ export default function StoryInfoPage() {
                           variant="outline"
                           size="sm"
                           className="flex items-center gap-1 text-destructive hover:text-destructive flex-1 sm:flex-initial justify-center"
-                          onClick={() => openDeleteDialog({id: chapter.id, title: chapter.title})}
+                          onClick={() => {
+                            if (storyData.status === 'completed') {
+                              toast({
+                                title: "Deletion disabled",
+                                description: "Disable the 'Story Completed' switch to delete chapters.",
+                                variant: "destructive",
+                              });
+                            } else {
+                              openDeleteDialog({id: chapter.id, title: chapter.title});
+                            }
+                          }}
+                          disabled={storyData.status === 'completed'}
                         >
                           <Trash2 size={14} />
                           Delete
@@ -1310,4 +1341,3 @@ export default function StoryInfoPage() {
     </div>
   )
 }
-

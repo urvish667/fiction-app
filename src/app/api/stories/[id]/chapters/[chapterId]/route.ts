@@ -427,6 +427,14 @@ export async function DELETE(
       );
     }
 
+    // Prevent deleting chapters from a completed story
+    if (story.status === 'completed') {
+      return NextResponse.json(
+        { error: "Cannot delete chapters from a completed story. Please change the story status to 'ongoing' first." },
+        { status: 403 }
+      );
+    }
+
     // Find the chapter
     const chapter = await prisma.chapter.findFirst({
       where: {

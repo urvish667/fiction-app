@@ -130,7 +130,7 @@ export function ChapterContent({
           />
 
           {/* First ad after 1/3 of content */}
-          <AdSlot id="chapter-mid-banner" page="chapter" adType="banner" className="my-6" />
+          <AdSlot id="chapter-mid-banner" page="chapter" adType="banner"/>
 
           {/* Second third of content */}
           <div
@@ -148,7 +148,7 @@ export function ChapterContent({
           />
 
           {/* Second ad after 2/3 of content */}
-          <AdSlot id="chapter-mid-banner" page="chapter" adType="banner" className="my-6" />
+          <AdSlot id="chapter-mid-banner" page="chapter" adType="banner"/>
 
           {/* Final third of content */}
           <div
@@ -184,7 +184,7 @@ export function ChapterContent({
           />
 
           {/* Ad in the middle */}
-          <AdSlot id="chapter-mid-banner" page="chapter" adType="banner" className="my-6" />
+          <AdSlot id="chapter-mid-banner" page="chapter" adType="banner" />
 
           {/* Second half of content */}
           <div
@@ -216,7 +216,7 @@ export function ChapterContent({
           />
 
           {/* Ad at the end */}
-          <AdSlot id="chapter-banner-bottom" page="chapter" adType="banner" className="my-6" />
+          <AdSlot id="chapter-banner-bottom" page="chapter" adType="banner"/>
         </>
       )}
     </motion.div>

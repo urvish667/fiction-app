@@ -12,7 +12,6 @@ import {
 import BrowseContent from "./browse-content"
 import { getAllGenreNames }
 from "@/lib/seo/genre-descriptions"
-import { DesktopBottomAd } from "@/components/desktop-bottom-ad"
 
 interface BrowsePageProps {
   searchParams: Promise<{

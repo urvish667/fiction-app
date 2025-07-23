@@ -6,6 +6,8 @@ import { SiteFooter } from "@/components/site-footer";
 import { Metadata } from "next";
 import { logger } from "@azure/storage-blob";
 import { Badge } from "@/components/ui/badge";
+import { AdSlot } from "@/components/ad-slot";
+import { generateBlogMetadata, generateBlogStructuredData, generateBlogBreadcrumbStructuredData } from "@/lib/seo/metadata";
 
 interface BlogPageProps {
   params: {
@@ -29,25 +31,7 @@ export async function generateMetadata({ params }: BlogPageProps): Promise<Metad
         description: "The blog post you're looking for could not be found.",
       };
     }
-    return {
-      title: `${blog.title} - FableSpace Blog`,
-      description: blog.excerpt,
-      keywords: blog.tags,
-      openGraph: {
-        title: blog.title,
-        description: blog.excerpt,
-        type: "article",
-        url: `${process.env.NEXT_PUBLIC_BASE_URL}/blog/${blog.slug}`,
-        images: [
-          {
-            url: blog.featuredImage || `${process.env.NEXT_PUBLIC_BASE_URL}/og-image.jpg`,
-            width: 1200,
-            height: 630,
-            alt: blog.title,
-          },
-        ],
-      },
-    };
+    return generateBlogMetadata(blog);
   } catch (error) {
     return {
       title: "Blog Post Not Found - FableSpace",
@@ -64,41 +48,18 @@ export default async function BlogPostPage({ params }: BlogPageProps) {
       notFound();
     }
 
-    const jsonLd = {
-      "@context": "https://schema.org",
-      "@type": "BlogPosting",
-      "headline": blog.title,
-      "name": blog.title,
-      "description": blog.excerpt,
-      "image": blog.featuredImage || `${process.env.NEXT_PUBLIC_BASE_URL}/og-image.jpg`,
-      "author": {
-        "@type": "Organization",
-        "name": "FableSpace",
-        "url": `${process.env.NEXT_PUBLIC_BASE_URL}`
-      },
-      "publisher": {
-        "@type": "Organization",
-        "name": "FableSpace",
-        "logo": {
-          "@type": "ImageObject",
-          "url": `${process.env.NEXT_PUBLIC_BASE_URL}/logo.png`
-        }
-      },
-      "datePublished": blog.publishDate?.toISOString(),
-      "dateModified": blog.publishDate?.toISOString(),
-      "mainEntityOfPage": {
-        "@type": "WebPage",
-        "@id": `${process.env.NEXT_PUBLIC_BASE_URL}/blog/${blog.slug}`
-      },
-      "keywords": blog.tags.join(", "),
-      "articleSection": blog.category,
-    };
+    const structuredData = generateBlogStructuredData(blog);
+    const breadcrumbData = generateBlogBreadcrumbStructuredData(blog);
 
     return (
       <div className="min-h-screen">
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbData) }}
         />
         <Navbar />
         <main className="container mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 lg:py-8">
@@ -122,6 +83,9 @@ export default async function BlogPostPage({ params }: BlogPageProps) {
                 />
               )}
               <MarkdownRenderer content={blog.content} />
+
+              <AdSlot id="chapter-banner-bottom" page="other" adType="banner"/>
+              
             </article>
           </div>
         </main>

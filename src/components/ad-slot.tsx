@@ -31,93 +31,96 @@ export const AdSlot: React.FC<AdSlotProps> = ({ id, page, adType, className }) =
     return () => window.removeEventListener("resize", handleResize)
   }, [])
 
-  // Get correct banner size
+  // Determine the banner key based on page and screen size
   const getBannerKey = () => {
     if (isMobile) {
-      // For mobile, prioritize square ads
-      if (page === "story" || page === "browse" || page === "chapter" || page === "other") {
+      if (["story", "chapter", "browse", "other"].includes(page)) {
         return "300x250"
       }
-      return "320x50" // Default mobile banner
+      return "320x50"
     }
-
-    // For desktop
-    if (page === "story" || page === "browse" || page === "other") {
+    if (["story", "browse", "other"].includes(page)) {
       return "728x90"
     }
-    return "320x50" // Default desktop
+    return "320x50"
   }
 
-  // Main insertion logic
+  // Main insertion logic for each ad type
   useLayoutEffect(() => {
     const el = containerRef.current
     if (!el) return
 
-    const cleanup: (() => void)[] = []
+    // Cleanup previous children
+    const clearEl = () => {
+      while (el.firstChild) el.removeChild(el.firstChild)
+    }
 
-    // Native Ad
+    // Cleanup functions stack
+    const cleanupFns: (() => void)[] = []
+
     if (adType === "native") {
+      // Native Ad insertion
+      clearEl()
+      const nativeDiv = document.createElement("div")
+      nativeDiv.id = NATIVE_CONTAINER_ID
+      el.appendChild(nativeDiv)
       const nativeScript = document.createElement("script")
       nativeScript.src = NATIVE_SCRIPT_SRC
       nativeScript.async = true
       nativeScript.setAttribute("data-cfasync", "false")
-      el.innerHTML = `<div id="${NATIVE_CONTAINER_ID}"></div>`
       el.appendChild(nativeScript)
-      cleanup.push(() => {
-        el.innerHTML = ""
-      })
-    }
 
-    // Social Bar
-    else if (adType === "social-bar") {
+      cleanupFns.push(clearEl)
+
+    } else if (adType === "social-bar") {
+      // Social Bar insertion
+      clearEl()
       const socialScript = document.createElement("script")
       socialScript.src = SOCIAL_BAR_SRC
       socialScript.async = true
       socialScript.id = "adsterra-social-bar"
       document.body.appendChild(socialScript)
-      cleanup.push(() => {
+
+      cleanupFns.push(() => {
         socialScript.remove()
-        const overlays = document.querySelectorAll("[class*=social_bar]")
-        overlays.forEach((el) => el.remove())
+        document.querySelectorAll("[class*=social_bar]").forEach(e => e.remove())
       })
-    }
 
-    // Banner
-    else if (adType === "banner") {
-      const key = AdsterraBannerConfig[getBannerKey()].key
-      const { width, height } = AdsterraBannerConfig[getBannerKey()]
+    } else if (adType === "banner") {
+      // Banner via sandboxed iframe
+      clearEl()
+      const { key, width, height } = AdsterraBannerConfig[getBannerKey()]
+      const iframe = document.createElement("iframe")
+      // Point to your hosted ad loader
+      iframe.src = `https://ads.fablespace.space/adsterra-ads.html?type=banner&key=${key}&width=${width}&height=${height}`
+      iframe.width = `${width}`
+      iframe.height = `${height}`
+      iframe.loading = "lazy"
+      iframe.title = "Advertisement"
+      iframe.referrerPolicy = "no-referrer-when-downgrade"
+      iframe.sandbox.add(
+        "allow-scripts",
+        "allow-same-origin",
+        "allow-popups",
+        "allow-popups-to-escape-sandbox"
+      )
+      iframe.style.border = "none"
+      iframe.style.overflow = "hidden"
+      el.appendChild(iframe)
 
-      const inlineConfig = document.createElement("script")
-      inlineConfig.innerHTML = `
-        atOptions = {
-          'key': '${key}',
-          'format': 'iframe',
-          'height': ${height},
-          'width': ${width},
-          'params': {}
-        };
-      `
-      const bannerScript = document.createElement("script")
-      bannerScript.src = `//www.highperformanceformat.com/${key}/invoke.js`
-      bannerScript.async = true
-      bannerScript.id = `banner-${key}`
-
-      el.innerHTML = ""
-      el.appendChild(inlineConfig)
-      el.appendChild(bannerScript)
-      cleanup.push(() => {
-        el.innerHTML = ""
-      })
+      cleanupFns.push(clearEl)
     }
 
     return () => {
-      cleanup.forEach((fn) => fn())
+      cleanupFns.forEach(fn => fn())
     }
   }, [adType, page, isMobile])
 
-  // Size (optional for styling)
+  // Determine container size for styling
   const { width, height } =
-    adType === "banner" ? AdsterraBannerConfig[getBannerKey()] : { width: 300, height: 250 }
+    adType === "banner"
+      ? AdsterraBannerConfig[getBannerKey()]
+      : { width: 300, height: 250 }
 
   return (
     <div

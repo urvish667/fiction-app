@@ -15,6 +15,8 @@ import { useMediaQuery } from "@/hooks/use-media-query"
 import { StoryService } from "@/services/story-service"
 import { useToast } from "@/hooks/use-toast"
 import { UserSummary } from "@/types/user"
+import { AdSlot } from "@/components/ad-slot"
+import { safeDecodeURIComponent } from "@/utils/safe-decode-uri-component"
 
 // Define a type for stories in the browse page
 type BrowseStory = {
@@ -67,7 +69,7 @@ export default function BrowseContent({ initialParams }: BrowseContentProps) {
   const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState(initialParams.search || "")
   const [selectedGenres, setSelectedGenres] = useState<string[]>(
-    initialParams.genre ? [decodeURIComponent(initialParams.genre)] : []
+    initialParams.genre ? [safeDecodeURIComponent(initialParams.genre)] : []
   )
   const [allTags, setAllTags] = useState<TagOption[]>([])
   const [selectedLanguage, setSelectedLanguage] = useState<string>(initialParams.language || "")
@@ -103,10 +105,10 @@ export default function BrowseContent({ initialParams }: BrowseContentProps) {
   // Initialize selectedTags from tag/tags params, using slug-to-name mapping
   const [selectedTags, setSelectedTags] = useState<string[]>(() => {
     if (initialParams.tag && allTags.length > 0) {
-      const found = allTags.find(t => t.slug === decodeURIComponent(initialParams.tag!))
+      const found = allTags.find(t => t.slug === safeDecodeURIComponent(initialParams.tag!))
       return found ? [found.name] : []
     } else if (initialParams.tags) {
-      return initialParams.tags.split(',').map(t => decodeURIComponent(t.trim())).filter(Boolean)
+      return initialParams.tags.split(',').map(t => safeDecodeURIComponent(t.trim())).filter(Boolean)
     }
     return []
   })
@@ -114,7 +116,7 @@ export default function BrowseContent({ initialParams }: BrowseContentProps) {
   // When allTags or initialParams.tag changes, update selectedTags if needed
   useEffect(() => {
     if (initialParams.tag && allTags.length > 0) {
-      const found = allTags.find(t => t.slug === decodeURIComponent(initialParams.tag!))
+      const found = allTags.find(t => t.slug === safeDecodeURIComponent(initialParams.tag!))
       if (found && (!selectedTags.length || selectedTags[0] !== found.name)) {
         setSelectedTags([found.name])
       }
@@ -451,6 +453,10 @@ export default function BrowseContent({ initialParams }: BrowseContentProps) {
                   </div>
 
                   <StoryGrid stories={stories} viewMode={viewMode} />
+
+                  <br/>
+                  
+                  <AdSlot id="browse-end-banner" page="browse" adType="banner"/>
 
                   {/* Pagination */}
                   {totalPages > 1 && (

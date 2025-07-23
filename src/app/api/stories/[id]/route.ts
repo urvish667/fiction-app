@@ -285,6 +285,23 @@ export async function PUT(
       }
     }
 
+    // Prevent marking a story as completed if it has no chapters
+    if (validatedData.status === "completed") {
+      const chapterCount = await prisma.chapter.count({
+        where: { storyId: storyId },
+      });
+
+      if (chapterCount === 0) {
+        return NextResponse.json(
+          {
+            error:
+              "A story must have at least one chapter to be marked as completed.",
+          },
+          { status: 400 },
+        );
+      }
+    }
+
     // Prepare data for update
     // Handle genre and language as relations if they are provided as IDs
     const { genre, language, ...otherData } = validatedData;
