@@ -47,6 +47,13 @@ interface TagOption {
   slug: string;
 }
 
+// Genre option type
+interface GenreOption {
+  id: string;
+  name: string;
+  slug: string;
+}
+
 interface BrowseContentProps {
   initialParams: {
     genre?: string
@@ -68,9 +75,8 @@ export default function BrowseContent({ initialParams }: BrowseContentProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState(initialParams.search || "")
-  const [selectedGenres, setSelectedGenres] = useState<string[]>(
-    initialParams.genre ? [safeDecodeURIComponent(initialParams.genre)] : []
-  )
+  const [allGenres, setAllGenres] = useState<GenreOption[]>([])
+  const [selectedGenres, setSelectedGenres] = useState<string[]>([])
   const [allTags, setAllTags] = useState<TagOption[]>([])
   const [selectedLanguage, setSelectedLanguage] = useState<string>(initialParams.language || "")
   const [storyStatus, setStoryStatus] = useState<"all" | "ongoing" | "completed">(
@@ -86,8 +92,20 @@ export default function BrowseContent({ initialParams }: BrowseContentProps) {
 
   const isMobile = useMediaQuery("(max-width: 768px)")
 
-  // Fetch all tags on mount
+  // Fetch all genres and tags on mount
   useEffect(() => {
+    async function fetchGenres() {
+      try {
+        const response = await fetch('/api/genres')
+        if (response.ok) {
+          const data = await response.json()
+          setAllGenres(data)
+        }
+      } catch {
+        // fallback: do nothing
+      }
+    }
+
     async function fetchTags() {
       try {
         const response = await fetch('/api/tags')
@@ -99,8 +117,20 @@ export default function BrowseContent({ initialParams }: BrowseContentProps) {
         // fallback: do nothing
       }
     }
+    fetchGenres()
     fetchTags()
   }, [])
+
+  // Initialize selectedGenres from URL params
+  useEffect(() => {
+    if (initialParams.genre && allGenres.length > 0) {
+      const genreSlug = safeDecodeURIComponent(initialParams.genre)
+      const found = allGenres.find(g => g.slug === genreSlug)
+      if (found) {
+        setSelectedGenres([found.slug])
+      }
+    }
+  }, [initialParams.genre, allGenres])
 
   // Initialize selectedTags from tag/tags params, using slug-to-name mapping
   const [selectedTags, setSelectedTags] = useState<string[]>(() => {
@@ -128,7 +158,10 @@ export default function BrowseContent({ initialParams }: BrowseContentProps) {
     const params = new URLSearchParams()
 
     if (selectedGenres.length === 1) {
-      params.set('genre', selectedGenres[0])
+      const genre = allGenres.find(g => g.slug === selectedGenres[0])
+      if (genre) {
+        params.set('genre', genre.slug)
+      }
     }
     if (searchQuery) {
       params.set('search', searchQuery)
@@ -154,7 +187,7 @@ export default function BrowseContent({ initialParams }: BrowseContentProps) {
     const newURL = queryString ? `${newPath}?${queryString}` : newPath
 
     router.replace(newURL, { scroll: false })
-  }, [pathname, router, selectedGenres, selectedTags, searchQuery, currentPage, sortBy, storyStatus, selectedLanguage])
+  }, [pathname, router, selectedGenres, selectedTags, searchQuery, currentPage, sortBy, storyStatus, selectedLanguage, allGenres])
 
   // Helper function to format API parameters
   const formatApiParams = () => {
@@ -298,10 +331,24 @@ export default function BrowseContent({ initialParams }: BrowseContentProps) {
   }, [updateURL])
 
   // Handle search input
-  const handleSearch = (query: string) => {
-    setSearchQuery(query)
-    setCurrentPage(1)
-  }
+  const handleSearch = (query: string, type?: "genre" | "tag" | "story") => {
+    if (type === "genre") {
+      const genre = allGenres.find(g => g.name.toLowerCase() === query.toLowerCase());
+      if (genre) {
+        setSelectedGenres([genre.slug]);
+        setSearchQuery("");
+      }
+    } else if (type === "tag") {
+      const tag = allTags.find(t => t.name.toLowerCase() === query.toLowerCase());
+      if (tag) {
+        setSelectedTags([tag.name]);
+        setSearchQuery("");
+      }
+    } else {
+      setSearchQuery(query);
+    }
+    setCurrentPage(1);
+  };
 
   // Handle genre selection
   const handleGenreChange = (genres: string[]) => {
@@ -348,7 +395,7 @@ export default function BrowseContent({ initialParams }: BrowseContentProps) {
           {/* Category Description for genre pages */}
           {selectedGenres.length === 1 && (
             <CategoryDescription
-              genre={selectedGenres[0]}
+              genre={allGenres.find(g => g.slug === selectedGenres[0])?.name || selectedGenres[0]}
               totalStories={totalStories}
               language={selectedLanguage}
               status={storyStatus}

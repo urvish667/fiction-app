@@ -9,6 +9,13 @@ import { Badge } from "@/components/ui/badge"
 import { X, Loader2 } from "lucide-react"
 import { logError } from "@/lib/error-logger"
 
+// Genre option type
+interface GenreOption {
+  id: string;
+  name: string;
+  slug: string;
+}
+
 // Default genres to use while loading or if API fails
 const defaultGenres = [
   "Fantasy",
@@ -88,7 +95,7 @@ export default function FilterPanel({
   sortBy,
   onSortChange
 }: FilterPanelProps) {
-  const [genres, setGenres] = useState<string[]>(defaultGenres)
+  const [genres, setGenres] = useState<GenreOption[]>([])
   const [tags, setTags] = useState<TagOption[]>([])
   const [languages, setLanguages] = useState<string[]>(defaultLanguages)
   const [loadingGenres, setLoadingGenres] = useState(false)
@@ -104,17 +111,15 @@ export default function FilterPanel({
         const response = await fetch('/api/genres')
         if (response.ok) {
           const data = await response.json()
-          // Extract genre names from the response
-          const genreNames = data.map((genre: { name: string }) => genre.name)
-          setGenres(genreNames)
+          setGenres(data)
         } else {
           // Fall back to default genres if API fails
-          setGenres(defaultGenres)
+          setGenres(defaultGenres.map((name, i) => ({ id: String(i), name, slug: name.toLowerCase().replace(/\s+/g, '-') })))
         }
       } catch (error) {
         logError(error, { context: 'Fetching genres' });
         // Fall back to default genres if API fails
-        setGenres(defaultGenres)
+        setGenres(defaultGenres.map((name, i) => ({ id: String(i), name, slug: name.toLowerCase().replace(/\s+/g, '-') })))
       } finally {
         setLoadingGenres(false)
       }
@@ -177,11 +182,12 @@ export default function FilterPanel({
 
     fetchLanguages()
   }, [])
-  const handleGenreToggle = (genre: string) => {
-    if (selectedGenres.includes(genre)) {
-      onGenreChange(selectedGenres.filter((g) => g !== genre))
+
+  const handleGenreToggle = (genreSlug: string) => {
+    if (selectedGenres.includes(genreSlug)) {
+      onGenreChange(selectedGenres.filter((slug) => slug !== genreSlug))
     } else {
-      onGenreChange([...selectedGenres, genre])
+      onGenreChange([...selectedGenres, genreSlug])
     }
   }
 
@@ -229,15 +235,19 @@ export default function FilterPanel({
       {(selectedGenres.length > 0 || selectedTags.length > 0 || selectedLanguage || storyStatus !== "all") && (
         <div className="flex flex-wrap gap-2 mb-4">
           {/* Show only first 3 genres and a "+X more" badge if there are more */}
-          {selectedGenres.slice(0, 3).map((genre) => (
-            <Badge key={`genre-${genre}`} variant="secondary" className="flex items-center gap-1 max-w-[150px]">
-              <span className="truncate">{genre}</span>
-              <Button variant="ghost" size="icon" onClick={() => handleGenreToggle(genre)} className="h-4 w-4 p-0 ml-1 shrink-0">
-                <X className="h-3 w-3" />
-                <span className="sr-only">Remove {genre} filter</span>
-              </Button>
-            </Badge>
-          ))}
+          {selectedGenres.slice(0, 3).map((slug) => {
+            const genre = genres.find((g) => g.slug === slug)
+            if (!genre) return null
+            return (
+              <Badge key={`genre-${slug}`} variant="secondary" className="flex items-center gap-1 max-w-[150px]">
+                <span className="truncate">{genre.name}</span>
+                <Button variant="ghost" size="icon" onClick={() => handleGenreToggle(slug)} className="h-4 w-4 p-0 ml-1 shrink-0">
+                  <X className="h-3 w-3" />
+                  <span className="sr-only">Remove {genre.name} filter</span>
+                </Button>
+              </Badge>
+            )
+          })}
           {selectedGenres.length > 3 && (
             <Badge variant="secondary">
               +{selectedGenres.length - 3} more
@@ -341,14 +351,14 @@ export default function FilterPanel({
             ) : (
               <div className="grid grid-cols-2 gap-2">
                 {genres.map((genre) => (
-                  <div key={genre} className="flex items-center space-x-2">
+                  <div key={genre.id} className="flex items-center space-x-2">
                     <Checkbox
-                      id={`genre-${genre}`}
-                      checked={selectedGenres.includes(genre)}
-                      onCheckedChange={() => handleGenreToggle(genre)}
+                      id={`genre-${genre.slug}`}
+                      checked={selectedGenres.includes(genre.slug)}
+                      onCheckedChange={() => handleGenreToggle(genre.slug)}
                     />
-                    <Label htmlFor={`genre-${genre}`} className="text-sm">
-                      {genre}
+                    <Label htmlFor={`genre-${genre.slug}`} className="text-sm">
+                      {genre.name}
                     </Label>
                   </div>
                 ))}
@@ -423,4 +433,3 @@ export default function FilterPanel({
     </div>
   )
 }
-
