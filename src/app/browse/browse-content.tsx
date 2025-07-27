@@ -456,7 +456,11 @@ export default function BrowseContent({ initialParams }: BrowseContentProps) {
 
                   <br/>
                   
-                  <AdSlot id="browse-end-banner" page="browse" adType="banner"/>
+                  <AdSlot
+                    id="browse-end-banner"
+                    page="browse"
+                    adType={isMobile ? "native" : "banner"}
+                  />
 
                   {/* Pagination */}
                   {totalPages > 1 && (

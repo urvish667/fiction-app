@@ -1,5 +1,6 @@
 import { Metadata } from "next"
 import { Story } from "@/types/story"
+import { safeDecodeURIComponent } from "@/utils/safe-decode-uri-component"
 import { categoryDescriptions } from "./genre-descriptions"
 
 // A simplified Blog type based on usage in the page.tsx
@@ -862,14 +863,16 @@ export function generateBrowseMetadata(params?: {
 
   // Enhanced genre-based SEO
   if (params?.genre) {
-    const genreInfo = categoryDescriptions[params.genre]
-    const genreLower = params.genre.toLowerCase()
+    const genre = safeDecodeURIComponent(params.genre)
+    const genreInfo = categoryDescriptions[genre]
+    const genreLower = genre.toLowerCase()
+    const encodedGenre = encodeURIComponent(genre.replace(/\s/g, "+")).replace(/%2B/g, '+')
 
-    title = `${params.genre} Stories - FableSpace`
+    title = `${genre} Stories - FableSpace`
     description = genreInfo?.description ||
       `Discover the best ${genreLower} stories on FableSpace. Read engaging ${genreLower} fiction from talented writers around the world.`
 
-    canonicalUrl = `${baseUrl}/browse?genre=${encodeURIComponent(params.genre)}`
+    canonicalUrl = `${baseUrl}/browse?genre=${encodedGenre}`
 
     keywords = [
       ...keywords,
@@ -884,19 +887,20 @@ export function generateBrowseMetadata(params?: {
 
     // Add status-specific keywords if present
     if (params.status && params.status !== 'all') {
-      title = `${params.status === 'completed' ? 'Completed' : 'Ongoing'} ${params.genre} Stories - FableSpace`
+      title = `${params.status === 'completed' ? 'Completed' : 'Ongoing'} ${genre} Stories - FableSpace`
       description = `Find ${params.status} ${genreLower} stories on FableSpace. ${genreInfo?.description || `Browse ${genreLower} fiction that is ${params.status}.`}`
       keywords.push(`${params.status} ${genreLower}`, `${params.status} stories`)
     }
   }
 
   if (params?.tag) {
-    const tag = params.tag
+    const tag = safeDecodeURIComponent(params.tag)
     const tagDisplay = tag.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+    const encodedTag = encodeURIComponent(tag.replace(/\s/g, "+")).replace(/%2B/g, '+')
 
     title = `${tagDisplay} Stories - FableSpace`
     description = `Discover the best ${tagDisplay.toLowerCase()} stories on FableSpace. Read engaging ${tagDisplay.toLowerCase()} fiction from talented writers around the world.`
-    canonicalUrl = `${baseUrl}/browse?tag=${encodeURIComponent(tag)}`
+    canonicalUrl = `${baseUrl}/browse?tag=${encodedTag}`
     keywords = [
       'browse stories',
       'fiction stories',

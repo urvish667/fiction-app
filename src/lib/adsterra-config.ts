@@ -14,7 +14,9 @@ export const AdsterraBannerConfig = {
     width: 320,
     height: 50,
   },
-}
+} as const
+
+export type BannerKey = keyof typeof AdsterraBannerConfig
 
 export const NATIVE_SCRIPT_SRC =
   "//pl27195346.profitableratecpm.com/e43ec3314aa033c46c693288bb05196b/invoke.js"

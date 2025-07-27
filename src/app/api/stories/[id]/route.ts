@@ -153,7 +153,7 @@ export async function GET(
     // Track view if not the author
     if (session?.user?.id !== story.authorId) {
       // Get client IP and user agent for anonymous tracking
-      const clientIp = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip');
+      const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0] || request.headers.get('x-real-ip') || 'Unknown';
       const userAgent = request.headers.get('user-agent');
 
       try {

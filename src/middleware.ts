@@ -4,6 +4,7 @@ import { getToken } from 'next-auth/jwt';
 import { rateLimit, rateLimitConfigs } from '@/lib/security/rate-limit';
 import { csrfProtection } from '@/lib/security/csrf';
 import { applySecurityHeaders } from '@/lib/security/headers';
+import { safeDecodeURIComponent } from '@/utils/safe-decode-uri-component';
 
 // Note: In Edge Runtime, we can't use Redis directly
 // The rate limiting will fall back to in-memory storage
@@ -48,12 +49,62 @@ const authRateLimitedRoutes = [
   '/api/auth/ws-token',
 ];
 
+// Optional: List of known bad bots (for extra protection)
+const knownBadBots = [
+  'python-requests',
+  'curl',
+  'libwww-perl',
+  'HttpClient',
+  'Go-http-client',
+  'scrapy',
+  'wget',
+  'scanner',
+  'attack',
+  'bot',
+];
+
 // Note: We identify editor endpoints dynamically in the middleware function
 // by checking for paths that include '/api/stories/' and '/chapters/'
 
 export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  const { pathname, searchParams } = request.nextUrl;
   const method = request.method;
+  const userAgent = request.headers.get("user-agent") || "";
+  const forwardedFor = request.headers.get('x-forwarded-for');
+  const ip = forwardedFor?.split(',')[0] || request.headers.get('x-real-ip') || 'Unknown';
+
+  // Sanitize search params to prevent URI malformed errors
+  const newSearchParams = new URLSearchParams();
+  let hasMalformedParams = false;
+
+  for (const [key, value] of searchParams.entries()) {
+    const decodedValue = safeDecodeURIComponent(value);
+    if (decodedValue === null) {
+      hasMalformedParams = true;
+      // Decide how to handle malformed params.
+      // Option 1: Skip the parameter.
+      // newSearchParams.set(key, ''); // or some default
+      // Option 2: Redirect to a clean URL.
+      // For now, we will log it and redirect to the base path.
+      console.error("🚨 Malformed URI Param Detected", {
+        key,
+        value,
+        pathname,
+        method,
+        userAgent,
+        ip,
+      });
+    } else {
+      newSearchParams.set(key, value);
+    }
+  }
+
+  if (hasMalformedParams) {
+    const url = new URL(pathname, request.url);
+    // To keep other valid params, uncomment the next line
+    // url.search = newSearchParams.toString();
+    return NextResponse.redirect(url);
+  }
 
   // Apply CSRF protection for non-GET requests to API routes
   // Exclude NextAuth routes, webhooks, scheduled tasks, and recommendation generation from CSRF protection

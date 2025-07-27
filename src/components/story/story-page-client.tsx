@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { motion } from "framer-motion"
 import { useToast } from "@/hooks/use-toast"
+import { useMediaQuery } from "@/hooks/use-media-query"
 import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -52,6 +53,7 @@ export default function StoryPageClient({
   const [bookmarkLoading, setBookmarkLoading] = useState(false)
   const [showMatureDialog, setShowMatureDialog] = useState(false)
   const [contentConsented, setContentConsented] = useState(true)
+  const isMobile = useMediaQuery("(max-width: 768px)")
 
   // Check mature content consent on mount
   useEffect(() => {
@@ -468,7 +470,12 @@ export default function StoryPageClient({
               </div>
 
               {/* Interstitial Ad between Description and Table of Contents */}
-              <AdSlot id="story-banner-top" page="story" adType="banner" className="my-6" />
+              <AdSlot
+                id="story-banner-top"
+                page="story"
+                adType={isMobile ? "native" : "banner"}
+                className="my-6"
+              />
 
               {/* Chapters */}
               <motion.div
