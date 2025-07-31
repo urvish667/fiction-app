@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ProfileFormValuesSubset } from "../ProfileSettings";
 import { logError } from "@/lib/error-logger";
 import { LocationSelector } from "./LocationSelector";
+import { profileUpdateSchema } from "@/lib/validators/profile"
 
 interface ProfileInfoFormProps {
   form: UseFormReturn<ProfileFormValuesSubset>;
@@ -38,22 +39,10 @@ export const ProfileInfoForm = ({ form, isUpdating, saveProfileInfo }: ProfileIn
         location: getValues('location'),
         website: getValues('website'),
       };
-
-      // Create a subset schema for just profile fields
-      const profileFieldsSchema = z.object({
-        name: z.string().max(50, "Name is too long").optional(),
-        username: z.string()
-          .min(3, "Username must be at least 3 characters")
-          .max(30, "Username must be less than 30 characters")
-          .regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, underscores, and hyphens"),
-        bio: z.string().max(500, "Bio must be less than 500 characters").optional().nullable(),
-        location: z.string().max(100, "Location must be less than 100 characters").optional().nullable(),
-        website: z.union([z.literal(''), z.string().url("Please enter a valid URL")]).optional().nullable(),
-      });
-
+      
       // Manually validate just the profile fields
       try {
-        profileFieldsSchema.parse(profileData);
+        profileUpdateSchema.parse(profileData);
 
         // Check if any profile fields are dirty
         const isProfileDataDirty = dirtyFields.name || dirtyFields.username ||
