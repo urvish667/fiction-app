@@ -515,6 +515,7 @@ export const authOptions: NextAuthOptions = {
         image: (token.image || token.picture) as string | null | undefined,
         bannerImage: token.bannerImage,
         username: token.username || (token.name ? String(token.name).split(' ')[0].toLowerCase() : 'user'),
+        birthdate: token.birthdate,
         isProfileComplete: token.isProfileComplete || false,
         needsProfileCompletion: token.needsProfileCompletion || false,
         unreadNotifications: unreadNotificationsCount, // Use the fetched count
@@ -589,7 +590,8 @@ export const authOptions: NextAuthOptions = {
               bannerImage: true,
               preferences: true,
               marketingOptIn: true,
-              unreadNotifications: true
+              unreadNotifications: true,
+              birthdate: true
             }
           });
         } else if (account?.provider === 'twitter') {
@@ -613,7 +615,8 @@ export const authOptions: NextAuthOptions = {
                   bannerImage: true,
                   preferences: true,
                   marketingOptIn: true,
-                  unreadNotifications: true
+                  unreadNotifications: true,
+                  birthdate: true
                 }
               }
             }
@@ -642,6 +645,7 @@ export const authOptions: NextAuthOptions = {
         token.bannerImage = dbUser.bannerImage;
         token.marketingOptIn = dbUser.marketingOptIn;
         token.unreadNotifications = dbUser.unreadNotifications;
+        token.birthdate = dbUser.birthdate;
         token.lastUpdated = Date.now();
 
         // Set needsProfileCompletion flag for OAuth users without complete profiles
@@ -703,6 +707,7 @@ export const authOptions: NextAuthOptions = {
               bannerImage: true,
               emailVerified: true,
               unreadNotifications: true,
+              birthdate: true
             }
           });
 
@@ -715,6 +720,7 @@ export const authOptions: NextAuthOptions = {
             token.bannerImage = dbUser.bannerImage;
             token.emailVerified = dbUser.emailVerified;
             token.unreadNotifications = dbUser.unreadNotifications;
+            token.birthdate = dbUser.birthdate;
             token.lastUpdated = Date.now();
 
             // Update needsProfileCompletion flag based on current profile state

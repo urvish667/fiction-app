@@ -15,9 +15,13 @@ const profileSchema = z.object({
   birthdate: z.string().refine((date: string) => {
     const birthDate = new Date(date);
     const today = new Date();
-    const age = today.getFullYear() - birthDate.getFullYear();
-    return age >= 13;
-  }, "You must be at least 13 years old"),
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+    }
+    return age >= 13 && age <= 100;
+  }, "You must be between 13 and 100 years old"),
   pronoun: z.string(),
   termsAccepted: z.boolean().refine((val: boolean) => val === true, "You must accept the terms and conditions"),
 });

@@ -287,6 +287,7 @@ export default function CompleteProfilePage() {
                   value={formData.birthdate ? format(formData.birthdate, "yyyy-MM-dd") : ""}
                   onChange={handleDateChange}
                   max={format(new Date(new Date().setFullYear(new Date().getFullYear() - 13)), "yyyy-MM-dd")}
+                  min={format(new Date(new Date().setFullYear(new Date().getFullYear() - 100)), "yyyy-MM-dd")}
                   className="w-full"
                 />
               </div>

@@ -26,7 +26,7 @@ import { TopNavigation } from "@/components/chapter/TopNavigation"
 // Services and Types
 import { StoryService } from "@/services/story-service"
 import { Story as StoryType, Chapter as ChapterType } from "@/types/story"
-
+import { isUser18OrOlder } from "@/utils/age"
 import { logError } from "@/lib/error-logger"
 
 // Define types for state management
@@ -109,10 +109,26 @@ export default function ChapterPageClient({
   // Check mature content consent on mount
   useEffect(() => {
     if (story && story.isMature) {
-      const isLoggedIn = session ? true : false
-      if (needsMatureContentConsent(slug, story.isMature, isLoggedIn)) {
-        setContentConsented(false)
-        setShowMatureDialog(true)
+      if (session) {
+        if (session.user.birthdate) {
+          if (isUser18OrOlder(new Date(session.user.birthdate))) {
+            setContentConsented(true)
+          } else {
+            setContentConsented(false)
+            // Optionally, show a message that the user is not old enough
+          }
+        } else {
+          // If birthdate is not available, fall back to consent dialog
+          if (needsMatureContentConsent(slug, story.isMature, true)) {
+            setContentConsented(false)
+            setShowMatureDialog(true)
+          }
+        }
+      } else {
+        if (needsMatureContentConsent(slug, story.isMature, false)) {
+          setContentConsented(false)
+          setShowMatureDialog(true)
+        }
       }
     }
   }, [story, session, slug])

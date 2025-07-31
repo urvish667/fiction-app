@@ -22,6 +22,7 @@ import { Story as StoryType, Chapter as ChapterType } from "@/types/story"
 import { SupportButton } from "@/components/SupportButton"
 import MatureContentDialog, { needsMatureContentConsent } from "@/components/mature-content-dialog"
 import { logError } from "@/lib/error-logger"
+import { isUser18OrOlder } from "@/utils/age"
 
 interface StoryPageClientProps {
   initialStory: StoryType
@@ -57,12 +58,30 @@ export default function StoryPageClient({
 
   // Check mature content consent on mount
   useEffect(() => {
-    const isLoggedIn = status === "authenticated"
-    if (story.isMature && needsMatureContentConsent(slug, story.isMature, isLoggedIn)) {
-      setContentConsented(false)
-      setShowMatureDialog(true)
+    if (story.isMature) {
+      if (status === "authenticated") {
+        if (session.user.birthdate) {
+          if (isUser18OrOlder(new Date(session.user.birthdate))) {
+            setContentConsented(true)
+          } else {
+            setContentConsented(false)
+            // Optionally, show a message that the user is not old enough
+          }
+        } else {
+          // If birthdate is not available, fall back to consent dialog
+          if (needsMatureContentConsent(slug, story.isMature, true)) {
+            setContentConsented(false)
+            setShowMatureDialog(true)
+          }
+        }
+      } else if (status === "unauthenticated") {
+        if (needsMatureContentConsent(slug, story.isMature, false)) {
+          setContentConsented(false)
+          setShowMatureDialog(true)
+        }
+      }
     }
-  }, [story.isMature, slug, status])
+  }, [story.isMature, slug, status, session])
 
   // Check if the user is following the author
   useEffect(() => {

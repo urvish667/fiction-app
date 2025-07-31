@@ -9,6 +9,15 @@ export interface SitemapEntry {
   priority?: number
 }
 
+function slugify(text:String) {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')  // remove punctuation
+    .replace(/\s+/g, '-')      // replace spaces with -
+    .replace(/-+/g, '-');      // collapse multiple dashes
+}
+
 /**
  * Generate sitemap entries for category pages
  */
@@ -27,11 +36,7 @@ export function generateCategorySitemapEntries(): SitemapEntry[] {
     'Thriller',
     'Adventure',
     'Slice of Life',
-    'Fanfiction'
-  ]
-
-  // Additional categories with medium priority
-  const additionalCategories = [
+    'Fanfiction',
     'Drama',
     'Comedy',
     'Non-Fiction',
@@ -61,35 +66,10 @@ export function generateCategorySitemapEntries(): SitemapEntry[] {
   // Main category pages
   mainCategories.forEach(category => {
     entries.push({
-      url: `${baseUrl}/browse?genre=${encodeURIComponent(category)}`,
+      url: `${baseUrl}/browse?genre=${encodeURIComponent(slugify(category))}`,
       lastModified: new Date(),
       changeFrequency: 'daily',
       priority: 0.8
-    })
-
-    // Category with status filters
-    entries.push({
-      url: `${baseUrl}/browse?genre=${encodeURIComponent(category)}&status=completed`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.7
-    })
-
-    entries.push({
-      url: `${baseUrl}/browse?genre=${encodeURIComponent(category)}&status=ongoing`,
-      lastModified: new Date(),
-      changeFrequency: 'daily',
-      priority: 0.7
-    })
-  })
-
-  // Additional category pages
-  additionalCategories.forEach(category => {
-    entries.push({
-      url: `${baseUrl}/browse?genre=${encodeURIComponent(category)}`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.6
     })
   })
 
@@ -100,7 +80,7 @@ export function generateCategorySitemapEntries(): SitemapEntry[] {
     popularLanguages.slice(0, 3).forEach(language => {
       if (language !== 'English') { // English is default
         entries.push({
-          url: `${baseUrl}/browse?genre=${encodeURIComponent(category)}&language=${encodeURIComponent(language)}`,
+          url: `${baseUrl}/browse?genre=${encodeURIComponent(slugify(category))}&language=${encodeURIComponent(language)}`,
           lastModified: new Date(),
           changeFrequency: 'weekly',
           priority: 0.5
@@ -113,39 +93,11 @@ export function generateCategorySitemapEntries(): SitemapEntry[] {
 }
 
 /**
- * Generate sitemap entries for popular search terms
- */
-export function generateSearchSitemapEntries(): SitemapEntry[] {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.space'
-  
-  const popularSearchTerms = [
-    'magic',
-    'romance',
-    'adventure',
-    'mystery',
-    'dragon',
-    'space',
-    'sci-fi',
-    'fantasy adventure',
-    'fantasy',
-    'magic system'
-  ]
-
-  return popularSearchTerms.map(term => ({
-    url: `${baseUrl}/browse?search=${encodeURIComponent(term)}`,
-    lastModified: new Date(),
-    changeFrequency: 'weekly',
-    priority: 0.4
-  }))
-}
-
-/**
  * Generate all browse-related sitemap entries
  */
 export function generateBrowseSitemapEntries(): SitemapEntry[] {
   return [
     ...generateCategorySitemapEntries(),
-    ...generateSearchSitemapEntries()
   ]
 }
 

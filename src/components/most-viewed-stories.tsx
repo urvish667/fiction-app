@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Heart, Flame, Eye } from "lucide-react"
+import { Heart, Flame, Eye, ChevronLeft, ChevronRight } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import StoryCardSkeleton from "@/components/story-card-skeleton"
@@ -40,6 +40,37 @@ export default function MostViewedStories({ className }: MostViewedStoriesProps)
   const [stories, setStories] = useState<Story[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const [isOverflowing, setIsOverflowing] = useState(false)
+  const [canScrollLeft, setCanScrollLeft] = useState(false)
+  const [canScrollRight, setCanScrollRight] = useState(false)
+
+  const checkForOverflow = () => {
+    if (scrollContainerRef.current) {
+      const { scrollWidth, clientWidth } = scrollContainerRef.current
+      setIsOverflowing(scrollWidth > clientWidth)
+    }
+  }
+
+  const handleScroll = () => {
+    if (scrollContainerRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current
+      setCanScrollLeft(scrollLeft > 0)
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 1)
+    }
+  }
+
+  const scrollLeft = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: -300, behavior: 'smooth' })
+    }
+  }
+
+  const scrollRight = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({ left: 300, behavior: 'smooth' })
+    }
+  }
 
   useEffect(() => {
     async function fetchMostViewedStories() {
@@ -65,6 +96,26 @@ export default function MostViewedStories({ className }: MostViewedStoriesProps)
 
     fetchMostViewedStories()
   }, [])
+
+  useEffect(() => {
+    const container = scrollContainerRef.current
+    if (container) {
+      checkForOverflow()
+      handleScroll()
+
+      container.addEventListener('scroll', handleScroll)
+      const resizeObserver = new ResizeObserver(() => {
+        checkForOverflow()
+        handleScroll()
+      })
+      resizeObserver.observe(container)
+
+      return () => {
+        container.removeEventListener('scroll', handleScroll)
+        resizeObserver.unobserve(container)
+      }
+    }
+  }, [stories])
 
   if (loading) {
     return (
@@ -163,14 +214,39 @@ export default function MostViewedStories({ className }: MostViewedStoriesProps)
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {stories.map((story, index) => (
-            <StoryCard
-              key={story.id}
-              story={story}
-              isTopStory={index === 0}
-            />
-          ))}
+        <div className="relative">
+          <div
+            ref={scrollContainerRef}
+            className="grid grid-flow-col auto-cols-[calc(100%-1rem)] sm:auto-cols-[calc(50%-1rem)] lg:auto-cols-[calc(33.33%-1rem)] xl:auto-cols-[calc(25%-1rem)] gap-5 overflow-x-auto scroll-smooth snap-x snap-mandatory scrollbar-hide"
+          >
+            {stories.map((story, index) => (
+              <StoryCard
+                key={story.id}
+                story={story}
+                isTopStory={index === 0}
+              />
+            ))}
+          </div>
+          {isOverflowing && canScrollLeft && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute left-0 top-1/2 -translate-y-1/2 transform bg-background/50 hover:bg-background/80 rounded-full"
+              onClick={scrollLeft}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+          )}
+          {isOverflowing && canScrollRight && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-0 top-1/2 -translate-y-1/2 transform bg-background/50 hover:bg-background/80 rounded-full"
+              onClick={scrollRight}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
     </section>
@@ -180,7 +256,7 @@ export default function MostViewedStories({ className }: MostViewedStoriesProps)
 // StoryCard component for client-side rendering
 function StoryCard({ story, isTopStory = false }: { story: Story, isTopStory?: boolean }) {
   return (
-    <Link href={`/story/${story.slug || story.id}`}>
+    <Link href={`/story/${story.slug || story.id}`} className="block p-1">
       <Card className={`h-full overflow-hidden flex flex-col hover:shadow-lg transition-shadow cursor-pointer ${isTopStory ? 'ring-2 ring-primary' : ''}`}>
         <div className="relative aspect-[3/2] overflow-hidden">
           <Image

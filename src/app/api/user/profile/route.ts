@@ -66,6 +66,9 @@ export async function PATCH(request: NextRequest) {
     const body = await request.json()
     const validatedData = profileUpdateSchema.parse(body)
 
+    console.log("Raw body:", body)
+    console.log("Validation attempt for:", validatedData)
+
     // Check username availability if it's being changed
     if (validatedData.username) {
       const existingUser = await prisma.user.findUnique({
@@ -150,6 +153,8 @@ export async function PATCH(request: NextRequest) {
           fieldErrors[err.path.join(".")] = err.message
         }
       })
+      
+      console.error("Zod validation error:", error.errors)
 
       return NextResponse.json(
         { error: "Validation error", fields: fieldErrors },

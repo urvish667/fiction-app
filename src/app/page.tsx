@@ -6,6 +6,15 @@ import { SiteFooter } from "@/components/site-footer"
 import { generateHomepageMetadata, generateHomepageStructuredData, generateOrganizationStructuredData } from "@/lib/seo/metadata"
 import MostViewedStories from "@/components/most-viewed-stories"
 
+function slugify(text:String) {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')  // remove punctuation
+    .replace(/\s+/g, '-')      // replace spaces with -
+    .replace(/-+/g, '-');      // collapse multiple dashes
+}
+
 // Generate metadata for SEO
 export async function generateMetadata(): Promise<Metadata> {
   return generateHomepageMetadata()
@@ -77,7 +86,7 @@ export default function Home() {
               {categories.map((category) => (
                 <Link
                   key={category}
-                  href={`/browse?genre=${encodeURIComponent(category)}`}
+                  href={`/browse?genre=${encodeURIComponent(slugify(category))}`}
                   passHref
                 >
                   <Button variant="secondary" className="rounded-full">

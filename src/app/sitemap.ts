@@ -102,6 +102,48 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }))
     )
 
+    // Tags
+    const pageSize = 1000
+    let page = 0
+    let tagPages: MetadataRoute.Sitemap = []
+
+    while (true) {
+      const tags = await prisma.tag.findMany({
+        skip: page * pageSize,
+        take: pageSize,
+        select: { slug: true },
+      })
+
+      if (tags.length === 0) break
+
+      const entries = tags.map(tag => ({
+        url: `${baseUrl}/browse?tag=${encodeURIComponent(tag.slug)}`,
+        lastModified: new Date(),
+        changeFrequency: 'weekly' as const,
+        priority: 0.7,
+      }))
+
+      tagPages = tagPages.concat(entries)
+      page++
+    }
+
+    // Get blogs
+    const blogs = await prisma.blog.findMany({
+      where: { status: 'published' }, // Adjust if needed
+      select: {
+        slug: true,
+        updatedAt: true
+      } 
+    })
+
+    // Generate blog pages
+    const blogPages: MetadataRoute.Sitemap = blogs.map((blog) => ({
+      url: `${baseUrl}/blog/${blog.slug}`,
+      lastModified: blog.updatedAt,
+      changeFrequency: 'weekly' as const,
+      priority: 0.6,
+    }))
+
     // Get all users with public profiles
     const users = await prisma.user.findMany({
       where: {
@@ -148,7 +190,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }))
 
     // Combine all pages and validate/sanitize URLs
-    const allPages = [...staticPages, ...browsePages, ...storyPages, ...chapterPages, ...userPages]
+    const allPages = [...staticPages, ...browsePages, ...storyPages, ...chapterPages, ...userPages, ...tagPages, ...blogPages]
     const validatedPages = validateSitemapEntries(allPages)
     return validatedPages
   } catch (error) {
