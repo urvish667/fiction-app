@@ -84,6 +84,7 @@ model User {
   sessions            Session[]
   stories             Story[]
   storyViews          StoryView[]
+  reports             Report[]
 
   @@index([email])
   @@index([username])
@@ -171,6 +172,7 @@ model Story {
   recommendations StoryRecommendation[] @relation("StoryRecommendations")
   tags            StoryTag[]
   views           StoryView[]
+  reports         Report[]
 
   @@index([authorId])
   @@index([status])
@@ -217,6 +219,7 @@ model Comment {
   story     Story         @relation(fields: [storyId], references: [id], onDelete: Cascade)
   user      User          @relation(fields: [userId], references: [id])
   likes     CommentLike[]
+  reports   Report[]
 
   @@index([userId])
   @@index([storyId])
@@ -442,6 +445,35 @@ model Blog {
 
   @@index([authorId])
   @@index([category])
+}
+
+model Report {
+  id         String       @id @default(cuid())
+  reporterId String
+  reporter   User         @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  storyId    String?
+  story      Story?       @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  commentId  String?
+  comment    Comment?     @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  reason     ReportReason
+  details    String?      @db.VarChar(500) // Optional extra detail for "Other"
+  status     ReportStatus @default(PENDING)
+  createdAt  DateTime     @default(now())
+}
+
+enum ReportReason {
+  PORNOGRAPHIC_CONTENT
+  HATE_OR_BULLYING
+  RELEASE_OF_PERSONAL_INFO
+  OTHER_INAPPROPRIATE_MATERIAL
+  SPAM
+  OTHER
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  DISMISSED
 }
 
 enum License {

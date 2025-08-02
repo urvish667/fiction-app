@@ -10,8 +10,9 @@ import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, BookOpen, Heart, Bookmark, CheckCircle, UserPlus, UserCheck, Loader2 } from "lucide-react"
+import { ArrowLeft, BookOpen, Heart, Bookmark, CheckCircle, UserPlus, UserCheck, Loader2, Flag } from "lucide-react"
 import Navbar from "@/components/navbar"
+import { ReportDialog } from "@/components/report/ReportDialog"
 import ChapterList from "@/components/chapter-list"
 import StoryMetadata from "@/components/story-metadata"
 import CommentSection from "@/components/comment-section"
@@ -53,6 +54,7 @@ export default function StoryPageClient({
   const [likeLoading, setLikeLoading] = useState(false)
   const [bookmarkLoading, setBookmarkLoading] = useState(false)
   const [showMatureDialog, setShowMatureDialog] = useState(false)
+  const [isReportModalOpen, setReportModalOpen] = useState(false)
   const [contentConsented, setContentConsented] = useState(true)
   const isMobile = useMediaQuery("(max-width: 768px)")
 
@@ -285,6 +287,11 @@ export default function StoryPageClient({
           onConsent={handleMatureContentConsent}
         />
       )}
+      <ReportDialog
+        isOpen={isReportModalOpen}
+        onClose={() => setReportModalOpen(false)}
+        storyId={story.id}
+      />
 
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
         {/* Back Button and Story Status */}
@@ -450,6 +457,15 @@ export default function StoryPageClient({
                      </span>
                    </Button>
                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setReportModalOpen(true)}
+                    className="flex items-center gap-1 sm:gap-2 h-9 sm:h-10 text-xs sm:text-sm px-3 sm:px-4"
+                  >
+                    <Flag size={14} />
+                    <span className="hidden sm:inline">Report</span>
+                  </Button>
 
                  {/* Support Button - Mobile Optimized */}
                  {author?.donationsEnabled && session?.user?.id !== author.id && (

@@ -113,6 +113,7 @@ export async function middleware(request: NextRequest) {
       !pathname.startsWith('/api/webhooks/') &&
       !pathname.startsWith('/api/scheduled-tasks') &&
       !pathname.startsWith('/api/recommendations/generate') &&
+      !pathname.startsWith('/api/report') &&
       !['GET', 'HEAD', 'OPTIONS'].includes(method)) {
     const csrfResult = await csrfProtection(request);
     if (csrfResult) {

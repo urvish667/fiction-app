@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast"
 import { CommentService } from "@/services/comment-service"
 import { Comment } from "@/types/story"
 import { logError } from "@/lib/error-logger"
+import { ReportDialog } from "@/components/report/ReportDialog"
 
 interface CommentSectionProps {
   storyId: string
@@ -42,6 +43,8 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
   const [editingReply, setEditingReply] = useState<string | null>(null)
   const [editReplyContent, setEditReplyContent] = useState("")
   const [likingComment, setLikingComment] = useState<{[key: string]: boolean}>({})
+  const [isReportDialogOpen, setIsReportDialogOpen] = useState(false)
+  const [reportingCommentId, setReportingCommentId] = useState<string | null>(null)
 
   // Determine if we're in chapter comment mode
   const isChapter = isChapterComment && !!chapterId
@@ -630,7 +633,12 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
                           <Reply size={16} className="mr-2" />
                           Reply
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setReportingCommentId(comment.id)
+                            setIsReportDialogOpen(true)
+                          }}
+                        >
                           <Flag size={16} className="mr-2" />
                           Report
                         </DropdownMenuItem>
@@ -812,7 +820,12 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                  <DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      setReportingCommentId(reply.id)
+                                      setIsReportDialogOpen(true)
+                                    }}
+                                  >
                                     <Flag size={14} className="mr-2" />
                                     Report
                                   </DropdownMenuItem>
@@ -926,7 +939,13 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
           )}
         </>
       )}
+
+      <ReportDialog
+        isOpen={isReportDialogOpen}
+        onClose={() => setIsReportDialogOpen(false)}
+        storyId={storyId}
+        commentId={reportingCommentId}
+      />
     </div>
   )
 }
-
