@@ -6,7 +6,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { Metadata } from "next";
 import { logger } from "@azure/storage-blob";
 import { Badge } from "@/components/ui/badge";
-import { AdSlot } from "@/components/ad-slot";
+import AdBanner from "@/components/ad-banner";
 import { generateBlogMetadata, generateBlogStructuredData, generateBlogBreadcrumbStructuredData } from "@/lib/seo/metadata";
 
 interface BlogPageProps {
@@ -63,7 +63,7 @@ export default async function BlogPostPage({ params }: BlogPageProps) {
         />
         <Navbar />
         <main className="container mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 lg:py-8">
-          <div className="max-w-3xl mx-auto">
+          <div className="max-w-3xl mx-auto py-2">
             <article>
               <h1 className="text-4xl font-bold mb-4">{blog.title}</h1>
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
@@ -84,10 +84,17 @@ export default async function BlogPostPage({ params }: BlogPageProps) {
               )}
               <MarkdownRenderer content={blog.content} />
 
-              <AdSlot id="chapter-banner-bottom" page="other" adType="banner"/>
+              <div className="w-full py-2">
+                <AdBanner
+                  type="banner"
+                  className="w-full max-w-[720px] h-[90px] mx-auto"
+                  slot="6596765108"
+                />
+              </div>
               
             </article>
           </div>
+
         </main>
         <SiteFooter />
       </div>

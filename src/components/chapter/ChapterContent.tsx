@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion"
 import { useEffect, useState } from "react"
-import { AdSlot } from "../ad-slot"
+import AdBanner from "../ad-banner"
 import { Chapter } from "@/types/story"
 
 interface ChapterContentProps {
@@ -130,7 +130,13 @@ export function ChapterContent({
           />
 
           {/* First ad after 1/3 of content */}
-          <AdSlot id="chapter-mid-banner" page="chapter" adType="banner"/>
+          <div className="w-full py-2">
+            <AdBanner
+              type="banner"
+              className="w-full max-w-[720px] h-[90px] mx-auto"
+              slot="6596765108"
+            />
+          </div>
 
           {/* Second third of content */}
           <div
@@ -148,7 +154,13 @@ export function ChapterContent({
           />
 
           {/* Second ad after 2/3 of content */}
-          <AdSlot id="chapter-mid-banner" page="chapter" adType="banner"/>
+          <div className="w-full py-2">
+            <AdBanner
+              type="banner"
+              className="w-full max-w-[720px] h-[90px] mx-auto"
+              slot="6596765108"
+            />
+          </div>
 
           {/* Final third of content */}
           <div
@@ -184,7 +196,13 @@ export function ChapterContent({
           />
 
           {/* Ad in the middle */}
-          <AdSlot id="chapter-mid-banner" page="chapter" adType="banner" />
+          <div className="w-full py-2">
+            <AdBanner
+              type="banner"
+              className="w-full max-w-[720px] h-[90px] mx-auto"
+              slot="6596765108"
+            />
+          </div>
 
           {/* Second half of content */}
           <div
@@ -216,7 +234,13 @@ export function ChapterContent({
           />
 
           {/* Ad at the end */}
-          <AdSlot id="chapter-banner-bottom" page="chapter" adType="banner"/>
+          <div className="w-full py-2">
+            <AdBanner
+              type="banner"
+              className="w-full max-w-[720px] h-[90px] mx-auto"
+              slot="6596765108"
+            />
+          </div>
         </>
       )}
     </motion.div>

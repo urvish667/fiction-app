@@ -2,7 +2,6 @@
 
 import { motion, AnimatePresence } from "framer-motion"
 import BlogCard from "@/components/blog-card"
-import { AdSlot } from "@/components/ad-slot"
 import { BlogPost } from "@/types/blog"
 
 interface BlogGridProps {
@@ -29,13 +28,6 @@ export default function BlogGrid({ posts, viewMode }: BlogGridProps) {
             transition={{ duration: 0.3, delay: index * 0.1 }}
           >
             <BlogCard post={post} viewMode={viewMode} />
-
-            {/* Insert ads after every 6 posts */}
-            {(index + 1) % 6 === 0 && index !== posts.length - 1 && (
-              <div className={viewMode === "grid" ? "col-span-full" : ""}>
-                <AdSlot id="blog-native-add" page="other" adType="native" className="my-6" />
-              </div>
-            )}
           </motion.div>
         ))}
       </AnimatePresence>

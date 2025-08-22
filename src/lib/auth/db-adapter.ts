@@ -1,10 +1,6 @@
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { handleOAuthUser } from "./auth-utils";
 import { prisma } from "../prisma";
-import { logger } from "../logger";
-
-// Create a dedicated logger for auth operations
-const authLogger = logger.child('auth-db-adapter');
 
 // Re-export the prisma client for backward compatibility
 // This ensures existing imports from @/lib/auth/db-adapter still work

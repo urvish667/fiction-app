@@ -15,8 +15,8 @@ import { useMediaQuery } from "@/hooks/use-media-query"
 import { StoryService } from "@/services/story-service"
 import { useToast } from "@/hooks/use-toast"
 import { UserSummary } from "@/types/user"
-import { AdSlot } from "@/components/ad-slot"
 import { safeDecodeURIComponent } from "@/utils/safe-decode-uri-component"
+import AdBanner from "@/components/ad-banner"
 
 // Define a type for stories in the browse page
 type BrowseStory = {
@@ -501,13 +501,13 @@ export default function BrowseContent({ initialParams }: BrowseContentProps) {
 
                   <StoryGrid stories={stories} viewMode={viewMode} />
 
-                  <br/>
-                  
-                  <AdSlot
-                    id="browse-end-banner"
-                    page="browse"
-                    adType={isMobile ? "native" : "banner"}
-                  />
+                  <div className="w-full py-4">
+                    <AdBanner
+                      type="banner"
+                      className="w-full max-w-[720px] h-[90px] mx-auto"
+                      slot="6596765108"
+                    />
+                  </div>
 
                   {/* Pagination */}
                   {totalPages > 1 && (

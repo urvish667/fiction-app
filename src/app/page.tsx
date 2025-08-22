@@ -125,6 +125,9 @@ export default function Home() {
           </div>
         </section>
 
+        {/* Featured On Section */}
+        {/* <FeaturedOn /> */}
+
         {/* Footer */}
         <SiteFooter />
       </main>

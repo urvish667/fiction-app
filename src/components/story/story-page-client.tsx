@@ -16,7 +16,7 @@ import { ReportDialog } from "@/components/report/ReportDialog"
 import ChapterList from "@/components/chapter-list"
 import StoryMetadata from "@/components/story-metadata"
 import CommentSection from "@/components/comment-section"
-import { AdSlot } from "@/components/ad-slot"
+import AdBanner from "../ad-banner"
 import { SiteFooter } from "@/components/site-footer"
 import { StoryService } from "@/services/story-service"
 import { Story as StoryType, Chapter as ChapterType } from "@/types/story"
@@ -505,12 +505,13 @@ export default function StoryPageClient({
               </div>
 
               {/* Interstitial Ad between Description and Table of Contents */}
-              <AdSlot
-                id="story-banner-top"
-                page="story"
-                adType={isMobile ? "native" : "banner"}
-                className="my-6"
-              />
+              <div className="w-full py-2">
+                <AdBanner
+                  type="banner"
+                  className="w-full max-w-[720px] h-[90px] mx-auto"
+                  slot="6596765108"
+                />
+              </div>
 
               {/* Chapters */}
               <motion.div
