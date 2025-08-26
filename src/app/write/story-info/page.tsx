@@ -8,7 +8,6 @@ import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Link } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
@@ -25,7 +24,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { ArrowLeft, Upload, Trash2, AlertCircle, Eye, BookOpen, Plus, FileText, Clock, CheckCircle2, Edit, X, Save, RefreshCw } from "lucide-react"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { ArrowLeft, Upload, Trash2, AlertCircle, Eye, BookOpen, Plus, FileText, Clock, CheckCircle2, Edit, X, Save, RefreshCw, Info } from "lucide-react"
 import Navbar from "@/components/navbar"
 import { SiteFooter } from "@/components/site-footer"
 import { StoryService } from "@/services/story-service"
@@ -720,6 +725,11 @@ export default function StoryInfoPage() {
     }
   }, [session, sessionStatus, router])
 
+  // Ensure auto-save is enabled after first render, even for new stories
+  useEffect(() => {
+    isInitialLoad.current = false;
+  }, []);
+
   // Show loading state while session is being restored
   if (sessionStatus === "loading") {
     return (
@@ -735,11 +745,6 @@ export default function StoryInfoPage() {
   }
 
   const isFormDisabled = saveStatus === 'saving' || sessionStatus !== 'authenticated';
-
-  // Ensure auto-save is enabled after first render, even for new stories
-  useEffect(() => {
-    isInitialLoad.current = false;
-  }, []);
   
   const isActuallySaving = saveStatus === 'saving';
   return (
@@ -1072,7 +1077,7 @@ export default function StoryInfoPage() {
                       onClick={() => addTag(t.name)}
                       disabled={tags.includes(t.name)}
                     >
-                      + {t.name}
+                     {t.name}
                     </button>
                   ))}
                 </div>
@@ -1084,17 +1089,42 @@ export default function StoryInfoPage() {
               <div className="flex items-center justify-between space-x-2">
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <Label htmlFor="mature-content">
-                      Mature Content
-                    </Label>
+                    <Label htmlFor="mature-content">Mature Content</Label>
+                    
+                    {/* Info Tooltip */}
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            className="inline-flex items-center justify-center rounded-full p-1 hover:bg-accent"
+                          >
+                            <Info size={16} className="text-muted-foreground" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs text-sm">
+                          <p className="font-medium mb-1">Mature Content Policy</p>
+                          <ul className="list-disc list-inside space-y-1">
+                            <li>✅ Allowed: adult themes, romance, violence, explicit scenes within story context.</li>
+                            <li>❌ Not allowed: sexual violence, incest, minors in sexual content, bestiality, pure pornographic works.</li>
+                          </ul>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
-                  <p className="text-sm text-muted-foreground">Contains adult themes, violence, or explicit content</p>
+
+                  <p className="text-sm text-muted-foreground">
+                    Contains adult themes, violence, or explicit content
+                  </p>
                 </div>
+
                 <div className="relative">
                   <Switch
                     id="mature-content"
                     checked={storyData.isMature}
-                    onCheckedChange={(checked) => handleStateChange({ isMature: checked })}
+                    onCheckedChange={(checked) =>
+                      handleStateChange({ isMature: checked })
+                    }
                     disabled={isFormDisabled}
                   />
                 </div>

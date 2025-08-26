@@ -12,7 +12,7 @@ export default function TermsPage() {
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      
+
       <main className="flex-1 container mx-auto py-12 px-4 md:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -22,7 +22,7 @@ export default function TermsPage() {
           <div className="max-w-4xl mx-auto">
             <h1 className="text-4xl font-bold mb-6">Terms and Conditions</h1>
             <p className="text-muted-foreground mb-8">Last updated: {new Date().toLocaleDateString()}</p>
-            
+
             <div className="bg-card rounded-lg shadow-sm p-6 md:p-8">
               <ScrollArea className="h-[600px] pr-4">
                 <div className="space-y-8">
@@ -36,9 +36,9 @@ export default function TermsPage() {
                       These Terms and Conditions govern your access to and use of the FableSpace website, services, and applications (collectively, the "Service"). By accessing or using the Service, you agree to be bound by these Terms.
                     </p>
                   </section>
-                  
+
                   <Separator />
-                  
+
                   {/* Acceptance of Terms */}
                   <section>
                     <h2 className="text-2xl font-semibold mb-4">2. Acceptance of Terms</h2>
@@ -49,9 +49,9 @@ export default function TermsPage() {
                       You must be at least 13 years old to use the Service. If you are under 18, you represent that you have your parent or guardian's permission to use the Service and they have read and agree to these Terms on your behalf.
                     </p>
                   </section>
-                  
+
                   <Separator />
-                  
+
                   {/* User Accounts */}
                   <section>
                     <h2 className="text-2xl font-semibold mb-4">3. User Accounts and Registration</h2>
@@ -65,9 +65,9 @@ export default function TermsPage() {
                       We reserve the right to disable any user account if, in our opinion, you have violated any provision of these Terms.
                     </p>
                   </section>
-                  
+
                   <Separator />
-                  
+
                   {/* Content Guidelines */}
                   <section>
                     <h2 className="text-2xl font-semibold mb-4">4. Content Guidelines and Ownership</h2>
@@ -89,25 +89,40 @@ export default function TermsPage() {
                       FableSpace may, but has no obligation to, monitor or review User Content. We reserve the right to remove any User Content for any reason without notice.
                     </p>
                   </section>
-                  
+
                   <Separator />
-                  
+
                   {/* Mature Content */}
                   <section>
                     <h2 className="text-2xl font-semibold mb-4">5. Mature Content</h2>
                     <p className="mb-4">
-                      FableSpace allows authors to mark their stories as containing mature content. Stories marked as mature may contain adult themes, violence, or explicit content.
+                      FableSpace allows authors to mark their stories as containing mature content. Stories
+                      marked as mature may include adult themes, consensual romance, violence, or explicit
+                      content.
                     </p>
                     <p className="mb-4">
-                      By accessing mature content, you confirm that you are of appropriate age to view such content according to the laws of your jurisdiction.
+                      However, to comply with legal requirements and keep the platform safe for everyone, the
+                      following types of content are <strong>not allowed</strong>:
+                    </p>
+                    <ul className="list-disc list-inside mb-4">
+                      <li>Sexual violence, rape, or non-consensual sexual activity</li>
+                      <li>Sexual content involving minors (characters under 18, even in fictional form)</li>
+                      <li>Incest or sexual relationships between close family members</li>
+                      <li>Bestiality or sexual activity with non-human creatures</li>
+                      <li>Pornographic content created primarily for arousal rather than storytelling</li>
+                    </ul>
+                    <p className="mb-4">
+                      By accessing mature content, you confirm that you are of appropriate age to view such
+                      content according to the laws of your jurisdiction.
                     </p>
                     <p>
-                      Non-logged-in users will be required to acknowledge a mature content warning before accessing such stories.
+                      Non-logged-in users will be required to acknowledge a mature content warning before
+                      accessing such stories.
                     </p>
                   </section>
-                  
+
                   <Separator />
-                  
+
                   {/* Privacy and Data */}
                   <section>
                     <h2 className="text-2xl font-semibold mb-4">6. Privacy and Data Usage</h2>
@@ -118,9 +133,9 @@ export default function TermsPage() {
                       You can control certain privacy settings through your account preferences, including whether to display your email address and location on your public profile.
                     </p>
                   </section>
-                  
+
                   <Separator />
-                  
+
                   {/* Payment Terms */}
                   <section>
                     <h2 className="text-2xl font-semibold mb-4">7. Payment Terms</h2>
@@ -140,9 +155,9 @@ export default function TermsPage() {
                       Authors receiving payments are responsible for any applicable taxes on the income they receive.
                     </p>
                   </section>
-                  
+
                   <Separator />
-                  
+
                   {/* Prohibited Activities */}
                   <section>
                     <h2 className="text-2xl font-semibold mb-4">8. Prohibited Activities</h2>
@@ -164,9 +179,9 @@ export default function TermsPage() {
                       Violation of these prohibitions may result in termination of your account and potential legal action.
                     </p>
                   </section>
-                  
+
                   <Separator />
-                  
+
                   {/* Intellectual Property */}
                   <section>
                     <h2 className="text-2xl font-semibold mb-4">9. Intellectual Property</h2>
@@ -177,9 +192,9 @@ export default function TermsPage() {
                       Our name, logo, and all related names, logos, product and service names, designs, and slogans are trademarks of FableSpace. You may not use these marks without our prior written permission.
                     </p>
                   </section>
-                  
+
                   <Separator />
-                  
+
                   {/* Limitation of Liability */}
                   <section>
                     <h2 className="text-2xl font-semibold mb-4">10. Limitation of Liability</h2>
@@ -190,9 +205,9 @@ export default function TermsPage() {
                       In no event will our aggregate liability for any claims relating to these Terms or the Service exceed the greater of $100 or the amount you paid us, if any, in the past 12 months.
                     </p>
                   </section>
-                  
+
                   <Separator />
-                  
+
                   {/* Termination */}
                   <section>
                     <h2 className="text-2xl font-semibold mb-4">11. Termination</h2>
@@ -203,9 +218,9 @@ export default function TermsPage() {
                       Upon termination, your right to use the Service will immediately cease. All provisions of these Terms which by their nature should survive termination shall survive, including ownership provisions, warranty disclaimers, indemnity, and limitations of liability.
                     </p>
                   </section>
-                  
+
                   <Separator />
-                  
+
                   {/* Changes to Terms */}
                   <section>
                     <h2 className="text-2xl font-semibold mb-4">12. Changes to Terms</h2>
@@ -216,9 +231,9 @@ export default function TermsPage() {
                       By continuing to access or use our Service after any revisions become effective, you agree to be bound by the revised terms. If you do not agree to the new terms, you are no longer authorized to use the Service.
                     </p>
                   </section>
-                  
+
                   <Separator />
-                  
+
                   {/* Contact Information */}
                   <section>
                     <h2 className="text-2xl font-semibold mb-4">13. Contact Information</h2>
@@ -229,7 +244,7 @@ export default function TermsPage() {
                 </div>
               </ScrollArea>
             </div>
-            
+
             <div className="mt-8 flex justify-center">
               <Button asChild variant="outline">
                 <Link href="/">Return to Home</Link>
@@ -238,7 +253,7 @@ export default function TermsPage() {
           </div>
         </motion.div>
       </main>
-      
+
       <SiteFooter />
     </div>
   )

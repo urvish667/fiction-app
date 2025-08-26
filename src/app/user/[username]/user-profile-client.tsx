@@ -51,7 +51,7 @@ interface UserProfileClientProps {
 
 export default function UserProfileClient({ user }: UserProfileClientProps) {
   const [activeTab, setActiveTab] = useState("stories")
-  
+
   // State for user's published stories and library
   const [userStories, setUserStories] = useState<any[]>([])
   const [savedStories, setLibraryStories] = useState<any[]>([])
@@ -104,6 +104,7 @@ export default function UserProfileClient({ user }: UserProfileClientProps) {
             likeCount: story.likeCount || 0,
             commentCount: story.commentCount || 0,
             viewCount: story.viewCount || 0,
+            isMature: story.isMature || false,
             createdAt,
             updatedAt,
           }
@@ -133,6 +134,7 @@ export default function UserProfileClient({ user }: UserProfileClientProps) {
               likeCount: story.likeCount || 0,
               commentCount: story.commentCount || 0,
               viewCount: story.viewCount || 0,
+              isMature: story.isMature || false,
               createdAt,
               updatedAt,
             }

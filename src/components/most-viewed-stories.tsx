@@ -30,6 +30,7 @@ interface Story {
   bookmarkCount: number
   chapterCount: number
   viewCount: number
+  isMature?: boolean
 }
 
 interface MostViewedStoriesProps {
@@ -77,13 +78,13 @@ export default function MostViewedStories({ className }: MostViewedStoriesProps)
       try {
         setLoading(true)
         setError(null)
-        
+
         const response = await fetch('/api/stories/most-viewed?limit=4&timeRange=7days')
-        
+
         if (!response.ok) {
           throw new Error('Failed to fetch most viewed stories')
         }
-        
+
         const data = await response.json()
         setStories(data.stories || [])
       } catch (err) {
@@ -123,8 +124,8 @@ export default function MostViewedStories({ className }: MostViewedStoriesProps)
         <div className="container mx-auto">
           <div className="flex justify-between items-center mb-10">
             <div>
-              <h2 className="text-3xl font-bold">This Week's Most Viewed Stories</h2>
-              <p className="text-muted-foreground mt-1">Most popular stories from the last 7 days</p>
+              <h2 className="text-3xl font-bold">Top Read Stories Of This Week</h2>
+              <p className="text-muted-foreground mt-1">Top read stories from the last 7 days</p>
             </div>
             <Link href="/browse?sortBy=mostRead">
               <Button variant="ghost">View All</Button>
@@ -147,8 +148,8 @@ export default function MostViewedStories({ className }: MostViewedStoriesProps)
         <div className="container mx-auto">
           <div className="flex justify-between items-center mb-10">
             <div>
-              <h2 className="text-3xl font-bold">Most Viewed Stories</h2>
-              <p className="text-muted-foreground mt-1">Most popular stories from the last 7 days</p>
+              <h2 className="text-3xl font-bold">Top Read Stories Of This Week</h2>
+              <p className="text-muted-foreground mt-1">Top read stories from the last 7 days</p>
             </div>
             <Link href="/browse?sortBy=mostRead">
               <Button variant="ghost">View All</Button>
@@ -177,8 +178,8 @@ export default function MostViewedStories({ className }: MostViewedStoriesProps)
         <div className="container mx-auto">
           <div className="flex justify-between items-center mb-10">
             <div>
-              <h2 className="text-3xl font-bold">Most Viewed Stories</h2>
-              <p className="text-muted-foreground mt-1">Most popular stories from the last 7 days</p>
+              <h2 className="text-3xl font-bold">Top Read Stories Of This Week</h2>
+              <p className="text-muted-foreground mt-1">Most read stories from the last 7 days</p>
             </div>
             <Link href="/browse?sortBy=mostRead">
               <Button variant="ghost">View All</Button>
@@ -206,8 +207,8 @@ export default function MostViewedStories({ className }: MostViewedStoriesProps)
       <div className="container mx-auto">
         <div className="flex justify-between items-center mb-10">
           <div>
-            <h2 className="text-3xl font-bold">This Week's Most Viewed Stories</h2>
-            <p className="text-muted-foreground mt-1">Most popular stories from the last 7 days</p>
+            <h2 className="text-3xl font-bold">Top Read Stories Of This Week</h2>
+            <p className="text-muted-foreground mt-1">Most read stories from the last 7 days</p>
           </div>
           <Link href="/browse?sortBy=mostRead">
             <Button variant="ghost">View All</Button>
@@ -266,13 +267,19 @@ function StoryCard({ story, isTopStory = false }: { story: Story, isTopStory?: b
             className="object-cover transition-transform hover:scale-105"
             unoptimized={true}
           />
+          {/* 18+ Tag for mature content */}
+          {story.isMature && (
+            <Badge className="absolute top-2 left-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs px-2 py-1 z-10">
+              18+
+            </Badge>
+          )}
           <Badge className="absolute top-2 right-2">
             {typeof story.genre === 'object' && story.genre !== null
               ? story.genre.name
               : 'General'}
           </Badge>
           {isTopStory && (
-            <div className="absolute top-2 left-2 bg-primary text-primary-foreground px-2 py-1 rounded-md flex items-center gap-1">
+            <div className={`absolute ${story.isMature ? 'top-8' : 'top-2'} left-2 bg-primary text-primary-foreground px-2 py-1 rounded-md flex items-center gap-1`}>
               <Flame size={14} />
               <span className="text-xs font-medium">Most Read</span>
             </div>

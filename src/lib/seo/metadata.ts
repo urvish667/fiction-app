@@ -864,43 +864,47 @@ export function generateBrowseMetadata(params?: {
   // Enhanced genre-based SEO
   if (params?.genre) {
     const genre = safeDecodeURIComponent(params.genre)
-    const genreInfo = categoryDescriptions[genre]
-    const genreLower = genre.toLowerCase()
-    const encodedGenre = encodeURIComponent(genre.replace(/\s/g, "+")).replace(/%2B/g, '+')
+    if (genre) {
+      const genreInfo = categoryDescriptions[genre]
+      const genreLower = genre.toLowerCase()
+      const encodedGenre = encodeURIComponent(genre.replace(/\s/g, "+")).replace(/%2B/g, '+')
 
-    title = `${genre} Stories - FableSpace`
-    description = genreInfo?.description ||
-      `Discover the best ${genreLower} stories on FableSpace. Read engaging ${genreLower} fiction from talented writers around the world.`
+      title = `${genre} Stories - FableSpace`
+      description = genreInfo?.description ||
+        `Discover the best ${genreLower} stories on FableSpace. Read engaging ${genreLower} fiction from talented writers around the world.`
 
-    canonicalUrl = `${baseUrl}/browse?genre=${encodedGenre}`
+      canonicalUrl = `${baseUrl}/browse?genre=${encodedGenre}`
 
-    keywords = [
-      ...keywords,
-      genreLower,
-      `${genreLower} fiction`,
-      `${genreLower} stories`,
-      `${genreLower} books`,
-      `read ${genreLower}`,
-      `${genreLower} FableSpace`,
-      ...(genreInfo?.keywords || [])
-    ]
+      keywords = [
+        ...keywords,
+        genreLower,
+        `${genreLower} fiction`,
+        `${genreLower} stories`,
+        `${genreLower} books`,
+        `read ${genreLower}`,
+        `${genreLower} FableSpace`,
+        ...(genreInfo?.keywords || [])
+      ]
 
-    // Add status-specific keywords if present
-    if (params.status && params.status !== 'all') {
-      title = `${params.status === 'completed' ? 'Completed' : 'Ongoing'} ${genre} Stories - FableSpace`
-      description = `Find ${params.status} ${genreLower} stories on FableSpace. ${genreInfo?.description || `Browse ${genreLower} fiction that is ${params.status}.`}`
-      keywords.push(`${params.status} ${genreLower}`, `${params.status} stories`)
+      // Add status-specific keywords if present
+      if (params.status && params.status !== 'all') {
+        title = `${params.status === 'completed' ? 'Completed' : 'Ongoing'} ${genre} Stories - FableSpace`
+        description = `Find ${params.status} ${genreLower} stories on FableSpace. ${genreInfo?.description || `Browse ${genreLower} fiction that is ${params.status}.`}`
+        keywords.push(`${params.status} ${genreLower}`, `${params.status} stories`)
+      }
     }
   }
 
   if (params?.tag) {
     const tag = safeDecodeURIComponent(params.tag)
-    const tagDisplay = tag.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
-    const encodedTag = encodeURIComponent(tag.replace(/\s/g, "+")).replace(/%2B/g, '+')
+    if (tag) {
+      const tagDisplay = tag.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+      const encodedTag = encodeURIComponent(tag.replace(/\s/g, "+")).replace(/%2B/g, '+')
 
-    title = `${tagDisplay} Stories - FableSpace`
-    description = `Discover the best ${tagDisplay.toLowerCase()} stories on FableSpace. Read engaging ${tagDisplay.toLowerCase()} fiction from talented writers around the world.`
-    canonicalUrl = `${baseUrl}/browse?tag=${encodedTag}`
+      title = `${tagDisplay} Stories - FableSpace`
+      description = `Discover the best ${tagDisplay.toLowerCase()} stories on FableSpace. Read engaging ${tagDisplay.toLowerCase()} fiction from talented writers around the world.`
+      canonicalUrl = `${baseUrl}/browse?tag=${encodedTag}`
+    }
     keywords = [
       'browse stories',
       'fiction stories',

@@ -49,7 +49,8 @@ export default function LibraryPage() {
             commentCount: story.commentCount || 0,
             viewCount: story.viewCount || 0,
             date: new Date(story.createdAt),
-            genre: genreName
+            genre: genreName,
+            isMature: story.isMature || false
           };
         });
 

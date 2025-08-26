@@ -332,6 +332,12 @@ export default function StoryPageClient({
                 }}
                 unoptimized={true}
               />
+              {/* 18+ Tag for mature content */}
+              {story.isMature && (
+                <Badge className="absolute top-3 left-3 bg-red-600 hover:bg-red-700 text-white font-bold text-sm px-3 py-1 z-10">
+                  18+
+                </Badge>
+              )}
             </motion.div>
 
             {/* Start Reading Button (Mobile) */}

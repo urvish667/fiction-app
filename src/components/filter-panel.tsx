@@ -111,15 +111,28 @@ export default function FilterPanel({
         const response = await fetch('/api/genres')
         if (response.ok) {
           const data = await response.json()
-          setGenres(data)
+          // Ensure each genre has a slug, create one if missing
+          const genresWithSlugs = data.map((genre: any) => ({
+            ...genre,
+            slug: genre.slug || genre.name.toLowerCase().replace(/\s+/g, '-')
+          }))
+          setGenres(genresWithSlugs)
         } else {
-          // Fall back to default genres if API fails
-          setGenres(defaultGenres.map((name, i) => ({ id: String(i), name, slug: name.toLowerCase().replace(/\s+/g, '-') })))
+          // Fall back to default genres with generated slugs for functionality
+          setGenres(defaultGenres.map((name, i) => ({
+            id: String(i),
+            name,
+            slug: name.toLowerCase().replace(/\s+/g, '-')
+          })))
         }
       } catch (error) {
         logError(error, { context: 'Fetching genres' });
-        // Fall back to default genres if API fails
-        setGenres(defaultGenres.map((name, i) => ({ id: String(i), name, slug: name.toLowerCase().replace(/\s+/g, '-') })))
+        // Fall back to default genres with generated slugs for functionality
+        setGenres(defaultGenres.map((name, i) => ({
+          id: String(i),
+          name,
+          slug: name.toLowerCase().replace(/\s+/g, '-')
+        })))
       } finally {
         setLoadingGenres(false)
       }
@@ -140,13 +153,21 @@ export default function FilterPanel({
           // Store tags as {id, name, slug}
           setTags(data)
         } else {
-          // Fall back to default tags if API fails
-          setTags(defaultTags.map((name, i) => ({ id: String(i), name, slug: name.toLowerCase().replace(/\s+/g, '-') })))
+          // Fall back to default tags with generated slugs for functionality
+          setTags(defaultTags.map((name, i) => ({
+            id: String(i),
+            name,
+            slug: name.toLowerCase().replace(/\s+/g, '-')
+          })))
         }
       } catch (error) {
         logError(error, { context: 'Fetching tags' })
-        // Fall back to default tags if API fails
-        setTags(defaultTags.map((name, i) => ({ id: String(i), name, slug: name.toLowerCase().replace(/\s+/g, '-') })))
+        // Fall back to default tags with generated slugs for functionality
+        setTags(defaultTags.map((name, i) => ({
+          id: String(i),
+          name,
+          slug: name.toLowerCase().replace(/\s+/g, '-')
+        })))
       } finally {
         setLoadingTags(false)
       }

@@ -27,6 +27,7 @@ type StoryCardProps = {
     createdAt?: Date
     updatedAt?: Date
     slug?: string
+    isMature?: boolean
   }
   viewMode?: "grid" | "list"
 }
@@ -106,9 +107,16 @@ export default function StoryCard({ story, viewMode = "grid" }: StoryCardProps) 
               }}
               unoptimized={true} // Skip Next.js image optimization for external URLs
             />
+
+            {/* 18+ Tag for mature content */}
+            {story.isMature && (
+              <Badge className="absolute top-2 left-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs px-2 py-1 z-10">
+                18+
+              </Badge>
+            )}
             <Badge className="absolute top-2 right-2">
               {typeof story.genre === 'object' && story.genre !== null
-                ? (story.genre as {name: string}).name
+                ? (story.genre as { name: string }).name
                 : (typeof story.genre === 'string' ? story.genre : 'General')}
             </Badge>
           </div>
@@ -162,10 +170,10 @@ export default function StoryCard({ story, viewMode = "grid" }: StoryCardProps) 
             </div>
 
             {/* Share Button */}
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="rounded-full h-8 w-8" 
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-full h-8 w-8"
               onClick={handleActionClick}
               title="Share"
             >

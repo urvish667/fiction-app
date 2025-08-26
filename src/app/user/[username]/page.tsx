@@ -246,24 +246,11 @@ export default async function UserProfilePage({ params }: UserPageParams) {
         <main className="container mx-auto px-4 md:px-8 py-4 md:py-8">
           <div className="mb-4 md:mb-8">
             <div className="relative h-32 sm:h-48 md:h-64 w-full rounded-lg overflow-hidden mb-8 sm:mb-12 md:mb-16">
-              {user.bannerImage ? (
-                <>
-                  <img
-                    src={user.bannerImage}
-                    alt="Profile banner"
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      e.currentTarget.src = '/placeholder.svg';
-                    }}
-                  />
-                </>
-              ) : (
-                <img
-                  src="/placeholder.svg"
-                  alt="Profile banner"
-                  className="w-full h-full object-cover"
-                />
-              )}
+              <img
+                src={user.bannerImage || "/placeholder.svg"}
+                alt="Profile banner"
+                className="w-full h-full object-cover"
+              />
             </div>
 
             {/* Avatar positioned to overlap the banner */}

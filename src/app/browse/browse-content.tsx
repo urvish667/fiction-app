@@ -38,6 +38,7 @@ type BrowseStory = {
   updatedAt?: Date
   slug?: string
   tags?: string[]
+  isMature?: boolean
 }
 
 // Tag type
@@ -125,9 +126,11 @@ export default function BrowseContent({ initialParams }: BrowseContentProps) {
   useEffect(() => {
     if (initialParams.genre && allGenres.length > 0) {
       const genreSlug = safeDecodeURIComponent(initialParams.genre)
-      const found = allGenres.find(g => g.slug === genreSlug)
-      if (found) {
-        setSelectedGenres([found.slug])
+      if (genreSlug) {
+        const found = allGenres.find(g => g.slug === genreSlug)
+        if (found) {
+          setSelectedGenres([found.slug])
+        }
       }
     }
   }, [initialParams.genre, allGenres])
@@ -135,8 +138,11 @@ export default function BrowseContent({ initialParams }: BrowseContentProps) {
   // Initialize selectedTags from tag/tags params, using slug-to-name mapping
   const [selectedTags, setSelectedTags] = useState<string[]>(() => {
     if (initialParams.tag && allTags.length > 0) {
-      const found = allTags.find(t => t.slug === safeDecodeURIComponent(initialParams.tag!))
-      return found ? [found.name] : []
+      const decodedTag = safeDecodeURIComponent(initialParams.tag!)
+      if (decodedTag) {
+        const found = allTags.find(t => t.slug === decodedTag)
+        return found ? [found.name] : []
+      }
     } else if (initialParams.tags) {
       return initialParams.tags.split(',').map(t => safeDecodeURIComponent(t.trim())).filter(Boolean)
     }
@@ -146,9 +152,12 @@ export default function BrowseContent({ initialParams }: BrowseContentProps) {
   // When allTags or initialParams.tag changes, update selectedTags if needed
   useEffect(() => {
     if (initialParams.tag && allTags.length > 0) {
-      const found = allTags.find(t => t.slug === safeDecodeURIComponent(initialParams.tag!))
-      if (found && (!selectedTags.length || selectedTags[0] !== found.name)) {
-        setSelectedTags([found.name])
+      const decodedTag = safeDecodeURIComponent(initialParams.tag!)
+      if (decodedTag) {
+        const found = allTags.find(t => t.slug === decodedTag)
+        if (found && (!selectedTags.length || selectedTags[0] !== found.name)) {
+          setSelectedTags([found.name])
+        }
       }
     }
   }, [initialParams.tag, allTags])
@@ -213,7 +222,11 @@ export default function BrowseContent({ initialParams }: BrowseContentProps) {
 
     if (selectedGenres.length > 0) {
       if (selectedGenres.length === 1) {
-        params.genre = selectedGenres[0]
+        // Find the genre name from the slug
+        const genre = allGenres.find(g => g.slug === selectedGenres[0])
+        if (genre) {
+          params.genre = genre.name
+        }
       }
     }
 
@@ -286,7 +299,8 @@ export default function BrowseContent({ initialParams }: BrowseContentProps) {
       createdAt: story.createdAt ? new Date(story.createdAt) : new Date(),
       updatedAt: story.updatedAt ? new Date(story.updatedAt) : new Date(),
       slug: story.slug,
-      tags: tags
+      tags: tags,
+      isMature: story.isMature || false
     };
   }, [])
 

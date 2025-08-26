@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast"
 import { UnifiedPaymentForm } from "@/components/payments/UnifiedPaymentForm"
 import { fetchWithCsrf } from "@/lib/client/csrf"
 import { logError } from "@/lib/error-logger"
+import { safeDecodeURIComponent } from "@/utils/safe-decode-uri-component"
 
 // Predefined donation amounts
 const donationAmounts = [
@@ -94,7 +95,10 @@ export default function DonatePage() {
         if (urlStoryId) {
           setStoryId(urlStoryId)
           if (urlStoryTitle) {
-            setStoryTitle(decodeURIComponent(urlStoryTitle))
+            const decodedTitle = safeDecodeURIComponent(urlStoryTitle)
+            if (decodedTitle) {
+              setStoryTitle(decodedTitle)
+            }
           }
 
           // Fetch the story slug for the success page
