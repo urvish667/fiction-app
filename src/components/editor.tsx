@@ -28,6 +28,7 @@ import {
   AlignLeft,
   AlignCenter,
   AlignRight,
+  RefreshCw,
 } from "lucide-react"
 import { logError } from "@/lib/error-logger"
 import DivNode from "@/components/editor-extensions/div-node"
@@ -162,9 +163,9 @@ export function Editor({ content, onChange, readOnly = false }: EditorProps) {
 
 
   return (
-    <div className={`border rounded-md ${readOnly ? "bg-muted/20" : ""}`}>
+    <div className={`${readOnly ? "bg-muted/20" : ""}`}>
       {!readOnly && (
-        <div className="border-b p-2 flex flex-wrap gap-1">
+        <div className="border border-black-200 rounded-lg p-1 flex flex-wrap gap-1 sticky top-16 inset-x-4 z-10 backdrop-blur-lg shadow-md">
           <Button
             variant="ghost"
             size="icon"
@@ -236,9 +237,12 @@ export function Editor({ content, onChange, readOnly = false }: EditorProps) {
           </Button>
 
           <Button variant="ghost" size="icon" onClick={handleImageUpload} disabled={isUploading}>
-            <ImageIcon size={16} />
+            {isUploading ? (
+              <RefreshCw size={16} className="animate-spin" />
+            ) : (
+              <ImageIcon size={16} />
+            )}
             <span className="sr-only">Image</span>
-            {isUploading && <span className="ml-2 text-xs">Uploading...</span>}
           </Button>
 
           <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" disabled={isUploading} />
@@ -303,10 +307,9 @@ export function Editor({ content, onChange, readOnly = false }: EditorProps) {
         </div>
       )}
 
-      <div className={`p-4 min-h-[570px] ${readOnly ? 'prose prose-lg' : 'prose prose-sm'} max-w-none editor-content ${readOnly ? 'reading-preview content-protected' : ''}`}>
+      <div className={`${readOnly ? 'p-4' : 'mt-30 px-4 pb-4'} min-h-[570px] ${readOnly ? 'prose prose-lg' : 'prose prose-sm'} max-w-none editor-content ${readOnly ? 'reading-preview content-protected' : ''}`}>
         <EditorContent editor={editor} />
       </div>
     </div>
   )
 }
-
