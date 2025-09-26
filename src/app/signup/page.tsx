@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { AlertCircle } from "lucide-react"
+import { AlertCircle, Eye, EyeOff } from "lucide-react"
 import { format } from "date-fns"
 import { useRouter, useSearchParams } from "next/navigation"
 import { signIn } from "next-auth/react"
@@ -48,6 +48,8 @@ function SignupContent() {
     error: null,
     isChecking: false,
   })
+
+  const [showPassword, setShowPassword] = useState(false)
 
   // Handle input change
   const handleSignupChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -404,15 +406,32 @@ function SignupContent() {
               {/* Password field */}
               <div className="space-y-2">
                 <Label htmlFor="signup-password">Password</Label>
-                <Input
-                  id="signup-password"
-                  name="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={signupForm.password}
-                  onChange={handleSignupChange}
-                  disabled={isSubmitting}
-                />
+                <div className="relative">
+                  <Input
+                    id="signup-password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={signupForm.password}
+                    onChange={handleSignupChange}
+                    disabled={isSubmitting}
+                    className="pr-10"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    onClick={() => setShowPassword(!showPassword)}
+                    disabled={isSubmitting}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
                 {errors.password && (
                   <p className="text-xs text-destructive flex items-center gap-1">
                     <AlertCircle className="h-3 w-3" />
@@ -430,6 +449,7 @@ function SignupContent() {
                     type="date"
                     value={signupForm.birthdate ? format(signupForm.birthdate, "yyyy-MM-dd") : ""}
                     onChange={handleDateChange}
+                    min={format(new Date(new Date().setFullYear(new Date().getFullYear() - 100)), "yyyy-MM-dd")}
                     max={format(new Date(new Date().setFullYear(new Date().getFullYear() - 13)), "yyyy-MM-dd")}
                     className="w-full"
                   />
