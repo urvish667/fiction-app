@@ -23,18 +23,26 @@ export default function Navbar() {
   const isAuthenticated = status === "authenticated"
 
   // Create a component logger
-  const navLogger = clientLogger.child('navbar');
+  const navLogger = clientLogger.child("navbar")
 
   // Log session status in development only
-  navLogger.debug('Session status', { status, hasUser: !!session?.user });
+  navLogger.debug("Session status", { status, hasUser: !!session?.user })
 
-  const userWithAvatar = session?.user ? {
-    id: session.user.id,
-    name: session.user.name && session.user.name.trim() !== '' ? session.user.name : 'User',
-    username: session.user.username || session.user.name?.split(' ')[0].toLowerCase() || 'user',
-    avatar: session.user.image || '/placeholder-user.jpg',
-    unreadNotifications: session.user.unreadNotifications || 0
-  } : null
+  const userWithAvatar = session?.user
+    ? {
+        id: session.user.id,
+        name:
+          session.user.name && session.user.name.trim() !== ""
+            ? session.user.name
+            : "User",
+        username:
+          session.user.username ||
+          session.user.name?.split(" ")[0].toLowerCase() ||
+          "user",
+        avatar: session.user.image || "/placeholder-user.jpg",
+        unreadNotifications: session.user.unreadNotifications || 0,
+      }
+    : null
 
   const handleLogout = () => {
     // NextAuth signOut will be handled by UserAvatarMenu
@@ -82,17 +90,18 @@ export default function Navbar() {
           <NavigationMenu>
             <NavigationMenuList>
               <NavigationMenuItem>
-                <Link href="/" legacyBehavior passHref>
-                  <NavigationMenuLink className={navigationMenuTriggerStyle()}>Home</NavigationMenuLink>
-                </Link>
+                <NavigationMenuLink asChild className={navigationMenuTriggerStyle()}>
+                  <Link href="/">Home</Link>
+                </NavigationMenuLink>
               </NavigationMenuItem>
               <NavigationMenuItem>
-                <Link href="/browse" legacyBehavior passHref>
-                  <NavigationMenuLink className={navigationMenuTriggerStyle()}>Browse</NavigationMenuLink>
-                </Link>
+                <NavigationMenuLink asChild className={navigationMenuTriggerStyle()}>
+                  <Link href="/browse">Browse</Link>
+                </NavigationMenuLink>
               </NavigationMenuItem>
             </NavigationMenuList>
           </NavigationMenu>
+
 
           {isAuthenticated && userWithAvatar ? (
             <UserAvatarMenu user={userWithAvatar} onLogout={handleLogout} />
@@ -129,8 +138,6 @@ export default function Navbar() {
                 <Link href="/browse" className="text-lg font-medium">
                   Browse
                 </Link>
-
-                {/* No need to duplicate user menu items here since we have the avatar menu on mobile */}
               </div>
             </SheetContent>
           </Sheet>
@@ -139,4 +146,3 @@ export default function Navbar() {
     </header>
   )
 }
-

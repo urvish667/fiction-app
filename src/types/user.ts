@@ -10,6 +10,7 @@ export interface UserPreferences {
     showEmail: boolean
     showLocation: boolean
     allowMessages: boolean
+    forum: boolean
   }
 }
 
@@ -25,17 +26,6 @@ export const defaultPreferences: UserPreferences = {
     showEmail: false,
     showLocation: false,
     allowMessages: false,
+    forum: false,
   },
-}
-
-// Define a type for the user data included in stories/comments etc.
-export interface UserSummary {
-  id: string;
-  name?: string | null;
-  username?: string | null;
-  image?: string | null;
-  // Add donation fields needed for SupportButton
-  donationsEnabled?: boolean | null;
-  donationMethod?: 'PAYPAL' | 'STRIPE' | null;
-  donationLink?: string | null;
 }

@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Loader2, Heart } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { logError } from '@/lib/error-logger';
@@ -16,6 +17,7 @@ interface SupportButtonProps {
   authorUsername?: string;
   storyId?: string;
   storyTitle?: string;
+  iconOnly?: boolean;
 }
 
 export function SupportButton({
@@ -25,8 +27,10 @@ export function SupportButton({
   authorName,
   authorUsername,
   storyId,
-  storyTitle
+  storyTitle,
+  iconOnly = false
 }: SupportButtonProps) {
+  console.log('SupportButton iconOnly:', iconOnly, 'authorName:', authorName);
   const [isProcessing, setIsProcessing] = useState(false);
   const router = useRouter();
 
@@ -82,17 +86,46 @@ export function SupportButton({
   };
 
   const buttonText = `Support ${authorName || 'the Author'}`;
+
   const getButtonIcon = () => {
     switch (donationMethod) {
       case 'BMC':
-        return <BuyMeACoffeeIcon className="mr-2 h-6 w-6" />;
+        return <BuyMeACoffeeIcon className={iconOnly ? "h-5 w-5" : "mr-2 h-6 w-6"} />;
       case 'KOFI':
-        return <KofiIcon className="mr-2 h-4 w-4" />;
+        return <KofiIcon className={iconOnly ? "h-4 w-4" : "mr-2 h-4 w-4"} />;
       default:
-        return <Heart className="mr-2 h-4 w-4" />;
+        return <Heart className={iconOnly ? "h-4 w-4" : "mr-2 h-4 w-4"} />;
     }
   };
 
+  if (iconOnly) {
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              onClick={handleDonation}
+              disabled={isProcessing}
+              variant="outline"
+              size="icon"
+              className="rounded-full h-10 w-10 bg-orange-500 hover:bg-orange-600 text-white border-orange-500 hover:border-orange-600"
+            >
+              {isProcessing ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                getButtonIcon()
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Support {authorName || 'Author'}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
+  // Original styling for non-iconOnly mode
   return (
     <Button
       onClick={handleDonation}

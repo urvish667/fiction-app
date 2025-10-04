@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { UserPlus, UserCheck, Share2, Check, Loader2 } from "lucide-react"
+import { UserPlus, UserCheck, Share2, Check, Loader2, Users } from "lucide-react"
 import { StoryService } from "@/services/story-service"
 import { useToast } from "@/hooks/use-toast"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -32,6 +33,8 @@ export default function ProfileActionButtons({ username, isCurrentUser, author }
   const [followLoading, setFollowLoading] = useState(false)
   const [copied, setCopied] = useState(false)
   const [shareLoading, setShareLoading] = useState(false)
+  const [isForumEnabled, setIsForumEnabled] = useState(false)
+  const [forumLoading, setForumLoading] = useState(true)
 
   // Check if the current user is following this profile
   useEffect(() => {
@@ -48,6 +51,26 @@ export default function ProfileActionButtons({ username, isCurrentUser, author }
 
     checkFollowStatus()
   }, [session, username, isCurrentUser])
+
+  // Check forum setting
+  useEffect(() => {
+    const checkForumSetting = async () => {
+      try {
+        const response = await fetch(`/api/user/${username}`)
+        if (response.ok) {
+          const userData = await response.json()
+          const forumEnabled = userData.preferences?.privacySettings?.forum === true
+          setIsForumEnabled(forumEnabled)
+        }
+      } catch (err) {
+        logError(err, { context: "Error checking forum setting", username })
+      } finally {
+        setForumLoading(false)
+      }
+    }
+
+    checkForumSetting()
+  }, [username])
 
   // Handle follow/unfollow
   const handleFollow = async () => {
@@ -135,6 +158,7 @@ export default function ProfileActionButtons({ username, isCurrentUser, author }
           authorUsername={username}
           donationMethod={author.donationMethod}
           donationLink={author.donationLink}
+          iconOnly={true}
         />
       )}
 
@@ -190,6 +214,28 @@ export default function ProfileActionButtons({ username, isCurrentUser, author }
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
+
+      {/* Forum Button - Only show if forum is enabled */}
+      {!forumLoading && isForumEnabled && (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Link href={`/user/${username}/forum`}>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="rounded-full h-10 w-10"
+                >
+                  <Users className="h-5 w-5" />
+                </Button>
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Forum</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
     </div>
   )
 }

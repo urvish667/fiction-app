@@ -17,6 +17,7 @@ const preferencesSchema = z.object({
     showEmail: z.boolean(),
     showLocation: z.boolean(),
     allowMessages: z.boolean(),
+    forum: z.boolean(),
   }),
 })
 

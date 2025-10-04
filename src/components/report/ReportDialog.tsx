@@ -33,9 +33,12 @@ interface ReportDialogProps {
   onClose: () => void;
   storyId?: string | null;
   commentId?: string | null;
+  postId?: string | null;
+  forumCommentId?: string | null;
+  reportedUserId?: string | null;
 }
 
-export function ReportDialog({ isOpen, onClose, storyId, commentId }: ReportDialogProps) {
+export function ReportDialog({ isOpen, onClose, storyId, commentId, postId, forumCommentId, reportedUserId }: ReportDialogProps) {
   const [reason, setReason] = useState('');
   const [details, setDetails] = useState('');
   const [isPending, startTransition] = useTransition();
@@ -47,6 +50,9 @@ export function ReportDialog({ isOpen, onClose, storyId, commentId }: ReportDial
       const payload: ReportRequest = {
         storyId: storyId || undefined,
         commentId: commentId || undefined,
+        postId: postId || undefined,
+        forumCommentId: forumCommentId || undefined,
+        reportedUserId: reportedUserId || undefined,
         reason: reason as any,
         details: details || undefined,
       };

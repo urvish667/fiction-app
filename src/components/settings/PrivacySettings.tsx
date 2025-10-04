@@ -131,6 +131,15 @@ const PrivacySettings: React.FC<PrivacySettingsProps> = ({
           <Separator />
 
           {renderPrivacyToggle(
+            "forum",
+            "Enable Forum",
+            "Enable forum access for group discussions",
+            "When on, you can access and participate in forum discussions. When off, forum features are disabled."
+          )}
+
+          <Separator />
+
+          {renderPrivacyToggle(
             "allowMessages",
             "Allow Messages",
             "Allow other users to send you direct messages",

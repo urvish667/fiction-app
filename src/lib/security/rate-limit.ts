@@ -102,6 +102,15 @@ export const rateLimitConfigs = {
     windowMs: 5 * 60 * 1000, // 5 minutes
   },
 
+  // Forum post creation endpoints
+  forumPosts: {
+    limit: 3,
+    windowMs: 60 * 1000, // 1 minute (3 posts per minute)
+    includeUserContext: true, // Rate limit per user
+    useProgressiveBackoff: true,
+    trackSuspiciousActivity: true,
+  },
+
   // Content creation endpoints
   contentCreation: {
     limit: 30,

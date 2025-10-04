@@ -16,7 +16,7 @@ import { generateUserProfileMetadata, generateUserProfileStructuredData } from "
 import { prisma } from "@/lib/auth/db-adapter"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
-import { formatDistanceToNow } from "date-fns"
+import { formatDistanceToNow } from "date-fns/formatDistanceToNow"
 import { notFound } from "next/navigation"
 import UserProfileClient from "./user-profile-client"
 

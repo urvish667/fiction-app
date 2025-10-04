@@ -12,6 +12,9 @@ export const ReportReasonEnum = z.enum([
 export const ReportValidator = z.object({
   storyId: z.string().optional(),
   commentId: z.string().optional(),
+  postId: z.string().optional(),
+  forumCommentId: z.string().optional(),
+  reportedUserId: z.string().optional(),
   reason: ReportReasonEnum,
   details: z.string().max(500).optional(),
 });

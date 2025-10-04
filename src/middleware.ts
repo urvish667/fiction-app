@@ -126,6 +126,10 @@ export async function middleware(request: NextRequest) {
   const isEditorEndpoint = pathname.includes('/api/stories/') &&
     (pathname.includes('/chapters/') || pathname.endsWith('/chapters'));
 
+  // Check if this is a forum post endpoint that needs special rate limiting
+  const isForumPostEndpoint = pathname.includes('/api/forum/') &&
+    pathname.includes('/posts') && method === 'POST';
+
   // Apply higher rate limits for editor endpoints (for autosave functionality)
   if (isEditorEndpoint) {
     // Use editor-specific rate limit config
@@ -247,6 +251,36 @@ export async function middleware(request: NextRequest) {
           }
         );
       }
+    }
+  }
+  // Apply forum posts rate limiting
+  else if (isForumPostEndpoint) {
+    const result = await rateLimit(request, {
+      ...rateLimitConfigs.forumPosts,
+      includeUserContext: true, // Rate limit per user for forum posts
+    });
+
+    if (!result.success) {
+      return new NextResponse(
+        JSON.stringify({
+          error: 'Too many forum posts',
+          message: 'You can only create up to 3 posts per minute. Please try again later.',
+          code: 'RATE_LIMIT_EXCEEDED',
+          retryAfter: result.backoffFactor ? Math.ceil((result.reset * 1000 - Date.now()) / 1000) * result.backoffFactor : Math.ceil((result.reset * 1000 - Date.now()) / 1000),
+        }),
+        {
+          status: 429,
+          headers: {
+            'Content-Type': 'application/json',
+            'X-RateLimit-Limit': result.limit.toString(),
+            'X-RateLimit-Remaining': result.remaining.toString(),
+            'X-RateLimit-Reset': result.reset.toString(),
+            'Retry-After': result.backoffFactor ?
+              (Math.ceil((result.reset * 1000 - Date.now()) / 1000) * result.backoffFactor).toString() :
+              Math.ceil((result.reset * 1000 - Date.now()) / 1000).toString(),
+          },
+        }
+      );
     }
   }
 

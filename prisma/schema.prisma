@@ -39,13 +39,13 @@ model Session {
 }
 
 model User {
-  id                  String            @id @default(cuid())
+  id                  String             @id @default(cuid())
   name                String?
-  email               String?           @unique
+  email               String?            @unique
   emailVerified       DateTime?
   image               String?
   bannerImage         String?
-  username            String?           @unique
+  username            String?            @unique
   password            String?
   birthdate           DateTime?
   bio                 String?
@@ -53,38 +53,44 @@ model User {
   location            String?
   website             String?
   socialLinks         Json?
-  language            String?           @default("en")
-  theme               String?           @default("system")
-  termsAccepted       Boolean           @default(false)
-  marketingOptIn      Boolean           @default(false)
-  isProfileComplete   Boolean           @default(false)
+  language            String?            @default("en")
+  theme               String?            @default("system")
+  termsAccepted       Boolean            @default(false)
+  marketingOptIn      Boolean            @default(false)
+  isProfileComplete   Boolean            @default(false)
   provider            String?
-  unreadNotifications Int               @default(0)
-  createdAt           DateTime          @default(now())
-  updatedAt           DateTime          @updatedAt
+  unreadNotifications Int                @default(0)
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
   lastLogin           DateTime?
-  preferences         Json?             @default("{\"privacySettings\": {\"showEmail\": false, \"showLocation\": false, \"allowMessages\": false, \"publicProfile\": false}, \"emailNotifications\": {\"newLike\": false, \"newChapter\": false, \"newComment\": false, \"newFollower\": false}}")
+  preferences         Json?              @default("{\"privacySettings\": {\"showEmail\": false, \"showLocation\": false, \"allowMessages\": false, \"publicProfile\": false, \"forum\": false}, \"emailNotifications\": {\"newLike\": false, \"newChapter\": false, \"newComment\": false, \"newFollower\": false}}")
   donationLink        String?
-  donationsEnabled    Boolean           @default(false)
-  country             String?           @default("US")
+  donationsEnabled    Boolean            @default(false)
+  country             String?            @default("US")
   donationMethod      PayoutProvider?
   accounts            Account[]
   bookmarks           Bookmark[]
   chapterViews        ChapterView[]
   comments            Comment[]
   commentLikes        CommentLike[]
-  donationsMade       Donation[]        @relation("DonationsMade")
-  donationsReceived   Donation[]        @relation("DonationsReceived")
-  following           Follow[]          @relation("Following")
-  followers           Follow[]          @relation("Followers")
+  donationsMade       Donation[]         @relation("DonationsMade")
+  donationsReceived   Donation[]         @relation("DonationsReceived")
+  following           Follow[]           @relation("Following")
+  followers           Follow[]           @relation("Followers")
   likes               Like[]
-  notificationsActed  Notification[]    @relation("NotificationActor")
+  notificationsActed  Notification[]     @relation("NotificationActor")
   payouts             Payout[]
   readingProgresses   ReadingProgress[]
   sessions            Session[]
   stories             Story[]
   storyViews          StoryView[]
   reports             Report[]
+  bans                ForumBan[]
+  forums              Forum[]
+  forumPosts          ForumPost[]
+  forumComments       ForumPostComment[]
+  reportsFiled        Report[]           @relation("Reporter") // user who submits reports
+  reportsReceived     Report[]           @relation("ReportedUser") // user who gets reported
 
   @@index([email])
   @@index([username])
@@ -306,8 +312,10 @@ model StoryTag {
 model Genre {
   id      String  @id @default(cuid())
   name    String  @unique
-  slug    String?  @unique
+  slug    String? @unique
   stories Story[]
+
+  forums Forum[] // add this back-relation
 }
 
 model Language {
@@ -448,17 +456,113 @@ model Blog {
 }
 
 model Report {
-  id         String       @id @default(cuid())
-  reporterId String
-  reporter   User         @relation(fields: [reporterId], references: [id], onDelete: Cascade)
-  storyId    String?
-  story      Story?       @relation(fields: [storyId], references: [id], onDelete: Cascade)
-  commentId  String?
-  comment    Comment?     @relation(fields: [commentId], references: [id], onDelete: Cascade)
-  reason     ReportReason
-  details    String?      @db.VarChar(500) // Optional extra detail for "Other"
-  status     ReportStatus @default(PENDING)
-  createdAt  DateTime     @default(now())
+  id             String            @id @default(cuid())
+  reporterId     String
+  reporter       User              @relation("Reporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  storyId        String?
+  story          Story?            @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  commentId      String?
+  comment        Comment?          @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  postId         String?
+  post           ForumPost?        @relation(fields: [postId], references: [id], onDelete: Cascade)
+  forumCommentId String?
+  forumComment   ForumPostComment? @relation(fields: [forumCommentId], references: [id], onDelete: Cascade)
+  reportedUserId String?
+  reportedUser   User?             @relation("ReportedUser", fields: [reportedUserId], references: [id], onDelete: Cascade)
+
+  reason    ReportReason
+  details   String?      @db.VarChar(500) // Optional extra detail for "Other"
+  status    ReportStatus @default(PENDING)
+  createdAt DateTime     @default(now())
+  User      User?        @relation(fields: [userId], references: [id])
+  userId    String?
+}
+
+model Forum {
+  id        String    @id @default(cuid())
+  type      ForumType
+  name      String
+  slug      String    @unique // for SEO-friendly URL
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // Optional foreign keys depending on type
+  authorId String?
+  genreId  String?
+  fandomId String?
+
+  posts ForumPost[]
+  bans  ForumBan[]
+
+  author User?  @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  genre  Genre? @relation(fields: [genreId], references: [id], onDelete: Cascade)
+  // fandom will be added once you have Fandom model
+}
+
+enum ForumType {
+  AUTHOR
+  GENRE
+  FANDOM
+}
+
+model ForumPost {
+  id          String    @id @default(cuid())
+  forumId     String
+  authorId    String
+  title       String
+  slug        String    @unique // SEO-friendly post URL
+  content     String    @db.Text
+  contentKey  String? // optional object-storage key
+  pinned      Boolean   @default(false)
+  pinnedOrder Int? // lower = higher priority (optional)
+  pinnedAt    DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deleted     Boolean   @default(false)
+
+  forum    Forum              @relation(fields: [forumId], references: [id], onDelete: Cascade)
+  author   User               @relation(fields: [authorId], references: [id])
+  comments ForumPostComment[]
+  reports  Report[]
+
+  @@index([forumId])
+  @@index([authorId])
+  @@index([pinned])
+  @@index([pinnedOrder])
+}
+
+model ForumPostComment {
+  id        String    @id @default(cuid())
+  postId    String
+  userId    String
+  parentId  String? // reply to another comment
+  content   String    @db.VarChar(3000) // 3k char limit
+  createdAt DateTime  @default(now())
+  editedAt  DateTime?
+  deleted   Boolean   @default(false)
+
+  post    ForumPost          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user    User               @relation(fields: [userId], references: [id])
+  parent  ForumPostComment?  @relation("CommentReplies", fields: [parentId], references: [id])
+  replies ForumPostComment[] @relation("CommentReplies")
+  reports Report[]
+
+  @@index([postId])
+  @@index([userId])
+  @@index([parentId])
+}
+
+model ForumBan {
+  id        String   @id @default(cuid())
+  forumId   String
+  userId    String
+  reason    String?
+  createdAt DateTime @default(now())
+
+  forum Forum @relation(fields: [forumId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id])
+
+  @@unique([forumId, userId])
 }
 
 enum ReportReason {
