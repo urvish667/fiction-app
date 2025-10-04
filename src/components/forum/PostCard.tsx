@@ -73,9 +73,6 @@ export default function PostCard({ post, forumOwnerUsername, isExpanded, onToggl
   const [isDeleting, setIsDeleting] = useState(false)
   const [isBanning, setIsBanning] = useState(false)
 
-  const commentsToShow = visibleComments[post.id] || 3
-  const displayedComments = (post.comments || []).slice(0, commentsToShow)
-
   // Function to truncate HTML content to a specified number of words
   const truncateContent = (htmlContent: string, maxWords: number = 30) => {
     // Strip HTML tags
@@ -210,53 +207,14 @@ export default function PostCard({ post, forumOwnerUsername, isExpanded, onToggl
         )}
 
         {/* Comments Section */}
-        {post.commentCount > 0 && (
-          <div className="border-t pt-4 mt-4 cursor-pointer">
-            <div className="flex items-center justify-between mb-4" onClick={() => window.location.href = `/user/${forumOwnerUsername}/forum/comment/${post.slug}`}>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <MessageSquare className="h-4 w-4" />
-                <span>{post.commentCount} Comments</span>
-              </div>
+        <div className="border-t pt-4 mt-4 cursor-pointer">
+          <div className="flex items-center justify-between mb-4" onClick={() => window.location.href = `/user/${forumOwnerUsername}/forum/comment/${post.slug}`}>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <MessageSquare className="h-4 w-4" />
+              <span>{post.commentCount} Comments</span>
             </div>
-
-            {isExpanded && (
-              <div className="space-y-4">
-                {displayedComments.map((comment) => (
-                  <div key={comment.id} className="flex gap-3">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={comment.author.image || undefined} />
-                      <AvatarFallback>{comment.author.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <div className="bg-muted rounded-lg p-3">
-                        <p className="font-semibold text-sm">{comment.author.name}</p>
-                        <p className="text-sm mt-1">{comment.content}</p>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1 ml-3">
-                        {formatDistanceToNow(comment.createdAt, { addSuffix: true })}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-
-                {commentsToShow < post.commentCount && (post.comments?.length || 0) > commentsToShow && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      onLoadMoreComments(post.id, post.commentCount)
-                    }}
-                  >
-                    Load More Comments ({post.commentCount - commentsToShow} remaining)
-                  </Button>
-                )}
-              </div>
-            )}
           </div>
-        )}
+        </div>
       </CardContent>
     </Card>
 

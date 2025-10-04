@@ -897,14 +897,16 @@ export function generateBrowseMetadata(params?: {
 
   if (params?.tag) {
     const tag = safeDecodeURIComponent(params.tag)
+    var tagDisplay = ''
     if (tag) {
-      const tagDisplay = tag.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+      tagDisplay = tag.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
       const encodedTag = encodeURIComponent(tag.replace(/\s/g, "+")).replace(/%2B/g, '+')
 
       title = `${tagDisplay} Stories - FableSpace`
       description = `Discover the best ${tagDisplay.toLowerCase()} stories on FableSpace. Read engaging ${tagDisplay.toLowerCase()} fiction from talented writers around the world.`
       canonicalUrl = `${baseUrl}/browse?tag=${encodedTag}`
     }
+
     keywords = [
       'browse stories',
       'fiction stories',
@@ -1366,5 +1368,330 @@ export function generateUserProfileStructuredData(user: {
       '@type': 'ProfilePage',
       '@id': `${baseUrl}/user/${user.username}`
     }
+  }
+}
+
+/**
+ * Generate SEO metadata for forum page
+ */
+export function generateForumMetadata(user: {
+  username: string
+  name?: string | null
+  image?: string | null
+}): Metadata {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.space'
+  const displayName = user.name || user.username
+  const canonicalUrl = `${baseUrl}/user/${user.username}/forum`
+
+  const title = `${user.username}'s Forum - FableSpace`
+  const description = `Join the discussion in ${displayName}'s author forum. FableSpace author forum, ${user.username} forum, ${user.username} community. Connect with ${displayName} and other readers.`
+
+  return {
+    title,
+    description,
+    keywords: [
+      user.username,
+      `${user.username} forum`,
+      `${user.username} community`,
+      'FableSpace author forum',
+      '@user forum',
+      '@user community',
+      displayName,
+      'author forum',
+      'writing community',
+      'fiction discussion',
+      'FableSpace'
+    ].filter(Boolean).join(', '),
+    authors: [{ name: displayName }],
+    creator: displayName,
+    publisher: 'FableSpace',
+    alternates: {
+      canonical: canonicalUrl
+    },
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+      url: canonicalUrl,
+      siteName: 'FableSpace',
+      images: [
+        {
+          url: user.image || `${baseUrl}/default-avatar.png`,
+          width: 400,
+          height: 400,
+          alt: `${displayName} profile picture`,
+        }
+      ],
+    },
+    twitter: {
+      card: 'summary',
+      title,
+      description,
+      images: [user.image || `${baseUrl}/default-avatar.png`],
+      site: '@FableSpace'
+    },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        'max-video-preview': -1,
+        'max-image-preview': 'large',
+        'max-snippet': -1,
+      },
+    }
+  }
+}
+
+/**
+ * Generate SEO metadata for forum post page
+ */
+export function generateForumPostMetadata(post: {
+  title: string
+  content: string
+  slug: string
+  createdAt: Date
+  author: {
+    username: string
+    name?: string | null
+  }
+}, forumOwner: {
+  username: string
+  name?: string | null
+}): Metadata {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.space'
+  const forumOwnerDisplayName = forumOwner.name || forumOwner.username
+  const postAuthorDisplayName = post.author.name || post.author.username
+  const canonicalUrl = `${baseUrl}/user/${forumOwner.username}/forum/comment/${post.slug}`
+
+  const title = `${post.title} - ${forumOwnerDisplayName}'s Forum - FableSpace`
+  const description = post.content.replace(/<[^>]*>/g, '').slice(0, 160) + (post.content.length > 160 ? '...' : '')
+
+  return {
+    title,
+    description,
+    keywords: [
+      post.title,
+      `${forumOwner.username} forum`,
+      `${forumOwner.username} community`,
+      `forum post`,
+      `forum discussion`,
+      post.author.username,
+      postAuthorDisplayName,
+      forumOwner.username,
+      forumOwnerDisplayName,
+      'FableSpace author forum',
+      '@user forum',
+      '@user community',
+      'fiction discussion',
+      'writing community',
+      'FableSpace'
+    ].filter(Boolean).join(', '),
+    authors: [{ name: postAuthorDisplayName }],
+    creator: postAuthorDisplayName,
+    publisher: 'FableSpace',
+    category: 'Forum Discussion',
+    alternates: {
+      canonical: canonicalUrl
+    },
+    openGraph: {
+      title,
+      description,
+      type: 'article',
+      url: canonicalUrl,
+      siteName: 'FableSpace',
+      publishedTime: toISOString(post.createdAt),
+      authors: [postAuthorDisplayName],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      site: '@FableSpace'
+    },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        'max-video-preview': -1,
+        'max-image-preview': 'large',
+        'max-snippet': -1,
+      },
+    }
+  }
+}
+
+/**
+ * Generate structured data for forum page
+ */
+export function generateForumStructuredData(user: {
+  username: string
+  name?: string | null
+  image?: string | null
+}) {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.space'
+  const displayName = user.name || user.username
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'DiscussionForumPosting',
+    name: `${displayName}'s Forum`,
+    description: `Join the discussion in ${displayName}'s author forum on FableSpace.`,
+    url: `${baseUrl}/user/${user.username}/forum`,
+    author: {
+      '@type': 'Person',
+      name: displayName,
+      alternateName: user.username,
+      url: `${baseUrl}/user/${user.username}`,
+      image: user.image || `${baseUrl}/default-avatar.png`
+    },
+    publisher: {
+      '@type': 'Organization',
+      name: 'FableSpace',
+      url: baseUrl
+    },
+    isPartOf: {
+      '@type': 'WebSite',
+      name: 'FableSpace',
+      url: baseUrl
+    },
+    mainEntityOfPage: {
+      '@type': 'WebPage',
+      '@id': `${baseUrl}/user/${user.username}/forum`
+    }
+  }
+}
+
+/**
+ * Generate structured data for forum post
+ */
+export function generateForumPostStructuredData(post: {
+  title: string
+  content: string
+  slug: string
+  createdAt: Date
+  author: {
+    username: string
+    name?: string | null
+  }
+}, forumOwner: {
+  username: string
+  name?: string | null
+}) {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.space'
+  const forumOwnerDisplayName = forumOwner.name || forumOwner.username
+  const postAuthorDisplayName = post.author.name || post.author.username
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'DiscussionForumPosting',
+    headline: post.title,
+    name: post.title,
+    description: post.content.replace(/<[^>]*>/g, '').slice(0, 160) + (post.content.length > 160 ? '...' : ''),
+    author: {
+      '@type': 'Person',
+      name: postAuthorDisplayName,
+      url: `${baseUrl}/user/${post.author.username}`
+    },
+    publisher: {
+      '@type': 'Organization',
+      name: 'FableSpace',
+      url: baseUrl
+    },
+    datePublished: toISOString(post.createdAt),
+    url: `${baseUrl}/user/${forumOwner.username}/forum/comment/${post.slug}`,
+    isPartOf: {
+      '@type': 'DiscussionForumPosting',
+      name: `${forumOwnerDisplayName}'s Forum`,
+      url: `${baseUrl}/user/${forumOwner.username}/forum`
+    },
+    mainEntityOfPage: {
+      '@type': 'WebPage',
+      '@id': `${baseUrl}/user/${forumOwner.username}/forum/comment/${post.slug}`
+    }
+  }
+}
+
+/**
+ * Generate breadcrumb structured data for forum page
+ */
+export function generateForumBreadcrumbStructuredData(user: {
+  username: string
+  name?: string | null
+}) {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.space'
+  const displayName = user.name || user.username
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: 'Home',
+        item: baseUrl
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: displayName,
+        item: `${baseUrl}/user/${user.username}`
+      },
+      {
+        '@type': 'ListItem',
+        position: 3,
+        name: 'Forum',
+        item: `${baseUrl}/user/${user.username}/forum`
+      }
+    ]
+  }
+}
+
+/**
+ * Generate breadcrumb structured data for forum post page
+ */
+export function generateForumPostBreadcrumbStructuredData(post: {
+  title: string
+  slug: string
+}, forumOwner: {
+  username: string
+  name?: string | null
+}) {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.space'
+  const displayName = forumOwner.name || forumOwner.username
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: 'Home',
+        item: baseUrl
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: displayName,
+        item: `${baseUrl}/user/${forumOwner.username}`
+      },
+      {
+        '@type': 'ListItem',
+        position: 3,
+        name: 'Forum',
+        item: `${baseUrl}/user/${forumOwner.username}/forum`
+      },
+      {
+        '@type': 'ListItem',
+        position: 4,
+        name: post.title,
+        item: `${baseUrl}/user/${forumOwner.username}/forum/comment/${post.slug}`
+      }
+    ]
   }
 }

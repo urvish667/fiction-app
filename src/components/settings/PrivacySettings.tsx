@@ -15,6 +15,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import ConfirmationDialog from "@/components/forum/ConfirmationDialog"
 
 interface PrivacySettingsProps {
   session: Session | null
@@ -31,6 +32,9 @@ const PrivacySettings: React.FC<PrivacySettingsProps> = ({
   const [localPreferences, setLocalPreferences] = useState<{
     [K in keyof UserPreferences['privacySettings']]: boolean
   }>({ ...defaultPreferences.privacySettings });
+
+  // State for forum disable confirmation dialog
+  const [showForumConfirmation, setShowForumConfirmation] = useState(false);
 
   // Update local state when session changes
   useEffect(() => {
@@ -130,12 +134,56 @@ const PrivacySettings: React.FC<PrivacySettingsProps> = ({
 
           <Separator />
 
-          {renderPrivacyToggle(
-            "forum",
-            "Enable Forum",
-            "Enable forum access for group discussions",
-            "When on, you can access and participate in forum discussions. When off, forum features are disabled."
-          )}
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2">
+                <Label htmlFor="forum">Enable Forum</Label>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>When on, you can access and participate in forum discussions. When off, forum features are disabled.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <p className="text-sm text-muted-foreground">Enable forum access for group discussions</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                {savingPreferences === `privacy-forum` && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10 rounded-full">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  </div>
+                )}
+                <Switch
+                  id="forum"
+                  checked={getPreference("forum")}
+                  onCheckedChange={(checked) => {
+                    if (!checked && getPreference("forum")) {
+                      // Turning off from on - show confirmation
+                      setShowForumConfirmation(true);
+                    } else {
+                      // Normal toggle (on to off, or off to on)
+                      setLocalPreferences(prev => ({
+                        ...prev,
+                        forum: checked
+                      }));
+                      handlePrivacyToggle("forum");
+                    }
+                  }}
+                  disabled={savingPreferences !== null}
+                />
+              </div>
+              <span className="text-sm font-medium">
+                {getPreference("forum") ?
+                  <span className="text-green-500">On</span> :
+                  <span className="text-muted-foreground">Off</span>}
+              </span>
+            </div>
+          </div>
 
           <Separator />
 
@@ -164,6 +212,26 @@ const PrivacySettings: React.FC<PrivacySettingsProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Forum Disable Confirmation Dialog */}
+      <ConfirmationDialog
+        open={showForumConfirmation}
+        onOpenChange={setShowForumConfirmation}
+        title="Disable Forum Access"
+        message="Are you sure you want to disable forum access? You will no longer be able to participate in forum discussions."
+        confirmText="Disable"
+        cancelText="Cancel"
+        onConfirm={() => {
+          setLocalPreferences(prev => ({
+            ...prev,
+            forum: false
+          }));
+          handlePrivacyToggle("forum");
+          setShowForumConfirmation(false);
+        }}
+        variant="destructive"
+        loading={savingPreferences === "privacy-forum"}
+      />
     </>
   )
 }

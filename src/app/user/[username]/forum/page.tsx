@@ -7,6 +7,7 @@ import { ForumType } from "@prisma/client"
 import Navbar from "@/components/navbar"
 import { SiteFooter } from "@/components/site-footer"
 import ForumClient from "./forum-client"
+import { generateForumMetadata, generateForumStructuredData } from "@/lib/seo/metadata"
 
 // Force dynamic rendering for proper caching behavior
 export const dynamic = 'force-dynamic'
@@ -95,10 +96,7 @@ export async function generateMetadata({ params }: ForumPageParams): Promise<Met
     };
   }
 
-  return {
-    title: `${data.user.username}'s Forum - FableSpace`,
-    description: `Join the discussion in ${data.user.username}'s author forum.`,
-  };
+  return generateForumMetadata(data.user);
 }
 
 export default async function ForumPage({ params }: ForumPageParams) {

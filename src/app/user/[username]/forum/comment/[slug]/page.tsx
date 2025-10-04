@@ -4,6 +4,10 @@ import type { Metadata } from "next"
 import Navbar from "@/components/navbar"
 import { SiteFooter } from "@/components/site-footer"
 import { getForumPostData } from "@/lib/forum-data"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/app/api/auth/[...nextauth]/route"
+import { prisma } from "@/lib/auth/db-adapter"
+import { generateForumPostMetadata, generateForumPostStructuredData } from "@/lib/seo/metadata"
 
 interface PostPageProps {
   params: {
@@ -25,11 +29,6 @@ const forumRules = [
   "Respect author's creative choices"
 ]
 
-const mockBannedUsers = [
-  { id: "1", name: "John Doe", username: "johndoe", image: null, bannedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000) },
-  { id: "2", name: "Jane Smith", username: "janesmith", image: null, bannedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000) },
-]
-
 export async function generateMetadata({ params }: PostPageProps): Promise<Metadata> {
   const { username, slug } = await params
   const data = await getForumPostData(username, slug)
@@ -41,10 +40,7 @@ export async function generateMetadata({ params }: PostPageProps): Promise<Metad
     }
   }
 
-  return {
-    title: `${data.post.title} - ${data.user.name}'s Forum`,
-    description: data.post.content.slice(0, 160) + "..."
-  }
+  return generateForumPostMetadata(data.post, data.user)
 }
 
 export default async function PostPage({ params }: PostPageProps) {
@@ -55,6 +51,19 @@ export default async function PostPage({ params }: PostPageProps) {
     notFound()
   }
 
+  // Check if current user is the owner
+  const session = await getServerSession(authOptions)
+  const currentUserId = session?.user?.id || null
+
+  // Get forum owner from database
+  const forumUser = await prisma.user.findUnique({
+    where: { username },
+    select: { id: true }
+  })
+
+  // Determine if current user is the forum owner
+  const isOwner = currentUserId !== null && forumUser?.id === currentUserId
+
   return (
     <div className="min-h-screen">
       <Navbar />
@@ -64,7 +73,8 @@ export default async function PostPage({ params }: PostPageProps) {
           post={data.post}
           user={data.user}
           forumRules={forumRules}
-          bannedUsers={mockBannedUsers}
+          isOwner={isOwner}
+          currentUserId={currentUserId}
         />
       </main>
 

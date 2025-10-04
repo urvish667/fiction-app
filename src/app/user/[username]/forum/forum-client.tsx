@@ -390,7 +390,7 @@ export default function ForumClient({ user, forumId, isOwner, currentUserId }: F
       {/* Three Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Sidebar - Rules & Banned Users */}
-        <div className="hidden lg:block lg:col-span-3 space-y-6 h-fit">
+        <div className="hidden lg:block lg:col-span-3 space-y-6">
           <ForumRules rules={forumRules} />
 
           {/* Banned Users - Visible to everyone, unban button only for owner */}
@@ -401,16 +401,13 @@ export default function ForumClient({ user, forumId, isOwner, currentUserId }: F
             onUnban={isOwner ? handleUnbanUser : undefined}
           />
 
-          {/* Left Ad - Hidden on smaller screens */}
-          <div className="hidden lg:block">
-            <div className="sticky top-16">
-              <AdBanner
-                type="sidebar"
-                width={300}
-                height={600}
-                className="w-full h-auto"
-              />
-            </div>
+          <div className="sticky top-16">
+            <AdBanner
+              type="sidebar"
+              width={300}
+              height={600}
+              className="w-full h-auto"
+            />          
           </div>
         </div>
 
