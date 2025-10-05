@@ -78,7 +78,7 @@ export async function createSession(
   // Get client information
   const fingerprint = generateFingerprint(req);
   const userAgent = req.headers.get('user-agent') || 'unknown';
-  const ip = req.ip || '127.0.0.1';
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0] || '127.0.0.1';
 
   // Create session information
   const now = Date.now();

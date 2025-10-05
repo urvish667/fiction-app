@@ -144,7 +144,7 @@ export default function BrowseContent({ initialParams }: BrowseContentProps) {
         return found ? [found.name] : []
       }
     } else if (initialParams.tags) {
-      return initialParams.tags.split(',').map(t => safeDecodeURIComponent(t.trim())).filter(Boolean)
+      return initialParams.tags.split(',').map(t => safeDecodeURIComponent(t.trim())).filter((t): t is string => t !== null)
     }
     return []
   })

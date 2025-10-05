@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
     } catch (validationError) {
       if (validationError instanceof z.ZodError) {
         const fieldErrors: Record<string, string> = {};
-        validationError.errors.forEach((err) => {
+        validationError.issues.forEach((err) => {
           if (err.path && err.path.length > 0) {
             const field = String(err.path[0]);
             fieldErrors[field] = err.message;

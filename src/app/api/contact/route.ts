@@ -139,7 +139,7 @@ export const POST = withCsrfProtection(withApiLogging(async (request: NextReques
       });
 
       if (validationError instanceof z.ZodError) {
-        const firstError = validationError.errors[0];
+        const firstError = validationError.issues[0];
         return NextResponse.json(
           { error: firstError.message },
           { status: 400 }

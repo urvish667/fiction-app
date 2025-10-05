@@ -170,12 +170,12 @@ export default async function StoryInfoPage({ params }: StoryPageProps) {
       // Add author with correct type for donationMethod
       author: story.author ? {
         id: story.author.id,
-        name: story.author.name,
-        username: story.author.username,
-        image: story.author.image,
+        name: story.author.name || undefined,
+        username: story.author.username || undefined,
+        image: story.author.image || undefined,
         donationsEnabled: story.author.donationsEnabled,
-        donationMethod: story.author.donationMethod as 'PAYPAL' | 'STRIPE' | null,
-        donationLink: story.author.donationLink,
+        donationMethod: story.author.donationMethod,
+        donationLink: story.author.donationLink || undefined,
       } : undefined,
 
       // Add counts from _count
@@ -221,4 +221,3 @@ export default async function StoryInfoPage({ params }: StoryPageProps) {
     notFound()
   }
 }
-

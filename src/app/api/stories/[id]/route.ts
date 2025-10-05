@@ -245,7 +245,7 @@ export async function PUT(
       }
     } catch (validationError) {
       return NextResponse.json(
-        { error: "Validation error", details: (validationError as z.ZodError).errors },
+        { error: "Validation error", details: (validationError as z.ZodError).issues },
         { status: 400 }
       );
     }
@@ -374,7 +374,7 @@ export async function PUT(
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: "Validation error", details: error.errors },
+        { error: "Validation error", details: error.issues },
         { status: 400 }
       );
     }

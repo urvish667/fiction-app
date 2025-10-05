@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof ZodError) {
       const fieldErrors = {} as Record<string, string>;
 
-      error.errors.forEach((err) => {
+      error.issues.forEach((err) => {
         if (err.path && err.path.length > 0) {
           const field = String(err.path[0]); // Convert to string to ensure it's a valid key
           fieldErrors[field] = err.message;

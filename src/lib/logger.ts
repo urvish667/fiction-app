@@ -19,7 +19,7 @@ class LegacyLogger {
     newLogger.warn(message, this.argsToContext(args));
   }
 
-  error(message: string, ...args: any[]): void {
+  error(message: string | Error, ...args: any[]): void {
     if (message instanceof Error) {
       newLogger.error(message, this.argsToContext(args));
     } else {

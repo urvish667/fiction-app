@@ -126,7 +126,7 @@ export function withBodyValidation<T>(
           JSON.stringify({
             error: 'Validation Error',
             message: 'Invalid request data',
-            details: error.errors,
+            details: error.issues,
           }),
           {
             status: 400,
@@ -187,7 +187,7 @@ export function withQueryValidation<T>(
           JSON.stringify({
             error: 'Validation Error',
             message: 'Invalid query parameters',
-            details: error.errors,
+            details: error.issues,
           }),
           {
             status: 400,

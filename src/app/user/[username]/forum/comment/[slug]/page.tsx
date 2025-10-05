@@ -1,4 +1,4 @@
-import { notFound, redirect } from "next/navigation"
+import { notFound } from "next/navigation"
 import PostPageClient from "./post-page-client"
 import type { Metadata } from "next"
 import Navbar from "@/components/navbar"
@@ -10,10 +10,10 @@ import { prisma } from "@/lib/auth/db-adapter"
 import { generateForumPostMetadata, generateForumPostStructuredData } from "@/lib/seo/metadata"
 
 interface PostPageProps {
-  params: {
+  params: Promise<{
     username: string
     slug: string
-  }
+  }>
 }
 
 // Force dynamic rendering to prevent static generation caching issues
@@ -64,8 +64,19 @@ export default async function PostPage({ params }: PostPageProps) {
   // Determine if current user is the forum owner
   const isOwner = currentUserId !== null && forumUser?.id === currentUserId
 
+  // Generate structured data for SEO
+  const structuredData = generateForumPostStructuredData(data.post, data.user)
+
   return (
     <div className="min-h-screen">
+      {/* Structured Data for SEO */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(structuredData),
+        }}
+      />
+
       <Navbar />
 
       <main className="container mx-auto px-4 py-8">

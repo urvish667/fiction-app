@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { prisma } from "@/lib/auth/db-adapter"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
-import { formatDistanceToNow } from "date-fns"
+import { formatDistanceToNow } from "date-fns/formatDistanceToNow"
 
 // Define a basic type for expected social links structure
 type ExpectedSocialLinks = {

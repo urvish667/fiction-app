@@ -5,7 +5,7 @@ import "@/styles/editor.css"
 import "@/styles/reading.css"
 
 import { useEffect, useRef, useState } from "react"
-import { useEditor, EditorContent } from "@tiptap/react"
+import { useEditor, EditorContent, type AnyExtension } from "@tiptap/react"
 import StarterKit from "@tiptap/starter-kit"
 import Placeholder from "@tiptap/extension-placeholder"
 import { Image } from "@tiptap/extension-image"
@@ -67,7 +67,7 @@ export function Editor({ content, onChange, readOnly = false }: EditorProps) {
         alignments: ['left', 'center', 'right'],
         defaultAlignment: 'left',
       }),
-    ],
+    ] as AnyExtension[],
     content,
     editable: !readOnly,
     onUpdate: ({ editor }) => {

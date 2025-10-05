@@ -282,7 +282,7 @@ export function handleApiError(error: unknown): NextResponse {
     return createErrorResponse(
       ErrorCode.VALIDATION_ERROR,
       'The request contains invalid data',
-      process.env.NODE_ENV === 'production' ? undefined : { errors: error.errors }
+      process.env.NODE_ENV === 'production' ? undefined : { errors: error.issues }
     );
   }
   

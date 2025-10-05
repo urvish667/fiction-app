@@ -4,10 +4,8 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { prisma } from '@/lib/auth/db-adapter'
 import { ForumType } from '@prisma/client'
 
-type BanParams = { params: { username: string, userId: string } }
-
 // PUT: Ban a user from the forum (moderator only)
-export async function PUT(request: NextRequest, { params }: BanParams) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ username: string, userId: string }> }) {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
@@ -64,14 +62,14 @@ export async function PUT(request: NextRequest, { params }: BanParams) {
 }
 
 // DELETE: Unban a user from the forum (moderator only)
-export async function DELETE(request: NextRequest, { params }: BanParams) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ username: string, userId: string }> }) {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { username, userId } = params
+    const { username, userId } = await params
 
     // Find forum owner
     const forumOwner = await prisma.user.findUnique({

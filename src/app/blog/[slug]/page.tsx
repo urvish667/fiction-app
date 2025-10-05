@@ -10,9 +10,9 @@ import AdBanner from "@/components/ad-banner";
 import { generateBlogMetadata, generateBlogStructuredData, generateBlogBreadcrumbStructuredData } from "@/lib/seo/metadata";
 
 interface BlogPageProps {
-  params: {
+  params: Promise<{
     slug: string;
-  };
+  }>;
 }
 
 const formatString = (str: string) => {
@@ -24,7 +24,8 @@ const formatString = (str: string) => {
 
 export async function generateMetadata({ params }: BlogPageProps): Promise<Metadata> {
   try {
-    const blog = await getBlogBySlug(params.slug);
+    const { slug } = await params;
+    const blog = await getBlogBySlug(slug);
     if (!blog) {
       return {
         title: "Blog Post Not Found - FableSpace",
@@ -42,7 +43,8 @@ export async function generateMetadata({ params }: BlogPageProps): Promise<Metad
 
 export default async function BlogPostPage({ params }: BlogPageProps) {
   try {
-    const blog = await getBlogBySlug(params.slug);
+    const { slug } = await params;
+    const blog = await getBlogBySlug(slug);
 
     if (!blog || blog.status !== "published") {
       notFound();

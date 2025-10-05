@@ -62,7 +62,7 @@ export const ProfileInfoForm = ({ form, isUpdating, saveProfileInfo }: ProfileIn
         logError(error, { context: "Profile info validation failed" })
         // Update the form's error state with the validation errors
         if (error instanceof z.ZodError) {
-          error.errors.forEach(err => {
+          error.issues.forEach(err => {
             const path = err.path[0] as keyof typeof profileData;
             form.setError(path, { message: err.message });
           });

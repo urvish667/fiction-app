@@ -4,14 +4,11 @@ import { prisma } from "@/lib/auth/db-adapter";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { logger } from "@/lib/logger";
 
-// Define the params type for route handlers
-type ChapterRouteParams = { params: { id: string; chapterId: string } };
-
 // GET endpoint to check if a chapter is liked by the current user
 // Note: GET requests don't need CSRF protection, but we're keeping the pattern consistent
 export async function GET(
   _request: NextRequest,
-  context: ChapterRouteParams
+  context: { params: Promise<{ id: string; chapterId: string }> }
 ) {
   try {
     // Always await params first

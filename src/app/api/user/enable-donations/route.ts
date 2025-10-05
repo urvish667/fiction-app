@@ -35,7 +35,7 @@ export async function POST(req: Request) {
     const validation = enableDonationsSchema.safeParse(body);
 
     if (!validation.success) {
-      return NextResponse.json({ errors: validation.error.errors }, { status: 400 });
+      return NextResponse.json({ errors: validation.error.issues }, { status: 400 });
     }
 
     const { method, link } = validation.data;
@@ -85,7 +85,7 @@ export async function POST(req: Request) {
 
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ errors: error.errors }, { status: 400 });
+      return NextResponse.json({ errors: error.issues }, { status: 400 });
     }
 
     return NextResponse.json(

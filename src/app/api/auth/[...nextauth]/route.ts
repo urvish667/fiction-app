@@ -13,7 +13,7 @@ import { sanitizeText } from "@/lib/security/input-validation";
 const authLogger = logger.child('nextauth');
 
 // Main NextAuth configuration
-export const authOptions: NextAuthOptions = {
+const authOptions: NextAuthOptions = {
   // Use Prisma adapter for database integration
   adapter: getPrismaAdapter(),
 
@@ -142,6 +142,7 @@ export const authOptions: NextAuthOptions = {
               showEmail: false,
               showLocation: false,
               allowMessages: false,
+              forum: false,
             }
           },
           country: "US"
@@ -205,6 +206,7 @@ export const authOptions: NextAuthOptions = {
               showEmail: false,
               showLocation: false,
               allowMessages: false,
+              forum: false,
             }
           },
           country: "US"
@@ -259,6 +261,7 @@ export const authOptions: NextAuthOptions = {
               showEmail: false,
               showLocation: false,
               allowMessages: false,
+              forum: false,
             }
           };
 
@@ -532,6 +535,7 @@ export const authOptions: NextAuthOptions = {
             showEmail: false,
             showLocation: false,
             allowMessages: false,
+            forum: false,
           },
         }
       };
@@ -804,3 +808,4 @@ export const authOptions: NextAuthOptions = {
 const handler = NextAuth(authOptions);
 
 export { handler as GET, handler as POST };
+export { authOptions };

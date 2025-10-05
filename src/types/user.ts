@@ -1,3 +1,17 @@
+import { PayoutProvider } from '@prisma/client';
+
+export interface UserSummary {
+  id: string;
+  name?: string;
+  username?: string;
+  image?: string;
+  bio?: string;
+  location?: string;
+  donationsEnabled?: boolean;
+  donationMethod?: PayoutProvider | null;
+  donationLink?: string;
+}
+
 export interface UserPreferences {
   emailNotifications: {
     newFollower: boolean

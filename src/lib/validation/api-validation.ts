@@ -109,7 +109,7 @@ export function handleValidationError(
     // Log the error if enabled
     if (mergedOptions.logErrors) {
       logError('Validation error', {
-        errors: error.errors,
+        errors: error.issues,
         errorType: 'ZodError',
       });
     }
@@ -118,7 +118,7 @@ export function handleValidationError(
     return createErrorResponse(
       ErrorCode.VALIDATION_ERROR,
       mergedOptions.errorMessage || 'Invalid request data',
-      mergedOptions.includeErrorDetails ? { errors: error.errors } : undefined
+      mergedOptions.includeErrorDetails ? { errors: error.issues } : undefined
     );
   }
 

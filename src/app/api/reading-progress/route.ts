@@ -101,12 +101,12 @@ export async function PUT(request: NextRequest) {
     if (error instanceof z.ZodError) {
       readingProgressLogger.warn("Validation error in reading progress update", {
         userId: session?.user?.id,
-        errors: error.errors,
+        errors: error.issues,
         operation: 'updateReadingProgress'
       });
 
       return NextResponse.json(
-        { error: "Validation error", details: error.errors },
+        { error: "Validation error", details: error.issues },
         { status: 400 }
       );
     }

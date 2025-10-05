@@ -49,7 +49,7 @@ export async function POST(req: Request) {
       return NextResponse.json({
         error: 'Validation Error',
         message: 'Invalid payment data',
-        errors: validation.error.errors
+        errors: validation.error.issues
       }, { status: 400 });
     }
 

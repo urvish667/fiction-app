@@ -18,7 +18,7 @@ const createCommentSchema = z.object({
 // GET endpoint to retrieve comments for a chapter
 export async function GET(
   request: NextRequest,
-  context: { params: { id: string; chapterId: string } }
+  context: { params: Promise<{ id: string; chapterId: string }> }
 ) {
   try {
     // Always await params first
@@ -288,7 +288,7 @@ export const POST = withCsrfProtection(async (request: NextRequest) => {
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: "Invalid comment data", details: error.errors },
+        { error: "Invalid comment data", details: error.issues },
         { status: 400 }
       );
     }

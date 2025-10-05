@@ -11,7 +11,7 @@ import { verifyPassword } from "@/lib/auth/auth-utils"
 const deleteAccountSchema = z.object({
   password: z.string().optional(),
   confirmation: z.literal(true, {
-    errorMap: () => ({ message: "You must confirm this action" }),
+    message: "You must confirm this action",
   }),
 })
 
@@ -155,7 +155,7 @@ export async function DELETE(request: NextRequest) {
     if (error instanceof z.ZodError) {
       const fieldErrors = {} as Record<string, string>
 
-      error.errors.forEach((err) => {
+      error.issues.forEach((err) => {
         if (err.path && err.path.length > 0) {
           const field = String(err.path[0])
           fieldErrors[field] = err.message
