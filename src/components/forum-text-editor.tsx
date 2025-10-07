@@ -43,6 +43,7 @@ export default function ForumTextEditor({ content, onChange, placeholder = "Shar
       Blockquote,
     ],
     content,
+    immediatelyRender: false,
     onUpdate: ({ editor }) => {
       const html = editor.getHTML()
       const text = editor.getText()

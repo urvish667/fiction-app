@@ -140,6 +140,14 @@ export default function PostList({ user, currentUserId, posts, onNewPost, isForu
           )
         })}
 
+        {posts.length < 5 && (
+          <AdBanner
+            type="banner"
+            className="w-full max-w-[720px] h-[90px] mx-auto"
+            slot="6596765108"
+          />
+        )}
+
         {/* Load More Posts Button */}
         {displayedPosts < posts.length && (
           <Button

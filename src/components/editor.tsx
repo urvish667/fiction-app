@@ -70,6 +70,7 @@ export function Editor({ content, onChange, readOnly = false }: EditorProps) {
     ] as AnyExtension[],
     content,
     editable: !readOnly,
+    immediatelyRender: false,
     onUpdate: ({ editor }) => {
       // Only trigger onChange if it's not an internal update
       if (!isInternalUpdate) {

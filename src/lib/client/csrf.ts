@@ -9,18 +9,67 @@ import { logError, logWarning } from "../error-logger";
 // Constants
 export const CSRF_COOKIE_NAME = 'fablespace_csrf';
 export const CSRF_HEADER_NAME = 'x-csrf-token';
+const CSRF_TOKEN_TTL = 24 * 60 * 60 * 1000; // 24 hours
+const TOKEN_REFRESH_THRESHOLD = 2 * 60 * 60 * 1000; // Refresh if less than 2 hours remaining
 
 // Store the token in memory for faster access
 let csrfTokenCache: string | null = null;
+let tokenExpiryTime: number | null = null;
+
+/**
+ * Validate if a CSRF token is expired
+ * @param token The CSRF token to validate
+ * @returns true if token is valid and not expired
+ */
+function isTokenValid(token: string): boolean {
+  try {
+    const [, timestampStr] = token.split(':');
+    if (!timestampStr) return false;
+    
+    const timestamp = parseInt(timestampStr, 10);
+    if (isNaN(timestamp)) return false;
+    
+    // Check if token has expired
+    return Date.now() < timestamp;
+  } catch (error) {
+    return false;
+  }
+}
+
+/**
+ * Check if token needs refresh (less than 2 hours remaining)
+ * @param token The CSRF token to check
+ * @returns true if token should be refreshed
+ */
+function shouldRefreshToken(token: string): boolean {
+  try {
+    const [, timestampStr] = token.split(':');
+    if (!timestampStr) return true;
+    
+    const timestamp = parseInt(timestampStr, 10);
+    if (isNaN(timestamp)) return true;
+    
+    // Refresh if less than 2 hours remaining
+    return (timestamp - Date.now()) < TOKEN_REFRESH_THRESHOLD;
+  } catch (error) {
+    return true;
+  }
+}
 
 /**
  * Get the CSRF token from cookies or memory cache
  * @returns The CSRF token or null if not found
  */
 export function getCsrfToken(): string | null {
-  // Return from cache if available
-  if (csrfTokenCache) {
-    return csrfTokenCache;
+  // Check if cached token is still valid
+  if (csrfTokenCache && tokenExpiryTime) {
+    if (Date.now() < tokenExpiryTime) {
+      return csrfTokenCache;
+    } else {
+      // Clear expired cache
+      csrfTokenCache = null;
+      tokenExpiryTime = null;
+    }
   }
 
   // Parse cookies
@@ -32,12 +81,25 @@ export function getCsrfToken(): string | null {
 
   const token = cookies[CSRF_COOKIE_NAME] || null;
 
-  // Cache the token if found
-  if (token) {
+  // Validate token before caching
+  if (token && isTokenValid(token)) {
     csrfTokenCache = token;
+    // Extract expiry time from token
+    try {
+      const [, timestampStr] = token.split(':');
+      tokenExpiryTime = parseInt(timestampStr, 10);
+    } catch (error) {
+      tokenExpiryTime = Date.now() + CSRF_TOKEN_TTL;
+    }
+    return token;
   }
 
-  return token;
+  // Token is invalid or expired
+  if (token) {
+    logWarning('CSRF token found but expired or invalid', { context: 'Getting CSRF token' });
+  }
+  
+  return null;
 }
 
 /**
@@ -45,25 +107,55 @@ export function getCsrfToken(): string | null {
  * @param token The CSRF token to set
  */
 export function setCsrfToken(token: string): void {
+  // Validate token before setting
+  if (!isTokenValid(token)) {
+    logWarning('Attempting to set invalid or expired CSRF token', { context: 'Setting CSRF token' });
+    return;
+  }
+
   // Set in memory cache
   csrfTokenCache = token;
+  
+  // Extract and cache expiry time
+  try {
+    const [, timestampStr] = token.split(':');
+    tokenExpiryTime = parseInt(timestampStr, 10);
+  } catch (error) {
+    tokenExpiryTime = Date.now() + CSRF_TOKEN_TTL;
+  }
 
-  // Set in cookie
-  document.cookie = `${CSRF_COOKIE_NAME}=${token}; path=/; samesite=lax; ${window.location.protocol === 'https:' ? 'secure;' : ''}`;
+  // Set in cookie with proper expiry
+  const maxAge = tokenExpiryTime ? Math.floor((tokenExpiryTime - Date.now()) / 1000) : 86400; // 24 hours default
+  document.cookie = `${CSRF_COOKIE_NAME}=${token}; path=/; samesite=lax; max-age=${maxAge}; ${window.location.protocol === 'https:' ? 'secure;' : ''}`;
 }
 
 /**
  * Ensure a CSRF token is available, fetching one if needed
+ * @param forceRefresh Force fetching a new token even if one exists
  * @returns A promise that resolves when a token is available
  */
-export async function ensureCsrfToken(): Promise<string> {
-  // Check if we already have a token
+export async function ensureCsrfToken(forceRefresh: boolean = false): Promise<string> {
+  // Check if we already have a valid token
   const existingToken = getCsrfToken();
-  if (existingToken) {
+  
+  if (existingToken && !forceRefresh) {
+    // Check if token needs refresh
+    if (shouldRefreshToken(existingToken)) {
+      // Refresh in background, but return existing token for now
+      refreshCsrfTokenInBackground();
+    }
     return existingToken;
   }
 
   // Fetch a new token
+  return await fetchNewCsrfToken();
+}
+
+/**
+ * Fetch a new CSRF token from the server
+ * @returns A promise that resolves with the new token
+ */
+async function fetchNewCsrfToken(): Promise<string> {
   try {
     const response = await fetch('/api/csrf/setup', {
       method: 'GET',
@@ -85,8 +177,28 @@ export async function ensureCsrfToken(): Promise<string> {
 
     return data.token;
   } catch (error) {
-    logError(error, { context: 'Ensuring CSRF token' })
+    logError(error, { context: 'Fetching CSRF token' });
     throw error;
+  }
+}
+
+/**
+ * Refresh CSRF token in the background
+ */
+let refreshPromise: Promise<string> | null = null;
+async function refreshCsrfTokenInBackground(): Promise<void> {
+  // Prevent multiple simultaneous refresh requests
+  if (refreshPromise) {
+    return;
+  }
+
+  try {
+    refreshPromise = fetchNewCsrfToken();
+    await refreshPromise;
+  } catch (error) {
+    logError(error, { context: 'Refreshing CSRF token in background' });
+  } finally {
+    refreshPromise = null;
   }
 }
 
@@ -105,7 +217,14 @@ export function addCsrfToken(options: RequestInit = {}): RequestInit {
   // Get the CSRF token
   const csrfToken = getCsrfToken();
   if (!csrfToken) {
-    logWarning('CSRF token not found in cookies', { context: 'Adding CSRF token' })
+    logWarning('CSRF token not found in cookies', { context: 'Adding CSRF token' });
+    return options;
+  }
+
+  // Validate token is not expired
+  if (!isTokenValid(csrfToken)) {
+    logWarning('CSRF token is expired, request may fail', { context: 'Adding CSRF token' });
+    // Don't add expired token - let the request fail and trigger refresh
     return options;
   }
 
@@ -134,5 +253,33 @@ export async function fetchWithCsrf(url: string, options: RequestInit = {}): Pro
   const optionsWithCsrf = addCsrfToken(options);
 
   // Make the request
-  return fetch(url, optionsWithCsrf);
+  let response = await fetch(url, optionsWithCsrf);
+
+  // If we get a 403 with CSRF error, try refreshing the token once
+  if (response.status === 403) {
+    try {
+      const errorData = await response.clone().json();
+      const csrfErrorCodes = ['CSRF_TOKEN_MISSING', 'CSRF_TOKEN_INVALID', 'CSRF_TOKEN_MISMATCH'];
+      
+      if (errorData.code && csrfErrorCodes.includes(errorData.code)) {
+        logWarning('CSRF token rejected, refreshing and retrying', { 
+          context: 'Fetch with CSRF', 
+          url, 
+          errorCode: errorData.code 
+        });
+        
+        // Force refresh the token
+        await ensureCsrfToken(true);
+        
+        // Retry the request with new token
+        const retryOptionsWithCsrf = addCsrfToken(options);
+        response = await fetch(url, retryOptionsWithCsrf);
+      }
+    } catch (error) {
+      // If we can't parse the error, just return the original response
+      logError(error, { context: 'Parsing CSRF error response' });
+    }
+  }
+
+  return response;
 }

@@ -11,7 +11,6 @@ import { Badge } from "@/components/ui/badge"
 import { Pin, MessageSquare, ArrowLeft, Loader2 } from "lucide-react"
 import { formatDistanceToNow } from "date-fns/formatDistanceToNow"
 import ForumRules from "@/components/forum/ForumRules"
-import BannedUsers from "@/components/forum/BannedUsers"
 import AdBanner from "@/components/ad-banner"
 import CommentOptions from "@/components/forum/CommentOptions"
 import InstructionForum from "@/components/forum/InstructionForum"
@@ -55,19 +54,12 @@ interface PostPageClientProps {
   currentUserId: string | null
 }
 
-interface BannedUser {
-  id: string
-  name: string
-  username: string
-  image: string | null
-}
+
 
 export default function PostPageClient({ post, user, forumRules, isOwner, currentUserId }: PostPageClientProps) {
   const [displayedComments, setDisplayedComments] = useState(3)
   const [newComment, setNewComment] = useState("")
   const [comments, setComments] = useState([...post.comments])
-  const [bannedUsers, setBannedUsers] = useState<BannedUser[]>([])
-  const [loadingBannedUsers, setLoadingBannedUsers] = useState(false)
   const [csrfToken, setCsrfToken] = useState<string>('')
   const [submittingComment, setSubmittingComment] = useState(false)
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null)
@@ -150,61 +142,7 @@ export default function PostPageClient({ post, user, forumRules, isOwner, curren
     }
   }
 
-  // Fetch banned users (visible to everyone)
-  const fetchBannedUsers = async () => {
-    setLoadingBannedUsers(true)
-    try {
-      const response = await fetch(`/api/forum/${user.username}/banned-users`)
-      if (response.ok) {
-        const data = await response.json()
-        if (data.success) {
-          setBannedUsers(data.bannedUsers)
-        }
-      } else if (response.status === 403) {
-        // No permission to view banned users
-        setBannedUsers([])
-      }
-    } catch (error) {
-      console.error('Error fetching banned users:', error)
-      setBannedUsers([])
-    } finally {
-      setLoadingBannedUsers(false)
-    }
-  }
 
-  // Handle unban user
-  const handleUnbanUser = async (userId: string) => {
-    try {
-      const response = await fetch(`/api/forum/${user.username}/ban/${userId}`, {
-        method: 'DELETE',
-        headers: {
-          'x-csrf-token': csrfToken,
-        },
-      })
-
-      if (response.ok) {
-        // Remove from local state
-        setBannedUsers(prev => prev.filter(user => user.id !== userId))
-        toast({
-          title: "Success",
-          description: "User has been unbanned"
-        })
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to unban user",
-          variant: "destructive"
-        })
-      }
-    } catch (error) {
-      console.error('Error unbanning user:', error)
-      toast({
-        title: "Error",
-        description: "Failed to unban user",
-        variant: "destructive"
-      })
-    }
-  }
 
   // Handle edit comment
   const handleEditComment = async (commentId: string) => {
@@ -310,7 +248,6 @@ export default function PostPageClient({ post, user, forumRules, isOwner, curren
   useEffect(() => {
     const initializePostPage = async () => {
       await setupCsrfToken()
-      await fetchBannedUsers()
     }
     initializePostPage()
   }, [user.username])
@@ -326,41 +263,24 @@ export default function PostPageClient({ post, user, forumRules, isOwner, curren
         </Link>
       </div>
 
-      {/* Mobile buttons for rules and banned users - Only visible on smaller screens */}
+      {/* Mobile buttons for rules - Only visible on smaller screens */}
       <div className="flex gap-2 mb-6 lg:hidden">
         <ForumRules rules={forumRules} asDialog />
-      
-        <BannedUsers
-          bannedUsers={bannedUsers}
-          loadingBannedUsers={loadingBannedUsers}
-          isOwner={isOwner}
-          onUnban={isOwner ? handleUnbanUser : undefined}
-          asDialog
-        />
-
-         <InstructionForum asDialog />
+        <InstructionForum asDialog />
       </div>
 
       {/* Three Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Sidebar - Rules & Banned Users */}
+        {/* Left Sidebar - Rules */}
         <div className="hidden lg:block lg:col-span-3 space-y-6">
           <ForumRules rules={forumRules} />
-          
-          <BannedUsers
-            bannedUsers={bannedUsers}
-            loadingBannedUsers={loadingBannedUsers}
-            isOwner={isOwner}
-            onUnban={isOwner ? handleUnbanUser : undefined}
-          />
-
           <div className="sticky top-16">
             <AdBanner
               type="sidebar"
               width={300}
               height={600}
               slot="3146074170"
-            />      
+            />
           </div>
         </div>
 
@@ -511,8 +431,8 @@ export default function PostPageClient({ post, user, forumRules, isOwner, curren
                       </div>
                     </div>
 
-                    {/* Horizontal Ad after every 3 comments */}
-                    {(index + 1) % 3 === 0 && index + 1 < displayedComments && (
+                    {/* Horizontal Ad after every 2 comments */}
+                    {(index + 1) % 2 === 0 && index + 1 < displayedComments && (
                       <AdBanner
                         type="banner"
                         className="w-full max-w-[720px] h-[90px] mx-auto"
@@ -522,7 +442,14 @@ export default function PostPageClient({ post, user, forumRules, isOwner, curren
                   </div>
                 ))}
 
-
+                {/* Horizontal Ad if fewer than 2 comments */}
+                {comments.length < 2 && (
+                  <AdBanner
+                    type="banner"
+                    className="w-full max-w-[720px] h-[90px] mx-auto"
+                    slot="6596765108"
+                  />
+                )}
 
                 {hasMoreComments && (
                   <Button

@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Pin, MessageSquare, MoreHorizontal, Ban, Edit, Trash2, Flag } from "lucide-react"
+import { Pin, MessageSquare, MoreHorizontal, Ban, Edit, Trash2, Flag, Share2, Twitter, Facebook, LinkIcon, Check } from "lucide-react"
+import { toast } from "@/components/ui/use-toast"
 import { formatDistanceToNow } from "date-fns/formatDistanceToNow"
 import Link from "next/link"
 import ConfirmationDialog from "./ConfirmationDialog"
@@ -72,6 +73,24 @@ export default function PostCard({ post, forumOwnerUsername, isExpanded, onToggl
   const [showReportDialog, setShowReportDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isBanning, setIsBanning] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(`https://fablespace.space/user/${forumOwnerUsername}/forum/comment/${post.slug}`)
+    setCopied(true)
+    toast({
+      title: "Link Copied",
+      description: "Post link copied to clipboard",
+    })
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleShare = (platform: string) => {
+    toast({
+      title: "Sharing",
+      description: `Sharing to ${platform}...`,
+    })
+  }
 
   // Function to truncate HTML content to a specified number of words
   const truncateContent = (htmlContent: string, maxWords: number = 30) => {
@@ -213,6 +232,45 @@ export default function PostCard({ post, forumOwnerUsername, isExpanded, onToggl
               <MessageSquare className="h-4 w-4" />
               <span>{post.commentCount} Comments</span>
             </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                  }}
+                >
+                  <Share2 className="h-4 w-4" />
+                  <span className="sr-only">Share</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleShare("Twitter")}>
+                  <Twitter size={16} className="mr-2" />
+                  Twitter
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleShare("Facebook")}>
+                  <Facebook size={16} className="mr-2" />
+                  Facebook
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleCopyLink}>
+                  {copied ? (
+                    <>
+                      <Check size={16} className="mr-2" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <LinkIcon size={16} className="mr-2" />
+                      Copy Link
+                    </>
+                  )}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </CardContent>

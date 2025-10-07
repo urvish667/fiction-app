@@ -10,7 +10,8 @@ import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, BookOpen, Heart, Bookmark, CheckCircle, UserPlus, UserCheck, Loader2, Flag } from "lucide-react"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { ArrowLeft, BookOpen, Heart, Bookmark, CheckCircle, UserPlus, UserCheck, Loader2, Flag, Users } from "lucide-react"
 import Navbar from "@/components/navbar"
 import { ReportDialog } from "@/components/report/ReportDialog"
 import ChapterList from "@/components/chapter-list"
@@ -56,6 +57,8 @@ export default function StoryPageClient({
   const [showMatureDialog, setShowMatureDialog] = useState(false)
   const [isReportModalOpen, setReportModalOpen] = useState(false)
   const [contentConsented, setContentConsented] = useState(true)
+  const [isForumEnabled, setIsForumEnabled] = useState(false)
+  const [forumLoading, setForumLoading] = useState(true)
   const isMobile = useMediaQuery("(max-width: 768px)")
 
   // Check mature content consent on mount
@@ -106,6 +109,31 @@ export default function StoryPageClient({
 
     checkFollowStatus()
   }, [session, story])
+
+  // Check forum setting for the author
+  useEffect(() => {
+    const checkForumSetting = async () => {
+      if (!story || !story.author || typeof story.author !== 'object' || !story.author.username) {
+        setForumLoading(false)
+        return
+      }
+
+      try {
+        const response = await fetch(`/api/user/${story.author.username}`)
+        if (response.ok) {
+          const userData = await response.json()
+          const forumEnabled = userData.preferences?.privacySettings?.forum === true
+          setIsForumEnabled(forumEnabled)
+        }
+      } catch (err) {
+        logError(err, { context: "Error checking forum setting", username: story.author.username })
+      } finally {
+        setForumLoading(false)
+      }
+    }
+
+    checkForumSetting()
+  }, [story])
 
   // Handle back button
   const handleBack = () => {
@@ -463,6 +491,27 @@ export default function StoryPageClient({
                      </span>
                    </Button>
                  )}
+                  {/* Forum Button - Only show if forum is enabled and author exists */}
+                  {!forumLoading && isForumEnabled && author?.username && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex items-center gap-1 sm:gap-2 h-9 sm:h-10 text-xs sm:text-sm px-3 sm:px-4"
+                            asChild
+                          >
+                            <Link href={`/user/${author.username}/forum`}>
+                              <Users size={14} />
+                              <span className="hidden sm:inline">Forum</span>
+                            </Link>
+                          </Button>
+                        </TooltipTrigger>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+
                   <Button
                     variant="outline"
                     size="sm"
@@ -573,9 +622,6 @@ export default function StoryPageClient({
           </motion.div>
         )}
       </main>
-
-      {/* Fixed Bottom Banner Ad */}
-      {/* <DesktopBottomAd /> */}
 
       {/* Footer */}
       <SiteFooter />

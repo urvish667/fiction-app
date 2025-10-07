@@ -179,12 +179,16 @@ export async function csrfProtection(req: NextRequest): Promise<NextResponse | n
     return new NextResponse(
       JSON.stringify({
         error: 'CSRF token missing',
-        message: 'CSRF token is required for this request',
+        message: 'CSRF token is required for this request. Please refresh the page and try again.',
+        code: 'CSRF_TOKEN_MISSING',
+        missingHeader: !csrfToken,
+        missingCookie: !cookieToken,
       }),
       {
         status: 403,
         headers: {
           'Content-Type': 'application/json',
+          'X-CSRF-Error': 'token-missing',
         },
       }
     );
@@ -192,16 +196,36 @@ export async function csrfProtection(req: NextRequest): Promise<NextResponse | n
 
   // Validate the token
   const isValid = await validateCsrfToken(csrfToken);
-  if (!isValid || csrfToken !== cookieToken) {
+  if (!isValid) {
     return new NextResponse(
       JSON.stringify({
         error: 'Invalid CSRF token',
-        message: 'CSRF token validation failed',
+        message: 'CSRF token has expired or is invalid. Please refresh the page and try again.',
+        code: 'CSRF_TOKEN_INVALID',
       }),
       {
         status: 403,
         headers: {
           'Content-Type': 'application/json',
+          'X-CSRF-Error': 'token-invalid',
+        },
+      }
+    );
+  }
+
+  // Check if header and cookie tokens match
+  if (csrfToken !== cookieToken) {
+    return new NextResponse(
+      JSON.stringify({
+        error: 'Invalid CSRF token',
+        message: 'CSRF token mismatch. Please refresh the page and try again.',
+        code: 'CSRF_TOKEN_MISMATCH',
+      }),
+      {
+        status: 403,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Error': 'token-mismatch',
         },
       }
     );
