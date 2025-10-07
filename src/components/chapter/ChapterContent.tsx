@@ -3,19 +3,21 @@
 import { motion } from "framer-motion"
 import { useEffect, useState } from "react"
 import AdBanner from "../ad-banner"
-import { Chapter } from "@/types/story"
+import { Chapter, Story } from "@/types/story"
 
 interface ChapterContentProps {
   chapter: Chapter
+  story: Story
   contentLength: 'short' | 'medium' | 'long'
   fontSize: number
   handleCopyAttempt: (e: React.ClipboardEvent | React.MouseEvent) => void
-  contentRef: React.RefObject<HTMLDivElement>
+  contentRef: React.RefObject<HTMLDivElement | null>
   isContentLoading?: boolean
 }
 
 export function ChapterContent({
   chapter,
+  story,
   contentLength,
   fontSize,
   handleCopyAttempt,
@@ -28,6 +30,9 @@ export function ChapterContent({
   useEffect(() => {
     setIsHydrated(true)
   }, [])
+
+  // Check if ads should be shown (not for mature content or fanfiction)
+  const shouldShowAds = !story.isMature && story.genre?.toLowerCase() !== 'fanfiction'
 
   // Function to split content for ad placement
   const splitContentForAds = (content: string, parts: number, partIndex: number): string => {
@@ -130,13 +135,15 @@ export function ChapterContent({
           />
 
           {/* First ad after 1/3 of content */}
-          <div className="w-full py-2">
-            <AdBanner
-              type="banner"
-              className="w-full max-w-[720px] h-[90px] mx-auto"
-              slot="6596765108"
-            />
-          </div>
+          {shouldShowAds && (
+            <div className="w-full py-2">
+              <AdBanner
+                type="banner"
+                className="w-full max-w-[720px] h-[90px] mx-auto"
+                slot="6596765108"
+              />
+            </div>
+          )}
 
           {/* Second third of content */}
           <div
@@ -154,13 +161,15 @@ export function ChapterContent({
           />
 
           {/* Second ad after 2/3 of content */}
-          <div className="w-full py-2">
-            <AdBanner
-              type="banner"
-              className="w-full max-w-[720px] h-[90px] mx-auto"
-              slot="6596765108"
-            />
-          </div>
+          {shouldShowAds && (
+            <div className="w-full py-2">
+              <AdBanner
+                type="banner"
+                className="w-full max-w-[720px] h-[90px] mx-auto"
+                slot="6596765108"
+              />
+            </div>
+          )}
 
           {/* Final third of content */}
           <div
@@ -196,13 +205,15 @@ export function ChapterContent({
           />
 
           {/* Ad in the middle */}
-          <div className="w-full py-2">
-            <AdBanner
-              type="banner"
-              className="w-full max-w-[720px] h-[90px] mx-auto"
-              slot="6596765108"
-            />
-          </div>
+          {shouldShowAds && (
+            <div className="w-full py-2">
+              <AdBanner
+                type="banner"
+                className="w-full max-w-[720px] h-[90px] mx-auto"
+                slot="6596765108"
+              />
+            </div>
+          )}
 
           {/* Second half of content */}
           <div
@@ -234,13 +245,15 @@ export function ChapterContent({
           />
 
           {/* Ad at the end */}
-          <div className="w-full py-2">
-            <AdBanner
-              type="banner"
-              className="w-full max-w-[720px] h-[90px] mx-auto"
-              slot="6596765108"
-            />
-          </div>
+          {shouldShowAds && (
+            <div className="w-full py-2">
+              <AdBanner
+                type="banner"
+                className="w-full max-w-[720px] h-[90px] mx-auto"
+                slot="6596765108"
+              />
+            </div>
+          )}
         </>
       )}
     </motion.div>

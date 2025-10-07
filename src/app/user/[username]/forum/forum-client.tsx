@@ -406,8 +406,8 @@ export default function ForumClient({ user, forumId, isOwner, currentUserId }: F
               type="sidebar"
               width={300}
               height={600}
-              className="w-full h-auto"
-            />          
+              slot="3146074170"
+            />   
           </div>
         </div>
 
@@ -445,8 +445,8 @@ export default function ForumClient({ user, forumId, isOwner, currentUserId }: F
               type="sidebar"
               width={300}
               height={600}
-              className="w-full h-auto"
-            />
+              slot="3146074170"
+            />          
           </div>
         </div>
       </div>

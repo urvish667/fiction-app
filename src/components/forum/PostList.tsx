@@ -89,6 +89,18 @@ export default function PostList({ user, currentUserId, posts, onNewPost, isForu
 
   const currentUser = currentUserId && user ? { id: currentUserId, name: user.name, image: user.image } : null
 
+  // Empty state when there are no posts
+  if (!posts || posts.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div className="rounded-lg border bg-card text-card-foreground p-10 text-center">
+          <h3 className="text-xl font-semibold">No Posts</h3>
+          <p className="text-sm text-muted-foreground mt-2">Create new post for your audience.</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       {/* Posts List */}
@@ -119,10 +131,9 @@ export default function PostList({ user, currentUserId, posts, onNewPost, isForu
                 <div className="sticky mt-6">
                   <AdBanner
                     type="banner"
-                    width={300}
-                    height={600}
-                    className="w-full h-auto"
-                  />
+                    className="w-full max-w-[720px] h-[90px] mx-auto"
+                    slot="6596765108"
+                  />                  
                 </div>
               )}
             </div>

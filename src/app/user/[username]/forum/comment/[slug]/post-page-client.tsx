@@ -359,8 +359,8 @@ export default function PostPageClient({ post, user, forumRules, isOwner, curren
               type="sidebar"
               width={300}
               height={600}
-              className="w-full h-auto"
-            />          
+              slot="3146074170"
+            />      
           </div>
         </div>
 
@@ -515,9 +515,8 @@ export default function PostPageClient({ post, user, forumRules, isOwner, curren
                     {(index + 1) % 3 === 0 && index + 1 < displayedComments && (
                       <AdBanner
                         type="banner"
-                        width={728}
-                        height={90}
-                        className="w-full h-auto"
+                        className="w-full max-w-[720px] h-[90px] mx-auto"
+                        slot="6596765108"
                       />
                     )}
                   </div>
@@ -548,7 +547,7 @@ export default function PostPageClient({ post, user, forumRules, isOwner, curren
               type="sidebar"
               width={300}
               height={600}
-              className="w-full h-auto"
+              slot="3146074170"
             />          
           </div>
         </div>

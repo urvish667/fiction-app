@@ -23,7 +23,7 @@ const InstructionForumContent: React.FC<{ className?: string }> = ({ className =
         <div>
           <h4 className="font-medium text-sm text-foreground mb-1">How to Create a Post</h4>
           <p className="text-sm text-muted-foreground">
-            Click the "Create Post" button in the top right corner. Fill in the title and content, then submit.
+            Login and click the "Create Post" button in the top right corner. Fill in the title and content, then submit.
           </p>
         </div>
 

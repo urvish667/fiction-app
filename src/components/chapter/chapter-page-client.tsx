@@ -470,6 +470,7 @@ export default function ChapterPageClient({
           {/* Chapter Content */}
           <ChapterContent
             chapter={chapter}
+            story={story}
             contentLength={contentLength}
             fontSize={fontSize}
             handleCopyAttempt={handleCopyAttempt}
