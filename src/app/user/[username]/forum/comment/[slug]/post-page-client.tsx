@@ -433,22 +433,26 @@ export default function PostPageClient({ post, user, forumRules, isOwner, curren
 
                     {/* Horizontal Ad after every 2 comments */}
                     {(index + 1) % 2 === 0 && index + 1 < displayedComments && (
-                      <AdBanner
-                        type="banner"
-                        className="w-full max-w-[720px] h-[90px] mx-auto"
-                        slot="6596765108"
-                      />
+                      <div className="mt-6 w-full">
+                        <AdBanner
+                          type="banner"
+                          className="w-full"
+                          slot="6596765108"
+                        />
+                      </div>
                     )}
                   </div>
                 ))}
 
                 {/* Horizontal Ad if fewer than 2 comments */}
                 {comments.length < 2 && (
-                  <AdBanner
-                    type="banner"
-                    className="w-full max-w-[720px] h-[90px] mx-auto"
-                    slot="6596765108"
-                  />
+                  <div className="w-full py-2">
+                    <AdBanner
+                      type="banner"
+                      className="w-full"
+                      slot="6596765108"
+                    />
+                  </div>
                 )}
 
                 {hasMoreComments && (

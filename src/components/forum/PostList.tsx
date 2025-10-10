@@ -128,12 +128,12 @@ export default function PostList({ user, currentUserId, posts, onNewPost, isForu
 
               {/* Ad after every 5 posts */}
               {shouldShowAd && (
-                <div className="sticky mt-6">
+                <div className="mt-6 w-full">
                   <AdBanner
                     type="banner"
-                    className="w-full max-w-[720px] h-[90px] mx-auto"
+                    className="w-full"
                     slot="6596765108"
-                  />                  
+                  />
                 </div>
               )}
             </div>
@@ -141,11 +141,13 @@ export default function PostList({ user, currentUserId, posts, onNewPost, isForu
         })}
 
         {posts.length < 5 && (
-          <AdBanner
-            type="banner"
-            className="w-full max-w-[720px] h-[90px] mx-auto"
-            slot="6596765108"
-          />
+          <div className="w-full py-2">
+            <AdBanner
+              type="banner"
+              className="w-full"
+              slot="6596765108"
+            />
+        </div>
         )}
 
         {/* Load More Posts Button */}
