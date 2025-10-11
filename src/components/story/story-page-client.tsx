@@ -525,15 +525,30 @@ export default function StoryPageClient({
                  {/* Support Button - Mobile Optimized */}
                  {author?.donationsEnabled && session?.user?.id !== author.id && (
                     <div className="w-full sm:w-auto mt-2 sm:mt-0">
-                      <SupportButton
-                          authorId={author.id}
-                          donationMethod={author.donationMethod ?? null}
-                          donationLink={author.donationLink ?? null}
-                          authorName={author.name || author.username || 'Author'}
-                          authorUsername={author.username || undefined}
-                          storyId={story.id}
-                          storyTitle={story.title}
-                      />
+                      {!story.isOriginal ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full sm:w-auto flex items-center gap-1.5 sm:gap-2 h-9 sm:h-10 text-xs sm:text-sm px-3 sm:px-4 text-orange-600 border-orange-500 hover:bg-orange-50"
+                          asChild
+                        >
+                          <Link href={`/user/${author.username}`}>
+                            <Heart size={14} />
+                            <span className="hidden sm:inline">Visit Profile</span>
+                            <span className="sm:hidden">Profile</span>
+                          </Link>
+                        </Button>
+                      ) : author.donationLink ? (
+                        <SupportButton
+                            authorId={author.id}
+                            donationMethod={author.donationMethod ?? null}
+                            donationLink={author.donationLink ?? null}
+                            authorName={author.name || author.username || 'Author'}
+                            authorUsername={author.username || undefined}
+                            storyId={story.id}
+                            storyTitle={story.title}
+                        />
+                      ) : null}
                     </div>
                  )}
               </div>
@@ -606,19 +621,35 @@ export default function StoryPageClient({
             transition={{ duration: 0.5, delay: 0.8 }}
             className="mb-8 sm:mb-12 bg-muted/30 rounded-lg p-4 sm:p-6 text-center"
           >
-            <h2 className="text-lg sm:text-xl font-bold mb-2">Support the Author</h2>
-            <p className="text-muted-foreground mb-4 text-sm sm:text-base">
-              If you enjoyed this story, consider supporting the author to help them create more amazing content.
-            </p>
-            <SupportButton
-              authorId={author.id}
-              donationMethod={author.donationMethod ?? null}
-              donationLink={author.donationLink ?? null}
-              authorName={author.name || author.username || 'Author'}
-              authorUsername={author.username || undefined}
-              storyId={story.id}
-              storyTitle={story.title}
-            />
+            {!story.isOriginal ? (
+              <div className="py-2">
+                <p className="text-sm sm:text-base text-muted-foreground mb-3">
+                  ❤️ Want to support this author?
+                </p>
+                <Link 
+                  href={`/user/${author.username}`}
+                  className="inline-flex items-center gap-2 text-sm sm:text-base font-medium text-orange-600 hover:text-orange-700 hover:underline transition-colors"
+                >
+                  Visit their profile →
+                </Link>
+              </div>
+            ) : author.donationLink ? (
+              <>
+                <h2 className="text-lg sm:text-xl font-bold mb-2">Support the Author</h2>
+                <p className="text-muted-foreground mb-4 text-sm sm:text-base">
+                  If you enjoyed this story, consider supporting the author to help them create more amazing content.
+                </p>
+                <SupportButton
+                  authorId={author.id}
+                  donationMethod={author.donationMethod ?? null}
+                  donationLink={author.donationLink ?? null}
+                  authorName={author.name || author.username || 'Author'}
+                  authorUsername={author.username || undefined}
+                  storyId={story.id}
+                  storyTitle={story.title}
+                />
+              </>
+            ) : null}
           </motion.div>
         )}
       </main>

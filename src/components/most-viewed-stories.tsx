@@ -267,23 +267,27 @@ function StoryCard({ story, isTopStory = false }: { story: Story, isTopStory?: b
             className="object-cover transition-transform hover:scale-105"
             unoptimized={true}
           />
-          {/* 18+ Tag for mature content */}
-          {story.isMature && (
-            <Badge className="absolute top-2 left-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs px-2 py-1 z-10">
-              18+
-            </Badge>
-          )}
+          {/* Top left badges - 18+ and Most Read side by side */}
+          <div className="absolute top-2 left-2 flex items-center gap-2 z-10">
+            {story.isMature && (
+              <Badge className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs px-2 py-1">
+                18+
+              </Badge>
+            )}
+            {isTopStory && (
+              <div className="bg-primary text-primary-foreground px-2 py-1 rounded-md flex items-center gap-1">
+                <Flame size={14} />
+                <span className="text-xs font-medium">Most Read</span>
+              </div>
+            )}
+          </div>
+          
+          {/* Genre badge on top right */}
           <Badge className="absolute top-2 right-2">
             {typeof story.genre === 'object' && story.genre !== null
               ? story.genre.name
               : 'General'}
           </Badge>
-          {isTopStory && (
-            <div className={`absolute ${story.isMature ? 'top-8' : 'top-2'} left-2 bg-primary text-primary-foreground px-2 py-1 rounded-md flex items-center gap-1`}>
-              <Flame size={14} />
-              <span className="text-xs font-medium">Most Read</span>
-            </div>
-          )}
         </div>
         <CardHeader className="pb-2">
           <h3 className="font-bold text-lg line-clamp-1">{story.title}</h3>

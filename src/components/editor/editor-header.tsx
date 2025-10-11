@@ -4,7 +4,7 @@ import React from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ArrowLeft, Save, Eye, Clock, Check, FileText, BookOpen, Menu } from "lucide-react"
+import { ArrowLeft, Save, Eye, Clock, Check, FileText, BookOpen, Menu, AlertTriangle } from "lucide-react"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { ChapterData } from "@/hooks/use-chapter-editor"
 
@@ -89,18 +89,24 @@ export const EditorHeader = React.memo(function EditorHeader({
             )}
           </span>
 
-          {/* Auto-save indicator - visible on larger screens */}
+          {/* Save status indicator - visible on larger screens */}
           <div className="hidden sm:block">
             {isSaving ? (
-              <span className="text-sm text-muted-foreground animate-pulse">Saving...</span>
+              <span className="text-sm text-muted-foreground animate-pulse flex items-center gap-1">
+                <Clock size={14} className="animate-spin" />
+                Saving...
+              </span>
+            ) : hasChanges ? (
+              <span className="text-sm text-yellow-600 dark:text-yellow-500 flex items-center gap-1 font-medium">
+                <AlertTriangle size={14} />
+                Unsaved changes
+              </span>
             ) : chapter.lastSaved ? (
               <span className="text-sm text-muted-foreground flex items-center gap-1">
                 <Clock size={14} />
                 Saved {new Date(chapter.lastSaved).toLocaleTimeString()}
               </span>
-            ) : (
-              <span className="text-sm text-muted-foreground">Unsaved changes</span>
-            )}
+            ) : null}
           </div>
 
           {/* Desktop buttons */}
@@ -171,23 +177,23 @@ export const EditorHeader = React.memo(function EditorHeader({
                   <h3 className="text-lg font-medium">Chapter Actions</h3>
 
                   {/* Save status in mobile menu */}
-                  <div className="text-sm text-muted-foreground">
+                  <div className="text-sm">
                     {isSaving ? (
-                      <span className="flex items-center gap-2">
+                      <span className="flex items-center gap-2 text-muted-foreground">
                         <Clock className="h-4 w-4 animate-spin" />
                         Saving...
                       </span>
+                    ) : hasChanges ? (
+                      <span className="flex items-center gap-2 text-yellow-600 dark:text-yellow-500 font-medium">
+                        <AlertTriangle className="h-4 w-4" />
+                        Unsaved changes
+                      </span>
                     ) : chapter.lastSaved ? (
-                      <span className="flex items-center gap-2">
+                      <span className="flex items-center gap-2 text-muted-foreground">
                         <Clock className="h-4 w-4" />
                         Saved at {new Date(chapter.lastSaved).toLocaleTimeString()}
                       </span>
-                    ) : (
-                      <span className="flex items-center gap-2">
-                        <Clock className="h-4 w-4" />
-                        Unsaved changes
-                      </span>
-                    )}
+                    ) : null}
                   </div>
 
                   <div className="flex flex-col gap-2">

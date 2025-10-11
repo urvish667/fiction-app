@@ -31,11 +31,9 @@ export function ChapterContent({
     setIsHydrated(true)
   }, [])
 
-  // Check if ads should be shown (not for mature content or fanfiction)
-  const genreString = typeof story.genre === 'object' && story.genre !== null
-    ? (story.genre as {name: string}).name
-    : (typeof story.genre === 'string' ? story.genre : '')
-  const shouldShowAds = !story.isMature && genreString.toLowerCase() !== 'fanfiction'
+  // Check if ads should be shown (only for original and non-mature stories)
+  // Don't show ads if story is fanfiction (not original) or mature
+  const shouldShowAds = story.isOriginal && !story.isMature
 
   // Function to split content for ad placement
   const splitContentForAds = (content: string, parts: number, partIndex: number): string => {

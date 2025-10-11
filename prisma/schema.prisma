@@ -157,6 +157,7 @@ model Story {
   description     String?
   coverImage      String?
   isMature        Boolean               @default(false)
+  isOriginal      Boolean               @default(false)
   status          String                @default("ongoing")
   wordCount       Int                   @default(0)
   readCount       Int                   @default(0)

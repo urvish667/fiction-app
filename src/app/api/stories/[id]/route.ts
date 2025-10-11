@@ -19,6 +19,7 @@ const updateStorySchema = z.object({
   genre: z.string().optional().nullable(),
   language: z.string().optional(),
   isMature: z.boolean().optional(),
+  isOriginal: z.boolean().optional(),
   status: z.enum(["draft", "ongoing", "completed"]).optional(),
   license: z.enum(["ALL_RIGHTS_RESERVED", "CC_BY", "CC_BY_SA", "CC_BY_NC", "CC_BY_ND", "CC_BY_NC_SA", "CC_BY_NC_ND", "CC0"]).optional(),
 });

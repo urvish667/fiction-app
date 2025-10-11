@@ -30,7 +30,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { ArrowLeft, Upload, Trash2, AlertCircle, Eye, BookOpen, Plus, FileText, Clock, CheckCircle2, Edit, X, Save, RefreshCw, Info } from "lucide-react"
+import { ArrowLeft, Upload, Trash2, AlertCircle, Eye, BookOpen, Plus, FileText, Clock, CheckCircle2, Edit, X, Save, RefreshCw, Info, AlertTriangle, Check } from "lucide-react"
 import Navbar from "@/components/navbar"
 import { SiteFooter } from "@/components/site-footer"
 import { StoryService } from "@/services/story-service"
@@ -48,6 +48,7 @@ interface StoryFormData {
   genre: string;
   language: string;
   isMature: boolean;
+  isOriginal: boolean;
   coverImage: string;
   status: "draft" | "ongoing" | "completed";
   license: string;
@@ -104,6 +105,7 @@ export default function StoryInfoPage() {
     genre: "",
     language: "English",
     isMature: false,
+    isOriginal: false,
     coverImage: "/placeholder.svg?height=1600&width=900",
     status: "draft",
     license: "ALL_RIGHTS_RESERVED",
@@ -190,6 +192,7 @@ export default function StoryInfoPage() {
         genre: dataToSave.genre || undefined,
         language: dataToSave.language || undefined,
         isMature: dataToSave.isMature,
+        isOriginal: dataToSave.isOriginal,
         status: dataToSave.status || "draft",
         license: dataToSave.license || "ALL_RIGHTS_RESERVED",
       };
@@ -247,12 +250,14 @@ export default function StoryInfoPage() {
       return;
     }
     setStoryData(prev => ({ ...prev, ...update }));
+    // Mark as having unsaved changes
     if (!isInitialLoad.current) {
       setSaveStatus('unsaved');
     }
   }, [chapters.length, toast]);
   const handleTagChange = useCallback((newTags: string[]) => {
     setTags(newTags);
+    // Mark as having unsaved changes
     if (!isInitialLoad.current) {
       setSaveStatus('unsaved');
     }
@@ -268,22 +273,9 @@ export default function StoryInfoPage() {
     });
   }, []);
 
-  // Fetch story tags when editing an existing story
-  useEffect(() => {
-    if (storyData.id) {
-      fetch(`/api/stories/${storyData.id}/tags`)
-        .then(r => r.json())
-        .then(data => {
-          if (Array.isArray(data)) {
-            const tagNames = data.map((t: any) => t.name);
-            setTags(tagNames);
-          }
-        })
-        .catch(error => {
-          logError(error, { context: 'Fetching story tags', storyId: storyData.id });
-        });
-    }
-  }, [storyData.id]);
+  // REMOVED: Duplicate tag fetching
+  // Tags are now loaded directly from the story object in the fetchStory effect below
+  // This prevents race conditions and duplicate API calls
 
   // Tag input normalization & validation
   const addTag = useCallback((raw: string) => {
@@ -342,15 +334,9 @@ export default function StoryInfoPage() {
     validateTags();
   }, [tags, validateTags]);
 
-  // --- Optimized Auto-save Effect ---
-  useEffect(() => {
-    if (saveStatus === 'unsaved' && !isSaving && !justCreatedStory) {
-      const autoSaveTimeout = setTimeout(() => {
-        saveAllStoryData(storyData, tags, false);
-      }, 1500);
-      return () => clearTimeout(autoSaveTimeout);
-    }
-  }, [saveStatus, storyData, tags, isSaving, justCreatedStory, saveAllStoryData]);
+  // --- REMOVED: Auto-save Effect ---
+  // Auto-save has been removed to reduce unnecessary database pings.
+  // Users now manually save using the "Save Changes" button or Ctrl/Cmd+S.
 
   // Load existing story data if editing
   useEffect(() => {
@@ -397,6 +383,7 @@ export default function StoryInfoPage() {
             genre: genreId,
             language: languageId || "English",
             isMature: story.isMature,
+            isOriginal: story.isOriginal || false,
             // Only use the actual coverImage if it exists and is not null/empty
             coverImage: story.coverImage && story.coverImage.trim() !== ""
               ? story.coverImage
@@ -422,6 +409,12 @@ export default function StoryInfoPage() {
             }).filter(Boolean);
             setTags(tagNames);
           }
+          
+          // Mark initial load as complete AFTER loading all data
+          // This prevents the tag loading from triggering "unsaved changes"
+          setTimeout(() => {
+            isInitialLoad.current = false;
+          }, 100);
 
           // Fetch chapters for this story
           fetchChapters(story.id);
@@ -725,10 +718,41 @@ export default function StoryInfoPage() {
     }
   }, [session, sessionStatus, router])
 
-  // Ensure auto-save is enabled after first render, even for new stories
+  // Mark initial load complete after first render (for new stories)
   useEffect(() => {
-    isInitialLoad.current = false;
+    // Only set to false immediately if this is a new story (no ID in URL)
+    const storyId = new URLSearchParams(window.location.search).get("id");
+    if (!storyId) {
+      isInitialLoad.current = false;
+    }
+    // For existing stories, this is set in the fetchStory effect after data loads
   }, []);
+
+  // Add keyboard shortcut for saving (Ctrl/Cmd + S)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        if (saveStatus !== 'saving') {
+          saveAllStoryData(storyData, tags, true);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [saveAllStoryData, storyData, tags, saveStatus]);
+
+  // Warn user about unsaved changes when leaving the page
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (saveStatus === 'unsaved') {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [saveStatus]);
 
   // Show loading state while session is being restored
   if (sessionStatus === "loading") {
@@ -755,37 +779,78 @@ export default function StoryInfoPage() {
         {/* Header with Back button and Auto-save status on the same line */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 mb-8">
           <div className="flex items-center gap-2">
-            <Button variant="ghost" onClick={() => router.push('/works')} className="pl-0 flex items-center gap-2">
+            <Button 
+              variant="ghost" 
+              onClick={() => {
+                if (saveStatus === 'unsaved') {
+                  if (window.confirm('You have unsaved changes. Are you sure you want to leave?')) {
+                    router.push('/works')
+                  }
+                } else {
+                  router.push('/works')
+                }
+              }} 
+              className="pl-0 flex items-center gap-2"
+            >
               <ArrowLeft size={16} />
               Back
             </Button>
           </div>
 
-          <div className="flex flex-wrap items-center gap-4">
-            {/* Auto-save status with single loading animation */}
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              {isActuallySaving && <><RefreshCw size={14} className="animate-spin" /><span>Saving...</span></>}
-              {saveStatus === 'success' && <><CheckCircle2 size={14} className="text-green-500" /><span>All changes saved!</span></>}
-              {saveStatus === 'error' && <><AlertCircle size={14} className="text-destructive" /><span>Save failed.</span></>}
-              {saveStatus === 'unsaved' && lastSaved && <><Clock size={14} /><span>Last saved: {lastSaved.toLocaleTimeString()}</span></>}
+          <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+            {/* Unsaved changes indicator - matching editor style */}
+            {saveStatus === 'unsaved' && (
+              <span className="text-xs sm:text-sm text-yellow-600 dark:text-yellow-500 flex items-center gap-1 font-medium">
+                <AlertTriangle size={14} />
+                <span className="hidden sm:inline">Unsaved changes</span>
+              </span>
+            )}
+
+            {/* Save status messages - matching editor style */}
+            <div className="flex items-center gap-2 text-xs sm:text-sm">
+              {isActuallySaving && (
+                <span className="text-muted-foreground animate-pulse flex items-center gap-1">
+                  <Clock size={14} className="animate-spin" />
+                  <span className="hidden sm:inline">Saving...</span>
+                </span>
+              )}
+              {saveStatus === 'success' && (
+                <span className="text-green-600 dark:text-green-500 flex items-center gap-1">
+                  <Check size={14} />
+                  <span className="hidden sm:inline">Saved</span>
+                </span>
+              )}
+              {saveStatus === 'error' && (
+                <span className="text-destructive flex items-center gap-1">
+                  <AlertCircle size={14} />
+                  <span className="hidden sm:inline">Save failed</span>
+                </span>
+              )}
+              {saveStatus === 'idle' && lastSaved && (
+                <span className="text-muted-foreground flex items-center gap-1">
+                  <Clock size={14} />
+                  <span className="hidden sm:inline">Saved {lastSaved.toLocaleTimeString()}</span>
+                </span>
+              )}
             </div>
 
             {/* Story status badge */}
             {storyData.id && storyData.status !== "draft" && (
-              <div className="px-3 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100 text-xs rounded-full">
-                {storyData.status === "completed" ? "Completed" : "Ongoing"}
-              </div>
+              <span className={`text-xs sm:text-sm flex items-center gap-1 ${storyData.status === "completed" ? "text-green-500" : "text-blue-500"}`}>
+                <BookOpen size={14} />
+                <span className="hidden sm:inline">{storyData.status === "completed" ? "Completed" : "Ongoing"}</span>
+              </span>
             )}
 
-            {/* --- New: Manual Save/Retry Button --- */}
+            {/* Manual Save Button - with text for prominence */}
             <Button 
               onClick={() => saveAllStoryData(storyData, tags, true)}
               disabled={isFormDisabled || isActuallySaving}
-              size="icon"
               variant="outline"
-              className="rounded-full"
+              className="flex items-center gap-2"
             >
-              {saveStatus === 'error' ? <RefreshCw size={16} /> : <Save size={16} />}
+              <Save size={16} />
+              <span>Save</span>
             </Button>
           </div>
         </div>
@@ -1083,6 +1148,48 @@ export default function StoryInfoPage() {
                 </div>
                 {tagError && <div className="text-destructive text-xs mt-1">{tagError}</div>}
                 <div className="text-xs text-muted-foreground mt-1">3–10 tags, lowercase, no duplicates</div>
+              </div>
+
+              {/* Original Story Toggle */}
+              <div className="flex items-center justify-between space-x-2">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="original-story">Original Story</Label>
+                    
+                    {/* Info Tooltip */}
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            className="inline-flex items-center justify-center rounded-full p-1 hover:bg-accent"
+                          >
+                            <Info size={16} className="text-muted-foreground" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs text-sm">
+                          <p className="font-medium mb-1">Original vs Fanfiction</p>
+                          <p>Enable this if your story is original work. Disable for fanfiction. For better story management.</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+
+                  <p className="text-sm text-muted-foreground">
+                    This is an original story (not fanfiction)
+                  </p>
+                </div>
+
+                <div className="relative">
+                  <Switch
+                    id="original-story"
+                    checked={storyData.isOriginal}
+                    onCheckedChange={(checked) =>
+                      handleStateChange({ isOriginal: checked })
+                    }
+                    disabled={isFormDisabled}
+                  />
+                </div>
               </div>
 
               {/* Mature Content Toggle */}

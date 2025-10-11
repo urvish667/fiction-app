@@ -9,6 +9,7 @@ export type Story = {
   genre?: string;
   language: string;
   isMature: boolean;
+  isOriginal: boolean;
   status: string; // "draft", "ongoing", or "completed"
   license: string; // License type
   wordCount: number;
@@ -100,6 +101,7 @@ export type CreateStoryRequest = {
   genre?: string | { connect: { id: string } };
   language?: string | { connect: { id: string } };
   isMature?: boolean;
+  isOriginal?: boolean;
   status?: string; // "draft", "ongoing", or "completed"
   license?: string; // License type
 };

@@ -158,6 +158,7 @@ export default async function StoryInfoPage({ params }: StoryPageProps) {
       genre: story.genre?.name || undefined,
       language: story.language?.name || 'en',
       isMature: story.isMature,
+      isOriginal: story.isOriginal,
       status: story.status,
       license: story.license,
       wordCount: publishedChapters.reduce((total, chapter) => total + chapter.wordCount, 0),

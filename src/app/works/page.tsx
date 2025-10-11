@@ -11,7 +11,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { PenSquare, Eye, BarChart3, MoreVertical, Trash2, Copy, X, Heart, MessageSquare, BookOpen, Loader2, Clock } from "lucide-react"
+import { PenSquare, Eye, BarChart3, MoreVertical, Trash2, X, Heart, MessageSquare, BookOpen, Loader2, Clock } from "lucide-react"
 import StoryCardSkeleton from "@/components/story-card-skeleton"
 import Navbar from "@/components/navbar"
 import { useToast } from "@/hooks/use-toast"
@@ -483,10 +483,6 @@ function WorksContent({ works, searchQuery, isLoading, onDeleteStory }: WorksCon
                         Analytics
                       </DropdownMenuItem>
                     )} */}
-                    <DropdownMenuItem>
-                      <Copy className="h-4 w-4 mr-2" />
-                      Duplicate
-                    </DropdownMenuItem>
                     <DropdownMenuItem
                       className="text-destructive"
                       onClick={() => onDeleteStory({id: work.id, title: work.title})}

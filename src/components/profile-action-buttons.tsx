@@ -150,16 +150,32 @@ export default function ProfileActionButtons({ username, isCurrentUser, author }
 
   return (
     <div className="flex gap-2">
-      {/* Support Button */}
+      {/* Support Button - Icon only on mobile, full button on larger screens */}
       {!isCurrentUser && author.donationMethod && author.donationLink && (
-        <SupportButton
-          authorId={author.id}
-          authorName={author.name}
-          authorUsername={username}
-          donationMethod={author.donationMethod}
-          donationLink={author.donationLink}
-          iconOnly={true}
-        />
+        <>
+          {/* Mobile: Icon only */}
+          <div className="md:hidden">
+            <SupportButton
+              authorId={author.id}
+              authorName={author.name}
+              authorUsername={username}
+              donationMethod={author.donationMethod}
+              donationLink={author.donationLink}
+              iconOnly={true}
+            />
+          </div>
+          {/* Desktop: Full button with text */}
+          <div className="hidden md:block">
+            <SupportButton
+              authorId={author.id}
+              authorName={author.name}
+              authorUsername={username}
+              donationMethod={author.donationMethod}
+              donationLink={author.donationLink}
+              iconOnly={false}
+            />
+          </div>
+        </>
       )}
 
       {/* Don't show follow button for own profile */}

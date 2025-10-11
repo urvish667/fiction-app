@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from 'react'
-import { useCancellableDebounce } from './use-cancellable-debounce'
 import { StoryService } from '@/services/story-service'
 import { Chapter, CreateChapterRequest, UpdateChapterRequest } from '@/types/story'
 import { logError, logInfo, logWarning } from '@/lib/error-logger'
@@ -84,9 +83,8 @@ export function useChapterEditor({
   // State version for tracking changes
   const [stateVersion, setStateVersion] = useState(0)
 
-  // Auto-save backoff mechanism
-  const [autoSaveBackoff, setAutoSaveBackoff] = useState(1500)
-  const [autoSaveFailures, setAutoSaveFailures] = useState(0)
+  // REMOVED: Auto-save backoff mechanism
+  // Auto-save has been removed to reduce unnecessary database pings
 
   // Publishing settings
   const [publishSettings, setPublishSettings] = useState<PublishSettings>({
@@ -94,8 +92,8 @@ export function useChapterEditor({
     publishDate: new Date()
   })
 
-  // Create debounced version of chapter for auto-save with cancellation
-  const [debouncedChapter, cancelPendingDebounce] = useCancellableDebounce(chapter, autoSaveBackoff)
+  // REMOVED: Debounced chapter for auto-save
+  // Auto-save has been removed - users now manually save
 
   // Function to synchronize state with backend after save
   const syncStateWithBackend = (savedChapter: Chapter) => {
@@ -118,11 +116,7 @@ export function useChapterEditor({
     setInitialTitle(chapter.title)
     setInitialIsDraft(savedChapter.status === 'draft')
 
-    // Reset auto-save backoff on successful save
-    if (autoSaveBackoff > 1500) {
-      setAutoSaveBackoff(1500)
-      setAutoSaveFailures(0)
-    }
+    // REMOVED: Auto-save backoff reset
   }
 
   // Load chapter data if editing an existing chapter
@@ -151,6 +145,9 @@ export function useChapterEditor({
         setInitialContent(chapterData.content || "")
         setInitialTitle(chapterData.title)
         setInitialIsDraft(chapterData.status === 'draft')
+        
+        // Reset hasChanges flag when loading existing chapter
+        setHasChanges(false)
 
         // Initialize publish settings
         setPublishSettings(prev => ({
@@ -240,14 +237,16 @@ export function useChapterEditor({
         lastSaved: null, // Mark as unsaved
       }))
 
-      // Always set hasChanges to true when content changes
-      // This ensures auto-save will trigger
+      // Check if content has actually changed from initial state
       const contentChanged = content !== initialContent
       const titleChanged = chapter.title !== initialTitle
 
       if (contentChanged || titleChanged) {
         logInfo('Content or title changed, setting hasChanges', { contentChanged, titleChanged })
         setHasChanges(true)
+      } else {
+        // If we're back to the initial state, mark as no changes
+        setHasChanges(false)
       }
     }
   }
@@ -264,14 +263,16 @@ export function useChapterEditor({
         lastSaved: null, // Mark as unsaved
       }))
 
-      // Always set hasChanges to true when title changes
-      // This ensures auto-save will trigger
+      // Check if title has actually changed from initial state
       const titleChanged = e.target.value !== initialTitle
       const contentChanged = chapter.content !== initialContent
 
       if (titleChanged || contentChanged) {
         logInfo('Title or content changed, setting hasChanges', { titleChanged, contentChanged })
         setHasChanges(true)
+      } else {
+        // If we're back to the initial state, mark as no changes
+        setHasChanges(false)
       }
     }
   }
@@ -291,9 +292,6 @@ export function useChapterEditor({
       }
       return
     }
-
-    // Cancel any pending debounce to prevent race conditions
-    cancelPendingDebounce()
 
     setIsSaving(true)
 
@@ -457,57 +455,9 @@ export function useChapterEditor({
     }
   }
 
-  // Auto-save effect
-  useEffect(() => {
-    // Only auto-save if:
-    // 1. We have a title and content
-    // 2. We're not currently saving
-    // 3. There are changes to save
-    // 4. This is NOT a new chapter OR it's a new chapter that has been saved at least once (has an ID)
-    if (debouncedChapter.title &&
-        debouncedChapter.content &&
-        !isSaving &&
-        hasChanges &&
-        (!isNewChapter || (isNewChapter && chapter.id))) {
-
-      logInfo('Auto-save triggered', {
-        storyId,
-        chapterId: chapter.id,
-        wordCount: chapter.wordCount,
-        backoff: autoSaveBackoff
-      })
-
-      const autoSaveWithBackoff = async () => {
-        try {
-          await saveChapter(false)
-
-          // Reset backoff on success (handled in syncStateWithBackend)
-        } catch (error) {
-          // Increase backoff on failure (max 30 seconds)
-          setAutoSaveFailures(prev => prev + 1)
-          setAutoSaveBackoff(prev => Math.min(prev * 2, 30000))
-
-          logError(error, {
-            context: 'auto-save',
-            attempt: autoSaveFailures + 1,
-            backoff: autoSaveBackoff
-          })
-        }
-      }
-
-      autoSaveWithBackoff()
-    } else {
-      // Debug why auto-save isn't triggering
-      logInfo('Auto-save conditions not met', {
-        hasTitle: Boolean(debouncedChapter.title),
-        hasContent: Boolean(debouncedChapter.content),
-        isSaving,
-        hasChanges,
-        isNewChapter,
-        hasId: Boolean(chapter.id)
-      })
-    }
-  }, [debouncedChapter, hasChanges, isSaving, isNewChapter, chapter.id, storyId, autoSaveBackoff, autoSaveFailures])
+  // REMOVED: Auto-save effect
+  // Auto-save has been removed to reduce unnecessary database pings.
+  // Users now manually save using the "Save Draft" button or Ctrl/Cmd+S keyboard shortcut.
 
   // Log component lifecycle for debugging
   useEffect(() => {

@@ -75,11 +75,13 @@ export default function ChapterEditorPage() {
       // Ctrl/Cmd + S to save
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault()
-        // Use appropriate save method based on chapter status
-        if (chapter.status === "published") {
-          saveChapter(true, false, true) // Update published chapter
-        } else {
-          saveChapter(true, true) // Save as draft
+        if (!isSaving) {
+          // Use appropriate save method based on chapter status
+          if (chapter.status === "published") {
+            saveChapter(true, false, true) // Update published chapter
+          } else {
+            saveChapter(true, true) // Save as draft
+          }
         }
       }
 
@@ -97,7 +99,19 @@ export default function ChapterEditorPage() {
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [saveChapter, showPreview, chapter.status])
+  }, [saveChapter, showPreview, chapter.status, isSaving])
+
+  // Warn user about unsaved changes when leaving the page
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasChanges) {
+        e.preventDefault()
+        e.returnValue = ''
+      }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [hasChanges])
 
   // Load story metadata
   useEffect(() => {

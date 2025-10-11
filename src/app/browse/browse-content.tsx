@@ -122,7 +122,7 @@ export default function BrowseContent({ initialParams, initialData }: BrowseCont
   const [totalStories, setTotalStories] = useState(initialData.pagination.total)
   const storiesPerPage = 16
 
-  const isMobile = useMediaQuery("(max-width: 768px)")
+  const isMobile = useMediaQuery("(max-width: 1024px)")
 
   // Fetch all genres and tags on mount
   useEffect(() => {
