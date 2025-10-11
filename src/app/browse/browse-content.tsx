@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast"
 import { UserSummary } from "@/types/user"
 import { safeDecodeURIComponent } from "@/utils/safe-decode-uri-component"
 import AdBanner from "@/components/ad-banner"
+import { BrowseResult } from "@/lib/server/browse-data"
 
 // Define a type for stories in the browse page
 type BrowseStory = {
@@ -66,14 +67,44 @@ interface BrowseContentProps {
     status?: string
     language?: string
   }
+  initialData: BrowseResult
 }
 
-export default function BrowseContent({ initialParams }: BrowseContentProps) {
+export default function BrowseContent({ initialParams, initialData }: BrowseContentProps) {
   const { toast } = useToast()
   const router = useRouter()
   const pathname = usePathname()
-  const [stories, setStories] = useState<BrowseStory[]>([])
-  const [loading, setLoading] = useState(true)
+  
+  // Transform server-side data to client format
+  const transformServerStory = useCallback((story: BrowseResult['stories'][0]): BrowseStory => {
+    return {
+      id: story.id,
+      title: story.title,
+      author: story.author.username || story.author.name || "Unknown Author",
+      genre: story.genre?.name || "General",
+      language: story.language?.name || "",
+      status: story.status || "ongoing",
+      coverImage: (story.coverImage && story.coverImage.trim() !== "") ? story.coverImage : "/placeholder.svg",
+      excerpt: story.description || undefined,
+      description: story.description || undefined,
+      likeCount: story.likeCount || 0,
+      commentCount: story.commentCount || 0,
+      viewCount: story.viewCount || 0,
+      readTime: Math.ceil((story.wordCount || 0) / 200),
+      date: story.createdAt,
+      createdAt: story.createdAt,
+      updatedAt: story.updatedAt,
+      slug: story.slug,
+      tags: story.tags.map(t => t.tag.name),
+      isMature: story.isMature || false
+    };
+  }, []);
+
+  // Initialize with server-side data
+  const [stories, setStories] = useState<BrowseStory[]>(
+    initialData.stories.map(transformServerStory)
+  )
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState(initialParams.search || "")
   const [allGenres, setAllGenres] = useState<GenreOption[]>([])
@@ -87,8 +118,8 @@ export default function BrowseContent({ initialParams }: BrowseContentProps) {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [showFilters, setShowFilters] = useState(false)
   const [currentPage, setCurrentPage] = useState(parseInt(initialParams.page || "1"))
-  const [totalPages, setTotalPages] = useState(1)
-  const [totalStories, setTotalStories] = useState(0)
+  const [totalPages, setTotalPages] = useState(initialData.pagination.totalPages)
+  const [totalStories, setTotalStories] = useState(initialData.pagination.total)
   const storiesPerPage = 16
 
   const isMobile = useMediaQuery("(max-width: 768px)")

@@ -7,9 +7,16 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: '*',
-        allow: '/',
+        allow: [
+          '/',
+          '/api/images/',
+          '/api/stories',
+          '/api/genres',
+          '/api/tags',
+          '/api/images/stories', // Allow image assets for SEO and Google Image Search
+        ],
         disallow: [
-          '/api/',
+          '/api/', // Block all API routes except images
           '/write',
           '/settings',
           '/dashboard',

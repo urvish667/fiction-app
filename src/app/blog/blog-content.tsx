@@ -17,33 +17,24 @@ const formatString = (str: string) => {
     .join(" ")
 }
 
-export default function BlogContent() {
-  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([])
-  const [filteredPosts, setFilteredPosts] = useState<BlogPost[]>([])
+interface BlogContentProps {
+  initialBlogs: BlogPost[]
+}
+
+export default function BlogContent({ initialBlogs }: BlogContentProps) {
+  // Initialize with server-side data
+  const [blogPosts, setBlogPosts] = useState<BlogPost[]>(initialBlogs)
+  const [filteredPosts, setFilteredPosts] = useState<BlogPost[]>(initialBlogs)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [selectedTag, setSelectedTag] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [currentPage, setCurrentPage] = useState(1)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const postsPerPage = 9
 
-  useEffect(() => {
-    const fetchBlogs = async () => {
-      try {
-        const response = await fetch("/api/blogs")
-        const data = await response.json()
-        setBlogPosts(data)
-        setFilteredPosts(data)
-      } catch (error) {
-        console.error("Failed to fetch blogs:", error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchBlogs()
-  }, [])
+  // No need to fetch on mount - we have server-side data
+  // If you need to refresh data, you can add a refresh function here
 
   // Filter posts based on search, category, and tags
   useEffect(() => {

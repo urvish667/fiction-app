@@ -10,8 +10,8 @@ import {
   generateCategoryWebPageStructuredData
 } from "@/lib/seo/metadata"
 import BrowseContent from "./browse-content"
-import { getAllGenreNames }
-from "@/lib/seo/genre-descriptions"
+import { getAllGenreNames } from "@/lib/seo/genre-descriptions"
+import { fetchBrowseStories } from "@/lib/server/browse-data"
 
 interface BrowsePageProps {
   searchParams: Promise<{
@@ -47,6 +47,9 @@ export async function generateMetadata({ searchParams }: BrowsePageProps): Promi
 
 export default async function BrowsePage({ searchParams }: BrowsePageProps) {
   const params = await searchParams
+
+  // Fetch initial data server-side for SEO and Google indexing
+  const initialData = await fetchBrowseStories(params)
 
   let browseStructuredData: ReturnType<typeof generateBrowseStructuredData>
   const additionalStructuredData: (ReturnType<typeof generateCategoryFAQStructuredData> | ReturnType<typeof generateCategoryWebPageStructuredData>)[] = []
@@ -119,7 +122,7 @@ export default async function BrowsePage({ searchParams }: BrowsePageProps) {
             </div>
           </main>
         }>
-          <BrowseContent initialParams={params} />
+          <BrowseContent initialParams={params} initialData={initialData} />
         </Suspense>
 
         <SiteFooter />

@@ -2,6 +2,22 @@ import { MetadataRoute } from 'next'
 import { prisma } from '@/lib/auth/db-adapter'
 import { generateBrowseSitemapEntries, validateSitemapEntries } from '@/lib/seo/sitemap-utils'
 
+/**
+ * Dynamic sitemap generation for FableSpace
+ * 
+ * Includes:
+ * - Static pages (home, about, contact, privacy, terms, blog, challenges)
+ * - Browse pages with query parameters (server-side rendered for SEO)
+ * - Story and chapter pages (published only)
+ * - Blog posts (published only)
+ * - User profiles (public profiles only)
+ * - Author forums (only those enabled by authors in preferences)
+ * - Tag pages
+ * 
+ * Note: Browse pages with query parameters (e.g., /browse?genre=fantasy) are
+ * server-side rendered with initial data, making them fully crawlable by Google.
+ * The XML entity escaping ensures proper sitemap format while maintaining valid URLs.
+ */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.space'
 
@@ -180,6 +196,47 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.6,
       }))
 
+    // Get users with enabled forums (author forums only)
+    const usersWithForums = await prisma.user.findMany({
+      where: {
+        username: {
+          not: null,
+        },
+        forums: {
+          some: {
+            type: 'AUTHOR'
+          }
+        }
+      },
+      select: {
+        username: true,
+        updatedAt: true,
+        preferences: true,
+      },
+    })
+
+    // Filter users with forum enabled in preferences and generate forum pages
+    const forumPages: MetadataRoute.Sitemap = usersWithForums
+      .filter((user) => {
+        if (!user.username) return false
+
+        // Parse preferences to check if forum is enabled
+        try {
+          const preferences = typeof user.preferences === 'string'
+            ? JSON.parse(user.preferences)
+            : user.preferences
+          return preferences?.privacySettings?.forum === true
+        } catch {
+          return false // Default to disabled if preferences can't be parsed
+        }
+      })
+      .map((user) => ({
+        url: `${baseUrl}/user/${user.username}/forum`,
+        lastModified: user.updatedAt,
+        changeFrequency: 'daily' as const,
+        priority: 0.7,
+      }))
+
     // Generate category and search pages
     const browseSitemapEntries = generateBrowseSitemapEntries()
     const browsePages: MetadataRoute.Sitemap = browseSitemapEntries.map(entry => ({
@@ -190,7 +247,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }))
 
     // Combine all pages and validate/sanitize URLs
-    const allPages = [...staticPages, ...browsePages, ...storyPages, ...chapterPages, ...userPages, ...tagPages, ...blogPages]
+    const allPages = [...staticPages, ...browsePages, ...storyPages, ...chapterPages, ...userPages, ...tagPages, ...blogPages, ...forumPages]
     const validatedPages = validateSitemapEntries(allPages)
     return validatedPages
   } catch (error) {
