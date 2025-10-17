@@ -6,7 +6,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import Providers from "./providers"
 import { Toaster } from "@/components/ui/toaster"
 import Script from "next/script"
-import { GoogleAnalytics } from "nextjs-google-analytics"
+import { Analytics } from "@/components/analytics"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -51,7 +51,7 @@ export default function RootLayout({
         )}
       </head>
       <body className={inter.className}>
-        <GoogleAnalytics trackPageViews gaMeasurementId="G-61LTWJ36ZP"/>
+        <Analytics />
         <Providers>
           <ThemeProvider>
             {children}
