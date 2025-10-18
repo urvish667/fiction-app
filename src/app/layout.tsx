@@ -28,7 +28,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         {/* Google AdSense Account Verification Meta Tag */}
         {process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_ID && (

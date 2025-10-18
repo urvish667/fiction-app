@@ -179,7 +179,7 @@ export async function GET(
     }
 
     // Return chapter with reading progress and content
-    return NextResponse.json({
+    const response = NextResponse.json({
       ...chapter,
       content,
       viewCount: chapterViewCount,
@@ -192,6 +192,12 @@ export async function GET(
       },
       readingProgress: readingProgress?.progress || 0,
     });
+    
+    // Prevent caching to ensure view tracking happens on every request
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    response.headers.set('Pragma', 'no-cache');
+    
+    return response;
   } catch (error) {
     logError(error, { context: 'Fetching chapter' });
     return NextResponse.json(

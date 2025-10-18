@@ -12,7 +12,7 @@ interface MarkdownRendererProps {
 
 const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
   return (
-    <div className="prose sm:prose-lg font-helvetica text-gray-900 max-w-none mb-8 sm:mb-12">
+    <div className="prose sm:prose-lg dark:prose-invert font-helvetica max-w-none mb-8 sm:mb-12">
       <ReactMarkdown 
         rehypePlugins={[rehypeRaw]}
         remarkPlugins={[remarkGfm]}

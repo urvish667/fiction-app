@@ -1,5 +1,12 @@
 import { prisma } from "@/lib/auth/db-adapter";
 import { logError } from "@/lib/error-logger";
+import { logger } from "@/lib/logger";
+import {
+  trackStoryViewRedis,
+  trackChapterViewRedis,
+  getStoryViewCount as getRedisStoryViewCount,
+  getChapterViewCount as getRedisChapterViewCount,
+} from "@/lib/redis/view-tracking";
 
 export class ViewService {
   /**
@@ -22,6 +29,28 @@ export class ViewService {
     }
 
     try {
+      // Try Redis-based view tracking first
+      logger.info(`[ViewService] Attempting to track story view via Redis: ${storyId}, userId: ${userId || 'NOT PROVIDED'}, ip: ${clientInfo?.ip || 'NOT PROVIDED'}`);
+      const redisResult = await trackStoryViewRedis(storyId, userId, clientInfo);
+      
+      if (redisResult.success) {
+        logger.info(`[ViewService] Successfully tracked story view in Redis: ${storyId}, buffered: ${redisResult.bufferedCount}`);
+        
+        // Get the current view count from Redis (includes buffered views)
+        const viewCount = await getRedisStoryViewCount(storyId);
+        
+        // IMPORTANT: When Redis succeeds, we DO NOT create individual view records in DB
+        // This prevents database flooding. Views are aggregated in Redis and synced to readCount periodically.
+        return {
+          view: null, // No individual DB record created
+          isFirstView: redisResult.isFirstView,
+          viewCount,
+        };
+      }
+      
+      // FALLBACK ONLY: If Redis tracking failed completely, fall back to direct database tracking
+      // This creates individual records (legacy behavior) only when Redis is unavailable
+      logger.warn(`[ViewService] Redis tracking failed for story ${storyId}, falling back to database with individual records (legacy mode)`);
       let view;
       let isFirstView = false;
 
@@ -142,6 +171,51 @@ export class ViewService {
     }
 
     try {
+      // Try Redis-based view tracking first
+      logger.info(`[ViewService] Attempting to track chapter view via Redis: ${chapterId}, userId: ${userId || 'NOT PROVIDED'}, ip: ${clientInfo?.ip || 'NOT PROVIDED'}`);
+      const redisResult = await trackChapterViewRedis(chapterId, userId, clientInfo);
+      
+      if (redisResult.success) {
+        logger.info(`[ViewService] Successfully tracked chapter view in Redis: ${chapterId}, buffered: ${redisResult.bufferedCount}`);
+        
+        // Get the chapter to find its story
+        const chapter = await prisma.chapter.findUnique({
+          where: { id: chapterId },
+          select: { storyId: true },
+        });
+        
+        if (!chapter) {
+          throw new Error(`Chapter with ID ${chapterId} not found`);
+        }
+        
+        // Get view counts from Redis
+        const chapterViewCount = await getRedisChapterViewCount(chapterId);
+        const storyViewCount = await getRedisStoryViewCount(chapter.storyId);
+        
+        // Track story view if requested
+        let storyViewResult = null;
+        if (trackStoryView) {
+          try {
+            storyViewResult = await this.trackStoryView(chapter.storyId, userId, clientInfo);
+          } catch (storyViewError) {
+            logError(storyViewError, { context: 'Tracking story view after chapter view', storyId: chapter.storyId, userId });
+          }
+        }
+        
+        // IMPORTANT: When Redis succeeds, we DO NOT create individual view records in DB
+        // This prevents database flooding. Views are aggregated in Redis and synced to readCount periodically.
+        return {
+          view: null, // No individual DB record created
+          isFirstView: redisResult.isFirstView,
+          storyViewResult,
+          chapterViewCount,
+          storyViewCount,
+        };
+      }
+      
+      // FALLBACK ONLY: If Redis tracking failed completely, fall back to direct database tracking
+      // This creates individual records (legacy behavior) only when Redis is unavailable
+      logger.warn(`[ViewService] Redis tracking failed for chapter ${chapterId}, falling back to database with individual records (legacy mode)`);
       let view;
       let storyId: string | null = null;
       let isFirstView = false;

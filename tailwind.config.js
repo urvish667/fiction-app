@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  darkMode: ["class"],
   content: [
     "./src/**/*.{js,ts,jsx,tsx,mdx}",
   ],
@@ -19,45 +20,45 @@ module.exports = {
   			sm: 'calc(var(--radius) - 4px)'
   		},
   		colors: {
-  			background: '#FFFFFF',
-  			foreground: '#000000',
+  			background: 'hsl(var(--background))',
+  			foreground: 'hsl(var(--foreground))',
   			card: {
-  				DEFAULT: '#FFFFFF',
-  				foreground: '#000000'
+  				DEFAULT: 'hsl(var(--card))',
+  				foreground: 'hsl(var(--card-foreground))'
   			},
   			popover: {
-  				DEFAULT: '#FFFFFF',
-  				foreground: '#000000'
+  				DEFAULT: 'hsl(var(--popover))',
+  				foreground: 'hsl(var(--popover-foreground))'
   			},
   			primary: {
-  				DEFAULT: '#1E90FF',
-  				foreground: '#FFFFFF'
+  				DEFAULT: 'hsl(var(--primary))',
+  				foreground: 'hsl(var(--primary-foreground))'
   			},
   			secondary: {
-  				DEFAULT: '#F0F8FF',
-  				foreground: '#000000'
+  				DEFAULT: 'hsl(var(--secondary))',
+  				foreground: 'hsl(var(--secondary-foreground))'
   			},
   			muted: {
-  				DEFAULT: '#E5E5E5',
-  				foreground: '#4B5563'
+  				DEFAULT: 'hsl(var(--muted))',
+  				foreground: 'hsl(var(--muted-foreground))'
   			},
   			accent: {
-  				DEFAULT: '#1E90FF',
-  				foreground: '#FFFFFF'
+  				DEFAULT: 'hsl(var(--accent))',
+  				foreground: 'hsl(var(--accent-foreground))'
   			},
   			destructive: {
-  				DEFAULT: '#FF453A',
-  				foreground: '#FFFFFF'
+  				DEFAULT: 'hsl(var(--destructive))',
+  				foreground: 'hsl(var(--destructive-foreground))'
   			},
-  			border: '#D1D5DB',
-  			input: '#E5E5E5',
-  			ring: '#1E90FF',
+  			border: 'hsl(var(--border))',
+  			input: 'hsl(var(--input))',
+  			ring: 'hsl(var(--ring))',
   			chart: {
-  				'1': '#1E90FF',
-  				'2': '#4169E1',
-  				'3': '#00BFFF',
-  				'4': '#87CEEB',
-  				'5': '#B0E0E6'
+  				'1': 'hsl(var(--chart-1))',
+  				'2': 'hsl(var(--chart-2))',
+  				'3': 'hsl(var(--chart-3))',
+  				'4': 'hsl(var(--chart-4))',
+  				'5': 'hsl(var(--chart-5))'
   			}
   		},
 		fontFamily: {

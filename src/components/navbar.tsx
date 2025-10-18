@@ -106,21 +106,31 @@ export default function Navbar() {
           {isAuthenticated && userWithAvatar ? (
             <UserAvatarMenu user={userWithAvatar} onLogout={handleLogout} />
           ) : (
-            <Button asChild>
-              <Link href="/login">Login / Signup</Link>
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" asChild>
+                <Link href="/login">Login</Link>
+              </Button>
+              <Button asChild>
+                <Link href="/signup">Sign Up</Link>
+              </Button>
+            </div>
           )}
         </div>
 
         {/* Mobile Navigation */}
         <div className="md:hidden flex items-center space-x-1 ml-auto">
-          {/* Show user avatar on mobile if authenticated, otherwise show login button */}
+          {/* Show user avatar on mobile if authenticated, otherwise show login/signup buttons */}
           {isAuthenticated && userWithAvatar ? (
             <UserAvatarMenu user={userWithAvatar} onLogout={handleLogout} />
           ) : (
-            <Button size="sm" asChild>
-              <Link href="/login">Login</Link>
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button size="sm" variant="ghost" asChild>
+                <Link href="/login">Login</Link>
+              </Button>
+              <Button size="sm" asChild>
+                <Link href="/signup">Sign Up</Link>
+              </Button>
+            </div>
           )}
 
           <Sheet>
@@ -132,12 +142,22 @@ export default function Navbar() {
             </SheetTrigger>
             <SheetContent side="right">
               <div className="flex flex-col gap-6 py-6">
-                <Link href="/" className="text-lg font-medium">
+                <Link href="/" className="text-lg font-medium hover:text-primary transition-colors">
                   Home
                 </Link>
-                <Link href="/browse" className="text-lg font-medium">
+                <Link href="/browse" className="text-lg font-medium hover:text-primary transition-colors">
                   Browse
                 </Link>
+                {!isAuthenticated && (
+                  <>
+                    <Link href="/login" className="text-lg font-medium hover:text-primary transition-colors">
+                      Login
+                    </Link>
+                    <Link href="/signup" className="text-lg font-medium hover:text-primary transition-colors">
+                      Sign Up
+                    </Link>
+                  </>
+                )}
               </div>
             </SheetContent>
           </Sheet>

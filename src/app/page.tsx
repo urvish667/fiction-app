@@ -5,15 +5,7 @@ import Navbar from "@/components/navbar"
 import { SiteFooter } from "@/components/site-footer"
 import { generateHomepageMetadata, generateHomepageStructuredData, generateOrganizationStructuredData } from "@/lib/seo/metadata"
 import MostViewedStories from "@/components/most-viewed-stories"
-
-function slugify(text:String) {
-  return text
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, '')  // remove punctuation
-    .replace(/\s+/g, '-')      // replace spaces with -
-    .replace(/-+/g, '-');      // collapse multiple dashes
-}
+import { slugify } from "@/lib/utils"
 
 // Generate metadata for SEO
 export async function generateMetadata(): Promise<Metadata> {

@@ -20,7 +20,8 @@ export const securityHeaders = {
     "https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net " +
     "https://tpc.googlesyndication.com https://securepubads.g.doubleclick.net " +
     "*.adtrafficquality.google *.googlesyndication.com *.googleadservices.com *.doubleclick.net " +
-    "fundingchoicesmessages.google.com https://ads.fablespace.space;" +
+    "fundingchoicesmessages.google.com https://ads.fablespace.space " +
+    "https://static.cloudflareinsights.com;" +
   "fenced-frame-src 'self' blob: data: " +
     "https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com " +
     "https://*.googleadservices.com https://*.ezoic.net https://*.ezodn.com https://*.ezojs.com " +
@@ -36,6 +37,7 @@ export const securityHeaders = {
     "https://api.stripe.com https://api.paypal.com https://www.sandbox.paypal.com " +
     "https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net " +
     "https://tpc.googlesyndication.com https://securepubads.g.doubleclick.net " +
+    "https://www.google-analytics.com " +
     "*.google.com *.googlesyndication.com *.googleadservices.com *.adtrafficquality.google " +
     "*.adsterra.com *.pop.adsterra.com *.profitableratecpm.com *.highperformanceformat.com professionaltrafficmonitor.com; " +
   "frame-src 'self' https://www.youtube.com https://www.facebook.com https://connect.facebook.net " +

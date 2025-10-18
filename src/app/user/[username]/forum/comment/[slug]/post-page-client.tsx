@@ -313,7 +313,7 @@ export default function PostPageClient({ post, user, forumRules, isOwner, curren
             </CardHeader>
             <CardContent>
               <h1 className="text-2xl font-bold mb-4">{post.title}</h1>
-              <div className="text-sm mb-4 prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: post.content }} />
+              <div className="text-sm mb-4 prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: post.content }} />
             </CardContent>
           </Card>
 
@@ -419,7 +419,7 @@ export default function PostPageClient({ post, user, forumRules, isOwner, curren
                               </div>
                             </div>
                           ) : (
-                            <p className="text-sm mt-1">{comment.content}</p>
+                            <p className="text-sm mt-1 text-foreground">{comment.content}</p>
                           )}
                         </div>
                         <p className="text-xs text-muted-foreground mt-1 ml-3">

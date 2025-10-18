@@ -46,7 +46,9 @@ export const StoryService = {
     }
 
     const baseUrl = getBaseUrl();
-    const response = await fetch(`${baseUrl}/api/stories?${queryParams.toString()}`);
+    const response = await fetch(`${baseUrl}/api/stories?${queryParams.toString()}`, {
+      credentials: 'include',
+    });
 
     if (!response.ok) {
       const error = await response.json();
@@ -61,7 +63,9 @@ export const StoryService = {
    */
   async getStory(id: string): Promise<StoryResponse> {
     const baseUrl = getBaseUrl();
-    const response = await fetch(`${baseUrl}/api/stories/${id}`);
+    const response = await fetch(`${baseUrl}/api/stories/${id}`, {
+      credentials: 'include',
+    });
 
     if (!response.ok) {
       const error = await response.json();
@@ -78,7 +82,9 @@ export const StoryService = {
     try {
       // First, try to find stories with exact slug match
       const baseUrl = getBaseUrl();
-      const response = await fetch(`${baseUrl}/api/stories/by-slug/${slug}`);
+      const response = await fetch(`${baseUrl}/api/stories/by-slug/${slug}`, {
+        credentials: 'include', // Include cookies for session
+      });
 
       if (!response.ok) {
         // If the dedicated endpoint fails, fall back to search
@@ -197,7 +203,9 @@ export const StoryService = {
    */
   async getChapters(storyId: string): Promise<ChapterResponse[]> {
     const baseUrl = getBaseUrl();
-    const response = await fetch(`${baseUrl}/api/stories/${storyId}/chapters`);
+    const response = await fetch(`${baseUrl}/api/stories/${storyId}/chapters`, {
+      credentials: 'include',
+    });
 
     if (!response.ok) {
       const error = await response.json();
@@ -212,7 +220,9 @@ export const StoryService = {
    */
   async getChapter(storyId: string, chapterId: string): Promise<ChapterResponse> {
     const baseUrl = getBaseUrl();
-    const response = await fetch(`${baseUrl}/api/stories/${storyId}/chapters/${chapterId}`);
+    const response = await fetch(`${baseUrl}/api/stories/${storyId}/chapters/${chapterId}`, {
+      credentials: 'include',
+    });
 
     if (!response.ok) {
       const error = await response.json();
@@ -487,7 +497,9 @@ export const StoryService = {
     }
 
     const baseUrl = getBaseUrl();
-    const response = await fetch(`${baseUrl}/api/user/bookmarks?${queryParams.toString()}`);
+    const response = await fetch(`${baseUrl}/api/user/bookmarks?${queryParams.toString()}`, {
+      credentials: 'include',
+    });
 
     if (!response.ok) {
       const error = await response.json();
@@ -541,7 +553,9 @@ export const StoryService = {
   async isFollowingUser(username: string): Promise<boolean> {
     try {
       const baseUrl = getBaseUrl();
-      const response = await fetch(`${baseUrl}/api/user/${username}/follow/status`);
+      const response = await fetch(`${baseUrl}/api/user/${username}/follow/status`, {
+        credentials: 'include',
+      });
 
       if (!response.ok) {
         return false;
@@ -573,7 +587,9 @@ export const StoryService = {
     }
 
     const baseUrl = getBaseUrl();
-    const response = await fetch(`${baseUrl}/api/user/${username}/followers?${queryParams.toString()}`);
+    const response = await fetch(`${baseUrl}/api/user/${username}/followers?${queryParams.toString()}`, {
+      credentials: 'include',
+    });
 
     if (!response.ok) {
       const error = await response.json();
@@ -601,7 +617,9 @@ export const StoryService = {
     }
 
     const baseUrl = getBaseUrl();
-    const response = await fetch(`${baseUrl}/api/user/${username}/following?${queryParams.toString()}`);
+    const response = await fetch(`${baseUrl}/api/user/${username}/following?${queryParams.toString()}`, {
+      credentials: 'include',
+    });
 
     if (!response.ok) {
       const error = await response.json();

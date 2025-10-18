@@ -2,20 +2,13 @@
  * Utility functions for generating SEO-optimized sitemap entries
  */
 
+import { slugify } from '@/lib/utils'
+
 export interface SitemapEntry {
   url: string
   lastModified?: Date
   changeFrequency?: 'always' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'never'
   priority?: number
-}
-
-function slugify(text:String) {
-  return text
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, '')  // remove punctuation
-    .replace(/\s+/g, '-')      // replace spaces with -
-    .replace(/-+/g, '-');      // collapse multiple dashes
 }
 
 /**

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { signOut } from "next-auth/react"
+import { useTheme } from "next-themes"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -12,10 +13,13 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { BookMarked, PenSquare, Bell, Settings, LogOut, Home, LayoutDashboard, FileEdit } from "lucide-react"
+import { BookMarked, PenSquare, Bell, Settings, LogOut, Home, LayoutDashboard, FileEdit, Moon, Sun, Monitor } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { logError, logInfo } from "@/lib/error-logger"
 
@@ -32,6 +36,7 @@ interface UserAvatarMenuProps {
 
 export default function UserAvatarMenu({ user, onLogout }: UserAvatarMenuProps) {
   const router = useRouter()
+  const { theme, setTheme } = useTheme()
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [isPulsing, setIsPulsing] = useState(false)
 
@@ -174,6 +179,33 @@ export default function UserAvatarMenu({ user, onLogout }: UserAvatarMenuProps) 
             </DropdownMenuItem>
           ))}
         </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger className="cursor-pointer">
+            {theme === "dark" ? (
+              <Moon className="mr-2 h-4 w-4" />
+            ) : theme === "light" ? (
+              <Sun className="mr-2 h-4 w-4" />
+            ) : (
+              <Monitor className="mr-2 h-4 w-4" />
+            )}
+            <span>Theme</span>
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent>
+            <DropdownMenuItem onClick={() => setTheme("light")} className="cursor-pointer">
+              <Sun className="mr-2 h-4 w-4" />
+              <span>Light</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setTheme("dark")} className="cursor-pointer">
+              <Moon className="mr-2 h-4 w-4" />
+              <span>Dark</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setTheme("system")} className="cursor-pointer">
+              <Monitor className="mr-2 h-4 w-4" />
+              <span>System</span>
+            </DropdownMenuItem>
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
         <DropdownMenuSeparator />
         <DropdownMenuItem disabled={isLoggingOut} onSelect={handleLogout} className="text-destructive focus:text-destructive cursor-pointer">
           <LogOut className="mr-2 h-4 w-4" />

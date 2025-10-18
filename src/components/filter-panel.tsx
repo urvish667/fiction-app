@@ -242,7 +242,7 @@ export default function FilterPanel({
   }
 
   return (
-    <div className="bg-card rounded-lg border p-4 mb-6 md:mb-0">
+    <div className="bg-card rounded-lg border p-4 mb-6 md:mb-0 dark:border-border/40 dark:shadow-md">
       <div className="flex justify-between items-center mb-4">
         <h3 className="font-semibold">Filters</h3>
         {(selectedGenres.length > 0 || selectedTags.length > 0 || selectedLanguage || storyStatus !== "all" || sortBy !== "newest") && (

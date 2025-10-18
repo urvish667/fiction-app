@@ -107,11 +107,12 @@ export async function middleware(request: NextRequest) {
   }
 
   // Apply CSRF protection for non-GET requests to API routes
-  // Exclude NextAuth routes, webhooks, scheduled tasks, CSRF setup, and recommendation generation from CSRF protection
+  // Exclude NextAuth routes, webhooks, scheduled tasks, cron jobs, CSRF setup, and recommendation generation from CSRF protection
   if (pathname.startsWith('/api/') &&
       !pathname.startsWith('/api/auth/') &&
       !pathname.startsWith('/api/webhooks/') &&
       !pathname.startsWith('/api/scheduled-tasks') &&
+      !pathname.startsWith('/api/cron/') && // Exclude cron endpoints (use API key auth)
       !pathname.startsWith('/api/recommendations/generate') &&
       !pathname.startsWith('/api/report') &&
       !pathname.startsWith('/api/csrf/') && // Exclude CSRF setup endpoint

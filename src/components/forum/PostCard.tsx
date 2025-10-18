@@ -218,7 +218,7 @@ export default function PostCard({ post, forumOwnerUsername, isExpanded, onToggl
           <h2 className="text-lg font-semibold mb-3 cursor-pointer hover:text-primary transition-colors">{post.title}</h2>
         </Link>
         {post.content && post.content.trim() ? (
-          <div className="text-sm mb-4 prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: truncateContent(post.content) }} />
+          <div className="text-sm mb-4 prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: truncateContent(post.content) }} />
         ) : (
           <div className="text-sm mb-4 text-muted-foreground italic">
             [Content not available]

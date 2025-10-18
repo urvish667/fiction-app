@@ -3,7 +3,6 @@ import { notFound } from "next/navigation"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 import { prisma } from "@/lib/auth/db-adapter"
-import { StoryService } from "@/services/story-service"
 import { ViewService } from "@/services/view-service"
 import { calculateStoryStatus } from "@/lib/story-helpers"
 import { generateStoryMetadata, generateStoryStructuredData, generateStoryBreadcrumbStructuredData } from "@/lib/seo/metadata"
@@ -23,24 +22,83 @@ interface StoryPageProps {
 export async function generateMetadata({ params }: StoryPageProps): Promise<Metadata> {
   try {
     const { slug } = await params
-    const story = await StoryService.getStoryBySlug(slug)
+    
+    // Query database directly instead of using API route to avoid session/cookie issues during SSR
+    const story = await prisma.story.findUnique({
+      where: { slug },
+      include: {
+        author: {
+          select: {
+            id: true,
+            name: true,
+            username: true,
+            image: true,
+          },
+        },
+        genre: true,
+        language: true,
+        tags: {
+          include: {
+            tag: true
+          }
+        },
+        _count: {
+          select: {
+            likes: true,
+            comments: true,
+            bookmarks: true,
+            chapters: true,
+          },
+        },
+      },
+    });
+    
     if (!story) {
       return {
         title: "Story Not Found - FableSpace",
         description: "The story you're looking for could not be found."
       }
     }
-    // Extract tags from the story (handle both array of objects and strings)
-    let tags: string[] = [];
-    if (Array.isArray(story.tags)) {
-      tags = story.tags.map((tag: any) => {
-        if (tag && typeof tag === 'object' && tag.name) return tag.name;
-        if (typeof tag === 'string') return tag;
-        if (tag && tag.tag && tag.tag.name) return tag.tag.name;
-        return '';
-      }).filter(Boolean);
-    }
-    return generateStoryMetadata(story, tags)
+    
+    // Format story for metadata generation
+    const formattedStory: StoryResponse = {
+      id: story.id,
+      title: story.title,
+      slug: story.slug,
+      description: story.description || undefined,
+      coverImage: story.coverImage || undefined,
+      genre: story.genre?.name || undefined,
+      language: story.language?.name || 'en',
+      isMature: story.isMature,
+      isOriginal: story.isOriginal,
+      status: story.status,
+      license: story.license,
+      wordCount: story.wordCount,
+      readCount: story.readCount,
+      authorId: story.authorId,
+      createdAt: story.createdAt,
+      updatedAt: story.updatedAt,
+      viewCount: 0, // Not needed for metadata
+      author: story.author ? {
+        id: story.author.id,
+        name: story.author.name || undefined,
+        username: story.author.username || undefined,
+        image: story.author.image || undefined,
+      } : undefined,
+      likeCount: story._count.likes,
+      commentCount: story._count.comments,
+      bookmarkCount: story._count.bookmarks,
+      chapterCount: story._count.chapters,
+      isLiked: false,
+      isBookmarked: false,
+    };
+    
+    // Extract tags from the story
+    const tags = Array.isArray(story.tags)
+      ? story.tags.map(storyTag => storyTag.tag?.name || '').filter(Boolean)
+      : [];
+    
+    return generateStoryMetadata(formattedStory, tags)
   } catch (error) {
     return {
       title: "Story Not Found - FableSpace",
@@ -140,13 +198,21 @@ export default async function StoryInfoPage({ params }: StoryPageProps) {
       logError(viewCountError, { context: 'Getting combined view count', storyId: story.id });
     }
 
-    // Fetch chapters for this story
-    const chaptersData = await StoryService.getChapters(story.id)
+    // Fetch chapters for this story directly from database
+    const chaptersData = await prisma.chapter.findMany({
+      where: { storyId: story.id },
+      orderBy: { number: 'asc' },
+    });
 
     // Always filter out draft and scheduled chapters for the public story page
+    // Cast to Chapter type to satisfy TypeScript's strict union type for status
     const publishedChapters = chaptersData.filter(chapter =>
       chapter.status === 'published'
-    );
+    ).map(chapter => ({
+      ...chapter,
+      status: chapter.status as 'draft' | 'scheduled' | 'published',
+      publishDate: chapter.publishDate || undefined,
+    })) as Chapter[];
 
     // Create a properly formatted story response
     const formattedStory: StoryResponse = {
