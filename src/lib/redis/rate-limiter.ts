@@ -25,6 +25,7 @@ export interface RateLimitResult {
   remaining: number;
   reset: number; // Unix timestamp in seconds
   retryAfter?: number; // Seconds until retry
+  backoffFactor?: number; // Progressive backoff multiplier (optional)
 }
 
 /**

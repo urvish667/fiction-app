@@ -6,8 +6,42 @@ import { csrfProtection } from '@/lib/security/csrf';
 import { applySecurityHeaders } from '@/lib/security/headers';
 import { safeDecodeURIComponent } from '@/utils/safe-decode-uri-component';
 
-// Note: In Edge Runtime, we can't use Redis directly
-// The rate limiting will fall back to in-memory storage
+// Note: Middleware runs in Edge Runtime by default
+// The security rate limiter automatically uses in-memory storage in Edge Runtime
+// In Node.js API routes, it can use Redis if available
+
+// Helper function to calculate retry time
+function getRetryAfter(result: { reset: number; backoffFactor?: number }): number {
+  const baseRetry = Math.ceil((result.reset * 1000 - Date.now()) / 1000);
+  return result.backoffFactor ? baseRetry * result.backoffFactor : baseRetry;
+}
+
+// Helper function to generate rate limit error response
+function createRateLimitResponse(
+  result: { limit: number; remaining: number; reset: number; backoffFactor?: number },
+  error: string,
+  message: string
+): NextResponse {
+  const retryAfter = getRetryAfter(result);
+  return new NextResponse(
+    JSON.stringify({
+      error,
+      message,
+      code: 'RATE_LIMIT_EXCEEDED',
+      retryAfter,
+    }),
+    {
+      status: 429,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-RateLimit-Limit': result.limit.toString(),
+        'X-RateLimit-Remaining': result.remaining.toString(),
+        'X-RateLimit-Reset': result.reset.toString(),
+        'Retry-After': retryAfter.toString(),
+      },
+    }
+  );
+}
 
 // Protected routes that require authentication
 const protectedRoutes = [
@@ -134,33 +168,16 @@ export async function middleware(request: NextRequest) {
 
   // Apply higher rate limits for editor endpoints (for autosave functionality)
   if (isEditorEndpoint) {
-    // Use editor-specific rate limit config
     const result = await rateLimit(request, {
       ...rateLimitConfigs.editor,
-      includeUserContext: true, // Include user context for more accurate limiting
+      includeUserContext: true,
     });
 
     if (!result.success) {
-      // Rate limit response is handled by the rateLimit function
-      return new NextResponse(
-        JSON.stringify({
-          error: 'Too many editor requests',
-          message: 'You have exceeded the rate limit for editor operations. Please try again later.',
-          code: 'RATE_LIMIT_EXCEEDED',
-          retryAfter: result.backoffFactor ? Math.ceil((result.reset * 1000 - Date.now()) / 1000) * result.backoffFactor : Math.ceil((result.reset * 1000 - Date.now()) / 1000),
-        }),
-        {
-          status: 429,
-          headers: {
-            'Content-Type': 'application/json',
-            'X-RateLimit-Limit': result.limit.toString(),
-            'X-RateLimit-Remaining': result.remaining.toString(),
-            'X-RateLimit-Reset': result.reset.toString(),
-            'Retry-After': result.backoffFactor ?
-              (Math.ceil((result.reset * 1000 - Date.now()) / 1000) * result.backoffFactor).toString() :
-              Math.ceil((result.reset * 1000 - Date.now()) / 1000).toString(),
-          },
-        }
+      return createRateLimitResponse(
+        result,
+        'Too many editor requests',
+        'You have exceeded the rate limit for editor operations. Please try again later.'
       );
     }
   }
@@ -170,87 +187,38 @@ export async function middleware(request: NextRequest) {
     if (pathname.includes('/signin/credentials')) {
       const result = await rateLimit(request, {
         ...rateLimitConfigs.credentialAuth,
-        includeUserContext: false, // Don't include user context for login attempts
+        includeUserContext: false,
       });
 
       if (!result.success) {
-        return new NextResponse(
-          JSON.stringify({
-            error: 'Too many login attempts',
-            message: 'Please try again later',
-            code: 'RATE_LIMIT_EXCEEDED',
-            retryAfter: result.backoffFactor ? Math.ceil((result.reset * 1000 - Date.now()) / 1000) * result.backoffFactor : Math.ceil((result.reset * 1000 - Date.now()) / 1000),
-          }),
-          {
-            status: 429,
-            headers: {
-              'Content-Type': 'application/json',
-              'X-RateLimit-Limit': result.limit.toString(),
-              'X-RateLimit-Remaining': result.remaining.toString(),
-              'X-RateLimit-Reset': result.reset.toString(),
-              'Retry-After': result.backoffFactor ?
-                (Math.ceil((result.reset * 1000 - Date.now()) / 1000) * result.backoffFactor).toString() :
-                Math.ceil((result.reset * 1000 - Date.now()) / 1000).toString(),
-            },
-          }
+        return createRateLimitResponse(
+          result,
+          'Too many login attempts',
+          'Please try again later'
         );
       }
     }
     // Less strict rate limiting for OAuth signin
     else if (pathname.includes('/signin/google') || pathname.includes('/signin/twitter')) {
-      const result = await rateLimit(request, {
-        ...rateLimitConfigs.oauthAuth,
-      });
+      const result = await rateLimit(request, rateLimitConfigs.oauthAuth);
 
       if (!result.success) {
-        return new NextResponse(
-          JSON.stringify({
-            error: 'Too many login attempts',
-            message: 'Please try again later',
-            code: 'RATE_LIMIT_EXCEEDED',
-            retryAfter: result.backoffFactor ? Math.ceil((result.reset * 1000 - Date.now()) / 1000) * result.backoffFactor : Math.ceil((result.reset * 1000 - Date.now()) / 1000),
-          }),
-          {
-            status: 429,
-            headers: {
-              'Content-Type': 'application/json',
-              'X-RateLimit-Limit': result.limit.toString(),
-              'X-RateLimit-Remaining': result.remaining.toString(),
-              'X-RateLimit-Reset': result.reset.toString(),
-              'Retry-After': result.backoffFactor ?
-                (Math.ceil((result.reset * 1000 - Date.now()) / 1000) * result.backoffFactor).toString() :
-                Math.ceil((result.reset * 1000 - Date.now()) / 1000).toString(),
-            },
-          }
+        return createRateLimitResponse(
+          result,
+          'Too many login attempts',
+          'Please try again later'
         );
       }
     }
     // General auth endpoints
     else if (pathname.startsWith('/api/auth')) {
-      const result = await rateLimit(request, {
-        ...rateLimitConfigs.auth,
-      });
+      const result = await rateLimit(request, rateLimitConfigs.auth);
 
       if (!result.success) {
-        return new NextResponse(
-          JSON.stringify({
-            error: 'Too many requests',
-            message: 'Please try again later',
-            code: 'RATE_LIMIT_EXCEEDED',
-            retryAfter: result.backoffFactor ? Math.ceil((result.reset * 1000 - Date.now()) / 1000) * result.backoffFactor : Math.ceil((result.reset * 1000 - Date.now()) / 1000),
-          }),
-          {
-            status: 429,
-            headers: {
-              'Content-Type': 'application/json',
-              'X-RateLimit-Limit': result.limit.toString(),
-              'X-RateLimit-Remaining': result.remaining.toString(),
-              'X-RateLimit-Reset': result.reset.toString(),
-              'Retry-After': result.backoffFactor ?
-                (Math.ceil((result.reset * 1000 - Date.now()) / 1000) * result.backoffFactor).toString() :
-                Math.ceil((result.reset * 1000 - Date.now()) / 1000).toString(),
-            },
-          }
+        return createRateLimitResponse(
+          result,
+          'Too many requests',
+          'Please try again later'
         );
       }
     }
@@ -259,29 +227,14 @@ export async function middleware(request: NextRequest) {
   else if (isForumPostEndpoint) {
     const result = await rateLimit(request, {
       ...rateLimitConfigs.forumPosts,
-      includeUserContext: true, // Rate limit per user for forum posts
+      includeUserContext: true,
     });
 
     if (!result.success) {
-      return new NextResponse(
-        JSON.stringify({
-          error: 'Too many forum posts',
-          message: 'You can only create up to 3 posts per minute. Please try again later.',
-          code: 'RATE_LIMIT_EXCEEDED',
-          retryAfter: result.backoffFactor ? Math.ceil((result.reset * 1000 - Date.now()) / 1000) * result.backoffFactor : Math.ceil((result.reset * 1000 - Date.now()) / 1000),
-        }),
-        {
-          status: 429,
-          headers: {
-            'Content-Type': 'application/json',
-            'X-RateLimit-Limit': result.limit.toString(),
-            'X-RateLimit-Remaining': result.remaining.toString(),
-            'X-RateLimit-Reset': result.reset.toString(),
-            'Retry-After': result.backoffFactor ?
-              (Math.ceil((result.reset * 1000 - Date.now()) / 1000) * result.backoffFactor).toString() :
-              Math.ceil((result.reset * 1000 - Date.now()) / 1000).toString(),
-          },
-        }
+      return createRateLimitResponse(
+        result,
+        'Too many forum posts',
+        'You can only create up to 3 posts per minute. Please try again later.'
       );
     }
   }
@@ -290,29 +243,14 @@ export async function middleware(request: NextRequest) {
   else if (pathname.startsWith('/api/')) {
     const result = await rateLimit(request, {
       ...rateLimitConfigs.default,
-      includeUserContext: true, // Include user context for more accurate limiting
+      includeUserContext: true,
     });
 
     if (!result.success) {
-      return new NextResponse(
-        JSON.stringify({
-          error: 'Too many requests',
-          message: 'Rate limit exceeded. Please try again later.',
-          code: 'RATE_LIMIT_EXCEEDED',
-          retryAfter: result.backoffFactor ? Math.ceil((result.reset * 1000 - Date.now()) / 1000) * result.backoffFactor : Math.ceil((result.reset * 1000 - Date.now()) / 1000),
-        }),
-        {
-          status: 429,
-          headers: {
-            'Content-Type': 'application/json',
-            'X-RateLimit-Limit': result.limit.toString(),
-            'X-RateLimit-Remaining': result.remaining.toString(),
-            'X-RateLimit-Reset': result.reset.toString(),
-            'Retry-After': result.backoffFactor ?
-              (Math.ceil((result.reset * 1000 - Date.now()) / 1000) * result.backoffFactor).toString() :
-              Math.ceil((result.reset * 1000 - Date.now()) / 1000).toString(),
-          },
-        }
+      return createRateLimitResponse(
+        result,
+        'Too many requests',
+        'Rate limit exceeded. Please try again later.'
       );
     }
   }

@@ -1,0 +1,39 @@
+name: Redis View Sync Job
+
+on:
+  schedule:
+    # Run every 12 hours at 2 AM and 2 PM UTC
+    - cron: '0 2,14 * * *'
+  
+  workflow_dispatch:  # Allow manual triggers
+
+jobs:
+  sync-views:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Trigger Redis View Sync
+        run: |
+          response=$(curl -X POST "${{ secrets.CRON_ENDPOINT_URL }}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -w "\nHTTP_STATUS:%{http_code}" \
+            -s)
+          
+          http_status=$(echo "$response" | grep "HTTP_STATUS" | cut -d':' -f2)
+          response_body=$(echo "$response" | sed '/HTTP_STATUS/d')
+          
+          echo "Response: $response_body"
+          echo "HTTP Status: $http_status"
+          
+          if [ "$http_status" -ne 200 ]; then
+            echo "❌ Sync job failed with status $http_status"
+            exit 1
+          fi
+          
+          echo "✅ Sync job completed successfully"
+      
+      - name: Notify on Failure
+        if: failure()
+        run: |
+          echo "::error::Redis view sync job failed. Check the logs above."

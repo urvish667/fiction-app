@@ -4,6 +4,10 @@ import BlogContent from "./blog-content"
 import AdBanner from "@/components/ad-banner"
 import { fetchPublishedBlogs } from "@/lib/server/blog-data"
 
+// Force dynamic rendering to ensure blogs are fetched at request time
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export default async function BlogPage() {
   // Fetch initial blog data server-side for SEO
   const initialBlogs = await fetchPublishedBlogs()

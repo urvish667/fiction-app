@@ -57,7 +57,14 @@ export async function fetchPublishedBlogs(): Promise<BlogPost[]> {
 
     return transformedBlogs;
   } catch (error) {
-    console.error("Error fetching published blogs:", error);
+    console.error("[Blog Data] Error fetching published blogs:", error);
+    if (error instanceof Error) {
+      console.error("[Blog Data] Error details:", {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
+    }
     return [];
   }
 }

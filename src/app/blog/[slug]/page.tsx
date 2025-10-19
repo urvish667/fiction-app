@@ -9,6 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import AdBanner from "@/components/ad-banner";
 import { generateBlogMetadata, generateBlogStructuredData, generateBlogBreadcrumbStructuredData } from "@/lib/seo/metadata";
 
+// Force dynamic rendering to ensure blog posts are fetched at request time
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 interface BlogPageProps {
   params: Promise<{
     slug: string;

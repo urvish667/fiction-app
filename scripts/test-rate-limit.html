@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rate Limit Tester - FableSpace</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 800px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 30px;
+        }
+
+        button {
+            flex: 1;
+            padding: 14px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: #e0e0e0;
+        }
+
+        .results-container {
+            margin-top: 30px;
+            border-top: 2px solid #e0e0e0;
+            padding-top: 30px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .success { color: #10b981; }
+        .error { color: #ef4444; }
+        .warning { color: #f59e0b; }
+        .info { color: #3b82f6; }
+
+        .log-container {
+            background: #1a1a1a;
+            color: #00ff00;
+            padding: 20px;
+            border-radius: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        .log-entry {
+            margin-bottom: 4px;
+            padding: 4px 0;
+        }
+
+        .log-entry.success { color: #10b981; }
+        .log-entry.error { color: #ef4444; }
+        .log-entry.info { color: #3b82f6; }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s;
+        }
+
+        .endpoint-presets {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .preset-btn {
+            padding: 10px;
+            background: #f0f0f0;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .preset-btn:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚦 Rate Limit Tester</h1>
+        <p class="subtitle">Test your API rate limiting configuration</p>
+
+        <div class="form-group">
+            <label for="baseUrl">Base URL</label>
+            <input type="text" id="baseUrl" value="http://localhost:3000" placeholder="http://localhost:3000">
+        </div>
+
+        <div class="form-group">
+            <label for="endpoint">API Endpoint</label>
+            <input type="text" id="endpoint" value="/api/stories" placeholder="/api/stories">
+            
+            <div class="endpoint-presets">
+                <button class="preset-btn" onclick="setEndpoint('/api/stories', 110)">Default API (100/min)</button>
+                <button class="preset-btn" onclick="setEndpoint('/api/auth/session', 25)">Auth (20/10min)</button>
+                <button class="preset-btn" onclick="setEndpoint('/api/search', 65)">Search (60/min)</button>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="requests">Number of Requests</label>
+            <input type="number" id="requests" value="110" min="1" max="500">
+        </div>
+
+        <div class="form-group">
+            <label for="delay">Delay Between Requests (ms)</label>
+            <input type="number" id="delay" value="50" min="0" max="5000">
+        </div>
+
+        <div class="button-group">
+            <button class="btn-primary" id="startBtn" onclick="startTest()">
+                Start Test
+            </button>
+            <button class="btn-secondary" id="stopBtn" onclick="stopTest()" disabled>
+                Stop Test
+            </button>
+            <button class="btn-secondary" onclick="clearResults()">
+                Clear
+            </button>
+        </div>
+
+        <div class="results-container" id="results" style="display: none;">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+            </div>
+
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-value success" id="successCount">0</div>
+                    <div class="stat-label">Success</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value error" id="rateLimitCount">0</div>
+                    <div class="stat-label">Rate Limited</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value warning" id="errorCount">0</div>
+                    <div class="stat-label">Errors</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value info" id="totalCount">0</div>
+                    <div class="stat-label">Total</div>
+                </div>
+            </div>
+
+            <div class="log-container" id="logContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        let testing = false;
+        let testAborted = false;
+        const results = {
+            success: 0,
+            rateLimited: 0,
+            errors: 0,
+            total: 0,
+            firstRateLimit: null
+        };
+
+        function setEndpoint(endpoint, requests) {
+            document.getElementById('endpoint').value = endpoint;
+            document.getElementById('requests').value = requests;
+        }
+
+        function log(message, type = 'info') {
+            const logContainer = document.getElementById('logContainer');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            
+            const timestamp = new Date().toLocaleTimeString();
+            entry.textContent = `[${timestamp}] ${message}`;
+            
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        function updateStats() {
+            document.getElementById('successCount').textContent = results.success;
+            document.getElementById('rateLimitCount').textContent = results.rateLimited;
+            document.getElementById('errorCount').textContent = results.errors;
+            document.getElementById('totalCount').textContent = results.total;
+        }
+
+        function updateProgress(current, total) {
+            const percentage = (current / total) * 100;
+            document.getElementById('progressFill').style.width = percentage + '%';
+        }
+
+        async function makeRequest(requestNum, baseUrl, endpoint) {
+            try {
+                const response = await fetch(baseUrl + endpoint, {
+                    method: 'GET',
+                    headers: {
+                        'User-Agent': 'Rate-Limit-Test-Browser'
+                    }
+                });
+
+                const remaining = response.headers.get('x-ratelimit-remaining');
+                const limit = response.headers.get('x-ratelimit-limit');
+                const reset = response.headers.get('x-ratelimit-reset');
+                const retryAfter = response.headers.get('retry-after');
+
+                results.total++;
+
+                if (response.status === 429) {
+                    results.rateLimited++;
+                    
+                    if (!results.firstRateLimit) {
+                        results.firstRateLimit = {
+                            requestNum,
+                            limit,
+                            retryAfter,
+                            reset
+                        };
+                    }
+
+                    log(`❌ Request #${requestNum}: RATE LIMITED (Retry after: ${retryAfter}s, Remaining: ${remaining})`, 'error');
+                } else if (response.ok) {
+                    results.success++;
+                    log(`✅ Request #${requestNum}: SUCCESS (${remaining}/${limit} remaining)`, 'success');
+                } else {
+                    results.errors++;
+                    log(`⚠️ Request #${requestNum}: ERROR (Status: ${response.status})`, 'error');
+                }
+
+                updateStats();
+                return { success: response.ok, status: response.status };
+            } catch (error) {
+                results.total++;
+                results.errors++;
+                log(`❌ Request #${requestNum}: FAILED (${error.message})`, 'error');
+                updateStats();
+                return { success: false, error: error.message };
+            }
+        }
+
+        function clearResults() {
+            results.success = 0;
+            results.rateLimited = 0;
+            results.errors = 0;
+            results.total = 0;
+            results.firstRateLimit = null;
+            
+            document.getElementById('logContainer').innerHTML = '';
+            updateStats();
+            updateProgress(0, 100);
+            document.getElementById('results').style.display = 'none';
+        }
+
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        async function startTest() {
+            if (testing) return;
+
+            const baseUrl = document.getElementById('baseUrl').value.trim();
+            const endpoint = document.getElementById('endpoint').value.trim();
+            const numRequests = parseInt(document.getElementById('requests').value);
+            const delayMs = parseInt(document.getElementById('delay').value);
+
+            if (!baseUrl || !endpoint) {
+                alert('Please enter both base URL and endpoint');
+                return;
+            }
+
+            testing = true;
+            testAborted = false;
+            document.getElementById('results').style.display = 'block';
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('stopBtn').disabled = false;
+            
+            // Add spinner to button
+            const startBtn = document.getElementById('startBtn');
+            startBtn.innerHTML = '<span class="spinner"></span>Testing...';
+
+            clearResults();
+            log(`🚀 Starting test: ${numRequests} requests to ${endpoint}`, 'info');
+            log(`⏱️ Delay between requests: ${delayMs}ms`, 'info');
+
+            const startTime = Date.now();
+
+            for (let i = 1; i <= numRequests; i++) {
+                if (testAborted) {
+                    log('⚠️ Test aborted by user', 'warning');
+                    break;
+                }
+
+                await makeRequest(i, baseUrl, endpoint);
+                updateProgress(i, numRequests);
+
+                if (i < numRequests && !testAborted) {
+                    await delay(delayMs);
+                }
+            }
+
+            const endTime = Date.now();
+            const duration = ((endTime - startTime) / 1000).toFixed(2);
+
+            log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, 'info');
+            log(`✅ Test completed in ${duration}s`, 'info');
+            log(`📊 Success: ${results.success} | Rate Limited: ${results.rateLimited} | Errors: ${results.errors}`, 'info');
+            
+            if (results.firstRateLimit) {
+                log(`\n🚦 First rate limit at request #${results.firstRateLimit.requestNum}`, 'warning');
+                log(`   Limit: ${results.firstRateLimit.limit} requests`, 'warning');
+                log(`   Retry after: ${results.firstRateLimit.retryAfter}s`, 'warning');
+                
+                if (results.firstRateLimit.reset) {
+                    const resetTime = new Date(results.firstRateLimit.reset * 1000);
+                    log(`   Reset time: ${resetTime.toLocaleTimeString()}`, 'warning');
+                }
+            } else {
+                log(`\n✅ No rate limiting occurred`, 'success');
+                log(`💡 Try increasing the number of requests to trigger rate limiting`, 'info');
+            }
+            
+            log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`, 'info');
+
+            testing = false;
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+            startBtn.innerHTML = 'Start Test';
+        }
+
+        function stopTest() {
+            testAborted = true;
+            testing = false;
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+            document.getElementById('startBtn').innerHTML = 'Start Test';
+        }
+
+        // Handle Enter key in input fields
+        document.querySelectorAll('input').forEach(input => {
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    startTest();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
