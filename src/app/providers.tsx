@@ -14,7 +14,7 @@ export default function Providers({ children }: ProvidersProps) {
       // Configure session behavior for better performance and reliability
       refetchWhenOffline={false}
       refetchInterval={0} // Disable automatic polling to prevent unnecessary callback calls
-      refetchOnWindowFocus={false} // Don't refetch on window focus to reduce unnecessary requests
+      refetchOnWindowFocus={true} // Enable refetch on window focus to ensure session is synced after login
     >
       <CsrfProvider>
         {children}

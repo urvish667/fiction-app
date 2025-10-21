@@ -137,6 +137,11 @@ export function SiteFooter() {
                     Privacy Policy
                   </Link>
                 </li>
+                <li>
+                  <Link href="/content" className="text-muted-foreground hover:text-foreground">
+                    Content & Monetization Policy
+                  </Link>
+                </li>
               </ul>
             </div>
           </div>

@@ -21,7 +21,7 @@ export default function PrivacyPolicyPage() {
         >
           <div className="max-w-4xl mx-auto">
             <h1 className="text-4xl font-bold mb-6">Privacy Policy</h1>
-            <p className="text-muted-foreground mb-8">Last updated: {new Date().toLocaleDateString()}</p>
+            <p className="text-muted-foreground mb-8">Last updated: 05/12/2025</p>
             
             <div className="bg-card rounded-lg shadow-sm p-6 md:p-8">
               <ScrollArea className="h-[600px] pr-4">

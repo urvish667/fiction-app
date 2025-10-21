@@ -40,10 +40,9 @@ export async function generateMetadata({ params }: ChapterPageProps): Promise<Me
       }
     }
 
-    // Fetch full chapter details
-    const chapter = await StoryService.getChapter(story.id, targetChapter.id)
-
-    return generateChapterMetadata(story, chapter, chapterNumber)
+    // Use basic chapter info for metadata (avoid duplicate API call that tracks views)
+    // The full chapter with content will be fetched in the page component
+    return generateChapterMetadata(story, targetChapter as any, chapterNumber)
   } catch (error) {
     return {
       title: "Chapter Not Found - FableSpace",

@@ -209,7 +209,9 @@ export default function CompleteProfilePage() {
       } else {
         // Update the session to reflect completed profile
         await update()
-        router.push(callbackUrl)
+        // Wait for session to be updated, then do a full page reload
+        await new Promise(resolve => setTimeout(resolve, 100))
+        window.location.href = callbackUrl
       }
     } catch (error) {
       logError(error, { context: 'Completing profile' })

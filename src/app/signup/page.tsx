@@ -502,6 +502,10 @@ function SignupContent() {
                     <Button variant="link" className="p-0 h-auto text-xs" asChild>
                       <Link href="/terms" target="_blank">terms and conditions</Link>
                     </Button>
+                    {" "}and{" "}
+                    <Button variant="link" className="p-0 h-auto text-xs" asChild>
+                      <Link href="/privacy" target="_blank">Privacy Policy</Link>
+                    </Button>
                   </Label>
                 </div>
                 {errors.termsAccepted && (

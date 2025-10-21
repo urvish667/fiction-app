@@ -492,7 +492,7 @@ export default function StoryInfoPage() {
     }
 
     // Check file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
+    if (file.size > 6 * 1024 * 1024) {
       toast({
         title: "File too large",
         description: "Please upload an image smaller than 5MB.",

@@ -253,12 +253,74 @@ export async function trackChapterViewRedis(
 }
 
 /**
- * Get the current view count for a story (story views + chapter views combined)
- * Includes DB readCount + buffered Redis counts for both story and all its chapters
+ * Get the current view count for a story ONLY (excludes chapter views)
+ * This returns only direct story page visits
+ * Includes DB readCount + buffered Redis counts for the story only
  * @param storyId The ID of the story
- * @returns The total view count (story + chapters)
+ * @returns The story-only view count
  */
 export async function getStoryViewCount(storyId: string): Promise<number> {
+  const redis = getRedisClient();
+  
+  if (!redis || !VIEW_TRACKING_CONFIG.ENABLED) {
+    // Fallback to database query - story readCount only
+    const story = await prisma.story.findUnique({
+      where: { id: storyId },
+      select: { readCount: true },
+    });
+    
+    return story?.readCount || 0;
+  }
+
+  try {
+    // Check cache first
+    const cacheKey = `${VIEW_REDIS_KEYS.STORY_COUNT_CACHE}${storyId}`;
+    const cached = await redis.get(cacheKey);
+    
+    if (cached) {
+      return parseInt(cached, 10);
+    }
+
+    // Get story from DB
+    const story = await prisma.story.findUnique({
+      where: { id: storyId },
+      select: { readCount: true },
+    });
+    
+    const storyDbCount = story?.readCount || 0;
+
+    // Get buffered count from Redis
+    const storyBufferKey = `${VIEW_REDIS_KEYS.STORY_BUFFER}${storyId}`;
+    const storyBufferedCount = parseInt(await redis.get(storyBufferKey) || '0', 10);
+
+    // Total count = story DB + story buffer (NO chapter views)
+    const totalCount = storyDbCount + storyBufferedCount;
+
+    // Cache the result
+    await redis.setex(cacheKey, VIEW_TRACKING_CONFIG.COUNT_CACHE_TTL, totalCount.toString());
+
+    return totalCount;
+  } catch (error) {
+    logger.error('Failed to get story view count from Redis:', error);
+    
+    // Fallback to database
+    const story = await prisma.story.findUnique({
+      where: { id: storyId },
+      select: { readCount: true },
+    });
+    
+    return story?.readCount || 0;
+  }
+}
+
+/**
+ * Get the combined view count for a story (story views + all chapter views)
+ * This represents total engagement across story page and all chapter pages
+ * Includes DB readCount + buffered Redis counts for both story and all its chapters
+ * @param storyId The ID of the story
+ * @returns The total combined view count (story + chapters)
+ */
+export async function getCombinedStoryViewCount(storyId: string): Promise<number> {
   const redis = getRedisClient();
   
   if (!redis || !VIEW_TRACKING_CONFIG.ENABLED) {
@@ -331,12 +393,13 @@ export async function getStoryViewCount(storyId: string): Promise<number> {
     // Total count = story DB + story buffer + chapters DB + chapters buffers
     const totalCount = storyDbCount + storyBufferedCount + chaptersDbCount + chaptersBufferedCount;
 
-    // Cache the result
-    await redis.setex(cacheKey, VIEW_TRACKING_CONFIG.COUNT_CACHE_TTL, totalCount.toString());
+    // Cache the result with different key for combined count
+    const combinedCacheKey = `${VIEW_REDIS_KEYS.STORY_COUNT_CACHE}combined:${storyId}`;
+    await redis.setex(combinedCacheKey, VIEW_TRACKING_CONFIG.COUNT_CACHE_TTL, totalCount.toString());
 
     return totalCount;
   } catch (error) {
-    logger.error('Failed to get story view count from Redis:', error);
+    logger.error('Failed to get combined story view count from Redis:', error);
     
     // Fallback to database
     const [story, chapters] = await Promise.all([
@@ -513,11 +576,11 @@ export async function getBufferedChapterViews(): Promise<Map<string, number>> {
 }
 
 /**
- * Get view counts for multiple stories (story + chapter views combined)
- * Includes DB readCount + buffered Redis counts for both stories and all their chapters
+ * Get view counts for multiple stories (story-only, excludes chapter views)
+ * Includes DB readCount + buffered Redis counts for stories only
  * This is the Redis-aware version for batch operations with minimal DB/Redis pressure
  * @param storyIds Array of story IDs
- * @returns Map of story ID to total view count (story + chapters)
+ * @returns Map of story ID to story-only view count
  */
 export async function getBatchStoryViewCounts(storyIds: string[]): Promise<Map<string, number>> {
   const redis = getRedisClient();
@@ -527,89 +590,51 @@ export async function getBatchStoryViewCounts(storyIds: string[]): Promise<Map<s
   }
   
   if (!redis || !VIEW_TRACKING_CONFIG.ENABLED) {
-    // Fallback to database - sum story readCount + all chapter readCounts
-    const [stories, chapters] = await Promise.all([
-      prisma.story.findMany({
-        where: { id: { in: storyIds } },
-        select: { id: true, readCount: true },
-      }),
-      prisma.chapter.findMany({
-        where: { storyId: { in: storyIds } },
-        select: { storyId: true, readCount: true },
-      }),
-    ]);
+    // Fallback to database - story readCount only
+    const stories = await prisma.story.findMany({
+      where: { id: { in: storyIds } },
+      select: { id: true, readCount: true },
+    });
     
-    // Initialize map with story counts
+    // Initialize map with story counts only
     const viewCountMap = new Map<string, number>();
     stories.forEach(story => {
       viewCountMap.set(story.id, story.readCount);
-    });
-    
-    // Add chapter counts to their stories
-    chapters.forEach(chapter => {
-      const currentCount = viewCountMap.get(chapter.storyId) || 0;
-      viewCountMap.set(chapter.storyId, currentCount + chapter.readCount);
     });
     
     return viewCountMap;
   }
 
   try {
-    // Get DB readCounts for all stories and their chapters in parallel
-    const [stories, chapters] = await Promise.all([
-      prisma.story.findMany({
-        where: { id: { in: storyIds } },
-        select: { id: true, readCount: true },
-      }),
-      prisma.chapter.findMany({
-        where: { storyId: { in: storyIds } },
-        select: { id: true, storyId: true, readCount: true },
-      }),
-    ]);
+    // Get DB readCounts for stories only
+    const stories = await prisma.story.findMany({
+      where: { id: { in: storyIds } },
+      select: { id: true, readCount: true },
+    });
     
-    // Initialize map with story DB counts
+    // Initialize map with story DB counts only
     const viewCountMap = new Map<string, number>();
     stories.forEach(story => {
       viewCountMap.set(story.id, story.readCount);
     });
     
-    // Add chapter DB counts to their stories
-    chapters.forEach(chapter => {
-      const currentCount = viewCountMap.get(chapter.storyId) || 0;
-      viewCountMap.set(chapter.storyId, currentCount + chapter.readCount);
-    });
-    
-    // Get buffered counts from Redis in a single pipeline (efficient!)
+    // Get buffered counts from Redis for stories only
     const pipeline = redis.pipeline();
     
-    // Add story buffers
+    // Add story buffers only (no chapter buffers)
     storyIds.forEach(storyId => {
       const bufferKey = `${VIEW_REDIS_KEYS.STORY_BUFFER}${storyId}`;
-      pipeline.get(bufferKey);
-    });
-    
-    // Add chapter buffers
-    chapters.forEach(chapter => {
-      const bufferKey = `${VIEW_REDIS_KEYS.CHAPTER_BUFFER}${chapter.id}`;
       pipeline.get(bufferKey);
     });
     
     const results = await pipeline.exec();
     
     if (results) {
-      // Add story buffered counts
+      // Add story buffered counts only
       storyIds.forEach((storyId, index) => {
         const bufferedCount = parseInt(results[index][1] as string || '0', 10);
         const currentCount = viewCountMap.get(storyId) || 0;
         viewCountMap.set(storyId, currentCount + bufferedCount);
-      });
-      
-      // Add chapter buffered counts to their stories
-      const storyBufferOffset = storyIds.length;
-      chapters.forEach((chapter, index) => {
-        const bufferedCount = parseInt(results[storyBufferOffset + index][1] as string || '0', 10);
-        const currentCount = viewCountMap.get(chapter.storyId) || 0;
-        viewCountMap.set(chapter.storyId, currentCount + bufferedCount);
       });
     }
     
@@ -617,26 +642,15 @@ export async function getBatchStoryViewCounts(storyIds: string[]): Promise<Map<s
   } catch (error) {
     logger.error('Failed to get batch story view counts:', error);
     
-    // Fallback to database
-    const [stories, chapters] = await Promise.all([
-      prisma.story.findMany({
-        where: { id: { in: storyIds } },
-        select: { id: true, readCount: true },
-      }),
-      prisma.chapter.findMany({
-        where: { storyId: { in: storyIds } },
-        select: { storyId: true, readCount: true },
-      }),
-    ]);
+    // Fallback to database - story counts only
+    const stories = await prisma.story.findMany({
+      where: { id: { in: storyIds } },
+      select: { id: true, readCount: true },
+    });
     
     const viewCountMap = new Map<string, number>();
     stories.forEach(story => {
       viewCountMap.set(story.id, story.readCount);
-    });
-    
-    chapters.forEach(chapter => {
-      const currentCount = viewCountMap.get(chapter.storyId) || 0;
-      viewCountMap.set(chapter.storyId, currentCount + chapter.readCount);
     });
     
     return viewCountMap;

@@ -30,7 +30,6 @@ export function SupportButton({
   storyTitle,
   iconOnly = false
 }: SupportButtonProps) {
-  console.log('SupportButton iconOnly:', iconOnly, 'authorName:', authorName);
   const [isProcessing, setIsProcessing] = useState(false);
   const router = useRouter();
 

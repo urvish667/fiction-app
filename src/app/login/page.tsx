@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { AlertCircle } from "lucide-react"
-import { signIn } from "next-auth/react"
+import { signIn, useSession } from "next-auth/react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
@@ -66,14 +66,16 @@ function LoginContent() {
 
       if (result?.error) {
         setErrors({ login: "Invalid email or password" })
+        setIsSubmitting(false)
       } else {
-        // Successfully logged in
-        router.push(callbackUrl)
+        // Successfully logged in - wait a moment for session to be established
+        // Then use window.location for a full page reload to ensure middleware sees the session
+        await new Promise(resolve => setTimeout(resolve, 100))
+        window.location.href = callbackUrl
       }
     } catch (error) {
       logError(error, { context: 'Login error' })
       setErrors({ login: "An error occurred while logging in" })
-    } finally {
       setIsSubmitting(false)
     }
   }

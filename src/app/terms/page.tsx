@@ -21,8 +21,7 @@ export default function TermsPage() {
         >
           <div className="max-w-4xl mx-auto">
             <h1 className="text-4xl font-bold mb-6">Terms and Conditions</h1>
-            <p className="text-muted-foreground mb-8">Last updated: {new Date().toLocaleDateString()}</p>
-
+            <p className="text-muted-foreground mb-8">Last updated: 06/18/2025</p>
             <div className="bg-card rounded-lg shadow-sm p-6 md:p-8">
               <ScrollArea className="h-[600px] pr-4">
                 <div className="space-y-8">
@@ -32,8 +31,11 @@ export default function TermsPage() {
                     <p className="mb-4">
                       Welcome to FableSpace ("we," "our," or "us"). FableSpace is a storytelling platform that empowers creativity and connects people through stories.
                     </p>
-                    <p>
+                    <p className="mb-4">
                       These Terms and Conditions govern your access to and use of the FableSpace website, services, and applications (collectively, the "Service"). By accessing or using the Service, you agree to be bound by these Terms.
+                    </p>
+                    <p className="mb-4">
+                      For more details on how we handle your data, please review our <Link href="/privacy" className="text-primary hover:underline">Privacy Policy</Link>. Additionally, our <Link href="/content" className="text-primary hover:underline">Content & Monetization Policy</Link> outlines guidelines for content ownership, copyright, and platform monetization.
                     </p>
                   </section>
 

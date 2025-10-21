@@ -6,6 +6,7 @@ import {
   trackChapterViewRedis,
   getStoryViewCount as getRedisStoryViewCount,
   getChapterViewCount as getRedisChapterViewCount,
+  getCombinedStoryViewCount as getRedisCombinedStoryViewCount,
 } from "@/lib/redis/view-tracking";
 
 export class ViewService {
@@ -23,6 +24,13 @@ export class ViewService {
     clientInfo?: { ip?: string; userAgent?: string },
     incrementReadCount: boolean = true
   ) {
+    console.log('Tracking story view - Debug Info:', {
+      storyId,
+      userId,
+      clientInfo,
+      incrementReadCount,
+      timestamp: new Date().toISOString()
+    });
     // If no user ID and no client info, we can't track the view
     if (!userId && (!clientInfo?.ip && !clientInfo?.userAgent)) {
       return null;

@@ -142,12 +142,12 @@ export async function GET(
       const userAgent = request.headers.get('user-agent');
 
       try {
-        // Track the chapter view and automatically track story view using the improved ViewService
+        // Track the chapter view only - story view count already includes all chapter views
         const viewResult = await ViewService.trackChapterView(
           chapter.id,
           session?.user?.id,
           { ip: clientIp || undefined, userAgent: userAgent || undefined },
-          true // Also track a view for the story
+          false // Don't separately track story view - it's already counted via chapter views
         );
 
         // Log if this is a first view (for debugging)
