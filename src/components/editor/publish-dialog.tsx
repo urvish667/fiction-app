@@ -122,7 +122,7 @@ export const PublishDialog = React.memo(function PublishDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Publish Chapter</DialogTitle>
           <DialogDescription>
@@ -131,7 +131,7 @@ export const PublishDialog = React.memo(function PublishDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        <div className="space-y-6 py-4 overflow-y-auto flex-1">
           <div className="flex items-center gap-2 mb-4">
             <Globe size={16} />
             <span className="text-sm text-muted-foreground">Your chapter will be visible to everyone once published</span>
@@ -152,6 +152,22 @@ export const PublishDialog = React.memo(function PublishDialog({
 
           {publishSettings.schedulePublish && (
             <div className="space-y-4 pl-6 border-l-2 border-muted">
+              {/* Heads up message about publishing windows */}
+              <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                <div className="flex items-start gap-2">
+                  <Clock className="h-5 w-5 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
+                  <div className="space-y-2">
+                    <h4 className="font-semibold text-amber-900 dark:text-amber-100 text-sm">⏰ Heads Up!</h4>
+                    <p className="text-xs text-amber-800 dark:text-amber-200 leading-relaxed">
+                      You can schedule your chapter for any time shown below (in 15-minute intervals).
+                      However, chapters are actually published during our automated release windows — at <span className="font-medium">12:00 AM, 6:00 AM, 12:00 PM, and 6:00 PM (UTC)</span>.
+                      We&apos;re doing this to keep FableSpace fast and efficient while we grow.
+                      It will work seamlessly in real-time scheduling in the future as the platform expands. 💛
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="publishDate">Publication Date</Label>
                 <Input

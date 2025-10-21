@@ -69,6 +69,7 @@ interface ChapterData {
   wordCount: number;
   lastUpdated: Date;
   number: number;
+  publishDate?: Date;
 }
 
 interface TagData {
@@ -453,7 +454,8 @@ export default function StoryInfoPage() {
           status,
           wordCount: chapter.wordCount,
           lastUpdated: new Date(chapter.updatedAt),
-          number: chapter.number
+          number: chapter.number,
+          publishDate: chapter.publishDate ? new Date(chapter.publishDate) : undefined
         };
       });
 
@@ -1313,7 +1315,13 @@ export default function StoryInfoPage() {
                         <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="font-medium">{chapter.title}</h3>
                           <div className="flex gap-1">
-                            <Badge variant={chapter.status === "draft" ? "outline" : "default"} className={chapter.status === "premium" ? "bg-amber-500" : ""}>
+                            <Badge 
+                              variant={chapter.status === "draft" ? "outline" : "default"} 
+                              className={
+                                chapter.status === "premium" ? "bg-amber-500" : 
+                                chapter.status === "scheduled" ? "bg-orange-500 hover:bg-orange-600" : ""
+                              }
+                            >
                               {chapter.status.charAt(0).toUpperCase() + chapter.status.slice(1)}
                             </Badge>
                           </div>
@@ -1322,7 +1330,20 @@ export default function StoryInfoPage() {
                         <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground flex-wrap">
                           <div className="flex items-center gap-1">
                             <Clock size={14} />
-                            <span>Last updated: {formatDate(chapter.lastUpdated)}</span>
+                            {chapter.status === "scheduled" && chapter.publishDate ? (
+                              <span className="text-orange-600 dark:text-orange-400 font-medium">
+                                Scheduled for: {new Intl.DateTimeFormat("en-US", {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
+                                  hour: "numeric",
+                                  minute: "2-digit",
+                                  hour12: true
+                                }).format(chapter.publishDate)}
+                              </span>
+                            ) : (
+                              <span>Last updated: {formatDate(chapter.lastUpdated)}</span>
+                            )}
                           </div>
                           <div>{chapter.wordCount} words</div>
                         </div>

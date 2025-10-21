@@ -75,11 +75,20 @@ export const EditorHeader = React.memo(function EditorHeader({
         {/* Status and save indicators - visible on all screens */}
         <div className="flex items-center gap-1 sm:gap-2">
           {/* Status indicator - always visible */}
-          <span className={`text-xs sm:text-sm flex items-center gap-1 ${chapter.status === "draft" ? "text-yellow-500" : "text-green-500"}`}>
+          <span className={`text-xs sm:text-sm flex items-center gap-1 ${
+            chapter.status === "draft" ? "text-yellow-500" : 
+            chapter.status === "scheduled" ? "text-orange-500" : 
+            "text-green-500"
+          }`}>
             {chapter.status === "draft" ? (
               <>
                 <FileText size={14} />
                 <span className="hidden sm:inline">Draft</span>
+              </>
+            ) : chapter.status === "scheduled" ? (
+              <>
+                <Clock size={14} />
+                <span className="hidden sm:inline">Scheduled</span>
               </>
             ) : (
               <>
@@ -111,14 +120,14 @@ export const EditorHeader = React.memo(function EditorHeader({
 
           {/* Desktop buttons */}
           <div className="hidden sm:flex items-center gap-2">
-            {chapter.status === "published" ? (
+            {chapter.status === "published" || chapter.status === "scheduled" ? (
               <Button
                 variant="outline"
                 size="icon"
                 onClick={() => saveChapter(true, false, true)}
                 disabled={isSaving}
                 className="h-9 w-9 rounded-full"
-                title="Update published chapter"
+                title={chapter.status === "scheduled" ? "Update scheduled chapter" : "Update published chapter"}
                 aria-label="Update chapter"
                 aria-busy={isSaving}
               >
@@ -197,7 +206,7 @@ export const EditorHeader = React.memo(function EditorHeader({
                   </div>
 
                   <div className="flex flex-col gap-2">
-                    {chapter.status === "published" ? (
+                    {chapter.status === "published" || chapter.status === "scheduled" ? (
                       <Button
                         onClick={() => saveChapter(true, false, true)}
                         disabled={isSaving}

@@ -117,6 +117,14 @@ export function useChapterEditor({
     setInitialTitle(chapter.title)
     setInitialIsDraft(savedChapter.status === 'draft')
 
+    // Update publish settings if chapter is scheduled
+    if (savedChapter.status === 'scheduled' && savedChapter.publishDate) {
+      setPublishSettings({
+        schedulePublish: true,
+        publishDate: new Date(savedChapter.publishDate)
+      })
+    }
+
     // REMOVED: Auto-save backoff reset
   }
 
@@ -150,10 +158,18 @@ export function useChapterEditor({
         // Reset hasChanges flag when loading existing chapter
         setHasChanges(false)
 
-        // Initialize publish settings
-        setPublishSettings(prev => ({
-          ...prev
-        }))
+        // Initialize publish settings with chapter's scheduled date if it's scheduled
+        if (chapterData.status === 'scheduled' && chapterData.publishDate) {
+          setPublishSettings({
+            schedulePublish: true,
+            publishDate: new Date(chapterData.publishDate)
+          })
+        } else {
+          setPublishSettings({
+            schedulePublish: false,
+            publishDate: new Date()
+          })
+        }
 
       } catch (error) {
         logError(error, {
