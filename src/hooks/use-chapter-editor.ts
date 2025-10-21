@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react'
 import { StoryService } from '@/services/story-service'
 import { Chapter, CreateChapterRequest, UpdateChapterRequest } from '@/types/story'
-import { logError, logInfo, logWarning } from '@/lib/error-logger'
+import { logInfo, logError, logWarning } from '@/lib/error-logger'
 import { useToast } from '@/components/ui/use-toast'
+import { calculateWordCount } from "@/lib/editor-utils"
 
 // Types for chapter data
 export interface ChapterData {
@@ -223,8 +224,8 @@ export function useChapterEditor({
 
   // Handle editor content change
   const handleEditorChange = (content: string) => {
-    // Calculate word count
-    const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0
+    // Calculate word count (strip HTML tags first)
+    const wordCount = calculateWordCount(content)
 
     // Only update if content has actually changed
     if (content !== chapter.content) {

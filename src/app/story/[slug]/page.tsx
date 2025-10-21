@@ -190,12 +190,14 @@ export default async function StoryInfoPage({ params }: StoryPageProps) {
       isBookmarked = !!bookmark;
     }
 
-    // Get the combined view count
+    // Get the view count from Redis (includes buffered views + DB readCount)
+    // This uses the Redis-aware function that returns readCount from Story table + buffered Redis views
     let viewCount = 0;
     try {
-      viewCount = await ViewService.getCombinedViewCount(story.id);
+      const { getStoryViewCount } = await import('@/lib/redis/view-tracking');
+      viewCount = await getStoryViewCount(story.id);
     } catch (viewCountError) {
-      logError(viewCountError, { context: 'Getting combined view count', storyId: story.id });
+      logError(viewCountError, { context: 'Getting story view count', storyId: story.id });
     }
 
     // Fetch chapters for this story directly from database

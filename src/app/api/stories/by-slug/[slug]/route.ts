@@ -17,29 +17,6 @@ export async function GET(
     const slug = resolvedParams.slug;
     const session = await getServerSession(authOptions);
     
-    // Debug session and cookies
-    const cookies = request.cookies.getAll();
-    const cookieNames = cookies.map(c => c.name);
-    const hasSessionCookie = cookieNames.some(name => name.includes('session-token'));
-    
-    console.log('[DEBUG] Request Details:', {
-      url: request.url,
-      method: request.method,
-      cookieCount: cookies.length,
-      cookieNames,
-      hasSessionCookie,
-    });
-    
-    console.log('[DEBUG] Session Details:', {
-      hasSession: !!session,
-      hasUser: !!session?.user,
-      userId: session?.user?.id,
-      userEmail: session?.user?.email,
-      userName: session?.user?.name,
-      sessionKeys: session ? Object.keys(session) : [],
-      userKeys: session?.user ? Object.keys(session.user) : [],
-    });
-
     // Find the story by slug
     const story = await prisma.story.findUnique({
       where: { slug },

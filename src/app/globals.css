@@ -88,6 +88,10 @@
   color: #000000;
 }
 
+.dark .editor-content {
+  color: #f5f5f5;
+}
+
 .editor-content p,
 .editor-content h1,
 .editor-content h2,
@@ -103,6 +107,21 @@
   color: #000000;
 }
 
+.dark .editor-content p,
+.dark .editor-content h1,
+.dark .editor-content h2,
+.dark .editor-content h3,
+.dark .editor-content h4,
+.dark .editor-content h5,
+.dark .editor-content h6,
+.dark .editor-content ul,
+.dark .editor-content ol,
+.dark .editor-content blockquote,
+.dark .editor-content pre,
+.dark .editor-content code {
+  color: #f5f5f5;
+}
+
 /* Ensure proper styling for the editor's placeholder */
 .ProseMirror p.is-editor-empty:first-child::before {
   color: #4B5563;
@@ -112,11 +131,20 @@
   pointer-events: none;
 }
 
+.dark .ProseMirror p.is-editor-empty:first-child::before {
+  color: #9ca3af;
+}
+
 /* Ensure proper styling for blockquotes in the editor */
 .editor-content blockquote {
   border-left: 3px solid #1E90FF;
   padding-left: 1rem;
   color: #4B5563;
+}
+
+.dark .editor-content blockquote {
+  border-left-color: #60a5fa;
+  color: #d1d5db;
 }
 
 /* Ensure proper styling for code blocks in the editor */
@@ -127,12 +155,20 @@
   overflow-x: auto;
 }
 
+.dark .editor-content pre {
+  background-color: #1e293b;
+}
+
 /* Ensure proper styling for inline code in the editor */
 .editor-content code {
   background-color: #F0F8FF;
   padding: 0.2rem 0.4rem;
   border-radius: 0.25rem;
   font-size: 0.875em;
+}
+
+.dark .editor-content code {
+  background-color: #1e293b;
 }
 
 /* Styling for ads in the story grid */

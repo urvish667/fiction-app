@@ -52,9 +52,19 @@ export function getBaseUrl(): string {
 
 /**
  * Calculates the word count of a string
- * @param text The text to count words in
+ * @param text The text to count words in (may contain HTML)
  * @returns The number of words in the text
  */
 export function countWords(text: string): number {
-  return text.trim().split(/\s+/).length
+  if (!text || !text.trim()) {
+    return 0
+  }
+  
+  // Remove HTML tags first
+  const textOnly = text.replace(/<[^>]*>/g, ' ')
+  
+  // Split by whitespace and filter out empty strings
+  const words = textOnly.trim().split(/\s+/).filter(Boolean)
+  
+  return words.length
 }

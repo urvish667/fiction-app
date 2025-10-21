@@ -5,6 +5,7 @@ import { prisma } from "@/lib/auth/db-adapter";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { slugify } from "@/lib/utils";
 import { ViewService } from "@/services/view-service";
+import { getBatchStoryViewCounts } from "@/lib/redis/view-tracking";
 import { Prisma } from "@prisma/client";
 import { logError } from "@/lib/error-logger";
 import { sanitizeText } from "@/lib/security/input-validation";
@@ -201,9 +202,10 @@ export async function GET(request: NextRequest) {
 
 
 
-    // Get combined view counts (story + chapter views) for these stories
+    // Get view counts for these stories (DB readCount + buffered Redis views)
+    // This uses the Redis-aware function that returns the correct count
     const storyIds = stories.map(story => story.id);
-    const viewCountMap = await ViewService.getBatchCombinedViewCounts(storyIds);
+    const viewCountMap = await getBatchStoryViewCounts(storyIds);
 
     // Transform stories to include counts and format tags
     const formattedStories = stories.map((story) => {

@@ -75,9 +75,9 @@ export default function ForumTextEditor({ content, onChange, placeholder = "Shar
   const isOverLimit = characterCount > 3000
 
   return (
-    <div className="border rounded-lg">
+    <div className="border rounded-lg dark:border-gray-700">
       {/* Toolbar */}
-      <div className="flex items-center gap-1 p-2 border-b">
+      <div className="flex items-center gap-1 p-2 border-b dark:border-gray-700">
         <Button
           variant="ghost"
           size="sm"
@@ -138,12 +138,12 @@ export default function ForumTextEditor({ content, onChange, placeholder = "Shar
         <EditorContent
           editor={editor}
           placeholder={placeholder}
-          className="prose prose-sm max-w-none [&>div>p]:m-0"
+          className="prose prose-sm dark:prose-invert max-w-none [&>div>p]:m-0"
         />
       </div>
 
       {/* Character Count */}
-      <div className={`px-3 py-2 text-xs border-t text-right ${isOverLimit ? 'text-destructive' : isNearLimit ? 'text-yellow-600' : 'text-muted-foreground'}`}>
+      <div className={`px-3 py-2 text-xs border-t dark:border-gray-700 text-right ${isOverLimit ? 'text-destructive' : isNearLimit ? 'text-yellow-600 dark:text-yellow-500' : 'text-muted-foreground'}`}>
         {characterCount}/3000 characters
       </div>
     </div>
