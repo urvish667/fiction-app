@@ -4,8 +4,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/auth/db-adapter";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { slugify } from "@/lib/utils";
-import { ViewService } from "@/services/view-service";
-import { getBatchStoryViewCounts } from "@/lib/redis/view-tracking";
+import { getBatchCombinedStoryViewCounts } from "@/lib/redis/view-tracking";
 import { Prisma } from "@prisma/client";
 import { logError } from "@/lib/error-logger";
 import { sanitizeText } from "@/lib/security/input-validation";
@@ -202,10 +201,10 @@ export async function GET(request: NextRequest) {
 
 
 
-    // Get view counts for these stories (DB readCount + buffered Redis views)
-    // This uses the Redis-aware function that returns the correct count
+    // Get COMBINED view counts for these stories (story + all chapter views)
+    // This shows total engagement which is what users expect to see in browse
     const storyIds = stories.map(story => story.id);
-    const viewCountMap = await getBatchStoryViewCounts(storyIds);
+    const viewCountMap = await getBatchCombinedStoryViewCounts(storyIds);
 
     // Transform stories to include counts and format tags
     const formattedStories = stories.map((story) => {
@@ -217,7 +216,7 @@ export async function GET(request: NextRequest) {
           })).filter(tag => tag.name)
         : [];
 
-      // Get combined view count
+      // Get combined view count (story + all chapters)
       const viewCount = viewCountMap.get(story.id) || 0;
 
       return {

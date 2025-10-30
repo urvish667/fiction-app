@@ -24,13 +24,6 @@ export class ViewService {
     clientInfo?: { ip?: string; userAgent?: string },
     incrementReadCount: boolean = true
   ) {
-    console.log('Tracking story view - Debug Info:', {
-      storyId,
-      userId,
-      clientInfo,
-      incrementReadCount,
-      timestamp: new Date().toISOString()
-    });
     // If no user ID and no client info, we can't track the view
     if (!userId && (!clientInfo?.ip && !clientInfo?.userAgent)) {
       return null;
@@ -44,8 +37,8 @@ export class ViewService {
       if (redisResult.success) {
         logger.info(`[ViewService] Successfully tracked story view in Redis: ${storyId}, buffered: ${redisResult.bufferedCount}`);
         
-        // Get the current view count from Redis (includes buffered views)
-        const viewCount = await getRedisStoryViewCount(storyId);
+        // Get the COMBINED view count from Redis (story + all chapters for total engagement)
+        const viewCount = await getRedisCombinedStoryViewCount(storyId);
         
         // IMPORTANT: When Redis succeeds, we DO NOT create individual view records in DB
         // This prevents database flooding. Views are aggregated in Redis and synced to readCount periodically.
@@ -198,7 +191,8 @@ export class ViewService {
         
         // Get view counts from Redis
         const chapterViewCount = await getRedisChapterViewCount(chapterId);
-        const storyViewCount = await getRedisStoryViewCount(chapter.storyId);
+        // Get COMBINED story view count (story + all chapters for total engagement)
+        const storyViewCount = await getRedisCombinedStoryViewCount(chapter.storyId);
         
         // Track story view if requested
         let storyViewResult = null;

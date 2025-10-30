@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/auth/db-adapter";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { getBatchCombinedStoryViewCounts } from "@/lib/redis/view-tracking";
 
 // GET endpoint to retrieve bookmarked stories for a user
 export async function GET(request: NextRequest) {
@@ -51,7 +52,6 @@ export async function GET(request: NextRequest) {
                   comments: true,
                   bookmarks: true,
                   chapters: true,
-                  views: true,
                 },
               },
             },
@@ -68,6 +68,10 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
+    // Get combined view counts (story + all chapters) for bookmarked stories
+    const storyIds = bookmarks.map(b => b.story.id);
+    const viewCountMap = await getBatchCombinedStoryViewCounts(storyIds);
+
     // Format the response
     const stories = bookmarks.map((bookmark) => {
       const story = bookmark.story;
@@ -77,7 +81,7 @@ export async function GET(request: NextRequest) {
         commentCount: story._count.comments,
         bookmarkCount: story._count.bookmarks,
         chapterCount: story._count.chapters,
-        viewCount: story._count.views,
+        viewCount: viewCountMap.get(story.id) || 0,
         isBookmarked: true,
         _count: undefined,
       };

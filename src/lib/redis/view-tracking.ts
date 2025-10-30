@@ -658,6 +658,136 @@ export async function getBatchStoryViewCounts(storyIds: string[]): Promise<Map<s
 }
 
 /**
+ * Get combined view counts (story + chapter views) for multiple stories in a batch
+ * This is the Redis-aware version for batch operations with minimal DB/Redis pressure
+ * @param storyIds Array of story IDs
+ * @returns Map of story ID to combined view count (story + all chapters)
+ */
+export async function getBatchCombinedStoryViewCounts(storyIds: string[]): Promise<Map<string, number>> {
+  const redis = getRedisClient();
+  
+  if (storyIds.length === 0) {
+    return new Map();
+  }
+  
+  if (!redis || !VIEW_TRACKING_CONFIG.ENABLED) {
+    // Fallback to database - sum story readCount + all chapter readCounts
+    const [stories, chapters] = await Promise.all([
+      prisma.story.findMany({
+        where: { id: { in: storyIds } },
+        select: { id: true, readCount: true },
+      }),
+      prisma.chapter.findMany({
+        where: { storyId: { in: storyIds } },
+        select: { storyId: true, readCount: true },
+      }),
+    ]);
+    
+    // Initialize map with story counts
+    const viewCountMap = new Map<string, number>();
+    stories.forEach(story => {
+      viewCountMap.set(story.id, story.readCount);
+    });
+    
+    // Add chapter counts
+    chapters.forEach(chapter => {
+      const currentCount = viewCountMap.get(chapter.storyId) || 0;
+      viewCountMap.set(chapter.storyId, currentCount + chapter.readCount);
+    });
+    
+    return viewCountMap;
+  }
+
+  try {
+    // Get DB readCounts for stories and chapters in parallel
+    const [stories, chapters] = await Promise.all([
+      prisma.story.findMany({
+        where: { id: { in: storyIds } },
+        select: { id: true, readCount: true },
+      }),
+      prisma.chapter.findMany({
+        where: { storyId: { in: storyIds } },
+        select: { id: true, storyId: true, readCount: true },
+      }),
+    ]);
+    
+    // Initialize map with story DB counts
+    const viewCountMap = new Map<string, number>();
+    stories.forEach(story => {
+      viewCountMap.set(story.id, story.readCount);
+    });
+    
+    // Add chapter DB counts
+    chapters.forEach(chapter => {
+      const currentCount = viewCountMap.get(chapter.storyId) || 0;
+      viewCountMap.set(chapter.storyId, currentCount + chapter.readCount);
+    });
+    
+    // Get buffered counts from Redis using a single pipeline
+    const pipeline = redis.pipeline();
+    
+    // Add story buffers
+    storyIds.forEach(storyId => {
+      const bufferKey = `${VIEW_REDIS_KEYS.STORY_BUFFER}${storyId}`;
+      pipeline.get(bufferKey);
+    });
+    
+    // Add chapter buffers
+    chapters.forEach(chapter => {
+      const bufferKey = `${VIEW_REDIS_KEYS.CHAPTER_BUFFER}${chapter.id}`;
+      pipeline.get(bufferKey);
+    });
+    
+    const results = await pipeline.exec();
+    
+    if (results) {
+      // Add story buffered counts
+      storyIds.forEach((storyId, index) => {
+        const bufferedCount = parseInt(results[index][1] as string || '0', 10);
+        const currentCount = viewCountMap.get(storyId) || 0;
+        viewCountMap.set(storyId, currentCount + bufferedCount);
+      });
+      
+      // Add chapter buffered counts
+      const storyBufferOffset = storyIds.length;
+      chapters.forEach((chapter, index) => {
+        const bufferedCount = parseInt(results[storyBufferOffset + index][1] as string || '0', 10);
+        const currentCount = viewCountMap.get(chapter.storyId) || 0;
+        viewCountMap.set(chapter.storyId, currentCount + bufferedCount);
+      });
+    }
+    
+    return viewCountMap;
+  } catch (error) {
+    logger.error('Failed to get batch combined story view counts:', error);
+    
+    // Fallback to database
+    const [stories, chapters] = await Promise.all([
+      prisma.story.findMany({
+        where: { id: { in: storyIds } },
+        select: { id: true, readCount: true },
+      }),
+      prisma.chapter.findMany({
+        where: { storyId: { in: storyIds } },
+        select: { storyId: true, readCount: true },
+      }),
+    ]);
+    
+    const viewCountMap = new Map<string, number>();
+    stories.forEach(story => {
+      viewCountMap.set(story.id, story.readCount);
+    });
+    
+    chapters.forEach(chapter => {
+      const currentCount = viewCountMap.get(chapter.storyId) || 0;
+      viewCountMap.set(chapter.storyId, currentCount + chapter.readCount);
+    });
+    
+    return viewCountMap;
+  }
+}
+
+/**
  * Clear buffered views for a story after successful sync
  * @param storyId The ID of the story
  */
