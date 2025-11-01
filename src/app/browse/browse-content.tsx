@@ -3,14 +3,13 @@
 import { useState, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useRouter, usePathname } from "next/navigation"
-import SearchBar from "@/components/search-bar"
-import FilterPanel from "@/components/filter-panel"
+import HorizontalFilterBar from "@/components/horizontal-filter-bar"
 import StoryGrid from "@/components/story-grid"
 import StoryCardSkeleton from "@/components/story-card-skeleton"
 import Pagination from "@/components/pagination"
 import CategoryDescription from "@/components/category-description"
 import { Button } from "@/components/ui/button"
-import { Filter, Grid, List } from "lucide-react"
+import { Grid, List } from "lucide-react"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { StoryService } from "@/services/story-service"
 import { useToast } from "@/hooks/use-toast"
@@ -116,7 +115,6 @@ export default function BrowseContent({ initialParams, initialData }: BrowseCont
   )
   const [sortBy, setSortBy] = useState(initialParams.sortBy || "newest")
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
-  const [showFilters, setShowFilters] = useState(false)
   const [currentPage, setCurrentPage] = useState(parseInt(initialParams.page || "1"))
   const [totalPages, setTotalPages] = useState(initialData.pagination.totalPages)
   const [totalStories, setTotalStories] = useState(initialData.pagination.total)
@@ -375,25 +373,6 @@ export default function BrowseContent({ initialParams, initialData }: BrowseCont
     updateURL()
   }, [updateURL])
 
-  // Handle search input
-  const handleSearch = (query: string, type?: "genre" | "tag" | "story") => {
-    if (type === "genre") {
-      const genre = allGenres.find(g => g.name.toLowerCase() === query.toLowerCase());
-      if (genre) {
-        setSelectedGenres([genre.slug]);
-        setSearchQuery("");
-      }
-    } else if (type === "tag") {
-      const tag = allTags.find(t => t.name.toLowerCase() === query.toLowerCase());
-      if (tag) {
-        setSelectedTags([tag.name]);
-        setSearchQuery("");
-      }
-    } else {
-      setSearchQuery(query);
-    }
-    setCurrentPage(1);
-  };
 
   // Handle genre selection
   const handleGenreChange = (genres: string[]) => {
@@ -432,10 +411,33 @@ export default function BrowseContent({ initialParams, initialData }: BrowseCont
   }
 
   return (
-    <main className="flex-1 container mx-auto px-8 py-8">
-      <div className="flex flex-col md:flex-row justify-between items-start gap-6 mb-8">
-        <div className="w-full">
-          <h1 className="text-3xl font-bold mb-6">Browse Stories</h1>
+    <main className="flex-1 w-full py-8">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
+        <div className="mb-8">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            <h1 className="text-2xl sm:text-3xl font-bold">Browse Stories</h1>
+            
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setViewMode("grid")}
+                className={viewMode === "grid" ? "bg-primary/10" : ""}
+                aria-label="Grid view"
+              >
+                <Grid className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setViewMode("list")}
+                className={viewMode === "list" ? "bg-primary/10" : ""}
+                aria-label="List view"
+              >
+                <List className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
 
           {/* Category Description for genre pages */}
           {selectedGenres.length === 1 && (
@@ -447,125 +449,78 @@ export default function BrowseContent({ initialParams, initialData }: BrowseCont
             />
           )}
 
-          <div className="flex flex-col sm:flex-row gap-4 items-center mb-6">
-            <SearchBar onSearch={handleSearch} className="w-full sm:w-96" defaultValue={searchQuery} />
+          {/* Horizontal Filter Bar */}
+          <HorizontalFilterBar
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            selectedGenres={selectedGenres}
+            onGenreChange={handleGenreChange}
+            selectedTags={selectedTags}
+            onTagChange={handleTagChange}
+            selectedLanguage={selectedLanguage}
+            onLanguageChange={handleLanguageChange}
+            storyStatus={storyStatus}
+            onStatusChange={handleStatusChange}
+            sortBy={sortBy}
+            onSortChange={handleSortChange}
+          />
+        </div>
 
-            <div className="flex items-center gap-2 ml-auto">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setViewMode("grid")}
-                className={viewMode === "grid" ? "bg-primary/10" : ""}
-              >
-                <Grid className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setViewMode("list")}
-                className={viewMode === "list" ? "bg-primary/10" : ""}
-              >
-                <List className="h-4 w-4" />
-              </Button>
-
-              {isMobile && (
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setShowFilters(!showFilters)}
-                  className={showFilters ? "bg-primary/10" : ""}
-                >
-                  <Filter className="h-4 w-4" />
-                </Button>
-              )}
+        {/* Stories Grid */}
+        <div className="w-full">
+          {loading ? (
+            <div className="space-y-6">
+              <div className="flex justify-between items-center mb-6">
+                <p className="text-muted-foreground">Loading stories...</p>
+              </div>
+              <div className={`grid gap-6 ${
+                viewMode === "grid" ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "grid-cols-1"
+              }`}>
+                {Array.from({ length: 8 }).map((_, index) => (
+                  <motion.div
+                    key={`skeleton-${index}`}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.3, delay: index * 0.1 }}
+                  >
+                    <StoryCardSkeleton viewMode={viewMode} />
+                  </motion.div>
+                ))}
+              </div>
             </div>
-          </div>
-
-          <div className="flex flex-col md:flex-row gap-6">
-            {/* Filter Panel */}
-            <AnimatePresence>
-              {(!isMobile || showFilters) && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="w-full md:w-64 md:sticky md:top-20"
-                >
-                  <FilterPanel
-                    selectedGenres={selectedGenres}
-                    selectedTags={selectedTags}
-                    selectedLanguage={selectedLanguage}
-                    storyStatus={storyStatus}
-                    sortBy={sortBy}
-                    onGenreChange={handleGenreChange}
-                    onTagChange={handleTagChange}
-                    onLanguageChange={handleLanguageChange}
-                    onStatusChange={handleStatusChange}
-                    onSortChange={handleSortChange}
-                    tags={allTags}
-                  />
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Stories Grid */}
-            <div className="flex-1">
-              {loading ? (
-                <div className="space-y-6">
-                  <div className="flex justify-between items-center mb-6">
-                    <p className="text-muted-foreground">Loading stories...</p>
-                  </div>
-                  <div className={`grid gap-6 ${
-                    viewMode === "grid" ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "grid-cols-1"
-                  }`}>
-                    {Array.from({ length: 8 }).map((_, index) => (
-                      <motion.div
-                        key={`skeleton-${index}`}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ duration: 0.3, delay: index * 0.1 }}
-                      >
-                        <StoryCardSkeleton viewMode={viewMode} />
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
-              ) : error ? (
-                <div className="text-center py-16">
-                  <h3 className="text-xl font-semibold mb-2 text-destructive">Error</h3>
-                  <p className="text-muted-foreground">{error}</p>
-                </div>
-              ) : (
-                <>
-                  <div className="flex justify-between items-center mb-6">
-                    <p className="text-muted-foreground">
-                      {totalStories} {totalStories === 1 ? 'story' : 'stories'} found
-                    </p>
-                  </div>
-
-                  <StoryGrid stories={stories} viewMode={viewMode} />
-
-                  <div className="w-full py-4">
-                    <AdBanner
-                      type="banner"
-                      className="w-full max-w-[720px] h-[90px] mx-auto"
-                      slot="6596765108"
-                    />
-                  </div>
-
-                  {/* Pagination */}
-                  {totalPages > 1 && (
-                    <Pagination
-                      currentPage={currentPage}
-                      totalPages={totalPages}
-                      onPageChange={handlePageChange}
-                    />
-                  )}
-                </>
-              )}
+          ) : error ? (
+            <div className="text-center py-16">
+              <h3 className="text-xl font-semibold mb-2 text-destructive">Error</h3>
+              <p className="text-muted-foreground">{error}</p>
             </div>
-          </div>
+          ) : (
+            <>
+              <div className="flex justify-between items-center mb-6">
+                <p className="text-muted-foreground">
+                  {totalStories} {totalStories === 1 ? 'story' : 'stories'} found
+                </p>
+              </div>
+
+              <StoryGrid stories={stories} viewMode={viewMode} />
+
+              <div className="w-full py-4">
+                <AdBanner
+                  type="banner"
+                  className="w-full max-w-[720px] h-[90px] mx-auto"
+                  slot="6596765108"
+                />
+              </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={handlePageChange}
+                />
+              )}
+            </>
+          )}
         </div>
       </div>
     </main>
