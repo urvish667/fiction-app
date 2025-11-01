@@ -415,7 +415,7 @@ export default function BrowseContent({ initialParams, initialData }: BrowseCont
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
         <div className="mb-8">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-            <h1 className="text-2xl sm:text-3xl font-bold">Browse Stories</h1>
+            <h1 className="text-xl sm:text-2xl font-semibold">Browse Stories</h1>
             
             <div className="flex items-center gap-2">
               <Button

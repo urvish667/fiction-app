@@ -125,7 +125,7 @@ export default function StoryCard({ story, viewMode = "grid" }: StoryCardProps) 
         <div className={`${isGrid ? "w-full" : "w-2/3"} flex flex-col h-full`}>
           <CardHeader className="pb-2 px-4 pt-4">
             <div className="flex flex-col">
-              <h3 className="text-base font-normal mb-1">{story.title}</h3>
+              <h3 className="text-base font-normal mb-1 line-clamp-2">{story.title}</h3>
               <p className="text-sm">
                 by <span className="font-medium hover:text-primary transition-colors">
                   {typeof story.author === 'object' ?

@@ -7,9 +7,9 @@ import { Search, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface Suggestion {
-  genres: { id: string; name: string }[];
-  tags: { id: string; name: string }[];
-  stories: { id: string; title: string }[];
+  genres: { id: string; name: string; slug?: string }[];
+  tags: { id: string; name: string; slug?: string }[];
+  stories: { id: string; title: string; slug?: string }[];
 }
 
 interface SearchBarProps {
@@ -64,7 +64,14 @@ export default function SearchBar({
   }, []);
 
   const handleSelect = (value: string, type: "genre" | "tag" | "story") => {
-    setQuery(value);
+    // For stories, set the query to the title
+    // For genres/tags, we'll let the parent handle it via the callback
+    if (type === "story") {
+      setQuery(value);
+    } else {
+      // Clear query for genre/tag selection as they're handled by filters
+      setQuery("");
+    }
     setShowSuggestions(false);
     onSearch(value, type);
   };
@@ -90,7 +97,7 @@ export default function SearchBar({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => query.length > 1 && setShowSuggestions(true)}
-          className="pr-16"
+          className="pr-16 h-12 text-base"
           aria-label="Search for stories, authors, genres, or tags"
           title="Try searching for story titles, author names, genres like 'Fantasy', or tags like 'magic'"
         />

@@ -108,8 +108,8 @@ export default async function BrowsePage({ searchParams }: BrowsePageProps) {
         <Navbar />
 
         <Suspense fallback={
-          <main className="flex-1 container mx-auto px-8 py-8">
-            <h1 className="text-3xl font-bold mb-6">Browse Stories</h1>
+          <main className="flex-1 container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl py-8">
+            <h1 className="text-xl sm:text-2xl font-semibold mb-6">Browse Stories</h1>
             <div className="space-y-6">
               <div className="flex justify-between items-center mb-6">
                 <p className="text-muted-foreground">Loading stories...</p>

@@ -1,9 +1,7 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
-import { Input } from "@/components/ui/input"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { motion, AnimatePresence } from "framer-motion"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,10 +13,12 @@ import {
   DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
-import { Search, ChevronDown, X, Loader2 } from "lucide-react"
+import { ChevronDown, X, Loader2 } from "lucide-react"
 import { logError } from "@/lib/error-logger"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { GENRES, LANGUAGES } from "@/lib/constants/genres-and-languages"
+import SearchBar from "@/components/search-bar"
 
 // Genre option type
 interface GenreOption {
@@ -34,26 +34,15 @@ interface TagOption {
   slug: string
 }
 
-// Search suggestions type
-interface SearchSuggestion {
-  genres: { id: string; name: string; slug: string }[]
-  tags: { id: string; name: string; slug: string }[]
-  stories: { id: string; title: string; slug: string }[]
-}
 
-// Default languages
-const defaultLanguages = [
-  "English",
-  "Spanish",
-  "French",
-  "German",
-  "Chinese",
-  "Japanese",
-  "Korean",
-  "Russian",
-  "Arabic",
-  "Hindi",
-]
+// Map constants to component format (add IDs for compatibility)
+const genresWithIds: GenreOption[] = GENRES.map((genre, index) => ({
+  id: `genre-${index}-${genre.slug}`,
+  name: genre.name,
+  slug: genre.slug,
+}))
+
+const languagesFromConstants = LANGUAGES.map(lang => lang.name)
 
 interface HorizontalFilterBarProps {
   searchQuery: string
@@ -84,42 +73,14 @@ export default function HorizontalFilterBar({
   sortBy,
   onSortChange,
 }: HorizontalFilterBarProps) {
-  const [genres, setGenres] = useState<GenreOption[]>([])
+  const [genres] = useState<GenreOption[]>(genresWithIds)
   const [tags, setTags] = useState<TagOption[]>([])
-  const [languages, setLanguages] = useState<string[]>(defaultLanguages)
-  const [loadingGenres, setLoadingGenres] = useState(false)
+  const [languages] = useState<string[]>(languagesFromConstants)
   const [loadingTags, setLoadingTags] = useState(false)
-  const [loadingLanguages, setLoadingLanguages] = useState(false)
   const [tagSearchOpen, setTagSearchOpen] = useState(false)
   const [tagSearchQuery, setTagSearchQuery] = useState("")
-  const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery)
-  const [searchSuggestions, setSearchSuggestions] = useState<SearchSuggestion | null>(null)
-  const [showSearchSuggestions, setShowSearchSuggestions] = useState(false)
-  const searchRef = useRef<HTMLDivElement>(null)
 
-  // Fetch genres from the API
-  useEffect(() => {
-    const fetchGenres = async () => {
-      setLoadingGenres(true)
-      try {
-        const response = await fetch("/api/genres")
-        if (response.ok) {
-          const data = await response.json()
-          const genresWithSlugs = data.map((genre: any) => ({
-            ...genre,
-            slug: genre.slug || genre.name.toLowerCase().replace(/\s+/g, "-"),
-          }))
-          setGenres(genresWithSlugs)
-        }
-      } catch (error) {
-        logError(error, { context: "Fetching genres" })
-      } finally {
-        setLoadingGenres(false)
-      }
-    }
-
-    fetchGenres()
-  }, [])
+  // Genres are now loaded from constants - no API call needed
 
   // Fetch tags from the API
   useEffect(() => {
@@ -141,74 +102,7 @@ export default function HorizontalFilterBar({
     fetchTags()
   }, [])
 
-  // Fetch languages from the API
-  useEffect(() => {
-    const fetchLanguages = async () => {
-      setLoadingLanguages(true)
-      try {
-        const response = await fetch("/api/languages")
-        if (response.ok) {
-          const data = await response.json()
-          const languageNames = data.map((language: { name: string }) => language.name)
-          setLanguages(languageNames)
-        } else {
-          setLanguages(defaultLanguages)
-        }
-      } catch (error) {
-        logError(error, { context: "Fetching languages" })
-        setLanguages(defaultLanguages)
-      } finally {
-        setLoadingLanguages(false)
-      }
-    }
-
-    fetchLanguages()
-  }, [])
-
-  // Fetch search suggestions
-  useEffect(() => {
-    const fetchSuggestions = async () => {
-      if (localSearchQuery.length > 1) {
-        try {
-          const response = await fetch(`/api/search/suggestions?q=${encodeURIComponent(localSearchQuery)}`)
-          if (response.ok) {
-            const data = await response.json()
-            setSearchSuggestions(data)
-            setShowSearchSuggestions(true)
-          }
-        } catch (error) {
-          console.error("Failed to fetch suggestions:", error)
-        }
-      } else {
-        setShowSearchSuggestions(false)
-        setSearchSuggestions(null)
-      }
-    }
-
-    const debounce = setTimeout(fetchSuggestions, 300)
-    return () => clearTimeout(debounce)
-  }, [localSearchQuery])
-
-  // Handle search with debounce
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      onSearchChange(localSearchQuery)
-    }, 300)
-
-    return () => clearTimeout(timer)
-  }, [localSearchQuery, onSearchChange])
-
-  // Handle click outside to close suggestions
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
-        setShowSearchSuggestions(false)
-      }
-    }
-
-    document.addEventListener("mousedown", handleClickOutside)
-    return () => document.removeEventListener("mousedown", handleClickOutside)
-  }, [])
+  // Languages are now loaded from constants - no API call needed
 
   const handleGenreToggle = (genreSlug: string) => {
     if (selectedGenres.includes(genreSlug)) {
@@ -226,36 +120,24 @@ export default function HorizontalFilterBar({
     }
   }
 
-  const handleSearchSelect = (value: string, type: "genre" | "tag" | "story") => {
+  const handleSearch = (query: string, type?: "genre" | "tag" | "story") => {
     if (type === "genre") {
-      const genre = genres.find((g) => g.name === value)
+      const genre = genres.find((g) => g.name === query)
       if (genre) {
         onGenreChange([genre.slug])
-        setLocalSearchQuery("")
-        setShowSearchSuggestions(false)
       }
     } else if (type === "tag") {
-      const tag = tags.find((t) => t.name === value)
+      const tag = tags.find((t) => t.name === query)
       if (tag) {
         onTagChange([tag.name])
-        setLocalSearchQuery("")
-        setShowSearchSuggestions(false)
       }
     } else {
-      setLocalSearchQuery(value)
-      setShowSearchSuggestions(false)
-      onSearchChange(value)
+      // Regular search query
+      onSearchChange(query)
     }
   }
 
-  const clearSearch = () => {
-    setLocalSearchQuery("")
-    setShowSearchSuggestions(false)
-    onSearchChange("")
-  }
-
   const clearAllFilters = () => {
-    setLocalSearchQuery("")
     onSearchChange("")
     onGenreChange([])
     onTagChange([])
@@ -301,98 +183,12 @@ export default function HorizontalFilterBar({
   return (
     <div className="w-full space-y-4">
       {/* Search Bar with Suggestions */}
-      <div ref={searchRef} className="relative w-full">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4 z-10" />
-        <Input
-          type="text"
-          placeholder="Search stories, authors, genres, or tags..."
-          value={localSearchQuery}
-          onChange={(e) => setLocalSearchQuery(e.target.value)}
-          onFocus={() => localSearchQuery.length > 1 && setShowSearchSuggestions(true)}
-          className="w-full pl-10 pr-12 h-12 text-base"
-          aria-label="Search for stories, authors, genres, or tags"
-        />
-        {localSearchQuery && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="absolute right-0 top-1/2 transform -translate-y-1/2 h-10 w-10 z-10"
-            onClick={clearSearch}
-          >
-            <X className="h-4 w-4" />
-            <span className="sr-only">Clear search</span>
-          </Button>
-        )}
-        
-        {/* Search Suggestions Dropdown */}
-        <AnimatePresence>
-          {showSearchSuggestions && searchSuggestions && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="absolute z-50 w-full mt-1 bg-background border border-border rounded-md shadow-lg max-h-96 overflow-y-auto"
-            >
-              {searchSuggestions.stories.length > 0 && (
-                <div>
-                  <h3 className="px-4 py-2 text-sm font-semibold text-muted-foreground">Stories</h3>
-                  <ul>
-                    {searchSuggestions.stories.map((story) => (
-                      <li
-                        key={story.id}
-                        onClick={() => handleSearchSelect(story.title, "story")}
-                        className="px-4 py-2 cursor-pointer hover:bg-accent transition-colors"
-                      >
-                        {story.title}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {searchSuggestions.genres.length > 0 && (
-                <div>
-                  <h3 className="px-4 py-2 text-sm font-semibold text-muted-foreground">Genres</h3>
-                  <ul>
-                    {searchSuggestions.genres.map((genre) => (
-                      <li
-                        key={genre.id}
-                        onClick={() => handleSearchSelect(genre.name, "genre")}
-                        className="px-4 py-2 cursor-pointer hover:bg-accent transition-colors"
-                      >
-                        {genre.name}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {searchSuggestions.tags.length > 0 && (
-                <div>
-                  <h3 className="px-4 py-2 text-sm font-semibold text-muted-foreground">Tags</h3>
-                  <ul>
-                    {searchSuggestions.tags.map((tag) => (
-                      <li
-                        key={tag.id}
-                        onClick={() => handleSearchSelect(tag.name, "tag")}
-                        className="px-4 py-2 cursor-pointer hover:bg-accent transition-colors"
-                      >
-                        {tag.name}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {searchSuggestions.stories.length === 0 && 
-               searchSuggestions.genres.length === 0 && 
-               searchSuggestions.tags.length === 0 && (
-                <div className="px-4 py-3 text-sm text-muted-foreground text-center">
-                  No suggestions found
-                </div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+      <SearchBar
+        onSearch={handleSearch}
+        defaultValue={searchQuery}
+        className="w-full"
+        placeholder="Search stories, authors, genres, or tags..."
+      />
 
       {/* Filter Dropdowns */}
       <div className="flex flex-wrap items-center gap-2 sm:gap-3">
@@ -453,23 +249,15 @@ export default function HorizontalFilterBar({
           <DropdownMenuContent align="start" className="w-64 max-h-96 overflow-y-auto">
             <DropdownMenuLabel>Select Genres</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            {loadingGenres ? (
-              <div className="flex justify-center items-center py-4">
-                <Loader2 className="h-4 w-4 animate-spin" />
-              </div>
-            ) : (
-              <>
-                {genres.map((genre) => (
-                  <DropdownMenuCheckboxItem
-                    key={genre.id}
-                    checked={selectedGenres.includes(genre.slug)}
-                    onCheckedChange={() => handleGenreToggle(genre.slug)}
-                  >
-                    {genre.name}
-                  </DropdownMenuCheckboxItem>
-                ))}
-              </>
-            )}
+            {genres.map((genre) => (
+              <DropdownMenuCheckboxItem
+                key={genre.id}
+                checked={selectedGenres.includes(genre.slug)}
+                onCheckedChange={() => handleGenreToggle(genre.slug)}
+              >
+                {genre.name}
+              </DropdownMenuCheckboxItem>
+            ))}
           </DropdownMenuContent>
         </DropdownMenu>
 
@@ -538,17 +326,11 @@ export default function HorizontalFilterBar({
             <DropdownMenuSeparator />
             <DropdownMenuRadioGroup value={selectedLanguage} onValueChange={onLanguageChange}>
               <DropdownMenuRadioItem value="">All</DropdownMenuRadioItem>
-              {loadingLanguages ? (
-                <div className="flex justify-center items-center py-4">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                </div>
-              ) : (
-                languages.map((language) => (
-                  <DropdownMenuRadioItem key={language} value={language}>
-                    {language}
-                  </DropdownMenuRadioItem>
-                ))
-              )}
+              {languages.map((language) => (
+                <DropdownMenuRadioItem key={language} value={language}>
+                  {language}
+                </DropdownMenuRadioItem>
+              ))}
             </DropdownMenuRadioGroup>
           </DropdownMenuContent>
         </DropdownMenu>

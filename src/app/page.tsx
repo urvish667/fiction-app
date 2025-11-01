@@ -36,10 +36,10 @@ export default function Home() {
         <Navbar />
 
         {/* Hero Section */}
-        <section className="relative py-20 md:py-28 lg:py-36 px-8 overflow-hidden bg-gradient-to-br from-primary/5 to-secondary/5">
-          <div className="container mx-auto text-center relative z-10">
+        <section className="relative py-20 md:py-28 lg:py-36 overflow-hidden bg-gradient-to-br from-primary/5 to-secondary/5">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl text-center relative z-10">
             <div className="max-w-3xl mx-auto">
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-semibold tracking-tight mb-6">
                 Unleash Your Stories, One Page at a Time
               </h1>
               <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
@@ -71,9 +71,9 @@ export default function Home() {
         <MostViewedStories />
 
         {/* Explore Categories Section */}
-        <section className="py-16 px-8 bg-muted/50">
-          <div className="container mx-auto">
-            <h2 className="text-3xl font-bold mb-10">Explore Categories</h2>
+        <section className="py-16 bg-muted/50">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
+            <h2 className="text-xl sm:text-2xl font-semibold mb-10">Explore Categories</h2>
             <div className="flex flex-wrap gap-3 justify-center">
               {categories.map((category) => (
                 <Link

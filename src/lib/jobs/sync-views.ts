@@ -66,7 +66,7 @@ async function syncStoryViews(): Promise<{ processed: number; viewsAdded: number
   let errors = 0;
 
   // Process in batches of 500 for efficient batch updates
-  const BATCH_SIZE = 500;
+  const BATCH_SIZE = 250;
   const entries = Array.from(bufferedViews.entries());
   
   for (let i = 0; i < entries.length; i += BATCH_SIZE) {

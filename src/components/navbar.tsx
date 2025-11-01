@@ -51,10 +51,11 @@ export default function Navbar() {
   if (isLoading) {
     return (
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-md">
-        <div className="w-full max-w-screen-2xl mx-auto flex h-16 items-center justify-between px-4 sm:px-6">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl flex h-16 items-center justify-between">
           <Link href="/" className="flex items-center">
             <motion.h1
-              className="text-2xl font-bold font-serif"
+              className="text-3xl font-bold font-serif"
+              style={{ color: '#125ba5' }}
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5 }}
@@ -72,11 +73,12 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-md">
-      <div className="w-full max-w-screen-2xl mx-auto flex h-16 items-center justify-between px-4 sm:px-6">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl flex h-16 items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center">
           <motion.h1
-            className="text-2xl font-bold font-serif"
+            className="text-3xl font-bold font-serif"
+            style={{ color: '#125ba5' }}
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5 }}

@@ -120,11 +120,11 @@ export default function MostViewedStories({ className }: MostViewedStoriesProps)
 
   if (loading) {
     return (
-      <section className={`py-16 px-8 bg-background ${className}`}>
-        <div className="container mx-auto">
+      <section className={`py-16 bg-background ${className}`}>
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
           <div className="flex justify-between items-center mb-10">
             <div>
-              <h2 className="text-3xl font-bold">Top Read Stories Of This Week</h2>
+              <h2 className="text-xl sm:text-2xl font-semibold">Top Read Stories Of This Week</h2>
               <p className="text-muted-foreground mt-1">Top read stories from the last 7 days</p>
             </div>
             <Link href="/browse?sortBy=mostRead">
@@ -144,11 +144,11 @@ export default function MostViewedStories({ className }: MostViewedStoriesProps)
 
   if (error) {
     return (
-      <section className={`py-16 px-8 bg-background ${className}`}>
-        <div className="container mx-auto">
+      <section className={`py-16 bg-background ${className}`}>
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
           <div className="flex justify-between items-center mb-10">
             <div>
-              <h2 className="text-3xl font-bold">Top Read Stories Of This Week</h2>
+              <h2 className="text-xl sm:text-2xl font-semibold">Top Read Stories Of This Week</h2>
               <p className="text-muted-foreground mt-1">Top read stories from the last 7 days</p>
             </div>
             <Link href="/browse?sortBy=mostRead">
@@ -174,11 +174,11 @@ export default function MostViewedStories({ className }: MostViewedStoriesProps)
 
   if (stories.length === 0) {
     return (
-      <section className={`py-16 px-8 bg-background ${className}`}>
-        <div className="container mx-auto">
+      <section className={`py-16 bg-background ${className}`}>
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
           <div className="flex justify-between items-center mb-10">
             <div>
-              <h2 className="text-3xl font-bold">Top Read Stories Of This Week</h2>
+              <h2 className="text-xl sm:text-2xl font-semibold">Top Read Stories Of This Week</h2>
               <p className="text-muted-foreground mt-1">Most read stories from the last 7 days</p>
             </div>
             <Link href="/browse?sortBy=mostRead">
@@ -203,8 +203,8 @@ export default function MostViewedStories({ className }: MostViewedStoriesProps)
   }
 
   return (
-    <section className={`py-16 px-8 bg-background ${className}`}>
-      <div className="container mx-auto">
+    <section className={`py-16 bg-background ${className}`}>
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
         <div className="flex justify-between items-center mb-10">
           <div>
             <h2 className="text-3xl font-bold">Top Read Stories Of This Week</h2>
@@ -218,7 +218,7 @@ export default function MostViewedStories({ className }: MostViewedStoriesProps)
         <div className="relative">
           <div
             ref={scrollContainerRef}
-            className="grid grid-flow-col auto-cols-[calc(100%-1rem)] sm:auto-cols-[calc(50%-1rem)] lg:auto-cols-[calc(33.33%-1rem)] xl:auto-cols-[calc(25%-1rem)] gap-5 overflow-x-auto scroll-smooth snap-x snap-mandatory scrollbar-hide"
+            className="grid grid-flow-col auto-cols-[calc(100%-0.5rem)] sm:auto-cols-[calc(50%-0.5rem)] lg:auto-cols-[calc(33.33%-0.5rem)] xl:auto-cols-[calc(25%-0.5rem)] gap-2 overflow-x-auto scroll-smooth snap-x snap-mandatory scrollbar-hide"
           >
             {stories.map((story, index) => (
               <StoryCard
