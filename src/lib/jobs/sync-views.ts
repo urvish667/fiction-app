@@ -65,54 +65,78 @@ async function syncStoryViews(): Promise<{ processed: number; viewsAdded: number
   let viewsAdded = 0;
   let errors = 0;
 
-  // Process in batches of 100 to avoid overwhelming the database
-  const BATCH_SIZE = 100;
+  // Process in batches of 500 for efficient batch updates
+  const BATCH_SIZE = 500;
   const entries = Array.from(bufferedViews.entries());
   
   for (let i = 0; i < entries.length; i += BATCH_SIZE) {
     const batch = entries.slice(i, i + BATCH_SIZE);
     
-    // Process batch in parallel with Promise.allSettled to handle individual failures
-    const results = await Promise.allSettled(
-      batch.map(async ([storyId, count]) => {
-        try {
-          // Update story read count using raw SQL to avoid updating updatedAt
-          await prisma.$executeRaw`
-            UPDATE "Story" 
+    try {
+      // Execute all updates in parallel for better performance
+      // These are independent UPDATE statements, so we can run them concurrently
+      await Promise.all(
+        batch.map(([storyId, count]) =>
+          prisma.$executeRaw`
+            UPDATE "Story"
             SET "readCount" = "readCount" + ${count}
             WHERE id = ${storyId}
-          `;
+          `
+        )
+      );
 
-          logger.info(`[Redis] Updated story ${storyId} in database with ${count} views`);
+      // Clear all buffers in parallel after successful update
+      const clearResults = await Promise.allSettled(
+        batch.map(([storyId]) => clearStoryViewBuffer(storyId))
+      );
 
-          // Clear the buffer after successful update
-          await clearStoryViewBuffer(storyId);
-
-          logger.info(`[Redis] Cleared Redis buffer for story ${storyId}`);
-          logger.debug(`Synced ${count} views for story ${storyId}`);
-          
-          return { storyId, count, success: true };
-        } catch (error) {
-          logger.error(`Failed to sync views for story ${storyId}:`, error);
-          throw error;
+      // Count successes
+      let batchProcessed = 0;
+      let batchViewsAdded = 0;
+      batch.forEach(([storyId, count], index) => {
+        if (clearResults[index].status === 'fulfilled') {
+          batchProcessed++;
+          batchViewsAdded += count;
+        } else {
+          errors++;
+          logger.error(`Failed to clear buffer for story ${storyId}:`, clearResults[index]);
         }
-      })
-    );
+      });
 
-    // Count successes and failures
-    results.forEach((result, index) => {
-      if (result.status === 'fulfilled') {
-        processed++;
-        viewsAdded += batch[index][1];
-      } else {
-        errors++;
-        logger.error(`Failed to sync story ${batch[index][0]}:`, result.reason);
-      }
-    });
+      processed += batchProcessed;
+      viewsAdded += batchViewsAdded;
 
-    // Small delay between batches to avoid overwhelming the database
-    if (i + BATCH_SIZE < entries.length) {
-      await new Promise(resolve => setTimeout(resolve, 100));
+      logger.info(`[Redis] Batch synced ${batchProcessed}/${batch.length} stories with ${batchViewsAdded} views`);
+      
+    } catch (error) {
+      // If batch update fails, fall back to individual updates for this batch
+      logger.warn(`[Redis] Batch update failed, falling back to individual updates:`, error);
+      
+      const results = await Promise.allSettled(
+        batch.map(async ([storyId, count]) => {
+          try {
+            await prisma.$executeRaw`
+              UPDATE "Story" 
+              SET "readCount" = "readCount" + ${count}
+              WHERE id = ${storyId}
+            `;
+            await clearStoryViewBuffer(storyId);
+            return { storyId, count, success: true };
+          } catch (error) {
+            logger.error(`Failed to sync views for story ${storyId}:`, error);
+            throw error;
+          }
+        })
+      );
+
+      results.forEach((result, index) => {
+        if (result.status === 'fulfilled') {
+          processed++;
+          viewsAdded += batch[index][1];
+        } else {
+          errors++;
+        }
+      });
     }
   }
 
@@ -153,54 +177,78 @@ async function syncChapterViews(): Promise<{ processed: number; viewsAdded: numb
   let viewsAdded = 0;
   let errors = 0;
 
-  // Process in batches of 100 to avoid overwhelming the database
-  const BATCH_SIZE = 100;
+  // Process in batches of 500 for efficient batch updates
+  const BATCH_SIZE = 500;
   const entries = Array.from(bufferedViews.entries());
   
   for (let i = 0; i < entries.length; i += BATCH_SIZE) {
     const batch = entries.slice(i, i + BATCH_SIZE);
     
-    // Process batch in parallel with Promise.allSettled to handle individual failures
-    const results = await Promise.allSettled(
-      batch.map(async ([chapterId, count]) => {
-        try {
-          // Update chapter read count using raw SQL to avoid updating updatedAt
-          await prisma.$executeRaw`
-            UPDATE "Chapter" 
+    try {
+      // Execute all updates in parallel for better performance
+      // These are independent UPDATE statements, so we can run them concurrently
+      await Promise.all(
+        batch.map(([chapterId, count]) =>
+          prisma.$executeRaw`
+            UPDATE "Chapter"
             SET "readCount" = "readCount" + ${count}
             WHERE id = ${chapterId}
-          `;
+          `
+        )
+      );
 
-          logger.info(`[Redis] Updated chapter ${chapterId} in database with ${count} views`);
+      // Clear all buffers in parallel after successful update
+      const clearResults = await Promise.allSettled(
+        batch.map(([chapterId]) => clearChapterViewBuffer(chapterId))
+      );
 
-          // Clear the buffer after successful update
-          await clearChapterViewBuffer(chapterId);
-
-          logger.info(`[Redis] Cleared Redis buffer for chapter ${chapterId}`);
-          logger.debug(`Synced ${count} views for chapter ${chapterId}`);
-          
-          return { chapterId, count, success: true };
-        } catch (error) {
-          logger.error(`Failed to sync views for chapter ${chapterId}:`, error);
-          throw error;
+      // Count successes
+      let batchProcessed = 0;
+      let batchViewsAdded = 0;
+      batch.forEach(([chapterId, count], index) => {
+        if (clearResults[index].status === 'fulfilled') {
+          batchProcessed++;
+          batchViewsAdded += count;
+        } else {
+          errors++;
+          logger.error(`Failed to clear buffer for chapter ${chapterId}:`, clearResults[index]);
         }
-      })
-    );
+      });
 
-    // Count successes and failures
-    results.forEach((result, index) => {
-      if (result.status === 'fulfilled') {
-        processed++;
-        viewsAdded += batch[index][1];
-      } else {
-        errors++;
-        logger.error(`Failed to sync chapter ${batch[index][0]}:`, result.reason);
-      }
-    });
+      processed += batchProcessed;
+      viewsAdded += batchViewsAdded;
 
-    // Small delay between batches to avoid overwhelming the database
-    if (i + BATCH_SIZE < entries.length) {
-      await new Promise(resolve => setTimeout(resolve, 100));
+      logger.info(`[Redis] Batch synced ${batchProcessed}/${batch.length} chapters with ${batchViewsAdded} views`);
+      
+    } catch (error) {
+      // If batch update fails, fall back to individual updates for this batch
+      logger.warn(`[Redis] Batch update failed, falling back to individual updates:`, error);
+      
+      const results = await Promise.allSettled(
+        batch.map(async ([chapterId, count]) => {
+          try {
+            await prisma.$executeRaw`
+              UPDATE "Chapter" 
+              SET "readCount" = "readCount" + ${count}
+              WHERE id = ${chapterId}
+            `;
+            await clearChapterViewBuffer(chapterId);
+            return { chapterId, count, success: true };
+          } catch (error) {
+            logger.error(`Failed to sync views for chapter ${chapterId}:`, error);
+            throw error;
+          }
+        })
+      );
+
+      results.forEach((result, index) => {
+        if (result.status === 'fulfilled') {
+          processed++;
+          viewsAdded += batch[index][1];
+        } else {
+          errors++;
+        }
+      });
     }
   }
 

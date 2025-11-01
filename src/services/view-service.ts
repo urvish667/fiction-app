@@ -7,6 +7,7 @@ import {
   getStoryViewCount as getRedisStoryViewCount,
   getChapterViewCount as getRedisChapterViewCount,
   getCombinedStoryViewCount as getRedisCombinedStoryViewCount,
+  getBatchCombinedStoryViewCounts,
 } from "@/lib/redis/view-tracking";
 
 export class ViewService {
@@ -523,11 +524,13 @@ export class ViewService {
 
   /**
    * Get combined view counts (story + chapter views) for multiple stories in a batch
+   * This method uses Redis-aware view counting that includes buffered views.
+   * Note: Time range filtering is not supported when using Redis buffers as they don't have timestamps.
    * @param storyIds Array of story IDs
-   * @param timeRange Optional time range for filtering views
-   * @param startDate Optional custom start date (used when timeRange is 'custom')
-   * @param endDate Optional custom end date (used when timeRange is 'custom')
-   * @returns Map of story ID to combined view count
+   * @param timeRange Optional time range for filtering views (ignored when using Redis, kept for API compatibility)
+   * @param startDate Optional custom start date (ignored when using Redis, kept for API compatibility)
+   * @param endDate Optional custom end date (ignored when using Redis, kept for API compatibility)
+   * @returns Map of story ID to combined view count (includes Redis buffers)
    */
   static async getBatchCombinedViewCounts(
     storyIds: string[],
@@ -540,99 +543,13 @@ export class ViewService {
         return new Map();
       }
 
-      // Create time range filter
-      let createdAtFilter = {};
-      if (timeRange === 'custom' && (startDate || endDate)) {
-        // Use custom date range
-        createdAtFilter = {};
-        if (startDate) {
-          createdAtFilter = { ...createdAtFilter, gte: startDate };
-        }
-        if (endDate) {
-          createdAtFilter = { ...createdAtFilter, lt: endDate };
-        }
-      } else if (timeRange) {
-        // Use predefined time range
-        const rangeStartDate = this.getStartDateFromTimeRange(timeRange);
-        if (rangeStartDate) {
-          createdAtFilter = { gte: rangeStartDate };
-        }
-      }
-
-      // Run both queries in parallel for better performance
-      const [storyViewCounts, chapters] = await Promise.all([
-        // Get story view counts
-        prisma.storyView.groupBy({
-          by: ['storyId'],
-          where: {
-            storyId: { in: storyIds },
-            ...(Object.keys(createdAtFilter).length > 0 ? { createdAt: createdAtFilter } : {})
-          },
-          _count: true,
-        }),
-
-        // Get all chapters for these stories
-        prisma.chapter.findMany({
-          where: { storyId: { in: storyIds } },
-          select: { id: true, storyId: true }
-        })
-      ]);
-
-      // Create a map with all story IDs initialized to 0
-      const combinedViewCountMap = new Map<string, number>();
-      storyIds.forEach(id => combinedViewCountMap.set(id, 0));
-
-      // Add story view counts
-      storyViewCounts.forEach(item => {
-        combinedViewCountMap.set(item.storyId, item._count);
-      });
-
-      // If no chapters, return just story views
-      if (chapters.length === 0) {
-        return combinedViewCountMap;
-      }
-
-      // Get all chapter IDs
-      const allChapterIds = chapters.map(chapter => chapter.id);
-
-      // Get chapter view counts in a single query
-      const chapterViewCounts = await prisma.chapterView.groupBy({
-        by: ['chapterId'],
-        where: {
-          chapterId: { in: allChapterIds },
-          ...(Object.keys(createdAtFilter).length > 0 ? { createdAt: createdAtFilter } : {})
-        },
-        _count: true,
-      });
-
-      // Create a map of chapter ID to view count
-      const chapterViewCountMap = new Map<string, number>();
-      chapterViewCounts.forEach(item => {
-        chapterViewCountMap.set(item.chapterId, item._count);
-      });
-
-      // Group chapters by story ID
-      const chaptersByStory = chapters.reduce((acc, chapter) => {
-        if (!acc[chapter.storyId]) {
-          acc[chapter.storyId] = [];
-        }
-        acc[chapter.storyId].push(chapter.id);
-        return acc;
-      }, {} as Record<string, string[]>);
-
-      // For each story with chapters, add chapter views to story views
-      Object.entries(chaptersByStory).forEach(([storyId, chapterIds]) => {
-        // Sum up all chapter views for this story
-        const totalChapterViews = chapterIds.reduce((sum, chapterId) => {
-          return sum + (chapterViewCountMap.get(chapterId) || 0);
-        }, 0);
-
-        // Add chapter views to story views
-        const currentStoryViews = combinedViewCountMap.get(storyId) || 0;
-        combinedViewCountMap.set(storyId, currentStoryViews + totalChapterViews);
-      });
-
-      return combinedViewCountMap;
+      // Use Redis-aware function that includes buffered views
+      // This ensures we get accurate view counts that include views tracked in Redis
+      // Note: Time range filtering is not applied as Redis buffers don't have timestamps
+      // The readCount field in the database gets updated every 12 hours from Redis batches
+      const viewCountMap = await getBatchCombinedStoryViewCounts(storyIds);
+      
+      return viewCountMap;
     } catch (error) {
       logError(error, { context: 'Getting batch combined view counts', storyIds })
       // Return empty map with 0 counts for all requested stories
@@ -707,10 +624,13 @@ export class ViewService {
 
   /**
    * Get most viewed stories
+   * Uses Redis-aware view counting that includes buffered views.
+   * Note: Time range filtering is not fully supported when using Redis buffers as they don't have timestamps.
+   * The method returns stories with the highest current view counts (including Redis buffers).
    * @param limit Number of stories to return
-   * @param timeRange Optional time range for filtering views
-   * @param startDate Optional custom start date (used when timeRange is 'custom')
-   * @param endDate Optional custom end date (used when timeRange is 'custom')
+   * @param timeRange Optional time range (kept for API compatibility, but not applied to Redis buffers)
+   * @param startDate Optional custom start date (kept for API compatibility)
+   * @param endDate Optional custom end date (kept for API compatibility)
    * @returns Array of story IDs sorted by view count
    */
   static async getMostViewedStories(
@@ -720,25 +640,6 @@ export class ViewService {
     endDate?: Date
   ): Promise<string[]> {
     try {
-      // Create time range filter
-      let createdAtFilter = {};
-      if (timeRange === 'custom' && (startDate || endDate)) {
-        // Use custom date range
-        createdAtFilter = {};
-        if (startDate) {
-          createdAtFilter = { ...createdAtFilter, gte: startDate };
-        }
-        if (endDate) {
-          createdAtFilter = { ...createdAtFilter, lt: endDate };
-        }
-      } else if (timeRange) {
-        // Use predefined time range
-        const rangeStartDate = this.getStartDateFromTimeRange(timeRange);
-        if (rangeStartDate) {
-          createdAtFilter = { gte: rangeStartDate };
-        }
-      }
-
       // Get all published stories (non-draft) with their IDs
       const stories = await prisma.story.findMany({
         where: {
@@ -753,89 +654,14 @@ export class ViewService {
 
       const storyIds = stories.map(story => story.id);
 
-      // Get story view counts
-      const storyViewCounts = await prisma.storyView.groupBy({
-        by: ['storyId'],
-        where: {
-          storyId: { in: storyIds },
-          ...(Object.keys(createdAtFilter).length > 0 ? { createdAt: createdAtFilter } : {})
-        },
-        _count: true,
-      });
+      // Use Redis-aware function to get combined view counts (includes Redis buffers)
+      // This ensures we get accurate view counts that include views tracked in Redis
+      // Note: Time range filtering is not applied as Redis buffers don't have timestamps
+      // The readCount field in the database gets updated every 12 hours from Redis batches
+      const viewCountMap = await getBatchCombinedStoryViewCounts(storyIds);
 
-      // Get all chapters for these stories
-      const chapters = await prisma.chapter.findMany({
-        where: { storyId: { in: storyIds } },
-        select: { id: true, storyId: true }
-      });
-
-      // If no chapters, just use story views
-      if (chapters.length === 0) {
-        // Create a map of story ID to view count
-        const viewCountMap = new Map<string, number>();
-        storyIds.forEach(id => viewCountMap.set(id, 0));
-
-        // Add story view counts
-        storyViewCounts.forEach(item => {
-          viewCountMap.set(item.storyId, item._count);
-        });
-
-        // Sort and return top N
-        return Array.from(viewCountMap.entries())
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, limit)
-          .map(entry => entry[0]);
-      }
-
-      // Get all chapter IDs
-      const allChapterIds = chapters.map(chapter => chapter.id);
-
-      // Get chapter view counts
-      const chapterViewCounts = await prisma.chapterView.groupBy({
-        by: ['chapterId'],
-        where: {
-          chapterId: { in: allChapterIds },
-          ...(Object.keys(createdAtFilter).length > 0 ? { createdAt: createdAtFilter } : {})
-        },
-        _count: true,
-      });
-
-      // Create a map of chapter ID to view count
-      const chapterViewCountMap = new Map<string, number>();
-      chapterViewCounts.forEach(item => {
-        chapterViewCountMap.set(item.chapterId, item._count);
-      });
-
-      // Group chapters by story ID
-      const chaptersByStory = chapters.reduce((acc, chapter) => {
-        if (!acc[chapter.storyId]) {
-          acc[chapter.storyId] = [];
-        }
-        acc[chapter.storyId].push(chapter.id);
-        return acc;
-      }, {} as Record<string, string[]>);
-
-      // Create a map for combined view counts
-      const combinedViewCountMap = new Map<string, number>();
-      storyIds.forEach(id => combinedViewCountMap.set(id, 0));
-
-      // Add story view counts
-      storyViewCounts.forEach(item => {
-        combinedViewCountMap.set(item.storyId, item._count);
-      });
-
-      // Add chapter view counts
-      Object.entries(chaptersByStory).forEach(([storyId, chapterIds]) => {
-        const totalChapterViews = chapterIds.reduce((sum, chapterId) => {
-          return sum + (chapterViewCountMap.get(chapterId) || 0);
-        }, 0);
-
-        const currentStoryViews = combinedViewCountMap.get(storyId) || 0;
-        combinedViewCountMap.set(storyId, currentStoryViews + totalChapterViews);
-      });
-
-      // Sort by view count and take top N
-      const sortedStories = Array.from(combinedViewCountMap.entries())
+      // Sort by view count (descending) and take top N
+      const sortedStories = Array.from(viewCountMap.entries())
         .sort((a, b) => b[1] - a[1])
         .slice(0, limit)
         .map(entry => entry[0]);

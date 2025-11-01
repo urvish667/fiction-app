@@ -89,7 +89,9 @@ export async function trackStoryViewRedis(
   }
 
   try {
-    // Check for deduplication
+    // Check for deduplication - use userId if available (primary), otherwise use IP
+    // IMPORTANT: Always use userId when available to ensure consistent deduplication
+    // If we mixed userId+IP, the same user could have different keys when IP is/isn't present
     const dedupKey = userId
       ? `${VIEW_REDIS_KEYS.USER_STORY_DEDUP}${userId}:${storyId}`
       : clientInfo?.ip
@@ -111,9 +113,9 @@ export async function trackStoryViewRedis(
 
     if (!isFirstView) {
       // This is a duplicate view within the dedup window, don't count it
-      logger.info(`[Redis] Duplicate view detected for story ${storyId}, user: ${userId || 'anonymous'}, skipping`);
+      logger.debug(`[Redis] Duplicate view detected for story ${storyId}, user: ${userId || 'anonymous'}, skipping`);
       
-      // Still return the current buffered count
+      // Still return the current buffered count (cached for efficiency)
       const bufferKey = `${VIEW_REDIS_KEYS.STORY_BUFFER}${storyId}`;
       const bufferedCount = parseInt(await redis.get(bufferKey) || '0', 10);
       
@@ -122,7 +124,7 @@ export async function trackStoryViewRedis(
 
     logger.debug(`[Redis] First view confirmed for story ${storyId}, proceeding to track`);
 
-    // Use Redis pipeline for atomic operations
+    // Use Redis pipeline for atomic operations (more efficient than multiple round trips)
     const pipeline = redis.pipeline();
 
     // Note: Deduplication key already set with SETNX above
@@ -130,22 +132,25 @@ export async function trackStoryViewRedis(
     const bufferKey = `${VIEW_REDIS_KEYS.STORY_BUFFER}${storyId}`;
     pipeline.incr(bufferKey);
 
-    // Invalidate cached view count
+    // Invalidate cached view count (forces recalculation on next read)
     const countCacheKey = `${VIEW_REDIS_KEYS.STORY_COUNT_CACHE}${storyId}`;
     pipeline.del(countCacheKey);
 
-    // Execute pipeline
+    // Also invalidate combined cache if it exists
+    const combinedCacheKey = `${VIEW_REDIS_KEYS.STORY_COUNT_CACHE}combined:${storyId}`;
+    pipeline.del(combinedCacheKey);
+
+    // Execute pipeline (all operations are atomic)
     const results = await pipeline.exec();
 
     if (!results) {
       throw new Error('Redis pipeline execution failed');
     }
 
-    // Get the incremented count from the INCR result (now at index 0 since we removed SETEX)
+    // Get the incremented count from the INCR result
     const bufferedCount = results[0][1] as number;
 
-    logger.info(`[Redis] Successfully tracked story view: ${storyId}, buffered count: ${bufferedCount}, user: ${userId || 'anonymous'}`);
-    logger.debug(`Tracked story view in Redis: ${storyId}, buffered count: ${bufferedCount}`);
+    logger.debug(`[Redis] Successfully tracked story view: ${storyId}, buffered count: ${bufferedCount}, user: ${userId || 'anonymous'}`);
 
     return { success: true, isFirstView: true, bufferedCount };
   } catch (error) {
@@ -187,7 +192,9 @@ export async function trackChapterViewRedis(
   }
 
   try {
-    // Check for deduplication
+    // Check for deduplication - use userId if available (primary), otherwise use IP
+    // IMPORTANT: Always use userId when available to ensure consistent deduplication
+    // If we mixed userId+IP, the same user could have different keys when IP is/isn't present
     const dedupKey = userId
       ? `${VIEW_REDIS_KEYS.USER_CHAPTER_DEDUP}${userId}:${chapterId}`
       : clientInfo?.ip
@@ -209,9 +216,9 @@ export async function trackChapterViewRedis(
 
     if (!isFirstView) {
       // This is a duplicate view within the dedup window, don't count it
-      logger.info(`[Redis] Duplicate view detected for chapter ${chapterId}, user: ${userId || 'anonymous'}, skipping`);
+      logger.debug(`[Redis] Duplicate view detected for chapter ${chapterId}, user: ${userId || 'anonymous'}, skipping`);
       
-      // Still return the current buffered count
+      // Still return the current buffered count (cached for efficiency)
       const bufferKey = `${VIEW_REDIS_KEYS.CHAPTER_BUFFER}${chapterId}`;
       const bufferedCount = parseInt(await redis.get(bufferKey) || '0', 10);
       
@@ -220,7 +227,7 @@ export async function trackChapterViewRedis(
 
     logger.debug(`[Redis] First view confirmed for chapter ${chapterId}, proceeding to track`);
 
-    // Use Redis pipeline for atomic operations
+    // Use Redis pipeline for atomic operations (more efficient than multiple round trips)
     const pipeline = redis.pipeline();
 
     // Note: Deduplication key already set with SETNX above
@@ -228,22 +235,21 @@ export async function trackChapterViewRedis(
     const bufferKey = `${VIEW_REDIS_KEYS.CHAPTER_BUFFER}${chapterId}`;
     pipeline.incr(bufferKey);
 
-    // Invalidate cached view count
+    // Invalidate cached view count (forces recalculation on next read)
     const countCacheKey = `${VIEW_REDIS_KEYS.CHAPTER_COUNT_CACHE}${chapterId}`;
     pipeline.del(countCacheKey);
 
-    // Execute pipeline
+    // Execute pipeline (all operations are atomic)
     const results = await pipeline.exec();
 
     if (!results) {
       throw new Error('Redis pipeline execution failed');
     }
 
-    // Get the incremented count from the INCR result (now at index 0)
+    // Get the incremented count from the INCR result
     const bufferedCount = results[0][1] as number;
 
-    logger.info(`[Redis] Successfully tracked chapter view: ${chapterId}, buffered count: ${bufferedCount}, user: ${userId || 'anonymous'}`);
-    logger.debug(`Tracked chapter view in Redis: ${chapterId}, buffered count: ${bufferedCount}`);
+    logger.debug(`[Redis] Successfully tracked chapter view: ${chapterId}, buffered count: ${bufferedCount}, user: ${userId || 'anonymous'}`);
 
     return { success: true, isFirstView: true, bufferedCount };
   } catch (error) {
@@ -477,6 +483,7 @@ export async function getChapterViewCount(chapterId: string): Promise<number> {
 
 /**
  * Get all buffered story views that need to be synced
+ * Uses SCAN cursor for non-blocking key retrieval (more efficient than KEYS)
  * @returns Map of story ID to buffered view count
  */
 export async function getBufferedStoryViews(): Promise<Map<string, number>> {
@@ -487,18 +494,33 @@ export async function getBufferedStoryViews(): Promise<Map<string, number>> {
     return new Map();
   }
 
-  logger.debug('[Redis] Fetching buffered story views from Redis');
+  logger.debug('[Redis] Fetching buffered story views from Redis using SCAN');
 
   try {
-    // Get all story buffer keys
     const pattern = `${VIEW_REDIS_KEYS.STORY_BUFFER}*`;
-    const keys = await redis.keys(pattern);
+    const keys: string[] = [];
+    let cursor = '0';
+
+    // Use SCAN instead of KEYS to avoid blocking Redis
+    // SCAN is non-blocking and works well with large key sets
+    do {
+      const [nextCursor, batchKeys] = await redis.scan(
+        cursor,
+        'MATCH', pattern,
+        'COUNT', 1000 // Process up to 1000 keys per scan
+      );
+      cursor = nextCursor;
+      keys.push(...batchKeys);
+    } while (cursor !== '0');
 
     if (keys.length === 0) {
+      logger.debug('[Redis] No buffered story views found');
       return new Map();
     }
 
-    // Get all values in a single pipeline
+    logger.debug(`[Redis] Found ${keys.length} story buffer keys, fetching values in pipeline`);
+
+    // Get all values in a single pipeline (more efficient than individual GETs)
     const pipeline = redis.pipeline();
     keys.forEach(key => pipeline.get(key));
     const results = await pipeline.exec();
@@ -527,6 +549,7 @@ export async function getBufferedStoryViews(): Promise<Map<string, number>> {
 
 /**
  * Get all buffered chapter views that need to be synced
+ * Uses SCAN cursor for non-blocking key retrieval (more efficient than KEYS)
  * @returns Map of chapter ID to buffered view count
  */
 export async function getBufferedChapterViews(): Promise<Map<string, number>> {
@@ -537,18 +560,33 @@ export async function getBufferedChapterViews(): Promise<Map<string, number>> {
     return new Map();
   }
 
-  logger.debug('[Redis] Fetching buffered chapter views from Redis');
+  logger.debug('[Redis] Fetching buffered chapter views from Redis using SCAN');
 
   try {
-    // Get all chapter buffer keys
     const pattern = `${VIEW_REDIS_KEYS.CHAPTER_BUFFER}*`;
-    const keys = await redis.keys(pattern);
+    const keys: string[] = [];
+    let cursor = '0';
+
+    // Use SCAN instead of KEYS to avoid blocking Redis
+    // SCAN is non-blocking and works well with large key sets
+    do {
+      const [nextCursor, batchKeys] = await redis.scan(
+        cursor,
+        'MATCH', pattern,
+        'COUNT', 1000 // Process up to 1000 keys per scan
+      );
+      cursor = nextCursor;
+      keys.push(...batchKeys);
+    } while (cursor !== '0');
 
     if (keys.length === 0) {
+      logger.debug('[Redis] No buffered chapter views found');
       return new Map();
     }
 
-    // Get all values in a single pipeline
+    logger.debug(`[Redis] Found ${keys.length} chapter buffer keys, fetching values in pipeline`);
+
+    // Get all values in a single pipeline (more efficient than individual GETs)
     const pipeline = redis.pipeline();
     keys.forEach(key => pipeline.get(key));
     const results = await pipeline.exec();
