@@ -217,9 +217,10 @@ export default function MyWorksPage() {
     <div className="min-h-screen">
       <Navbar />
 
-      <main className="container mx-auto px-4 md:px-8 py-4 md:py-8">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-          <h1 className="text-3xl font-bold">My Works</h1>
+      <main className="container mx-auto px-4 py-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+          <h1 className="text-3xl font-semibold">My Works</h1>
 
           <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
             <div className="relative flex-1 sm:w-64">
@@ -291,6 +292,7 @@ export default function MyWorksPage() {
             )}
           </TabsContent>
         </Tabs>
+        </div>
       </main>
 
       {/* Delete Story Confirmation Dialog */}

@@ -411,118 +411,116 @@ export default function BrowseContent({ initialParams, initialData }: BrowseCont
   }
 
   return (
-    <main className="flex-1 w-full py-8">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
-        <div className="mb-8">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-            <h1 className="text-xl sm:text-2xl font-semibold">Browse Stories</h1>
-            
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setViewMode("grid")}
-                className={viewMode === "grid" ? "bg-primary/10" : ""}
-                aria-label="Grid view"
-              >
-                <Grid className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setViewMode("list")}
-                className={viewMode === "list" ? "bg-primary/10" : ""}
-                aria-label="List view"
-              >
-                <List className="h-4 w-4" />
-              </Button>
+    <div className="max-w-7xl mx-auto">
+      <div className="mb-8">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+          <h1 className="text-2xl sm:text-3xl font-semibold">Browse Stories</h1>
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setViewMode("grid")}
+              className={viewMode === "grid" ? "bg-primary/10" : ""}
+              aria-label="Grid view"
+            >
+              <Grid className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setViewMode("list")}
+              className={viewMode === "list" ? "bg-primary/10" : ""}
+              aria-label="List view"
+            >
+              <List className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Category Description for genre pages */}
+        {selectedGenres.length === 1 && (
+          <CategoryDescription
+            genre={allGenres.find(g => g.slug === selectedGenres[0])?.name || selectedGenres[0]}
+            totalStories={totalStories}
+            language={selectedLanguage}
+            status={storyStatus}
+          />
+        )}
+
+        {/* Horizontal Filter Bar */}
+        <HorizontalFilterBar
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          selectedGenres={selectedGenres}
+          onGenreChange={handleGenreChange}
+          selectedTags={selectedTags}
+          onTagChange={handleTagChange}
+          selectedLanguage={selectedLanguage}
+          onLanguageChange={handleLanguageChange}
+          storyStatus={storyStatus}
+          onStatusChange={handleStatusChange}
+          sortBy={sortBy}
+          onSortChange={handleSortChange}
+        />
+      </div>
+
+      {/* Stories Grid */}
+      <div className="w-full">
+        {loading ? (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center mb-6">
+              <p className="text-muted-foreground">Loading stories...</p>
+            </div>
+            <div className={`grid gap-6 ${
+              viewMode === "grid" ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "grid-cols-1"
+            }`}>
+              {Array.from({ length: 8 }).map((_, index) => (
+                <motion.div
+                  key={`skeleton-${index}`}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.3, delay: index * 0.1 }}
+                >
+                  <StoryCardSkeleton viewMode={viewMode} />
+                </motion.div>
+              ))}
             </div>
           </div>
-
-          {/* Category Description for genre pages */}
-          {selectedGenres.length === 1 && (
-            <CategoryDescription
-              genre={allGenres.find(g => g.slug === selectedGenres[0])?.name || selectedGenres[0]}
-              totalStories={totalStories}
-              language={selectedLanguage}
-              status={storyStatus}
-            />
-          )}
-
-          {/* Horizontal Filter Bar */}
-          <HorizontalFilterBar
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            selectedGenres={selectedGenres}
-            onGenreChange={handleGenreChange}
-            selectedTags={selectedTags}
-            onTagChange={handleTagChange}
-            selectedLanguage={selectedLanguage}
-            onLanguageChange={handleLanguageChange}
-            storyStatus={storyStatus}
-            onStatusChange={handleStatusChange}
-            sortBy={sortBy}
-            onSortChange={handleSortChange}
-          />
-        </div>
-
-        {/* Stories Grid */}
-        <div className="w-full">
-          {loading ? (
-            <div className="space-y-6">
-              <div className="flex justify-between items-center mb-6">
-                <p className="text-muted-foreground">Loading stories...</p>
-              </div>
-              <div className={`grid gap-6 ${
-                viewMode === "grid" ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "grid-cols-1"
-              }`}>
-                {Array.from({ length: 8 }).map((_, index) => (
-                  <motion.div
-                    key={`skeleton-${index}`}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.3, delay: index * 0.1 }}
-                  >
-                    <StoryCardSkeleton viewMode={viewMode} />
-                  </motion.div>
-                ))}
-              </div>
+        ) : error ? (
+          <div className="text-center py-16">
+            <h3 className="text-xl font-semibold mb-2 text-destructive">Error</h3>
+            <p className="text-muted-foreground">{error}</p>
+          </div>
+        ) : (
+          <>
+            <div className="flex justify-between items-center mb-6">
+              <p className="text-muted-foreground">
+                {totalStories} {totalStories === 1 ? 'story' : 'stories'} found
+              </p>
             </div>
-          ) : error ? (
-            <div className="text-center py-16">
-              <h3 className="text-xl font-semibold mb-2 text-destructive">Error</h3>
-              <p className="text-muted-foreground">{error}</p>
+
+            <StoryGrid stories={stories} viewMode={viewMode} />
+
+            <div className="w-full py-4">
+              <AdBanner
+                type="banner"
+                className="w-full max-w-[720px] h-[90px] mx-auto"
+                slot="6596765108"
+              />
             </div>
-          ) : (
-            <>
-              <div className="flex justify-between items-center mb-6">
-                <p className="text-muted-foreground">
-                  {totalStories} {totalStories === 1 ? 'story' : 'stories'} found
-                </p>
-              </div>
 
-              <StoryGrid stories={stories} viewMode={viewMode} />
-
-              <div className="w-full py-4">
-                <AdBanner
-                  type="banner"
-                  className="w-full max-w-[720px] h-[90px] mx-auto"
-                  slot="6596765108"
-                />
-              </div>
-
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <Pagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  onPageChange={handlePageChange}
-                />
-              )}
-            </>
-          )}
-        </div>
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+              />
+            )}
+          </>
+        )}
       </div>
-    </main>
+    </div>
   )
 }

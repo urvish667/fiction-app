@@ -321,16 +321,17 @@ export default function StoryPageClient({
         storyId={story.id}
       />
 
-      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+      <main className="container mx-auto px-4 py-8">
+        <div className="max-w-7xl mx-auto">
         {/* Back Button and Story Status */}
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0 mb-4 sm:mb-6">
-          <Button variant="ghost" onClick={handleBack} className="pl-0 flex items-center gap-2 self-start">
+        <div className="flex justify-between items-center gap-3 mb-4 sm:mb-6">
+          <Button variant="ghost" onClick={handleBack} className="pl-0 flex items-center gap-2 flex-shrink-0">
             <ArrowLeft size={16} />
             <span className="text-sm sm:text-base">Back to Browse</span>
           </Button>
 
           {story.status && (
-            <Badge variant="outline" className="text-sm px-3 py-1 capitalize flex items-center gap-1 self-start sm:self-auto">
+            <Badge variant="outline" className="text-sm px-3 py-1 capitalize flex items-center gap-1 flex-shrink-0">
               {story.status === "completed" ? <CheckCircle size={14} className="text-green-500" /> : null}
               {story.status}
             </Badge>
@@ -389,7 +390,7 @@ export default function StoryPageClient({
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
             >
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 sm:mb-2 leading-tight">{story.title}</h1>
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold mb-3 sm:mb-2 leading-tight">{story.title}</h1>
 
               {/* Author Info Section with Genre */}
               {author && (
@@ -652,6 +653,7 @@ export default function StoryPageClient({
             ) : null}
           </motion.div>
         )}
+        </div>
       </main>
 
       {/* Footer */}

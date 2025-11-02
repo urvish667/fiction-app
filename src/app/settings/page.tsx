@@ -734,10 +734,11 @@ export default function SettingsPage() {
   // --- End Donation Settings Handlers ---
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen">
       <Navbar />
-      <div className="container mx-auto p-4 py-8 flex-grow">
-        <h1 className="text-3xl font-bold mb-8">Settings</h1>
+      <main className="container mx-auto px-4 py-8">
+        <div className="max-w-7xl mx-auto">
+          <h1 className="text-3xl font-semibold mb-8">Settings</h1>
 
         {/* Wrap the TabParamsHandler in a Suspense boundary */}
         <Suspense fallback={null}>
@@ -831,7 +832,8 @@ export default function SettingsPage() {
             </TabsContent>
           </motion.div>
         </Tabs>
-      </div>
+        </div>
+      </main>
     </div>
   )
 }

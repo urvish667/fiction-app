@@ -254,9 +254,10 @@ export default function NotificationsPage() {
       <div className="min-h-screen">
         <Navbar />
 
-      <main className="container mx-auto px-8 py-8">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-          <h1 className="text-3xl font-bold">Notifications</h1>
+      <main className="container mx-auto px-4 py-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+          <h1 className="text-3xl font-semibold">Notifications</h1>
 
           <Button variant="outline" onClick={markAllAsReadAndDismiss} disabled={!filteredNotifications.some((n: any) => !n.read)}>
             <Check className="h-4 w-4 mr-2" />
@@ -385,11 +386,9 @@ export default function NotificationsPage() {
               </div>
             )}
           </motion.div>
-
-
-        </main>
-      </div>
+        </div>
+      </main>
+    </div>
     </TooltipProvider>
   )
 }
-

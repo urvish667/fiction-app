@@ -47,7 +47,7 @@ export const EditorHeader = React.memo(function EditorHeader({
 
   return (
     <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 px-4 sm:px-8">
-      <div className="container flex h-14 items-center justify-between">
+      <div className="max-w-7xl mx-auto flex h-14 items-center justify-between">
         {/* Back button - always visible */}
         <div className="flex items-center">
           <Button

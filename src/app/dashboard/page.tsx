@@ -15,10 +15,12 @@ export default function DashboardPage() {
     <div className="min-h-screen">
       <Navbar />
 
-      <main className="container mx-auto px-4 md:px-8 py-4 md:py-8">
-        <DashboardHeader timeRange={timeRange} setTimeRange={setTimeRange} />
+      <main className="container mx-auto px-4 py-8">
+        <div className="max-w-7xl mx-auto">
+          <DashboardHeader timeRange={timeRange} setTimeRange={setTimeRange} />
 
-        <DashboardTabs activeTab={activeTab} setActiveTab={setActiveTab} timeRange={timeRange} />
+          <DashboardTabs activeTab={activeTab} setActiveTab={setActiveTab} timeRange={timeRange} />
+        </div>
       </main>
     </div>
   )

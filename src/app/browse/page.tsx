@@ -104,30 +104,31 @@ export default async function BrowsePage({ searchParams }: BrowsePageProps) {
         />
       ))}
 
-      <div className="min-h-screen flex flex-col">
+      <div className="min-h-screen">
         <Navbar />
 
-        <Suspense fallback={
-          <main className="flex-1 container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl py-8">
-            <h1 className="text-xl sm:text-2xl font-semibold mb-6">Browse Stories</h1>
-            <div className="space-y-6">
-              <div className="flex justify-between items-center mb-6">
-                <p className="text-muted-foreground">Loading stories...</p>
-              </div>
-              <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {Array.from({ length: 8 }).map((_, index) => (
-                  <StoryCardSkeleton key={`skeleton-${index}`} viewMode="grid" />
-                ))}
+        <main className="container mx-auto px-4 py-8">
+          <Suspense fallback={
+            <div className="max-w-7xl mx-auto px-4 lg:px-0">
+              <h1 className="text-xl sm:text-2xl font-semibold mb-6">Browse Stories</h1>
+              <div className="space-y-6">
+                <div className="flex justify-between items-center mb-6">
+                  <p className="text-muted-foreground">Loading stories...</p>
+                </div>
+                <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {Array.from({ length: 8 }).map((_, index) => (
+                    <StoryCardSkeleton key={`skeleton-${index}`} viewMode="grid" />
+                  ))}
+                </div>
               </div>
             </div>
-          </main>
-        }>
-          <BrowseContent initialParams={params} initialData={initialData} />
-        </Suspense>
+          }>
+            <BrowseContent initialParams={params} initialData={initialData} />
+          </Suspense>
+        </main>
 
         <SiteFooter />
       </div>
     </>
   )
 }
-

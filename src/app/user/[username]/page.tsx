@@ -243,8 +243,9 @@ export default async function UserProfilePage({ params }: UserPageParams) {
       <div className="min-h-screen">
         <Navbar />
 
-        <main className="container mx-auto px-4 md:px-8 py-4 md:py-8">
-          <div className="mb-4 md:mb-8">
+        <main className="container mx-auto px-4 py-8">
+          <div className="max-w-7xl mx-auto">
+            <div className="mb-4 md:mb-8">
             <div className="relative h-32 sm:h-48 md:h-64 w-full rounded-lg overflow-hidden mb-8 sm:mb-12 md:mb-16">
               <img
                 src={user.bannerImage || "/placeholder.svg"}
@@ -277,7 +278,7 @@ export default async function UserProfilePage({ params }: UserPageParams) {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end pl-2 sm:pl-4 md:pl-40">
               <div className="mb-4 md:mb-0">
                 <div className="flex items-center gap-3 mb-1">
-                  <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">{user.name || user.username}</h1>
+                  <h1 className="text-xl sm:text-2xl md:text-3xl font-semibold">{user.name || user.username}</h1>
                 </div>
                 <p className="text-sm sm:text-base text-muted-foreground">@{user.username}</p>
 
@@ -390,6 +391,7 @@ export default async function UserProfilePage({ params }: UserPageParams) {
 
           {/* Client-side interactive tabs */}
           <UserProfileClient user={user} />
+          </div>
         </main>
 
         {/* Footer */}

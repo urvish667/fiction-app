@@ -14,7 +14,7 @@ export function DashboardHeader({ timeRange, setTimeRange }: DashboardHeaderProp
   return (
     <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 md:mb-8 gap-4">
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold">Dashboard</h1>
+        <h1 className="text-2xl md:text-3xl font-semibold">Dashboard</h1>
         <p className="text-sm md:text-base text-muted-foreground">Manage your stories and track performance</p>
       </div>
 

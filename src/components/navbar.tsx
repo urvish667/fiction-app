@@ -49,9 +49,9 @@ export default function Navbar() {
   }
 
   if (isLoading) {
-    return (
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-md">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl flex h-16 items-center justify-between">
+  return (
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-md">
+      <div className="max-w-7xl mx-auto px-4 py-8 flex h-16 items-center justify-between">
           <Link href="/" className="flex items-center">
             <motion.h1
               className="text-3xl font-bold font-serif"
@@ -73,7 +73,7 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-md">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl flex h-16 items-center justify-between">
+      <div className="max-w-7xl mx-auto px-4 py-8 flex h-16 items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center">
           <motion.h1
@@ -129,9 +129,6 @@ export default function Navbar() {
               <Button size="sm" variant="ghost" asChild>
                 <Link href="/login">Login</Link>
               </Button>
-              <Button size="sm" asChild>
-                <Link href="/signup">Sign Up</Link>
-              </Button>
             </div>
           )}
 
@@ -152,9 +149,6 @@ export default function Navbar() {
                 </Link>
                 {!isAuthenticated && (
                   <>
-                    <Link href="/login" className="text-lg font-medium hover:text-primary transition-colors">
-                      Login
-                    </Link>
                     <Link href="/signup" className="text-lg font-medium hover:text-primary transition-colors">
                       Sign Up
                     </Link>

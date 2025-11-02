@@ -121,7 +121,7 @@ export default function MostViewedStories({ className }: MostViewedStoriesProps)
   if (loading) {
     return (
       <section className={`py-16 bg-background ${className}`}>
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
+        <div className="max-w-7xl mx-auto">
           <div className="flex justify-between items-center mb-10">
             <div>
               <h2 className="text-xl sm:text-2xl font-semibold">Top Read Stories Of This Week</h2>
@@ -145,7 +145,7 @@ export default function MostViewedStories({ className }: MostViewedStoriesProps)
   if (error) {
     return (
       <section className={`py-16 bg-background ${className}`}>
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
+        <div className="max-w-7xl mx-auto">
           <div className="flex justify-between items-center mb-10">
             <div>
               <h2 className="text-xl sm:text-2xl font-semibold">Top Read Stories Of This Week</h2>
@@ -175,7 +175,7 @@ export default function MostViewedStories({ className }: MostViewedStoriesProps)
   if (stories.length === 0) {
     return (
       <section className={`py-16 bg-background ${className}`}>
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
+        <div className="max-w-7xl mx-auto">
           <div className="flex justify-between items-center mb-10">
             <div>
               <h2 className="text-xl sm:text-2xl font-semibold">Top Read Stories Of This Week</h2>
@@ -204,10 +204,10 @@ export default function MostViewedStories({ className }: MostViewedStoriesProps)
 
   return (
     <section className={`py-16 bg-background ${className}`}>
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-7xl">
+      <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-10">
           <div>
-            <h2 className="text-3xl font-bold">Top Read Stories Of This Week</h2>
+            <h2 className="text-3xl font-semibold">Top Read Stories Of This Week</h2>
             <p className="text-muted-foreground mt-1">Most read stories from the last 7 days</p>
           </div>
           <Link href="/browse?sortBy=mostRead">

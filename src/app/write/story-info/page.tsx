@@ -761,7 +761,7 @@ export default function StoryInfoPage() {
     return (
       <div className="min-h-screen flex flex-col">
         <Navbar />
-        <main className="flex-1 container mx-auto px-4 sm:px-6 md:px-8 py-6 md:py-8">
+        <main className="container mx-auto px-4 py-8">
           <div className="flex justify-center items-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
           </div>
@@ -777,7 +777,7 @@ export default function StoryInfoPage() {
     <div className="min-h-screen flex flex-col">
       <Navbar />
 
-      <main className="flex-1 container mx-auto px-4 sm:px-6 md:px-8 py-6 md:py-8">
+      <main className="max-w-7xl mx-auto px-4 py-8">
         {/* Header with Back button and Auto-save status on the same line */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 mb-8">
           <div className="flex items-center gap-2">
