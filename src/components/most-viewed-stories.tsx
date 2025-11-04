@@ -124,8 +124,8 @@ export default function MostViewedStories({ className }: MostViewedStoriesProps)
         <div className="max-w-7xl mx-auto">
           <div className="flex justify-between items-center mb-10">
             <div>
-              <h2 className="text-xl sm:text-2xl font-semibold">Top Read Stories Of This Week</h2>
-              <p className="text-muted-foreground mt-1">Top read stories from the last 7 days</p>
+              <h2 className="text-xl sm:text-2xl font-semibold">Most Read Stories</h2>
+              <p className="text-muted-foreground mt-1">Most read stories of all time</p>
             </div>
             <Link href="/browse?sortBy=mostRead">
               <Button variant="ghost">View All</Button>
@@ -148,8 +148,8 @@ export default function MostViewedStories({ className }: MostViewedStoriesProps)
         <div className="max-w-7xl mx-auto">
           <div className="flex justify-between items-center mb-10">
             <div>
-              <h2 className="text-xl sm:text-2xl font-semibold">Top Read Stories Of This Week</h2>
-              <p className="text-muted-foreground mt-1">Top read stories from the last 7 days</p>
+              <h2 className="text-xl sm:text-2xl font-semibold">Most Read Stories</h2>
+              <p className="text-muted-foreground mt-1">Most read stories of all time</p>
             </div>
             <Link href="/browse?sortBy=mostRead">
               <Button variant="ghost">View All</Button>
@@ -178,8 +178,8 @@ export default function MostViewedStories({ className }: MostViewedStoriesProps)
         <div className="max-w-7xl mx-auto">
           <div className="flex justify-between items-center mb-10">
             <div>
-              <h2 className="text-xl sm:text-2xl font-semibold">Top Read Stories Of This Week</h2>
-              <p className="text-muted-foreground mt-1">Most read stories from the last 7 days</p>
+              <h2 className="text-xl sm:text-2xl font-semibold">Most Read Stories</h2>
+              <p className="text-muted-foreground mt-1">Most read stories of all time</p>
             </div>
             <Link href="/browse?sortBy=mostRead">
               <Button variant="ghost">View All</Button>
@@ -207,8 +207,8 @@ export default function MostViewedStories({ className }: MostViewedStoriesProps)
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-10">
           <div>
-            <h2 className="text-3xl font-semibold">Top Read Stories Of This Week</h2>
-            <p className="text-muted-foreground mt-1">Most read stories from the last 7 days</p>
+            <h2 className="text-3xl font-semibold">Most Read Stories</h2>
+            <p className="text-muted-foreground mt-1">Most read stories of all time</p>
           </div>
           <Link href="/browse?sortBy=mostRead">
             <Button variant="ghost">View All</Button>

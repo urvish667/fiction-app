@@ -38,7 +38,7 @@ export default function Home() {
         <main className="container mx-auto px-4 py-8">
           {/* Hero Section */}
           <section className="relative py-12 md:py-20 lg:py-28 overflow-hidden bg-gradient-to-br from-primary/5 to-secondary/5">
-            <div className="max-w-7xl mx-auto text-center relative z-10">
+            <div className="container mx-auto text-center relative z-10">
               <div className="max-w-3xl mx-auto">
                 <h1 className="text-4xl md:text-5xl lg:text-6xl font-semibold tracking-tight mb-6">
                   Unleash Your Stories, One Page at a Time
@@ -59,12 +59,12 @@ export default function Home() {
                   </Link>
                 </div>
               </div>
+            </div>
 
-              {/* Abstract background elements */}
-              <div className="absolute top-0 left-0 w-full h-full overflow-hidden">
-                <div className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full bg-primary/10 blur-3xl"></div>
-                <div className="absolute bottom-1/3 right-1/4 w-80 h-80 rounded-full bg-secondary/10 blur-3xl"></div>
-              </div>
+            {/* Abstract background elements */}
+            <div className="absolute top-0 left-0 w-full h-full overflow-hidden">
+              <div className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full bg-primary/10 blur-3xl"></div>
+              <div className="absolute bottom-1/3 right-1/4 w-80 h-80 rounded-full bg-secondary/10 blur-3xl"></div>
             </div>
           </section>
 
@@ -77,15 +77,11 @@ export default function Home() {
               <h2 className="text-xl sm:text-2xl font-semibold mb-10">Explore Categories</h2>
               <div className="flex flex-wrap gap-3 justify-center">
                 {categories.map((category: string) => (
-                  <Link
-                    key={category}
-                    href={`/browse?genre=${encodeURIComponent(slugify(category))}`}
-                    passHref
-                  >
-                    <Button variant="secondary" className="rounded-full">
+                  <Button key={category} variant="secondary" className="rounded-full" asChild>
+                    <Link href={`/browse?genre=${encodeURIComponent(slugify(category))}`}>
                       {category}
-                    </Button>
-                  </Link>
+                    </Link>
+                  </Button>
                 ))}
               </div>
             </div>

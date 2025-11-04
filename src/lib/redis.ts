@@ -164,8 +164,10 @@ export function getRedisClient(): Redis | null {
     if (globalRedisClient.redisClient) {
       try {
         const status = globalRedisClient.redisClient.status;
-        if (!status.includes('connect')) {
-          // If the client is disconnected, create a new one
+        // Treat these as healthy statuses; do not force reconnects when healthy
+        const healthyStatuses = ['ready', 'connect', 'connecting', 'reconnecting'];
+        if (!healthyStatuses.includes(status)) {
+          // If the client is disconnected/unhealthy, create a new one
           logger.warn(`Redis client status is ${status}, attempting to reconnect`);
           closeRedisConnection().catch(err => logger.error('Error closing Redis connection:', err));
           globalRedisClient.redisClient = createRedisClient();

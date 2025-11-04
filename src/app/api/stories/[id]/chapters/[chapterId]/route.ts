@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
 import { getServerSession } from "next-auth";
 import { z } from "zod";
 import { prisma } from "@/lib/auth/db-adapter";
@@ -42,6 +43,18 @@ export async function GET(
     const storyId = resolvedParams.id;
     const chapterId = resolvedParams.chapterId;
     const session = await getServerSession(authOptions);
+    // Fallback: derive userId from JWT if session is unavailable
+    let effectiveUserId: string | undefined = session?.user?.id;
+    if (!effectiveUserId) {
+      try {
+        const token = await getToken({
+          req: request as unknown as any,
+          secret: process.env.NEXTAUTH_SECRET,
+          secureCookie: process.env.NODE_ENV === 'production',
+        });
+        effectiveUserId = (token?.id as string) || (token?.sub as string) || undefined;
+      } catch {}
+    }
 
     // Find the story to check permissions
     const story = await prisma.story.findUnique({
@@ -75,7 +88,7 @@ export async function GET(
     const storyStatus = calculateStoryStatus(storyChapters as unknown as Chapter[]);
 
     // Check if the story is a draft and the user is not the author
-    if (storyStatus === "draft" && (!session?.user?.id || session.user.id !== story.authorId)) {
+    if (storyStatus === "draft" && (!effectiveUserId || effectiveUserId !== story.authorId)) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
@@ -113,11 +126,11 @@ export async function GET(
     let chapterViewCount = undefined;
     let storyViewCount = undefined;
 
-    if (session?.user?.id && session.user.id !== story.authorId) {
+    if (effectiveUserId && effectiveUserId !== story.authorId) {
       readingProgress = await prisma.readingProgress.findUnique({
         where: {
           userId_chapterId: {
-            userId: session.user.id,
+            userId: effectiveUserId,
             chapterId: chapter.id,
           },
         },
@@ -127,7 +140,7 @@ export async function GET(
       if (!readingProgress) {
         readingProgress = await prisma.readingProgress.create({
           data: {
-            userId: session.user.id,
+            userId: effectiveUserId,
             chapterId: chapter.id,
             progress: 0,
           },
@@ -136,16 +149,19 @@ export async function GET(
     }
 
     // Track view if not the author
-    if (session?.user?.id !== story.authorId) {
+    if (effectiveUserId !== story.authorId) {
       // Get client IP and user agent for anonymous tracking
-      const clientIp = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip');
+      const clientIp = request.headers.get('cf-connecting-ip')
+        || request.headers.get('x-forwarded-for')?.split(',')[0]
+        || request.headers.get('x-real-ip')
+        || undefined;
       const userAgent = request.headers.get('user-agent');
 
       try {
         // Track the chapter view only - story view count already includes all chapter views
         const viewResult = await ViewService.trackChapterView(
           chapter.id,
-          session?.user?.id,
+          effectiveUserId,
           { ip: clientIp || undefined, userAgent: userAgent || undefined },
           false // Don't separately track story view - it's already counted via chapter views
         );
@@ -165,7 +181,7 @@ export async function GET(
         }
       } catch (viewError) {
         // Log the error but don't fail the request
-        logError(viewError, { context: 'Tracking chapter view', chapterId: chapter.id, userId: session?.user?.id });
+        logError(viewError, { context: 'Tracking chapter view', chapterId: chapter.id, userId: effectiveUserId });
       }
     }
 

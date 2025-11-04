@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import { getToken } from "next-auth/jwt";
 import { z } from "zod";
 import { prisma } from "@/lib/auth/db-adapter";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
@@ -35,6 +36,18 @@ export async function GET(
     const resolvedParams = await params;
     const storyId = resolvedParams.id;
     const session = await getServerSession(authOptions);
+    // Fallback: derive userId from JWT if session is unavailable
+    let effectiveUserId: string | undefined = session?.user?.id;
+    if (!effectiveUserId) {
+      try {
+        const token = await getToken({
+          req: request as unknown as any,
+          secret: process.env.NEXTAUTH_SECRET,
+          secureCookie: process.env.NODE_ENV === 'production',
+        });
+        effectiveUserId = (token?.id as string) || (token?.sub as string) || undefined;
+      } catch {}
+    }
 
     // Find the story
     const story = await prisma.story.findUnique({
@@ -88,7 +101,7 @@ export async function GET(
     const storyStatus = calculateStoryStatus(chapters as unknown as Chapter[]);
 
     // Check if the story is a draft and the user is not the author
-    if (storyStatus === "draft" && (!session?.user?.id || session.user.id !== story.authorId)) {
+    if (storyStatus === "draft" && (!effectiveUserId || effectiveUserId !== story.authorId)) {
       return NextResponse.json(
         { error: "Unauthorized" },
         { status: 401 }
@@ -99,11 +112,11 @@ export async function GET(
     let isLiked = false;
     let isBookmarked = false;
 
-    if (session?.user?.id) {
+    if (effectiveUserId) {
       const [like, bookmark] = await Promise.all([
         prisma.like.findFirst({
           where: {
-            userId: session.user.id,
+            userId: effectiveUserId,
             storyId: story.id,
             chapterId: null,
           },
@@ -111,7 +124,7 @@ export async function GET(
         prisma.bookmark.findUnique({
           where: {
             userId_storyId: {
-              userId: session.user.id,
+              userId: effectiveUserId,
               storyId: story.id,
             },
           },
@@ -152,16 +165,19 @@ export async function GET(
     };
 
     // Track view if not the author
-    if (session?.user?.id !== story.authorId) {
+    if (effectiveUserId !== story.authorId) {
       // Get client IP and user agent for anonymous tracking
-      const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0] || request.headers.get('x-real-ip') || 'Unknown';
+      const clientIp = request.headers.get('cf-connecting-ip')
+        || request.headers.get('x-forwarded-for')?.split(',')[0]
+        || request.headers.get('x-real-ip')
+        || 'Unknown';
       const userAgent = request.headers.get('user-agent');
 
       try {
         // Track the view using the improved ViewService
         const viewResult = await ViewService.trackStoryView(
           story.id,
-          session?.user?.id,
+          effectiveUserId,
           { ip: clientIp || undefined, userAgent: userAgent || undefined }
         );
 
@@ -173,7 +189,7 @@ export async function GET(
         }
       } catch (viewError) {
         // Log the error but don't fail the request
-        logError(viewError, { context: 'Tracking story view', storyId: story.id, userId: session?.user?.id });
+        logError(viewError, { context: 'Tracking story view', storyId: story.id, userId: effectiveUserId });
       }
     }
 

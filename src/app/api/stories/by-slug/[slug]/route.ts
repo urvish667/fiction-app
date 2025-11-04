@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/auth/db-adapter";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
@@ -16,6 +17,18 @@ export async function GET(
     const resolvedParams = await params;
     const slug = resolvedParams.slug;
     const session = await getServerSession(authOptions);
+    // Fallback: derive userId from JWT if session is unavailable
+    let effectiveUserId: string | undefined = session?.user?.id;
+    if (!effectiveUserId) {
+      try {
+        const token = await getToken({
+          req: request as unknown as any,
+          secret: process.env.NEXTAUTH_SECRET,
+          secureCookie: process.env.NODE_ENV === 'production',
+        });
+        effectiveUserId = (token?.id as string) || (token?.sub as string) || undefined;
+      } catch {}
+    }
     
     // Find the story by slug
     const story = await prisma.story.findUnique({
@@ -158,16 +171,19 @@ export async function GET(
     } as StoryResponse & { tags: { id: string; name: string }[] };
 
     // Track view if not the author
-    if (session?.user?.id !== story.authorId) {
+    if (effectiveUserId !== story.authorId) {
       // Get client IP and user agent for anonymous tracking
-      const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0] || request.headers.get('x-real-ip') || 'Unknown';
+      const clientIp = request.headers.get('cf-connecting-ip')
+        || request.headers.get('x-forwarded-for')?.split(',')[0]
+        || request.headers.get('x-real-ip')
+        || 'Unknown';
       const userAgent = request.headers.get('user-agent');
 
       try {
         // Track the view
         const viewResult = await ViewService.trackStoryView(
           story.id,
-          session?.user?.id,
+          effectiveUserId,
           { ip: clientIp || undefined, userAgent: userAgent || undefined }
         );
 
@@ -177,7 +193,7 @@ export async function GET(
         }
       } catch (viewError) {
         // Log the error but don't fail the request
-        logError(viewError, { context: 'Tracking story view', storyId: story.id, userId: session?.user?.id });
+        logError(viewError, { context: 'Tracking story view', storyId: story.id, userId: effectiveUserId });
       }
     }
 
