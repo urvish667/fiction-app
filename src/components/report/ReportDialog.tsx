@@ -45,7 +45,6 @@ export function ReportDialog({ isOpen, onClose, storyId, commentId, postId, foru
   const { toast } = useToast();
 
   const handleSubmit = () => {
-    console.log("Clicked")
     startTransition(async () => {
       const payload: ReportRequest = {
         storyId: storyId || undefined,

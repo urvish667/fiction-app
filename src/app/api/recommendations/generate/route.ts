@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/auth/db-adapter";
+import { prisma } from "@/lib/prisma";
 import { generateRecommendations, generateRecommendationsForStory } from "@/lib/recommendation-service";
 import { logger } from "@/lib/logger";
 import { z } from "zod";

@@ -19,6 +19,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { GENRES, LANGUAGES } from "@/lib/constants/genres-and-languages"
 import SearchBar from "@/components/search-bar"
+import { MetaService } from "@/lib/api/meta"
 
 // Genre option type
 interface GenreOption {
@@ -87,10 +88,9 @@ export default function HorizontalFilterBar({
     const fetchTags = async () => {
       setLoadingTags(true)
       try {
-        const response = await fetch("/api/tags")
-        if (response.ok) {
-          const data = await response.json()
-          setTags(data)
+        const response = await MetaService.getTags()
+        if (response.success && response.data) {
+          setTags(response.data)
         }
       } catch (error) {
         logError(error, { context: "Fetching tags" })

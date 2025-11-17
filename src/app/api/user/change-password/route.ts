@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { z } from "zod"
-import { prisma } from "@/lib/auth/db-adapter"
+import { prisma } from "@/lib/prisma"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 import { hashPassword, verifyPassword } from "@/lib/auth/auth-utils"
 

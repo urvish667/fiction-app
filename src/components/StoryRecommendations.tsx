@@ -10,6 +10,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { logError } from "@/lib/error-logger";
+import { RecommendationService } from "@/lib/api/recommendations";
+import { ImageService } from "@/lib/api/images";
 
 // Type for a recommended story
 interface RecommendedStory {
@@ -63,33 +65,31 @@ export default function StoryRecommendations({
         setIncludesSameAuthor(false); // Reset this flag when fetching new recommendations
 
         // First try with excludeSameAuthor as specified
-        const url = `/api/recommendations/${storyId}?limit=${limit}&excludeSameAuthor=${excludeSameAuthor}`;
-        const response = await fetch(url);
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch recommendations: ${response.status}`);
-        }
-
-        const data = await response.json();
+        const response = await RecommendationService.getRecommendations(storyId, {
+          limit,
+          excludeSameAuthor
+        });
 
         // If we got recommendations, use them
-        if (data.length > 0) {
-          setRecommendations(data);
+        if (response.success && response.data && response.data.length > 0) {
+          setRecommendations(response.data);
         }
         // If we got no recommendations and we were excluding same author, try again including same author
         else if (excludeSameAuthor) {
 
           // Try again with excludeSameAuthor=false
-          const fallbackUrl = `/api/recommendations/${storyId}?limit=${limit}&excludeSameAuthor=false`;
-          const fallbackResponse = await fetch(fallbackUrl);
+          const fallbackResponse = await RecommendationService.getRecommendations(storyId, {
+            limit,
+            excludeSameAuthor: false
+          });
 
-          if (!fallbackResponse.ok) {
-            throw new Error(`Failed to fetch fallback recommendations: ${fallbackResponse.status}`);
+          if (fallbackResponse.success && fallbackResponse.data) {
+            setRecommendations(fallbackResponse.data);
+            setIncludesSameAuthor(true);
+          } else {
+            // No recommendations found even with same author included
+            setRecommendations([]);
           }
-
-          const fallbackData = await fallbackResponse.json();
-          setRecommendations(fallbackData);
-          setIncludesSameAuthor(true);
         } else {
           // No recommendations found even with same author included
           setRecommendations([]);
@@ -291,21 +291,7 @@ export default function StoryRecommendations({
 
 // Recommendation card component
 function RecommendationCard({ story }: { story: RecommendedStory }) {
-  // Get the full image URL
-  const getFullImageUrl = (imagePath: string | null) => {
-    if (!imagePath) return null;
-
-    // If it's already a full URL, return it as is
-    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-      return imagePath;
-    }
-
-    // If it's a relative path to the API endpoint, use it as is
-    // The Next.js Image component will resolve it relative to the base URL
-    return imagePath;
-  };
-
-  const coverImageUrl = getFullImageUrl(story.coverImage);
+  const coverImageUrl = ImageService.getImageUrl(story.coverImage);
 
   return (
     <Card className="overflow-hidden transition-all hover:border-primary">

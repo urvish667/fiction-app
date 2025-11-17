@@ -1,0 +1,106 @@
+import { apiClient } from "@/lib/apiClient";
+
+/**
+ * Image API service for handling image URLs and operations
+ * Provides direct access to backend images without proxy routing
+ */
+export const ImageService = {
+  /**
+   * Get the full URL for an image stored in the backend
+   * @param imageInput The image key/path or full URL
+   * @returns Full URL to the image on the backend API
+   */
+  getImageUrl: (imageInput?: string | null): string | null => {
+    if (!imageInput) return null;
+
+    // If it's already a full URL (starts with http), return as-is
+    if (imageInput.startsWith('http://') || imageInput.startsWith('https://')) {
+      return imageInput;
+    }
+
+    let imageKey = imageInput;
+
+    // Check if it's a full API path (backward compatibility for database entries)
+    const apiPrefix = '/api/v1/images/';
+    if (imageInput.startsWith(apiPrefix)) {
+      // Extract the key part after the prefix and decode it
+      imageKey = decodeURIComponent(imageInput.substring(apiPrefix.length));
+    }
+
+    // Otherwise, construct the URL from the image key
+    const baseUrl = process.env.NODE_ENV === 'development'
+      ? '' // Use relative URLs in development (proxied through Next.js)
+      : (process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.fablespace.com/api/v1');
+    return `${baseUrl}/api/v1/images/${encodeURIComponent(imageKey)}`;
+  },
+
+  /**
+   * Get multiple image URLs for a list of image keys
+   * @param imageKeys Array of image keys
+   * @returns Array of full image URLs
+   */
+  getImageUrls: (imageKeys: (string | null)[]): (string | null)[] => {
+    return imageKeys.map(key => ImageService.getImageUrl(key));
+  },
+
+  /**
+   * Get a fallback image URL for when an image fails to load
+   * @returns URL to a placeholder image
+   */
+  getFallbackImageUrl: (): string => {
+    // You can customize this to point to a default placeholder
+    return '/placeholder.svg';
+  },
+
+  /**
+   * Construct an image URL with specific dimensions/transformations
+   * This can be extended in the future for image resizing/cropping
+   * @param imageKey The image key
+   * @param options Size/transformation options
+   * @returns URL with query parameters for transformations
+   */
+  getTransformedImageUrl: (
+    imageKey: string | null,
+    options?: {
+      width?: number;
+      height?: number;
+      quality?: number;
+      format?: 'jpg' | 'webp' | 'png';
+    }
+  ): string | null => {
+    const baseUrl = ImageService.getImageUrl(imageKey);
+    if (!baseUrl || !options) return baseUrl;
+
+    const params = new URLSearchParams();
+    if (options.width) params.append('w', options.width.toString());
+    if (options.height) params.append('h', options.height.toString());
+    if (options.quality) params.append('q', options.quality.toString());
+    if (options.format) params.append('f', options.format);
+
+    return `${baseUrl}?${params.toString()}`;
+  },
+
+  /**
+   * Upload an image to the backend (delegates to existing upload logic)
+   * This is kept for consistency but uploads use different endpoints
+   * @param imageData The image file or data to upload
+   * @returns Upload result with URL
+   */
+  async uploadImage(imageData: File, metadata?: {
+    folder?: string;
+    filename?: string;
+  }): Promise<{ success: boolean; url?: string; error?: string }> {
+    try {
+      // This would delegate to the existing upload logic
+      // For now, this is a placeholder for future centralized image operations
+      throw new Error('Image uploading should use ImageUpload utility');
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Failed to upload image'
+      };
+    }
+  }
+};
+
+export default ImageService;

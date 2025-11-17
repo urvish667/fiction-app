@@ -3,7 +3,7 @@
  * This enables SSR for better SEO and Google indexing
  */
 
-import { prisma } from "@/lib/auth/db-adapter";
+import { prisma } from "@/lib/prisma";
 import { BlogPost } from "@/types/blog";
 
 /**

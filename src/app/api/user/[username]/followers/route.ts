@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/auth/db-adapter";
+import { prisma } from "@/lib/prisma";
 import { logError } from "@/lib/error-logger";
 
 // GET endpoint to retrieve followers for a user

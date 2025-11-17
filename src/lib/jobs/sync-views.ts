@@ -8,7 +8,7 @@
  * Default: "0 2,14 * * *" (2 AM and 2 PM daily)
  */
 
-import { prisma } from '@/lib/auth/db-adapter';
+import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { getRedisClient } from '@/lib/redis';
 import {

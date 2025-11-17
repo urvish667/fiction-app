@@ -1,6 +1,7 @@
 import { Metadata } from "next"
 import { notFound } from "next/navigation"
-import { StoryService } from "@/services/story-service"
+import { StoryService } from "@/lib/api/story"
+import { ChapterService } from "@/lib/api/chapter"
 import { generateChapterMetadata, generateChapterStructuredData, generateChapterBreadcrumbStructuredData } from "@/lib/seo/metadata"
 import ChapterPageClient from "@/components/chapter/chapter-page-client"
 import StructuredData from "@/components/seo/structured-data"
@@ -20,16 +21,24 @@ export async function generateMetadata({ params }: ChapterPageProps): Promise<Me
     const chapterNumber = Number.parseInt(chapterNumberStr, 10)
 
     // Fetch story data
-    const story = await StoryService.getStoryBySlug(slug)
-    if (!story) {
+    const storyResponse = await StoryService.getStoryBySlug(slug)
+    if (!storyResponse.success || !storyResponse.data) {
       return {
         title: "Chapter Not Found - FableSpace",
         description: "The chapter you're looking for could not be found."
       }
     }
+    const story = storyResponse.data
 
     // Fetch chapters to find the specific chapter
-    const chapters = await StoryService.getChapters(story.id)
+    const chaptersResponse = await StoryService.getChapters(story.id)
+    if (!chaptersResponse.success || !chaptersResponse.data) {
+      return {
+        title: "Chapter Not Found - FableSpace",
+        description: "The chapter you're looking for could not be found."
+      }
+    }
+    const chapters = chaptersResponse.data
     const publishedChapters = chapters.filter(c => c.status === 'published')
     const targetChapter = publishedChapters.find(c => c.number === chapterNumber)
 
@@ -57,13 +66,18 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
     const chapterNumber = Number.parseInt(chapterNumberStr, 10)
 
     // Fetch story data
-    const story = await StoryService.getStoryBySlug(slug)
-    if (!story) {
+    const storyResponse = await StoryService.getStoryBySlug(slug)
+    if (!storyResponse.success || !storyResponse.data) {
       notFound()
     }
+    const story = storyResponse.data
 
     // Fetch chapters to find the specific chapter
-    const chapters = await StoryService.getChapters(story.id)
+    const chaptersResponse = await StoryService.getChapters(story.id)
+    if (!chaptersResponse.success || !chaptersResponse.data) {
+      notFound()
+    }
+    const chapters = chaptersResponse.data
     const publishedChapters = chapters.filter(c => c.status === 'published')
     const targetChapter = publishedChapters.find(c => c.number === chapterNumber)
 
@@ -72,7 +86,11 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
     }
 
     // Fetch full chapter details
-    const chapter = await StoryService.getChapter(story.id, targetChapter.id)
+    const chapterResponse = await ChapterService.getChapter(targetChapter.id)
+    if (!chapterResponse.success || !chapterResponse.data) {
+      notFound()
+    }
+    const chapter = chapterResponse.data
 
     // Check if chapter is published
     if (chapter.status !== 'published') {
@@ -104,4 +122,3 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
     notFound()
   }
 }
-

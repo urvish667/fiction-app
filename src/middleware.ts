@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { getToken } from 'next-auth/jwt';
 import { rateLimit, rateLimitConfigs } from '@/lib/security/rate-limit';
 import { csrfProtection } from '@/lib/security/csrf';
 import { applySecurityHeaders } from '@/lib/security/headers';
@@ -43,44 +42,10 @@ function createRateLimitResponse(
   );
 }
 
-// Protected routes that require authentication
-const protectedRoutes = [
-  '/write',
-  '/settings',
-  '/dashboard',
-  '/works',
-];
-
-// Routes that require profile completion
-// Only require profile completion for content creation and user management
-const profileRequiredRoutes = [
-  '/write',
-  '/settings',
-  '/dashboard',
-  '/works',
-  '/profile',
-  '/library',
-  '/notifications',
-];
-
-// Routes that are exempt from profile completion check
-const profileExemptRoutes = [
-  '/complete-profile',
-  '/verify-email',
-];
-
-// Auth routes that should be rate limited
+// Auth routes that should be rate limited (now these are backend routes)
 const authRateLimitedRoutes = [
-  '/api/auth/signin',
-  '/api/auth/callback',
-  '/api/auth/signin/credentials',
-  '/api/auth/signin/google',
-  '/api/auth/signin/twitter',
-  '/api/auth/reset-password',
-  '/api/auth/complete-profile',
-  '/api/auth/resend-verification',
-  '/api/auth/session-update',
-  '/api/auth/ws-token',
+  // Since auth is now handled by backend, we don't need these frontend routes
+  // Keeping this for any remaining frontend auth routes if needed
 ];
 
 // Optional: List of known bad bots (for extra protection)
@@ -141,9 +106,8 @@ export async function middleware(request: NextRequest) {
   }
 
   // Apply CSRF protection for non-GET requests to API routes
-  // Exclude NextAuth routes, webhooks, scheduled tasks, cron jobs, CSRF setup, and recommendation generation from CSRF protection
+  // Since auth moved to backend, we can remove the auth exclusion
   if (pathname.startsWith('/api/') &&
-      !pathname.startsWith('/api/auth/') &&
       !pathname.startsWith('/api/webhooks/') &&
       !pathname.startsWith('/api/scheduled-tasks') &&
       !pathname.startsWith('/api/cron/') && // Exclude cron endpoints (use API key auth)
@@ -181,48 +145,6 @@ export async function middleware(request: NextRequest) {
       );
     }
   }
-  // Apply rate limiting to auth endpoints
-  else if (authRateLimitedRoutes.some(route => pathname.startsWith(route))) {
-    // More strict rate limiting for credential signin (to prevent brute force)
-    if (pathname.includes('/signin/credentials')) {
-      const result = await rateLimit(request, {
-        ...rateLimitConfigs.credentialAuth,
-        includeUserContext: false,
-      });
-
-      if (!result.success) {
-        return createRateLimitResponse(
-          result,
-          'Too many login attempts',
-          'Please try again later'
-        );
-      }
-    }
-    // Less strict rate limiting for OAuth signin
-    else if (pathname.includes('/signin/google') || pathname.includes('/signin/twitter')) {
-      const result = await rateLimit(request, rateLimitConfigs.oauthAuth);
-
-      if (!result.success) {
-        return createRateLimitResponse(
-          result,
-          'Too many login attempts',
-          'Please try again later'
-        );
-      }
-    }
-    // General auth endpoints
-    else if (pathname.startsWith('/api/auth')) {
-      const result = await rateLimit(request, rateLimitConfigs.auth);
-
-      if (!result.success) {
-        return createRateLimitResponse(
-          result,
-          'Too many requests',
-          'Please try again later'
-        );
-      }
-    }
-  }
   // Apply forum posts rate limiting
   else if (isForumPostEndpoint) {
     const result = await rateLimit(request, {
@@ -255,67 +177,9 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Skip middleware for exempt routes
-  if (profileExemptRoutes.some(route => pathname.startsWith(route))) {
-    return NextResponse.next();
-  }
-
-  // Get the session token with improved configuration for production
-  const token = await getToken({
-    req: request,
-    secret: process.env.NEXTAUTH_SECRET,
-    secureCookie: process.env.NODE_ENV === "production", // Ensure secure cookies in production
-    cookieName: "next-auth.session-token" // Explicitly specify the cookie name
-  });
-
-  // Check if the path is a protected route
-  const isProtectedRoute = protectedRoutes.some(route =>
-    pathname.startsWith(route)
-  );
-
-  if (isProtectedRoute) {
-    // If there's no token, redirect to the login page with a return URL
-    if (!token) {
-      const url = new URL('/login', request.url);
-      url.searchParams.set('callbackUrl', pathname);
-      return NextResponse.redirect(url);
-    }
-  }
-
-  // Check if user needs to complete their profile
-  if (token &&
-      profileRequiredRoutes.some(route => pathname.startsWith(route)) &&
-      (!token.isProfileComplete || token.needsProfileCompletion || !token.username)) {
-    // Redirect to profile completion page
-    return NextResponse.redirect(new URL('/complete-profile', request.url));
-  }
-
-  // Also check for social interaction pages that require complete profiles
-  // These are pages where users would typically perform social actions
-  const socialInteractionPages = [
-    '/user/', // User profile pages where you can follow
-    '/story/', // Story pages where you can like/comment
-  ];
-
-  if (token &&
-      socialInteractionPages.some(route => pathname.startsWith(route)) &&
-      (!token.isProfileComplete || token.needsProfileCompletion || !token.username)) {
-    // For social interaction pages, redirect to profile completion with return URL
-    const completeProfileUrl = new URL('/complete-profile', request.url);
-    completeProfileUrl.searchParams.set('callbackUrl', pathname);
-    return NextResponse.redirect(completeProfileUrl);
-  }
-
-  // Check if email verification is required
-  if (token &&
-      profileRequiredRoutes.some(route => pathname.startsWith(route)) &&
-      token.provider === 'credentials' &&
-      !token.emailVerified) {
-    // Redirect to email verification page with callback URL
-    const verifyEmailUrl = new URL('/verify-email', request.url);
-    verifyEmailUrl.searchParams.set('callbackUrl', pathname);
-    return NextResponse.redirect(verifyEmailUrl);
-  }
+  // Removed authentication and profile completion checks since auth is now cookie-based
+  // and handled by the backend. The client-side useAuth hook will handle authentication state
+  // and protected routes are handled by individual components.
 
   // Apply security headers to the response
   const response = NextResponse.next();
@@ -327,7 +191,5 @@ export const config = {
   matcher: [
     // Apply to all routes except static files and _next
     '/((?!_next/static|_next/image|favicon.ico|.*\\.png$).*)',
-    // Include API auth routes for rate limiting
-    '/api/auth/:path*',
   ],
 };

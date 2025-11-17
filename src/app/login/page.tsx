@@ -6,8 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
-import { AlertCircle } from "lucide-react"
-import { signIn, useSession } from "next-auth/react"
+import { AlertCircle, Loader2 } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
@@ -15,6 +14,7 @@ import "../auth-background.css"
 import AuthLogo from "@/components/auth/logo"
 import { GoogleIcon, XIcon } from "@/components/auth/social-icons"
 import { logError } from "@/lib/error-logger"
+import { useAuth } from "@/lib/auth-context"
 
 // Component that uses searchParams
 function LoginContent() {
@@ -22,6 +22,7 @@ function LoginContent() {
   const searchParams = useSearchParams()
   const callbackUrl = searchParams?.get("callbackUrl") || "/"
   const error = searchParams?.get("error")
+  const { login, googleAuth, twitterAuth } = useAuth()
 
   const [activeTab, setActiveTab] = useState("login")
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -58,24 +59,16 @@ function LoginContent() {
     setIsSubmitting(true)
 
     try {
-      const result = await signIn("credentials", {
+      await login({
         email: loginForm.email,
         password: loginForm.password,
-        redirect: false,
       })
 
-      if (result?.error) {
-        setErrors({ login: "Invalid email or password" })
-        setIsSubmitting(false)
-      } else {
-        // Successfully logged in - wait a moment for session to be established
-        // Then use window.location for a full page reload to ensure middleware sees the session
-        await new Promise(resolve => setTimeout(resolve, 100))
-        window.location.href = callbackUrl
-      }
+      // Force full page refresh to ensure auth state is available
+      window.location.href = callbackUrl
     } catch (error) {
       logError(error, { context: 'Login error' })
-      setErrors({ login: "An error occurred while logging in" })
+      setErrors({ login: "Invalid email or password" })
       setIsSubmitting(false)
     }
   }
@@ -85,12 +78,11 @@ function LoginContent() {
     setIsSubmitting(true)
 
     try {
-      // Add state parameter for CSRF protection
-      await signIn(provider, {
-        callbackUrl,
-        redirect: true,
-      })
-      // Note: This will redirect the page, so no need to set isSubmitting to false
+      // For OAuth, we need to redirect to the OAuth provider first
+      // This would require implementing OAuth flow on the client side
+      // For now, we'll show an error since OAuth needs to be reimplemented
+      setErrors({ login: `${provider.charAt(0).toUpperCase() + provider.slice(1)} OAuth temporarily unavailable. Use email/password login instead.` })
+      setIsSubmitting(false)
     } catch (error) {
       logError(error, { context: 'OAuth login error', provider })
       setErrors({ login: `Error signing in with ${provider}. Please try again.` })
@@ -226,7 +218,14 @@ function LoginContent() {
                       </Label>
                     </div>
                     <Button className="w-full mt-4" type="submit" disabled={isSubmitting}>
-                      {isSubmitting ? "Logging in..." : "Login"}
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Logging in...
+                        </>
+                      ) : (
+                        "Login"
+                      )}
                     </Button>
                     <div className="relative my-4">
                       <div className="absolute inset-0 flex items-center">

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion } from "framer-motion"
 import { useRouter, usePathname } from "next/navigation"
 import HorizontalFilterBar from "@/components/horizontal-filter-bar"
 import StoryGrid from "@/components/story-grid"
@@ -10,8 +10,9 @@ import Pagination from "@/components/pagination"
 import CategoryDescription from "@/components/category-description"
 import { Button } from "@/components/ui/button"
 import { Grid, List } from "lucide-react"
-import { useMediaQuery } from "@/hooks/use-media-query"
-import { StoryService } from "@/services/story-service"
+import { StoryService } from "@/lib/api/story"
+import { MetaService } from "@/lib/api/meta"
+import { ImageService } from "@/lib/api/images"
 import { useToast } from "@/hooks/use-toast"
 import { UserSummary } from "@/types/user"
 import { safeDecodeURIComponent } from "@/utils/safe-decode-uri-component"
@@ -83,17 +84,17 @@ export default function BrowseContent({ initialParams, initialData }: BrowseCont
       genre: story.genre?.name || "General",
       language: story.language?.name || "",
       status: story.status || "ongoing",
-      coverImage: (story.coverImage && story.coverImage.trim() !== "") ? story.coverImage : "/placeholder.svg",
+      coverImage: story.coverImage ? ImageService.getImageUrl(story.coverImage) || "/placeholder.svg" : "/placeholder.svg",
       excerpt: story.description || undefined,
       description: story.description || undefined,
       likeCount: story.likeCount || 0,
       commentCount: story.commentCount || 0,
       viewCount: story.viewCount || 0,
       readTime: Math.ceil((story.wordCount || 0) / 200),
-      date: story.createdAt,
-      createdAt: story.createdAt,
-      updatedAt: story.updatedAt,
-      slug: story.slug,
+      date: story.createdAt ? new Date(story.createdAt) : undefined,
+      createdAt: story.createdAt ? new Date(story.createdAt) : undefined,
+      updatedAt: story.updatedAt ? new Date(story.createdAt) : undefined,
+      slug: story.slug || undefined,
       tags: story.tags.map(t => t.tag.name),
       isMature: story.isMature || false
     };
@@ -120,16 +121,16 @@ export default function BrowseContent({ initialParams, initialData }: BrowseCont
   const [totalStories, setTotalStories] = useState(initialData.pagination.total)
   const storiesPerPage = 16
 
-  const isMobile = useMediaQuery("(max-width: 1024px)")
+  // Track if we've done the initial data fetch to avoid duplicate API calls
+  const [initialFetchDone, setInitialFetchDone] = useState(false)
 
   // Fetch all genres and tags on mount
   useEffect(() => {
     async function fetchGenres() {
       try {
-        const response = await fetch('/api/genres')
-        if (response.ok) {
-          const data = await response.json()
-          setAllGenres(data)
+        const response = await MetaService.getGenres()
+        if (response.success && response.data) {
+          setAllGenres(response.data)
         }
       } catch {
         // fallback: do nothing
@@ -138,10 +139,9 @@ export default function BrowseContent({ initialParams, initialData }: BrowseCont
 
     async function fetchTags() {
       try {
-        const response = await fetch('/api/tags')
-        if (response.ok) {
-          const data = await response.json()
-          setAllTags(data)
+        const response = await MetaService.getTags()
+        if (response.success && response.data) {
+          setAllTags(response.data)
         }
       } catch {
         // fallback: do nothing
@@ -317,7 +317,7 @@ export default function BrowseContent({ initialParams, initialData }: BrowseCont
       genre: genreName,
       language: languageName,
       status: story.status || "ongoing",
-      coverImage: (story.coverImage && story.coverImage.trim() !== "") ? story.coverImage : "/placeholder.svg",
+      coverImage: story.coverImage ? ImageService.getImageUrl(story.coverImage) || "/placeholder.svg" : "/placeholder.svg",
       excerpt: story.description,
       description: story.description,
       likeCount: story.likeCount || 0,
@@ -333,7 +333,7 @@ export default function BrowseContent({ initialParams, initialData }: BrowseCont
     };
   }, [])
 
-  // Fetch stories from the API
+  // Fetch stories from the API - avoid duplicate calls on initial load
   useEffect(() => {
     const fetchStories = async () => {
       setLoading(true)
@@ -342,16 +342,20 @@ export default function BrowseContent({ initialParams, initialData }: BrowseCont
       try {
         const params = formatApiParams()
         const response = await StoryService.getStories(params)
-        const formattedStories = response.stories.map(story => formatStory(story));
 
-        setStories(formattedStories)
+        if (response.success && response.data) {
+          const formattedStories = response.data.stories.map((story: any) => formatStory(story));
+          setStories(formattedStories)
 
-        if (selectedGenres.length > 0 || selectedTags.length > 0) {
-          setTotalStories(response.pagination.total)
-          setTotalPages(response.pagination.totalPages)
+          if (selectedGenres.length > 0 || selectedTags.length > 0) {
+            setTotalStories(response.data.pagination.total)
+            setTotalPages(response.data.pagination.totalPages)
+          } else {
+            setTotalPages(response.data.pagination.totalPages)
+            setTotalStories(response.data.pagination.total)
+          }
         } else {
-          setTotalPages(response.pagination.totalPages)
-          setTotalStories(response.pagination.total)
+          throw new Error(response.message || "Failed to fetch stories")
         }
       } catch (err) {
         setError("Failed to load stories. Please try again later.")
@@ -365,8 +369,43 @@ export default function BrowseContent({ initialParams, initialData }: BrowseCont
       }
     }
 
-    fetchStories()
-  }, [currentPage, searchQuery, selectedGenres, selectedTags, selectedLanguage, storyStatus, sortBy, toast])
+    // Check if this is the initial load with matching params - if so, skip fetch
+    const hasInitialParamsMatch = () => {
+      const currentParams = formatApiParams()
+      const initialPage = parseInt(initialParams.page || "1")
+      const initialSearch = initialParams.search || ""
+      const initialGenre = initialParams.genre
+      const initialLanguage = initialParams.language || ""
+      const initialStatus = initialParams.status || "all"
+      const initialSortBy = initialParams.sortBy || "newest"
+
+      // Convert initial genre slug to name for comparison
+      let initialGenreName = ""
+      if (initialGenre && allGenres.length > 0) {
+        const genre = allGenres.find(g => g.slug === initialGenre)
+        initialGenreName = genre?.name || ""
+      }
+
+      const paramsMatch =
+        currentPage === initialPage &&
+        searchQuery === initialSearch &&
+        (!initialGenreName || (selectedGenres.length === 1 && allGenres.find(g => g.slug === selectedGenres[0])?.name === initialGenreName)) &&
+        selectedLanguage === initialLanguage &&
+        storyStatus === initialStatus &&
+        sortBy === initialSortBy &&
+        selectedTags.length === 0 // Initial tags are handled differently and may not match exactly
+
+      return paramsMatch
+    }
+
+    if (!initialFetchDone && hasInitialParamsMatch()) {
+      // Skip initial fetch - we already have data from SSR
+      setInitialFetchDone(true)
+      setLoading(false)
+    } else {
+      fetchStories()
+    }
+  }, [currentPage, searchQuery, selectedGenres, selectedTags, selectedLanguage, storyStatus, sortBy, toast, initialFetchDone, initialParams, allGenres])
 
   // Update URL when filters change
   useEffect(() => {

@@ -1,7 +1,6 @@
 "use client"
 
 import Link from "next/link"
-import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import {
   NavigationMenu,
@@ -16,36 +15,39 @@ import { motion } from "framer-motion"
 import UserAvatarMenu from "./user-avatar-menu"
 import { Skeleton } from "@/components/ui/skeleton"
 import { clientLogger } from "@/lib/logger/client-logger"
+import { useAuth } from "@/lib/auth-context"
 
 export default function Navbar() {
-  const { data: session, status } = useSession()
-  const isLoading = status === "loading"
-  const isAuthenticated = status === "authenticated"
+  const { user, isLoading, isAuthenticated, logout } = useAuth()
 
   // Create a component logger
   const navLogger = clientLogger.child("navbar")
 
   // Log session status in development only
-  navLogger.debug("Session status", { status, hasUser: !!session?.user })
+  navLogger.debug("Auth status", { isAuthenticated, hasUser: !!user })
 
-  const userWithAvatar = session?.user
+  const userWithAvatar = user
     ? {
-        id: session.user.id,
+        id: user.id,
         name:
-          session.user.name && session.user.name.trim() !== ""
-            ? session.user.name
+          user.name && user.name.trim() !== ""
+            ? user.name
             : "User",
         username:
-          session.user.username ||
-          session.user.name?.split(" ")[0].toLowerCase() ||
+          user.username ||
+          user.name?.split(" ")[0].toLowerCase() ||
           "user",
-        avatar: session.user.image || "/placeholder-user.jpg",
-        unreadNotifications: session.user.unreadNotifications || 0,
+        avatar: user.image || "/placeholder-user.jpg",
+        unreadNotifications: 0,
       }
     : null
 
-  const handleLogout = () => {
-    // NextAuth signOut will be handled by UserAvatarMenu
+  const handleLogout = async () => {
+    try {
+      await logout()
+    } catch (error) {
+      navLogger.error("Logout failed", { error })
+    }
   }
 
   if (isLoading) {

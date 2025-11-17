@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/auth/db-adapter'
+import { prisma } from '@/lib/prisma'
 import { ForumType } from '@prisma/client'
 
 export async function getForumPostData(username: string, slug: string) {

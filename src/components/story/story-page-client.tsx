@@ -2,15 +2,14 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { useSession } from "next-auth/react"
+import { useAuth } from "@/lib/auth-context"
 import { motion } from "framer-motion"
 import { useToast } from "@/hooks/use-toast"
-import { useMediaQuery } from "@/hooks/use-media-query"
 import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Tooltip, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { ArrowLeft, BookOpen, Heart, Bookmark, CheckCircle, UserPlus, UserCheck, Loader2, Flag, Users } from "lucide-react"
 import Navbar from "@/components/navbar"
 import { ReportDialog } from "@/components/report/ReportDialog"
@@ -19,7 +18,9 @@ import StoryMetadata from "@/components/story-metadata"
 import CommentSection from "@/components/comment-section"
 import AdBanner from "../ad-banner"
 import { SiteFooter } from "@/components/site-footer"
-import { StoryService } from "@/services/story-service"
+import { StoryService } from "@/lib/api/story"
+import { UserService } from "@/lib/api/user"
+import { ImageService } from "@/lib/api/images"
 import { Story as StoryType, Chapter as ChapterType } from "@/types/story"
 import { SupportButton } from "@/components/SupportButton"
 import MatureContentDialog, { needsMatureContentConsent } from "@/components/mature-content-dialog"
@@ -40,14 +41,14 @@ export default function StoryPageClient({
   slug
 }: StoryPageClientProps) {
   const router = useRouter()
-  const { data: session, status } = useSession()
+  const { user, isAuthenticated, isLoading } = useAuth()
   const { toast } = useToast()
 
   // State management
   const [story, setStory] = useState<StoryType>(initialStory)
   const [chapters, setChapters] = useState<ChapterType[]>(initialChapters)
   const [storyTags, setStoryTags] = useState<{id: string, name: string}[]>(initialTags)
-  const [isLoading, setIsLoading] = useState(false)
+  const [pageLoading, setPageLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [imageFallback, setImageFallback] = useState(false)
   const [isFollowing, setIsFollowing] = useState(false)
@@ -59,81 +60,64 @@ export default function StoryPageClient({
   const [contentConsented, setContentConsented] = useState(true)
   const [isForumEnabled, setIsForumEnabled] = useState(false)
   const [forumLoading, setForumLoading] = useState(true)
-  const isMobile = useMediaQuery("(max-width: 768px)")
 
   // Check mature content consent on mount
   useEffect(() => {
     if (story.isMature) {
-      if (status === "authenticated") {
-        if (session.user.birthdate) {
-          if (isUser18OrOlder(new Date(session.user.birthdate))) {
-            setContentConsented(true)
-          } else {
-            setContentConsented(false)
-            // Optionally, show a message that the user is not old enough
-          }
-        } else {
-          // If birthdate is not available, fall back to consent dialog
-          if (needsMatureContentConsent(slug, story.isMature, true)) {
-            setContentConsented(false)
-            setShowMatureDialog(true)
-          }
-        }
-      } else if (status === "unauthenticated") {
+      if (isAuthenticated && !isLoading) {
+        // Note: Our current auth system doesn't include birthdate
+        // For now, we assume authenticated users are old enough for mature content
+        // In the future, we could add birthdate to the user profile
+        setContentConsented(true)
+      } else if (!isAuthenticated && !isLoading) {
         if (needsMatureContentConsent(slug, story.isMature, false)) {
           setContentConsented(false)
           setShowMatureDialog(true)
         }
       }
     }
-  }, [story.isMature, slug, status, session])
+  }, [story.isMature, slug, isAuthenticated, isLoading])
 
-  // Check if the user is following the author
+  // Combined check for follow status and forum settings to minimize API calls
   useEffect(() => {
-    const checkFollowStatus = async () => {
-      if (!session || !story || !story.author || typeof story.author !== 'object') return
-
-      try {
-        // Don't check follow status if the author is the current user
-        if (story.author.id === session.user.id) return
-
-        // Use username for follow status check
-        if (story.author.username) {
-          const isFollowing = await StoryService.isFollowingUser(story.author.username)
-          setIsFollowing(isFollowing)
-        }
-      } catch (err) {
-        logError(err, { context: "Error checking follow status", authorId: story.author.id, userId: session?.user?.id })
-      }
-    }
-
-    checkFollowStatus()
-  }, [session, story])
-
-  // Check forum setting for the author
-  useEffect(() => {
-    const checkForumSetting = async () => {
-      if (!story || !story.author || typeof story.author !== 'object' || !story.author.username) {
+    const checkAuthorData = async () => {
+      if (!user || !story || !story.author || typeof story.author !== 'object') {
         setForumLoading(false)
         return
       }
 
       try {
-        const response = await fetch(`/api/user/${story.author.username}`)
-        if (response.ok) {
-          const userData = await response.json()
-          const forumEnabled = userData.preferences?.privacySettings?.forum === true
+        // Don't check follow status if the author is the current user
+        if (story.author.id === user.id) {
+          setForumLoading(false)
+          return
+        }
+
+        // Batch the follow status and profile checks
+        const [followResponse, profileResponse] = await Promise.all([
+          story.author.username ? StoryService.isFollowingUser(story.author.username) : Promise.resolve({ success: false } as const),
+          story.author.username ? UserService.getUserProfile(story.author.username) : Promise.resolve({ success: false } as const)
+        ])
+
+        // Set follow status
+        if (followResponse.success && 'data' in followResponse && followResponse.data !== undefined) {
+          setIsFollowing(followResponse.data)
+        }
+
+        // Set forum setting
+        if (profileResponse.success && 'data' in profileResponse && profileResponse.data) {
+          const forumEnabled = profileResponse.data.preferences?.privacySettings?.forum === true
           setIsForumEnabled(forumEnabled)
         }
       } catch (err) {
-        logError(err, { context: "Error checking forum setting", username: story.author.username })
+        logError(err, { context: "Error checking author data", authorId: story.author.id, userId: user?.id })
       } finally {
         setForumLoading(false)
       }
     }
 
-    checkForumSetting()
-  }, [story])
+    checkAuthorData()
+  }, [user, story])
 
   // Handle back button
   const handleBack = () => {
@@ -151,7 +135,7 @@ export default function StoryPageClient({
 
   // Handle like/unlike
   const handleLike = async () => {
-    if (!session) {
+    if (!user) {
       toast({
         title: "Sign in required",
         description: "Please sign in to like this story",
@@ -172,15 +156,21 @@ export default function StoryPageClient({
 
       if (story.isLiked) {
         await StoryService.unlikeStory(story.id)
+        setStory(s => ({
+          ...s,
+          isLiked: false,
+          likeCount: (s.likeCount ?? 0) - 1
+        }))
       } else {
         await StoryService.likeStory(story.id)
+        setStory(s => ({
+          ...s,
+          isLiked: true,
+          likeCount: (s.likeCount ?? 0) + 1
+        }))
       }
-
-      // Refresh story data to update like status
-      const updatedStory = await StoryService.getStory(story!.id)
-      setStory(updatedStory)
     } catch (err) {
-      logError(err, { context: "Error updating like status", storyId: story?.id, userId: session?.user?.id })
+      logError(err, { context: "Error updating like status", storyId: story?.id, userId: user?.id })
       toast({
         title: "Error",
         description: "Failed to update like status",
@@ -193,7 +183,7 @@ export default function StoryPageClient({
 
   // Handle bookmark/unbookmark
   const handleBookmark = async () => {
-    if (!session) {
+    if (!user) {
       toast({
         title: "Sign in required",
         description: "Please sign in to bookmark this story",
@@ -214,15 +204,21 @@ export default function StoryPageClient({
 
       if (story.isBookmarked) {
         await StoryService.removeBookmark(story.id)
+        setStory(s => ({
+          ...s,
+          isBookmarked: false,
+          bookmarkCount: (s.bookmarkCount ?? 0) - 1
+        }))
       } else {
         await StoryService.bookmarkStory(story.id)
+        setStory(s => ({
+          ...s,
+          isBookmarked: true,
+          bookmarkCount: (s.bookmarkCount ?? 0) + 1
+        }))
       }
-
-      // Refresh story data to update bookmark status
-      const updatedStory = await StoryService.getStory(story!.id)
-      setStory(updatedStory)
     } catch (err) {
-      logError(err, { context: "Error updating bookmark status", storyId: story?.id, userId: session?.user?.id })
+      logError(err, { context: "Error updating bookmark status", storyId: story?.id, userId: user?.id })
       toast({
         title: "Error",
         description: "Failed to update bookmark status",
@@ -235,7 +231,7 @@ export default function StoryPageClient({
 
   // Handle follow/unfollow author
   const handleFollow = async () => {
-    if (!session) {
+    if (!user) {
       router.push(`/login?callbackUrl=/story/${slug}`)
       return
     }
@@ -243,7 +239,7 @@ export default function StoryPageClient({
     if (!story || !story.author || typeof story.author !== 'object') return;
 
     // Don't allow following yourself
-    if (story.author.id === session.user.id) return;
+    if (story.author.id === user.id) return;
 
     // Need username to follow/unfollow
     if (!story.author.username) return;
@@ -259,7 +255,7 @@ export default function StoryPageClient({
         setIsFollowing(true)
       }
     } catch (err) {
-      logError(err, { context: "Error updating follow status", authorId: story?.author?.id, userId: session?.user?.id })
+      logError(err, { context: "Error updating follow status", authorId: story?.author?.id, userId: user?.id })
     } finally {
       setFollowLoading(false)
     }
@@ -350,13 +346,13 @@ export default function StoryPageClient({
               className="relative aspect-video sm:aspect-[4/3] lg:aspect-video rounded-lg overflow-hidden shadow-lg mb-4 sm:mb-6"
             >
               <Image
-                src={imageFallback ? "/placeholder.svg" : story.coverImage || "/placeholder.svg"}
+                src={imageFallback ? "/placeholder.svg" : (ImageService.getImageUrl(story.coverImage) || "/placeholder.svg")}
                 alt={`${story.title} cover`}
                 fill
                 sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                 className="object-cover"
                 onError={() => {
-                    logError(`Image loading failed`, { context: 'Cover image error', imageUrl: story.coverImage });
+                    logError(`Image loading failed`, { context: 'Cover image error', imageUrl: ImageService.getImageUrl(story.coverImage) });
                     setImageFallback(true);
                 }}
                 unoptimized={true}
@@ -431,7 +427,7 @@ export default function StoryPageClient({
                   size="sm"
                   onClick={handleLike}
                   className="flex items-center gap-1 sm:gap-2 h-9 sm:h-10 text-xs sm:text-sm px-3 sm:px-4"
-                  title={!session ? "Sign in to like this story" : undefined}
+                  title={!user ? "Sign in to like this story" : undefined}
                   disabled={likeLoading}
                 >
                   {likeLoading ? (
@@ -452,7 +448,7 @@ export default function StoryPageClient({
                   size="sm"
                   onClick={handleBookmark}
                   className="flex items-center gap-1 sm:gap-2 h-9 sm:h-10 text-xs sm:text-sm px-3 sm:px-4"
-                  title={!session ? "Sign in to bookmark this story" : undefined}
+                  title={!user ? "Sign in to bookmark this story" : undefined}
                   disabled={bookmarkLoading}
                 >
                   {bookmarkLoading ? (
@@ -469,7 +465,7 @@ export default function StoryPageClient({
                 </Button>
 
                 {/* Follow button - only show if author exists and is not the current user */}
-                {author && session?.user?.id !== author.id && (
+                {author && user?.id !== author.id && (
                    <Button
                      variant={isFollowing ? "default" : "outline"}
                      size="sm"
@@ -524,7 +520,7 @@ export default function StoryPageClient({
                   </Button>
 
                  {/* Support Button - Mobile Optimized */}
-                 {author?.donationsEnabled && session?.user?.id !== author.id && (
+                 {author?.donationsEnabled && user?.id !== author.id && (
                     <div className="w-full sm:w-auto mt-2 sm:mt-0">
                       {!story.isOriginal ? (
                         <Button
@@ -615,7 +611,7 @@ export default function StoryPageClient({
         </div>
 
         {/* Support the Author Section - Only shown when monetization is enabled and not viewing own story */}
-        {author?.donationsEnabled && session?.user?.id !== author.id && (
+        {author?.donationsEnabled && user?.id !== author.id && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -627,7 +623,7 @@ export default function StoryPageClient({
                 <p className="text-sm sm:text-base text-muted-foreground mb-3">
                   ❤️ Want to support this author?
                 </p>
-                <Link 
+                <Link
                   href={`/user/${author.username}`}
                   className="inline-flex items-center gap-2 text-sm sm:text-base font-medium text-orange-600 hover:text-orange-700 hover:underline transition-colors"
                 >

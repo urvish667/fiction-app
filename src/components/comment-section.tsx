@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useSession } from "next-auth/react"
+import { useAuth } from "@/lib/auth-context"
 import { useRouter } from "next/navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Heart, MoreVertical, Flag, Trash, Reply, Edit, AlertCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { CommentService } from "@/services/comment-service"
+import { CommentService } from "@/lib/api/comment"
 import { Comment } from "@/types/story"
 import { logError } from "@/lib/error-logger"
 import { ReportDialog } from "@/components/report/ReportDialog"
@@ -24,7 +24,7 @@ const INITIAL_LOAD_COUNT = 2
 const LOAD_MORE_COUNT = 3
 
 export default function CommentSection({ storyId, chapterId, isChapterComment = false }: CommentSectionProps) {
-  const { data: session } = useSession()
+  const { user, isAuthenticated } = useAuth()
   const router = useRouter()
   const { toast } = useToast()
 
@@ -59,21 +59,23 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
         let response;
 
         if (isChapter && chapterId) {
-          response = await CommentService.getChapterComments(storyId, chapterId, {
+          response = await CommentService.getChapterComments(chapterId, {
             page: 1,
-            limit: INITIAL_LOAD_COUNT,
-            parentId: null
+            limit: INITIAL_LOAD_COUNT
           });
         } else {
           response = await CommentService.getComments(storyId, {
             page: 1,
-            limit: INITIAL_LOAD_COUNT,
-            parentId: null
+            limit: INITIAL_LOAD_COUNT
           });
         }
 
-        setComments(response.comments)
-        setHasMore(response.pagination.hasMore)
+      if (response.success && response.data) {
+        setComments(response.data!.comments)
+        setHasMore(response.data!.pagination.hasMore)
+      } else {
+        throw new Error(response.message || "Failed to fetch comments")
+      }
       } catch (err) {
         logError(err, { context: 'Fetching initial comments', storyId, chapterId })
         setError(`Failed to load ${isChapter ? 'chapter' : 'story'} comments`)
@@ -101,21 +103,23 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
       let response;
 
       if (isChapter && chapterId) {
-        response = await CommentService.getChapterComments(storyId, chapterId, {
+        response = await CommentService.getChapterComments(chapterId, {
           page: nextPage,
-          limit: LOAD_MORE_COUNT,
-          parentId: null
+          limit: LOAD_MORE_COUNT
         });
       } else {
         response = await CommentService.getComments(storyId, {
           page: nextPage,
-          limit: LOAD_MORE_COUNT,
-          parentId: null
+          limit: LOAD_MORE_COUNT
         });
       }
 
-      setComments(prev => [...prev, ...response.comments])
-      setHasMore(response.pagination.hasMore)
+      if (response.success && response.data) {
+        setComments(prev => [...prev, ...response.data!.comments])
+        setHasMore(response.data.pagination.hasMore)
+      } else {
+        throw new Error(response.message || "Failed to load more comments")
+      }
     } catch (err) {
       logError(err, { context: 'Loading more comments', storyId, chapterId })
       toast({
@@ -131,7 +135,7 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
   // Handle comment submission
   const handleSubmitComment = async () => {
     if (!newComment.trim()) return
-    if (!session) {
+    if (!user) {
       router.push(`/login?callbackUrl=/story/${storyId}${isChapter ? `/chapter/${chapterId}` : ''}`)
       return
     }
@@ -139,22 +143,26 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
     try {
       setIsSubmitting(true)
 
-      let createdComment;
+      let response;
 
       if (isChapter && chapterId) {
         // Create chapter comment
-        createdComment = await CommentService.createChapterComment(storyId, chapterId, {
+        response = await CommentService.createChapterComment(chapterId, {
           content: newComment
         });
       } else {
         // Create story comment
-        createdComment = await CommentService.createComment(storyId, {
+        response = await CommentService.createComment(storyId, {
           content: newComment
         });
       }
 
-      // Add the new comment to the top of the list
-      setComments([createdComment, ...comments])
+      if (response.success && response.data) {
+        // Add the new comment to the top of the list
+        setComments([response.data, ...comments])
+      } else {
+        throw new Error(response.message || "Failed to create comment")
+      }
       setNewComment("")
 
       toast({
@@ -175,19 +183,23 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
 
   // Handle edit comment
   const handleEditComment = async (commentId: string) => {
-    if (!editContent.trim() || !session) return
+    if (!editContent.trim() || !user) return
 
     try {
       setIsSubmitting(true)
 
-      const updatedComment = await CommentService.updateComment(commentId, {
+      const response = await CommentService.updateComment(commentId, {
         content: editContent
       })
 
-      // Update the comment in the list
-      setComments(comments.map(comment =>
-        comment.id === commentId ? updatedComment : comment
-      ))
+      if (response.success && response.data) {
+        // Update the comment in the list
+        setComments(comments.map(comment =>
+          comment.id === commentId ? response.data! : comment
+        ))
+      } else {
+        throw new Error(response.message || "Failed to update comment")
+      }
 
       // Reset editing state
       setEditingComment(null)
@@ -211,7 +223,7 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
 
   // Handle delete comment
   const handleDeleteComment = async (commentId: string) => {
-    if (!session) return
+    if (!user) return
 
     try {
       await CommentService.deleteComment(commentId)
@@ -235,44 +247,48 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
 
   // Handle reply to comment
   const handleReplyToComment = async (parentId: string) => {
-    if (!replyContent.trim() || !session) return
+    if (!replyContent.trim() || !user) return
 
     try {
       setIsSubmitting(true)
 
-      let createdReply;
+      let response;
 
       if (isChapter && chapterId) {
         // Create chapter comment reply
-        createdReply = await CommentService.createChapterComment(storyId, chapterId, {
+        response = await CommentService.createChapterComment(chapterId, {
           content: replyContent,
           parentId
         });
       } else {
         // Create story comment reply
-        createdReply = await CommentService.createComment(storyId, {
+        response = await CommentService.createComment(storyId, {
           content: replyContent,
           parentId
         });
       }
 
-      // Update the parent comment's reply count
-      setComments(comments.map(comment => {
-        if (comment.id === parentId) {
-          return {
-            ...comment,
-            replyCount: (comment.replyCount || 0) + 1
+      if (response.success && response.data) {
+        // Update the parent comment's reply count
+        setComments(comments.map(comment => {
+          if (comment.id === parentId) {
+            return {
+              ...comment,
+              replyCount: (comment.replyCount || 0) + 1
+            }
           }
-        }
-        return comment
-      }))
-
-      // If replies are already expanded for this comment, add the new reply
-      if (expandedReplies[parentId]) {
-        setExpandedReplies(prev => ({
-          ...prev,
-          [parentId]: [...prev[parentId], createdReply]
+          return comment
         }))
+
+        // If replies are already expanded for this comment, add the new reply
+        if (expandedReplies[parentId]) {
+          setExpandedReplies(prev => ({
+            ...prev,
+            [parentId]: [...prev[parentId], response.data!]
+          }))
+        }
+      } else {
+        throw new Error(response.message || "Failed to create reply")
       }
 
       // Reset reply state
@@ -297,7 +313,7 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
 
   // Handle like/unlike for comments and replies
   const handleLike = async (id: string, isReply: boolean = false) => {
-    if (!session) {
+    if (!user) {
       router.push(`/login?callbackUrl=/story/${storyId}`)
       return
     }
@@ -318,48 +334,53 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
       }
 
       // Toggle like status
+      let response;
       if (comment.isLiked) {
         // Unlike the comment
-        result = await CommentService.unlikeComment(id);
+        response = await CommentService.unlikeComment(id);
       } else {
         // Like the comment
-        result = await CommentService.likeComment(id);
+        response = await CommentService.likeComment(id);
       }
 
-      // Update the UI based on the API response
-      if (isReply) {
-        // Update the reply in expandedReplies
-        setExpandedReplies(prev => {
-          const newState = { ...prev }
+      if (response.success && response.data) {
+        // Update the UI based on the API response
+        if (isReply) {
+          // Update the reply in expandedReplies
+          setExpandedReplies(prev => {
+            const newState = { ...prev }
 
-          // Find which comment this reply belongs to
-          Object.keys(newState).forEach(commentId => {
-            newState[commentId] = newState[commentId].map(reply => {
-              if (reply.id === id) {
-                return {
-                  ...reply,
-                  isLiked: !reply.isLiked,
-                  likeCount: result.likeCount
+            // Find which comment this reply belongs to
+            Object.keys(newState).forEach(commentId => {
+              newState[commentId] = newState[commentId].map(reply => {
+                if (reply.id === id) {
+                  return {
+                    ...reply,
+                    isLiked: !reply.isLiked,
+                    likeCount: response.data!.likeCount
+                  }
                 }
-              }
-              return reply
+                return reply
+              })
             })
-          })
 
-          return newState
-        })
-      } else {
-        // Update the comment
-        setComments(prev => prev.map(comment => {
-          if (comment.id === id) {
-            return {
-              ...comment,
-              isLiked: !comment.isLiked,
-              likeCount: result.likeCount
+            return newState
+          })
+        } else {
+          // Update the comment
+          setComments(prev => prev.map(comment => {
+            if (comment.id === id) {
+              return {
+                ...comment,
+                isLiked: !comment.isLiked,
+                likeCount: response.data!.likeCount
+              }
             }
-          }
-          return comment
-        }))
+            return comment
+          }))
+        }
+      } else {
+        throw new Error(response.message || "Failed to like comment")
       }
     } catch (err) {
       logError(err, { context: 'Liking comment', storyId, chapterId });
@@ -375,30 +396,34 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
 
   // Handle edit reply
   const handleEditReply = async (commentId: string, replyId: string) => {
-    if (!editReplyContent.trim() || !session) return
+    if (!editReplyContent.trim() || !user) return
 
     try {
       setIsSubmitting(true)
 
-      const updatedReply = await CommentService.updateComment(replyId, {
+      const response = await CommentService.updateComment(replyId, {
         content: editReplyContent
       })
 
-      // Update the reply in the UI
-      setExpandedReplies(prev => {
-        const newState = { ...prev }
+      if (response.success && response.data) {
+        // Update the reply in the UI
+        setExpandedReplies(prev => {
+          const newState = { ...prev }
 
-        if (newState[commentId]) {
-          newState[commentId] = newState[commentId].map(reply => {
-            if (reply.id === replyId) {
-              return updatedReply
-            }
-            return reply
-          })
-        }
+          if (newState[commentId]) {
+            newState[commentId] = newState[commentId].map(reply => {
+              if (reply.id === replyId) {
+                return response.data!
+              }
+              return reply
+            })
+          }
 
-        return newState
-      })
+          return newState
+        })
+      } else {
+        throw new Error(response.message || "Failed to update reply")
+      }
 
       // Reset editing state
       setEditingReply(null)
@@ -422,7 +447,7 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
 
   // Handle delete reply
   const handleDeleteReply = async (commentId: string, replyId: string) => {
-    if (!session) return
+    if (!user) return
 
     try {
       await CommentService.deleteComment(replyId)
@@ -480,15 +505,22 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
 
     try {
       const response = await CommentService.getReplies(commentId, {
+        storyId,
+        chapterId: isChapter ? chapterId : undefined
+      }, {
         page: 1,
         limit: 50 // Load a reasonable number of replies
       })
 
-      // Store the replies
-      setExpandedReplies(prev => ({
-        ...prev,
-        [commentId]: response.replies
-      }))
+      if (response.success && response.data) {
+        // Store the replies
+        setExpandedReplies(prev => ({
+          ...prev,
+          [commentId]: response.data!.replies
+        }))
+      } else {
+        throw new Error(response.message || "Failed to load replies")
+      }
     } catch (err) {
       logError(err, { context: 'Loading replies', storyId, chapterId })
       toast({
@@ -562,20 +594,20 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
       {/* Comment form */}
       <div className="flex gap-4">
         <Avatar className="h-10 w-10">
-          <AvatarImage src={session?.user?.image || "/placeholder-user.jpg"} alt="Your Avatar" />
-          <AvatarFallback>{session?.user?.name?.[0] || "U"}</AvatarFallback>
+          <AvatarImage src={user?.image || "/placeholder-user.jpg"} alt="Your Avatar" />
+          <AvatarFallback>{user?.name?.[0] || "U"}</AvatarFallback>
         </Avatar>
 
         <div className="flex-1 space-y-2">
           <Textarea
-            placeholder={session ? "Add a comment..." : "Login to comment"}
+            placeholder={user ? "Add a comment..." : "Login to comment"}
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
-            disabled={!session || isSubmitting}
+            disabled={!user || isSubmitting}
             className="resize-none"
           />
 
-          {session && (
+          {user && (
             <div className="flex justify-end">
               <Button
                 onClick={handleSubmitComment}
@@ -623,7 +655,7 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => {
-                          if (!session) {
+                          if (!user) {
                             router.push(`/login?callbackUrl=/story/${storyId}`);
                             return;
                           }
@@ -642,7 +674,7 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
                           <Flag size={16} className="mr-2" />
                           Report
                         </DropdownMenuItem>
-                        {session?.user?.id === comment.userId && (
+                        {user?.id === comment.userId && (
                           <>
                             <DropdownMenuItem onClick={() => {
                               setEditingComment(comment.id);
@@ -719,7 +751,7 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
                     size="icon"
                     className="rounded-full h-8 w-8"
                     onClick={() => {
-                      if (!session) {
+                      if (!user) {
                         router.push(`/login?callbackUrl=/story/${storyId}`);
                         return;
                       }
@@ -737,8 +769,8 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
                   <div className="mt-2 ml-4">
                     <div className="flex gap-2">
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src={session?.user?.image || "/placeholder-user.jpg"} alt="Your Avatar" />
-                        <AvatarFallback>{session?.user?.name?.[0] || "U"}</AvatarFallback>
+                        <AvatarImage src={user?.image || "/placeholder-user.jpg"} alt="Your Avatar" />
+                        <AvatarFallback>{user?.name?.[0] || "U"}</AvatarFallback>
                       </Avatar>
                       <div className="flex-1 space-y-2">
                         <Textarea
@@ -829,7 +861,7 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
                                     <Flag size={14} className="mr-2" />
                                     Report
                                   </DropdownMenuItem>
-                                  {session?.user?.id === reply.userId && (
+                                  {user?.id === reply.userId && (
                                     <>
                                       <DropdownMenuItem onClick={() => {
                                         setEditingReply(reply.id);

@@ -6,7 +6,7 @@ import { SiteFooter } from "@/components/site-footer"
 import { getForumPostData } from "@/lib/forum-data"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
-import { prisma } from "@/lib/auth/db-adapter"
+import { prisma } from "@/lib/prisma"
 import { generateForumPostMetadata, generateForumPostStructuredData } from "@/lib/seo/metadata"
 
 interface PostPageProps {

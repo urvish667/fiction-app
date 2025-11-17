@@ -14,7 +14,7 @@
 
 import { getRedisClient, REDIS_KEYS } from '@/lib/redis';
 import { logger } from '@/lib/logger';
-import { prisma } from '@/lib/auth/db-adapter';
+import { prisma } from '@/lib/prisma';
 
 /**
  * Redis key prefixes for view tracking

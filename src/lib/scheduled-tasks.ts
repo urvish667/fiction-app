@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/auth/db-adapter";
+import { prisma } from "@/lib/prisma";
 import { calculateStoryStatus } from "./story-helpers";
 import { Chapter } from "@/types/story";
 import { logError } from "./error-logger";

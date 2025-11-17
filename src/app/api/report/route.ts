@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { prisma } from '@/lib/auth/db-adapter';
+import { prisma } from '@/lib/prisma';
 import { ReportValidator } from '@/lib/validators/report';
 import { z } from 'zod';
 import { sanitizeText } from '@/lib/security/input-validation';

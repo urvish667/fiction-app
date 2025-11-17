@@ -8,37 +8,16 @@ import { Heart, Flame, Eye, ChevronLeft, ChevronRight } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import StoryCardSkeleton from "@/components/story-card-skeleton"
-
-interface Story {
-  id: string
-  title: string
-  slug: string
-  description?: string
-  coverImage?: string
-  author: {
-    id: string
-    name?: string
-    username?: string
-    image?: string
-  }
-  genre?: {
-    name: string
-  }
-  tags: string[]
-  likeCount: number
-  commentCount: number
-  bookmarkCount: number
-  chapterCount: number
-  viewCount: number
-  isMature?: boolean
-}
+import { StoryService } from "@/lib/api/story"
+import { ImageService } from "@/lib/api/images"
+import type { StoryResponse } from "@/types/story"
 
 interface MostViewedStoriesProps {
   className?: string
 }
 
 export default function MostViewedStories({ className }: MostViewedStoriesProps) {
-  const [stories, setStories] = useState<Story[]>([])
+  const [stories, setStories] = useState<StoryResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -79,14 +58,16 @@ export default function MostViewedStories({ className }: MostViewedStoriesProps)
         setLoading(true)
         setError(null)
 
-        const response = await fetch('/api/stories/most-viewed?limit=4&timeRange=7days')
+        const response = await StoryService.getStories({
+          sortBy: 'mostViewed',
+          limit: 4
+        })
 
-        if (!response.ok) {
-          throw new Error('Failed to fetch most viewed stories')
+        if (!response.success) {
+          throw new Error(response.message || 'Failed to fetch most viewed stories')
         }
 
-        const data = await response.json()
-        setStories(data.stories || [])
+        setStories(response.data?.stories || [])
       } catch (err) {
         console.error('Error fetching most viewed stories:', err)
         setError('Failed to load stories')
@@ -255,13 +236,13 @@ export default function MostViewedStories({ className }: MostViewedStoriesProps)
 }
 
 // StoryCard component for client-side rendering
-function StoryCard({ story, isTopStory = false }: { story: Story, isTopStory?: boolean }) {
+function StoryCard({ story, isTopStory = false }: { story: StoryResponse, isTopStory?: boolean }) {
   return (
     <Link href={`/story/${story.slug || story.id}`} className="block p-1">
       <Card className={`h-full overflow-hidden flex flex-col hover:shadow-lg transition-shadow cursor-pointer ${isTopStory ? 'ring-2 ring-primary' : ''}`}>
         <div className="relative aspect-[3/2] overflow-hidden">
           <Image
-            src={story.coverImage || "/placeholder.svg"}
+            src={ImageService.getImageUrl(story.coverImage) || "/placeholder.svg"}
             alt={story.title}
             fill
             className="object-cover transition-transform hover:scale-105"
@@ -285,8 +266,8 @@ function StoryCard({ story, isTopStory = false }: { story: Story, isTopStory?: b
           {/* Genre badge on top right */}
           <Badge className="absolute top-2 right-2">
             {typeof story.genre === 'object' && story.genre !== null
-              ? story.genre.name
-              : 'General'}
+              ? (story.genre as {name: string}).name
+              : (typeof story.genre === 'string' ? story.genre : 'General')}
           </Badge>
         </div>
         <CardHeader className="pb-2">
@@ -305,7 +286,7 @@ function StoryCard({ story, isTopStory = false }: { story: Story, isTopStory?: b
           </div>
           <div className="flex items-center gap-1 text-sm text-muted-foreground">
             <Eye size={16} className="text-muted-foreground" />
-            <span>{story.viewCount.toLocaleString()} views</span>
+            <span>{(story.viewCount || 0).toLocaleString()} views</span>
           </div>
         </CardFooter>
       </Card>

@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/auth/db-adapter";
+import { prisma } from "@/lib/prisma";
 import { BlogPost, BlogCategory } from "@/types/blog";
 import { AzureService } from "@/lib/azure-service";
 

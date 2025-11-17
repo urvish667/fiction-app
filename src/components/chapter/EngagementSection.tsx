@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { useSession } from "next-auth/react"
+import { useAuth } from "@/lib/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
@@ -11,7 +11,8 @@ import { motion, AnimatePresence } from "framer-motion"
 import CommentSection from "@/components/comment-section"
 import { SupportButton } from "@/components/SupportButton"
 import StoryRecommendations from "@/components/StoryRecommendations"
-import { StoryService } from "@/services/story-service"
+import { StoryService } from "@/lib/api/story"
+import { ChapterService } from "@/lib/api/chapter"
 import { Story, Chapter } from "@/types/story"
 import { logError } from "@/lib/error-logger"
 
@@ -37,7 +38,7 @@ export function EngagementSection({
   setIsFollowing
 }: EngagementSectionProps) {
   const router = useRouter()
-  const { data: session } = useSession()
+  const { user, isAuthenticated } = useAuth()
   const { toast } = useToast()
   const [showChapterComments, setShowChapterComments] = useState(false)
   const [chapterLikeLoading, setChapterLikeLoading] = useState(false)
@@ -47,7 +48,7 @@ export function EngagementSection({
 
   // Handle like/unlike chapter
   const handleChapterLike = async () => {
-    if (!session) {
+    if (!isAuthenticated) {
       toast({
         title: "Sign in required",
         description: "Please sign in to like this chapter",
@@ -69,18 +70,18 @@ export function EngagementSection({
       // Try to toggle the like status based on current state
       try {
         if (isChapterLiked) {
-          await StoryService.unlikeChapter(story.id, chapter.id)
+          await ChapterService.unlikeChapter(chapter.id)
         } else {
-          await StoryService.likeChapter(story.id, chapter.id)
+          await ChapterService.likeChapter(chapter.id)
         }
       } catch (apiError: any) {
         // Handle specific API errors gracefully
         if (apiError.message?.includes("Chapter already liked")) {
           // Chapter is already liked, try to unlike it instead
-          await StoryService.unlikeChapter(story.id, chapter.id)
+          await ChapterService.unlikeChapter(chapter.id)
         } else if (apiError.message?.includes("Like not found")) {
           // Chapter is not liked, try to like it instead
-          await StoryService.likeChapter(story.id, chapter.id)
+          await ChapterService.likeChapter(chapter.id)
         } else {
           // Re-throw other errors
           throw apiError
@@ -92,7 +93,7 @@ export function EngagementSection({
         setIsChapterLiked(!isChapterLiked)
       }
     } catch (err) {
-      logError(err, { context: "Error updating chapter like status", chapterId: chapter?.id, userId: session?.user?.id })
+      logError(err, { context: "Error updating chapter like status", chapterId: chapter?.id, userId: user?.id })
 
       // Extract error message if available
       let errorMessage = "Failed to update chapter like status";
@@ -112,7 +113,7 @@ export function EngagementSection({
 
   // Handle follow/unfollow author
   const handleFollow = async () => {
-    if (!session) {
+    if (!isAuthenticated) {
       toast({
         title: "Sign in required",
         description: "Please sign in to follow this author",
@@ -129,7 +130,7 @@ export function EngagementSection({
     if (!story || !story.author || typeof story.author !== 'object') return;
 
     // Don't allow following yourself
-    if (story.author.id === session.user.id) return;
+    if (story.author.id === user?.id) return;
 
     // Need username to follow/unfollow
     if (!story.author.username) return;
@@ -145,7 +146,7 @@ export function EngagementSection({
         setIsFollowing(true)
       }
     } catch (err) {
-      logError(err, { context: "Error updating follow status", authorId: story?.author?.id, userId: session?.user?.id })
+      logError(err, { context: "Error updating follow status", authorId: story?.author?.id, userId: user?.id })
       toast({
         title: "Error",
         description: "Failed to update follow status",
@@ -201,7 +202,7 @@ export function EngagementSection({
               onClick={handleChapterLike}
               disabled={chapterLikeLoading}
               className="rounded-full h-9 w-9"
-              title={!session ? "Sign in to like this chapter" : (isChapterLiked ? "Unlike chapter" : "Like chapter")}
+              title={!isAuthenticated ? "Sign in to like this chapter" : (isChapterLiked ? "Unlike chapter" : "Like chapter")}
             >
               {chapterLikeLoading ? (
                 <div className="animate-spin rounded-full h-3 w-3 border-t-2 border-b-2 border-current"></div>
@@ -262,15 +263,15 @@ export function EngagementSection({
         </div>
 
         {/* Only show follow button if user is not the author */}
-        {session && story?.author && typeof story.author === 'object' &&
-         session.user.id !== story.author.id ? (
+        {isAuthenticated && user && story?.author && typeof story.author === 'object' &&
+         user.id !== story.author.id ? (
           <Button
             variant={isFollowing ? "default" : "outline"}
             size="icon"
             onClick={handleFollow}
             disabled={followLoading}
             className="rounded-full h-9 w-9"
-            title={!session ? "Sign in to follow author" : (isFollowing ? "Unfollow author" : "Follow author")}
+            title={!isAuthenticated ? "Sign in to follow author" : (isFollowing ? "Unfollow author" : "Follow author")}
           >
             {followLoading ? (
               <div className="animate-spin rounded-full h-3 w-3 border-t-2 border-b-2 border-current"></div>
@@ -310,7 +311,7 @@ export function EngagementSection({
 
       {/* Support the Author Section - Only shown when monetization is enabled and user is not the author */}
       {story.author && typeof story.author === 'object' && story.author.donationsEnabled &&
-       session && session.user.id !== story.author.id && (
+       isAuthenticated && user && user.id !== story.author.id && (
         <div className="bg-muted/30 rounded-lg p-4 sm:p-6 text-center mb-8 sm:mb-12">
           <h2 className="text-lg sm:text-xl font-bold mb-2">Support the Author</h2>
           <p className="text-sm sm:text-base text-muted-foreground mb-4">

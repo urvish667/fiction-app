@@ -16,6 +16,7 @@ import StoryCardSkeleton from "@/components/story-card-skeleton"
 import Navbar from "@/components/navbar"
 import { useToast } from "@/hooks/use-toast"
 import { StoryService } from "@/services/story-service"
+import { ImageService } from "@/lib/api/images"
 import { useSession } from "next-auth/react"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import type { Story } from "@/types/story"
@@ -403,7 +404,7 @@ function WorksContent({ works, searchQuery, isLoading, onDeleteStory }: WorksCon
             <div className="relative aspect-[3/2] overflow-hidden bg-muted">
               {/* Cover image */}
               <Image
-                src={work.coverImage || "/placeholder.svg"}
+                src={ImageService.getImageUrl(work.coverImage) || "/placeholder.svg"}
                 alt={work.title}
                 fill
                 className="object-cover"

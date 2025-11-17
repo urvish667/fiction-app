@@ -16,6 +16,16 @@ const nextConfig = {
       },
     ],
   },
+
+  // Proxy API requests in development to avoid CORS issues
+  async rewrites() {
+    return [
+      {
+        source: '/api/v1/images/:path*',
+        destination: 'http://localhost:4000/api/v1/images/:path*',
+      },
+    ]
+  },
   // Disable TypeScript type checking during build
   typescript: {
     // !! WARN !!

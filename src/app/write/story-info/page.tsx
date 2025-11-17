@@ -39,6 +39,7 @@ import { fetchWithCsrf } from "@/lib/client/csrf"
 
 import { logError } from "@/lib/error-logger"
 import { licenses } from "@/constants/licenses"
+import { ImageService } from "@/lib/api/images"
 
 // Types for the story info page
 interface StoryFormData {
@@ -879,7 +880,7 @@ export default function StoryInfoPage() {
                 ) : (
                   <>
                     <Image
-                      src={storyData.coverImage || "/placeholder.svg"}
+                      src={ImageService.getImageUrl(storyData.coverImage) || "/placeholder.svg"}
                       alt="Story cover"
                       fill
                       className="object-cover transition-opacity group-hover:opacity-70"

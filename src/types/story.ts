@@ -54,6 +54,8 @@ export type Comment = {
   user?: UserSummary;
   storyId: string;
   story?: Story;
+  chapterId?: string;
+  chapter?: Chapter;
   parentId?: string;
   parent?: Comment;
   replies?: Comment[];
@@ -135,5 +137,27 @@ export type StoryResponse = Story & {
 };
 
 export type ChapterResponse = Chapter & {
-  readingProgress?: number;
+  progress?: number;
+};
+
+export type StoryRecommendation = {
+  id: string;
+  title: string;
+  slug: string;
+  description?: string;
+  coverImage?: string;
+  status: string;
+  author: {
+    id: string;
+    name?: string;
+    username: string;
+    image?: string;
+  };
+  genre: string | null;
+  tags: string[];
+  likeCount: number;
+  commentCount: number;
+  bookmarkCount: number;
+  chapterCount: number;
+  similarityScore: number;
 };

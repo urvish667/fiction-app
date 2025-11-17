@@ -30,7 +30,7 @@ export const securityHeaders = {
     "https://ad.doubleclick.net https://adservice.google.com " +
     "https://securepubads.g.doubleclick.net https://tpc.googlesyndication.com; " +
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
-  "img-src 'self' data: https: blob: https://ads.fablespace.space; " +
+  "img-src 'self' data: https: blob: https://ads.fablespace.space http://localhost:4000; " +
   "font-src 'self' https://fonts.gstatic.com; " +
   "connect-src 'self' ws: wss: " +
     "https://apis.google.com https://www.googleapis.com https://securetoken.googleapis.com " +
@@ -38,6 +38,7 @@ export const securityHeaders = {
     "https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net " +
     "https://tpc.googlesyndication.com https://securepubads.g.doubleclick.net " +
     "https://www.google-analytics.com " +
+    "http://localhost:4000 https://localhost:4000 https://api.fablespace.com " +
     "*.google.com *.googlesyndication.com *.googleadservices.com *.adtrafficquality.google " +
     "*.adsterra.com *.pop.adsterra.com *.profitableratecpm.com *.highperformanceformat.com professionaltrafficmonitor.com; " +
   "frame-src 'self' https://www.youtube.com https://www.facebook.com https://connect.facebook.net " +

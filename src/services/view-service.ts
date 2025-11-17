@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/auth/db-adapter";
+import { prisma } from "@/lib/prisma";
 import { logError } from "@/lib/error-logger";
 import { logger } from "@/lib/logger";
 import {

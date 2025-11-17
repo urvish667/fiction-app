@@ -5,7 +5,7 @@ import "@/styles/reading.css"
 // React and Next.js imports
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { useSession } from "next-auth/react"
+import { useAuth } from "@/lib/auth-context"
 
 // UI Components
 import { Button } from "@/components/ui/button"
@@ -24,7 +24,8 @@ import { EngagementSection } from "@/components/chapter/EngagementSection"
 import { TopNavigation } from "@/components/chapter/TopNavigation"
 
 // Services and Types
-import { StoryService } from "@/services/story-service"
+import { StoryService } from "@/lib/api/story"
+import { ChapterService } from "@/lib/api/chapter"
 import { Story as StoryType, Chapter as ChapterType } from "@/types/story"
 import { isUser18OrOlder } from "@/utils/age"
 import { logError } from "@/lib/error-logger"
@@ -46,7 +47,7 @@ interface ChapterState {
 
 interface ChapterPageClientProps {
   initialStory: StoryType;
-  initialChapter: ChapterType;
+  initialChapter: ChapterType & { progress?: number };
   initialChapters: ChapterType[];
   slug: string;
   chapterNumber: number;
@@ -62,7 +63,7 @@ export default function ChapterPageClient({
   const params = useParams()
   const router = useRouter()
   const contentRef = useRef<HTMLDivElement>(null)
-  const { data: session } = useSession()
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const { toast } = useToast()
 
   // Determine content length based on word count
@@ -81,7 +82,7 @@ export default function ChapterPageClient({
     isLoading: false,
     isContentLoading: false,
     error: null,
-    readingProgress: 0, // initialChapter.readingProgress,
+    readingProgress: initialChapter.progress || 0,
     isChapterLiked: false,
     isFollowing: false,
     contentLength: getContentLength(initialChapter.content || ''),
@@ -109,9 +110,9 @@ export default function ChapterPageClient({
   // Check mature content consent on mount
   useEffect(() => {
     if (story && story.isMature) {
-      if (session) {
-        if (session.user.birthdate) {
-          if (isUser18OrOlder(new Date(session.user.birthdate))) {
+      if (isAuthenticated && !authLoading) {
+        if (user?.birthdate) {
+          if (isUser18OrOlder(new Date(user.birthdate))) {
             setContentConsented(true)
           } else {
             setContentConsented(false)
@@ -124,93 +125,26 @@ export default function ChapterPageClient({
             setShowMatureDialog(true)
           }
         }
-      } else {
+      } else if (!isAuthenticated && !authLoading) {
         if (needsMatureContentConsent(slug, story.isMature, false)) {
           setContentConsented(false)
           setShowMatureDialog(true)
         }
       }
     }
-  }, [story, session, slug])
+  }, [story, isAuthenticated, authLoading, user, slug])
 
-  // Refresh chapter and story data to get updated view counts
-  useEffect(() => {
-    if (!story || !chapter) return
 
-    // Create a timer to refresh the data after a short delay
-    // This ensures the view counts are updated after the views are tracked
-    const timer = setTimeout(async () => {
-      try {
-        // Fetch the latest chapter data to get updated view count
-        const updatedChapter = await StoryService.getChapter(story.id, chapter.id)
-        // Fetch the latest story data to get updated view count
-        const updatedStory = await StoryService.getStory(story.id)
 
-        if (updatedChapter && updatedStory) {
-          setState(prev => ({
-            ...prev,
-            chapter: updatedChapter,
-            story: updatedStory
-          }))
-        }
-      } catch (err) {
-        logError(err, { context: "Error refreshing data", chapterId: chapter?.id, storyId: story?.id })
-      }
-    }, 1000) // 1 second delay
 
-    return () => clearTimeout(timer)
-  }, [story?.id, chapter?.id])
-
-  // Check if the user is following the author and if the story/chapter is liked
-  useEffect(() => {
-    const checkUserInteractions = async () => {
-      if (!session || !story || !story.author || typeof story.author !== 'object') return
-
-      try {
-        let newIsFollowing = isFollowing;
-        let newIsChapterLiked = isChapterLiked;
-
-        // Don't check follow status if the author is the current user
-        if (story.author.id !== session.user.id && story.author.username) {
-          newIsFollowing = await StoryService.isFollowingUser(story.author.username)
-        }
-
-        // Check if chapter is liked (if chapter exists)
-        if (chapter && session.user.id) {
-          try {
-            // We need to implement this API endpoint to check if a chapter is liked
-            const response = await fetch(`/api/stories/${story.id}/chapters/${chapter.id}/like/check`);
-            if (response.ok) {
-              const data = await response.json();
-              newIsChapterLiked = data.isLiked;
-            }
-          } catch (chapterLikeError) {
-            logError(chapterLikeError, { context: "Error checking chapter like status", chapterId: chapter?.id, userId: session?.user?.id })
-          }
-        }
-
-        // Update state with user interactions
-        setState(prev => ({
-          ...prev,
-          isFollowing: newIsFollowing,
-          isLiked: story.isLiked || false,
-          isChapterLiked: newIsChapterLiked
-        }))
-      } catch (err) {
-        logError(err, { context: "Error checking user interactions", storyId: story?.id, userId: session?.user?.id })
-      }
-    }
-
-    checkUserInteractions()
-  }, [session, story, chapter, isFollowing, isChapterLiked])
 
   // Track reading progress with debouncing
   const updateProgressDebounced = useCallback(
     (progress: number) => {
-      if (!chapter || !session?.user?.id) return;
+      if (!chapter || !user?.id) return;
 
       // Skip if user is the author
-      if (story && session.user.id === story.author?.id) return;
+      if (story && user.id === story.author?.id) return;
 
       // Debounce the API call to avoid too many requests
       // Only send updates when progress changes by at least 10%
@@ -218,14 +152,14 @@ export default function ChapterPageClient({
 
       if (Math.abs(debounceProgress - readingProgress) >= 10) {
         // Update reading progress in the API
-        StoryService.updateReadingProgress(chapter.id, debounceProgress)
-          .catch(err => logError(err, { context: "Error updating reading progress", chapterId: chapter?.id, userId: session?.user?.id }));
+        ChapterService.updateReadingProgress(chapter.id, debounceProgress)
+          .catch(err => logError(err, { context: "Error updating reading progress", chapterId: chapter?.id, userId: user?.id }));
 
         // Update local state
         setState(prev => ({ ...prev, readingProgress: debounceProgress }));
       }
     },
-    [chapter, readingProgress, session, story]
+    [chapter, readingProgress, user, story]
   );
 
   // Track reading progress
@@ -272,7 +206,18 @@ export default function ChapterPageClient({
       }
 
       // Fetch the full chapter details
-      const chapterDetails = await StoryService.getChapter(story.id, targetChapter.id)
+      const chapterResponse = await ChapterService.getChapter(targetChapter.id)
+
+      if (!chapterResponse.success || !chapterResponse.data) {
+        toast({
+          title: "Error",
+          description: "Failed to load chapter",
+          variant: "destructive"
+        })
+        return false
+      }
+
+      const chapterDetails = chapterResponse.data
 
       // Check if chapter is published
       if (chapterDetails.status !== 'published') {
@@ -287,9 +232,9 @@ export default function ChapterPageClient({
       // Update state with new chapter data
       setState(prev => ({
         ...prev,
-        chapter: chapterDetails,
+        chapter: chapterDetails as ChapterType,
         contentLength: getContentLength(chapterDetails.content || ''),
-        readingProgress: chapterDetails.readingProgress || 0,
+        readingProgress: chapterDetails.progress || 0,
         isContentLoading: false
       }))
 

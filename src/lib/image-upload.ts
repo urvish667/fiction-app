@@ -1,5 +1,4 @@
-import { AzureService } from "./azure-service";
-import { fetchWithCsrf } from "./client/csrf";
+import { apiClient } from "./apiClient";
 import { logError } from "./error-logger";
 
 /**
@@ -22,26 +21,21 @@ export const ImageUpload = {
       const fileExtension = file.name.split('.').pop() || 'jpg';
       const imageKey = `users/${userId}/profile-${timestamp}.${fileExtension}`;
 
-      // Upload to Azure Blob Storage via the API with CSRF token
-      const response = await fetchWithCsrf('/api/upload-image', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          key: imageKey,
-          contentType: file.type,
-          data: Array.from(new Uint8Array(arrayBuffer)),
-        }),
+      // Upload directly to backend API
+      const response = await apiClient.post<{
+        success: boolean;
+        data: { url: string };
+      }>('/upload/image', {
+        key: imageKey,
+        contentType: file.type,
+        data: Array.from(new Uint8Array(arrayBuffer)),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to upload profile image');
+      if (!response.success || !response.data.url) {
+        throw new Error('Failed to upload profile image');
       }
 
-      const result = await response.json();
-      return result.url;
+      return response.data.url;
     } catch (error) {
       logError(error, { context: 'Uploading profile image' })
       throw error;
@@ -64,26 +58,21 @@ export const ImageUpload = {
       const fileExtension = file.name.split('.').pop() || 'jpg';
       const imageKey = `users/${userId}/banner-${timestamp}.${fileExtension}`;
 
-      // Upload to Azure Blob Storage via the API with CSRF token
-      const response = await fetchWithCsrf('/api/upload-image', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          key: imageKey,
-          contentType: file.type,
-          data: Array.from(new Uint8Array(arrayBuffer)),
-        }),
+      // Upload directly to backend API
+      const response = await apiClient.post<{
+        success: boolean;
+        data: { url: string };
+      }>('/upload/image', {
+        key: imageKey,
+        contentType: file.type,
+        data: Array.from(new Uint8Array(arrayBuffer)),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to upload banner image');
+      if (!response.success || !response.data.url) {
+        throw new Error('Failed to upload banner image');
       }
 
-      const result = await response.json();
-      return result.url;
+      return response.data.url;
     } catch (error) {
       logError(error, { context: 'Uploading banner image' })
       throw error;
@@ -198,26 +187,21 @@ export const ImageUpload = {
       const fileExtension = file.name.split('.').pop() || 'jpg';
       const imageKey = `editor/images/${timestamp}-${Math.random().toString(36).substring(2, 10)}.${fileExtension}`;
 
-      // Upload to Azure Blob Storage via the API with CSRF token
-      const response = await fetchWithCsrf('/api/upload-image', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          key: imageKey,
-          contentType: file.type,
-          data: Array.from(new Uint8Array(arrayBuffer)),
-        }),
+      // Upload directly to backend API
+      const response = await apiClient.post<{
+        success: boolean;
+        data: { url: string };
+      }>('/upload/image', {
+        key: imageKey,
+        contentType: file.type,
+        data: Array.from(new Uint8Array(arrayBuffer)),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to upload editor image');
+      if (!response.success || !response.data.url) {
+        throw new Error('Failed to upload editor image');
       }
 
-      const result = await response.json();
-      return result.url;
+      return response.data.url;
     } catch (error) {
       logError(error, { context: 'Uploading editor image' })
       throw error;
