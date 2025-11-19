@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
+import { useAuth } from "@/lib/auth-context"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -10,12 +12,14 @@ import { Grid, List, X } from "lucide-react"
 import Navbar from "@/components/navbar"
 import StoryCard from "@/components/story-card"
 import StoryCardSkeleton from "@/components/story-card-skeleton"
-import { StoryService } from "@/services/story-service"
+import { StoryService } from "@/lib/api/story"
 import { useToast } from "@/hooks/use-toast"
 import { logError } from "@/lib/error-logger"
 
 export default function LibraryPage() {
   const { toast } = useToast()
+  const router = useRouter()
+  const { user, isAuthenticated, isLoading } = useAuth()
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [searchQuery, setSearchQuery] = useState("")
   const [sortBy, setSortBy] = useState("recent")
@@ -24,43 +28,58 @@ export default function LibraryPage() {
   const [loading, setLoading] = useState(true)
   const [genres, setGenres] = useState<string[]>(["all"])
 
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.push('/login')
+    }
+  }, [isAuthenticated, isLoading, router])
+
   // Fetch bookmarked stories from API
   useEffect(() => {
+    if (!user) return // Wait for user
+
     const fetchBookmarkedStories = async () => {
       try {
         setLoading(true)
         const response = await StoryService.getBookmarkedStories()
 
-        // Format stories to ensure they have all required fields
-        const formattedStories = response.stories.map((story: any) => {
-          // Extract genre name from genre object if it exists
-          let genreName = "General";
-          if (story.genre && typeof story.genre === 'object' && story.genre.name) {
-            genreName = story.genre.name;
-          } else if (typeof story.genre === 'string') {
-            genreName = story.genre;
-          }
+        if (response.success && response.data) {
+          const { data: { stories } } = response
 
-          return {
-            ...story,
-            author: story.author?.name || story.author?.username || "Unknown",
-            excerpt: story.description || "",
-            likeCount: story.likeCount || 0,
-            commentCount: story.commentCount || 0,
-            viewCount: story.viewCount || 0,
-            date: new Date(story.createdAt),
-            genre: genreName,
-            isMature: story.isMature || false
-          };
-        });
+          // Format stories to ensure they have all required fields
+          const formattedStories = stories.map((story: any) => {
+            // Extract genre name from genre object if it exists
+            let genreName = "General";
+            if (story.genre && typeof story.genre === 'object' && story.genre.name) {
+              genreName = story.genre.name;
+            } else if (typeof story.genre === 'string') {
+              genreName = story.genre;
+            }
 
-        setBookmarkedStories(formattedStories)
+            return {
+              ...story,
+              author: story.author?.name || story.author?.username || "Unknown",
+              excerpt: story.description || "",
+              likeCount: story.likeCount || 0,
+              commentCount: story.commentCount || 0,
+              viewCount: story.viewCount || 0,
+              date: new Date(story.createdAt),
+              genre: genreName,
+              isMature: story.isMature || false
+            };
+          });
 
-        // Extract unique genres for filter
-        const uniqueGenres = ["all", ...new Set(formattedStories
-          .filter((story: any) => story.genre)
-          .map((story: any) => story.genre))]
-        setGenres(uniqueGenres)
+          setBookmarkedStories(formattedStories)
+
+          // Extract unique genres for filter
+          const uniqueGenres = ["all", ...Array.from(new Set(formattedStories
+            .filter((story: any) => story.genre)
+            .map((story: any) => story.genre)))] as string[]
+          setGenres(uniqueGenres)
+        } else {
+          throw new Error(response.message || "Failed to fetch bookmarked stories")
+        }
       } catch (error) {
         logError(error, { context: 'Fetching bookmarked stories' })
         toast({
@@ -75,7 +94,7 @@ export default function LibraryPage() {
 
     fetchBookmarkedStories()
 
-  }, [toast])
+  }, [user, toast])
 
   // Filter and sort stories based on user selections
   const filterStories = () => {

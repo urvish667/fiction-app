@@ -1,12 +1,13 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useSession } from "next-auth/react"
+import { useAuth } from "@/lib/auth-context"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { UserPlus, UserCheck, Share2, Check, Loader2, Users } from "lucide-react"
-import { StoryService } from "@/services/story-service"
+import { StoryService } from "@/lib/api/story"
+import { UserService } from "@/lib/api/user"
 import { useToast } from "@/hooks/use-toast"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { logError } from "@/lib/error-logger"
@@ -24,8 +25,8 @@ interface ProfileActionButtonsProps {
   }
 }
 
-export default function ProfileActionButtons({ username, isCurrentUser, author }: ProfileActionButtonsProps) {
-  const { data: session } = useSession()
+export default function ProfileActionButtons({ username, isCurrentUser: isCurrentUserByProp, author }: ProfileActionButtonsProps) {
+  const { user: currentUser, isAuthenticated, isLoading: authLoading } = useAuth()
   const router = useRouter()
   const { toast } = useToast()
   const { handleApiError } = useProfileCompletionHandler()
@@ -36,29 +37,36 @@ export default function ProfileActionButtons({ username, isCurrentUser, author }
   const [isForumEnabled, setIsForumEnabled] = useState(false)
   const [forumLoading, setForumLoading] = useState(true)
 
+  // Determine if this is the current user's profile by comparing authenticated user with profile username
+  const isCurrentUser = currentUser?.username === username || isCurrentUserByProp
+
   // Check if the current user is following this profile
   useEffect(() => {
     const checkFollowStatus = async () => {
-      if (!session || isCurrentUser) return
+      if (!isAuthenticated || isCurrentUser) return
 
       try {
-        const isFollowing = await StoryService.isFollowingUser(username)
-        setIsFollowing(isFollowing)
+        const response = await StoryService.isFollowingUser(username)
+        if (response.success) {
+          setIsFollowing(response.data || false)
+        } else {
+          setIsFollowing(false)
+        }
       } catch (err) {
         logError(err, { context: "Error checking follow status", username })
       }
     }
 
     checkFollowStatus()
-  }, [session, username, isCurrentUser])
+  }, [isAuthenticated, username, isCurrentUser])
 
   // Check forum setting
   useEffect(() => {
     const checkForumSetting = async () => {
       try {
-        const response = await fetch(`/api/user/${username}`)
-        if (response.ok) {
-          const userData = await response.json()
+        const response = await UserService.getUserProfile(username)
+        if (response.success && response.data) {
+          const userData = response.data
           const forumEnabled = userData.preferences?.privacySettings?.forum === true
           setIsForumEnabled(forumEnabled)
         }
@@ -74,7 +82,7 @@ export default function ProfileActionButtons({ username, isCurrentUser, author }
 
   // Handle follow/unfollow
   const handleFollow = async () => {
-    if (!session) {
+    if (!isAuthenticated) {
       router.push(`/login?callbackUrl=/user/${username}`)
       return
     }

@@ -12,6 +12,7 @@ import { toast } from "@/hooks/use-toast"
 import { logger } from "@/lib/logger"
 import { Button } from "@/components/ui/button"
 import AdBanner from "@/components/ad-banner"
+import { ForumService } from "@/lib/api/forum"
 
 interface User {
   id: string
@@ -79,24 +80,27 @@ export default function ForumClient({ user, forumId, isOwner, currentUserId }: F
   const [creatingPost, setCreatingPost] = useState(false)
   const [editingPost, setEditingPost] = useState<Post | null>(null)
   const [createPostMode, setCreatePostMode] = useState(false)
-  const [csrfToken, setCsrfToken] = useState<string>('')
 
   // Fetch posts from API
   const fetchPosts = async () => {
     try {
-      const response = await fetch(`/api/forum/${user.username}/posts`)
-      if (response.ok) {
-        const data = await response.json()
-        if (data.success) {
-          // Transform createdAt dates to Date objects
-          const transformedPosts = data.posts.map((post: any) => ({
-            ...post,
-            createdAt: new Date(post.createdAt)
-          }))
-          setPosts(transformedPosts)
-        }
-      } else if (response.status === 403) {
-        // Forum not enabled - return empty posts
+      const response = await ForumService.getPosts(user.username)
+      if (response.success && response.data) {
+        // Transform API response to match component interface
+        const transformedPosts = response.data.posts.map((post) => ({
+          id: post.id,
+          title: post.title,
+          slug: post.slug,
+          content: post.content,
+          author: post.author,
+          pinned: post.pinned,
+          createdAt: new Date(post.createdAt),
+          commentCount: post._count.comments,
+          comments: [] // Comments not included in posts list
+        }))
+        setPosts(transformedPosts)
+      } else {
+        // If no forum or error, return empty posts
         setPosts([])
       }
     } catch (error) {
@@ -111,33 +115,24 @@ export default function ForumClient({ user, forumId, isOwner, currentUserId }: F
     }
   }
 
-  // Fetch CSRF token
-  const setupCsrfToken = async () => {
-    try {
-      const response = await fetch('/api/csrf/setup')
-      if (response.ok) {
-        const data = await response.json()
-        if (data.success && data.token) {
-          setCsrfToken(data.token)
-        }
-      }
-    } catch (error) {
-      console.error('Error setting up CSRF token:', error)
-    }
-  }
+
 
   // Fetch banned users (visible to everyone)
   const fetchBannedUsers = async () => {
     setLoadingBannedUsers(true)
     try {
-      const response = await fetch(`/api/forum/${user.username}/banned-users`)
-      if (response.ok) {
-        const data = await response.json()
-        if (data.success) {
-          setBannedUsers(data.bannedUsers)
-        }
-      } else if (response.status === 403) {
-        // No permission to view banned users
+      const response = await ForumService.getBannedUsers(user.username)
+      if (response.success && response.data) {
+        // Transform API response to match component interface
+        const transformedBannedUsers = response.data.map((bannedUser) => ({
+          id: bannedUser.user.id,
+          name: bannedUser.user.name,
+          username: bannedUser.user.username,
+          image: bannedUser.user.image
+        }))
+        setBannedUsers(transformedBannedUsers)
+      } else {
+        // No permission or error
         setBannedUsers([])
       }
     } catch (error) {
@@ -151,27 +146,20 @@ export default function ForumClient({ user, forumId, isOwner, currentUserId }: F
   // Handle ban user
   const handleBanUser = async (userId: string) => {
     try {
-      const response = await fetch(`/api/forum/${user.username}/ban/${userId}`, {
-        method: 'PUT',
-        headers: {
-          'x-csrf-token': csrfToken,
-        },
-      })
+      const response = await ForumService.banUser(user.username, userId)
 
-      const data = await response.json()
-
-      if (response.ok) {
+      if (response.success) {
         toast({
           title: "Success",
           description: "User has been banned from this forum"
         })
 
-        // Refresh banned users list if needed
+        // Refresh banned users list
         await fetchBannedUsers()
       } else {
         toast({
           title: "Error",
-          description: data.error || "Failed to ban user",
+          description: response.message || "Failed to ban user",
           variant: "destructive"
         })
       }
@@ -188,14 +176,9 @@ export default function ForumClient({ user, forumId, isOwner, currentUserId }: F
   // Handle unban user
   const handleUnbanUser = async (userId: string) => {
     try {
-      const response = await fetch(`/api/forum/${user.username}/ban/${userId}`, {
-        method: 'DELETE',
-        headers: {
-          'x-csrf-token': csrfToken,
-        },
-      })
+      const response = await ForumService.unbanUser(user.username, userId)
 
-      if (response.ok) {
+      if (response.success) {
         // Remove from local state
         setBannedUsers(prev => prev.filter(user => user.id !== userId))
         toast({
@@ -205,7 +188,7 @@ export default function ForumClient({ user, forumId, isOwner, currentUserId }: F
       } else {
         toast({
           title: "Error",
-          description: "Failed to unban user",
+          description: response.message || "Failed to unban user",
           variant: "destructive"
         })
       }
@@ -222,14 +205,9 @@ export default function ForumClient({ user, forumId, isOwner, currentUserId }: F
   // Handle delete post
   const handleDeletePost = async (postId: string) => {
     try {
-      const response = await fetch(`/api/forum/${user.username}/posts/${postId}`, {
-        method: 'DELETE',
-        headers: {
-          'x-csrf-token': csrfToken,
-        },
-      })
+      const response = await ForumService.deletePost(user.username, postId)
 
-      if (response.ok) {
+      if (response.success) {
         // Remove from local state
         setPosts(prev => prev.filter(post => post.id !== postId))
         toast({
@@ -239,7 +217,7 @@ export default function ForumClient({ user, forumId, isOwner, currentUserId }: F
       } else {
         toast({
           title: "Error",
-          description: "Failed to delete post",
+          description: response.message || "Failed to delete post",
           variant: "destructive"
         })
       }
@@ -281,37 +259,31 @@ export default function ForumClient({ user, forumId, isOwner, currentUserId }: F
   // Handle toggle pin
   const handleTogglePin = async (postId: string) => {
     try {
-      const response = await fetch(`/api/forum/${user.username}/posts/${postId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-csrf-token': csrfToken,
-        },
-        body: JSON.stringify({
-          action: 'toggle' // Use toggle action
-        })
-      })
+      // Get current pinned status
+      const post = posts.find(p => p.id === postId)
+      if (!post) return
 
-      const data = await response.json()
+      const newPinnedStatus = !post.pinned
+      const response = await ForumService.togglePin(user.username, postId, newPinnedStatus)
 
-      if (response.ok && data.success) {
+      if (response.success && response.data) {
         // Update local state to reflect the new pinned status
         setPosts(prevPosts =>
           prevPosts.map(post =>
             post.id === postId
-              ? { ...post, pinned: data.pinned }
+              ? { ...post, pinned: response.data!.pinned }
               : post
           )
         )
 
         toast({
           title: "Success",
-          description: data.pinned ? "Post pinned successfully" : "Post unpinned successfully"
+          description: response.data!.pinned ? "Post pinned successfully" : "Post unpinned successfully"
         })
       } else {
         toast({
           title: "Error",
-          description: data.error || "Failed to toggle pin status",
+          description: response.message || "Failed to toggle pin status",
           variant: "destructive"
         })
       }
@@ -332,7 +304,6 @@ export default function ForumClient({ user, forumId, isOwner, currentUserId }: F
 
   useEffect(() => {
     const initializeForum = async () => {
-      await setupCsrfToken()
       await fetchPosts()
       logger.info('ForumClient: Fetching banned users (visible to everyone)')
       await fetchBannedUsers()
@@ -375,14 +346,12 @@ export default function ForumClient({ user, forumId, isOwner, currentUserId }: F
           asDialog
         />
 
-        {currentUserId && (
-          <Button onClick={handleCreatePost} className="rounded-3xl">
-            <div className="border border-white rounded-full p-1 mr-2">
-              <Plus className="h-4 w-4" />
-            </div>
-            Create Post
-          </Button>
-        )}
+        <Button onClick={handleCreatePost} className="rounded-3xl">
+          <div className="border border-white rounded-full p-1 mr-2">
+            <Plus className="h-4 w-4" />
+          </div>
+          Create Post
+        </Button>
 
         <InstructionForum asDialog />
       </div>
@@ -463,7 +432,6 @@ export default function ForumClient({ user, forumId, isOwner, currentUserId }: F
           }
         }}
         onSave={handlePostSave}
-        csrfToken={csrfToken}
         username={user.username}
       />
     </div>

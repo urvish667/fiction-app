@@ -7,7 +7,13 @@ export interface AuthUser {
   name?: string;
   image?: string;
   birthdate?: string;
-  emailVerified?: boolean;
+  emailVerified?: Date | null;
+  preferences?: any;
+  bannerImage?: string | null;
+  isProfileComplete?: boolean;
+  unreadNotifications?: number;
+  marketingOptIn?: boolean;
+  provider?: string;
 }
 
 export interface LoginData {

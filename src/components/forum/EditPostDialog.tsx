@@ -15,6 +15,7 @@ import ForumTextEditor from "@/components/forum-text-editor"
 import { sanitizeText, sanitizeForumPost } from "@/utils/sanitization"
 import { toast } from "@/hooks/use-toast"
 import { Loader2 } from "lucide-react"
+import { ForumService } from "@/lib/api/forum"
 
 interface Post {
   id: string
@@ -39,7 +40,6 @@ interface EditPostDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSave: (postId: string | undefined, title: string, content: string) => Promise<void>
-  csrfToken: string
   username: string
 }
 
@@ -49,7 +49,6 @@ export default function EditPostDialog({
   open,
   onOpenChange,
   onSave,
-  csrfToken,
   username
 }: EditPostDialogProps) {
   const [title, setTitle] = useState("")
@@ -115,23 +114,14 @@ export default function EditPostDialog({
     setSaving(true)
     try {
       if (mode === 'create') {
-        // Create new post
-        const response = await fetch(`/api/forum/${username}/posts`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-csrf-token': csrfToken,
-          },
-          body: JSON.stringify({
-            title: sanitizeText(trimmedTitle),
-            content: sanitizeForumPost(trimmedContent)
-          })
+        // Create new post using ForumService
+        const response = await ForumService.createPost(username, {
+          title: sanitizeText(trimmedTitle),
+          content: sanitizeForumPost(trimmedContent)
         })
 
-        const data = await response.json()
-
-        if (response.ok && data.success) {
-          await onSave(undefined, data.post.title, data.post.content)
+        if (response.success && response.data) {
+          await onSave(undefined, response.data.title, response.data.content)
           onOpenChange(false)
           toast({
             title: "Success",
@@ -140,28 +130,19 @@ export default function EditPostDialog({
         } else {
           toast({
             title: "Error",
-            description: data.error || "Failed to create post",
+            description: response.message || "Failed to create post",
             variant: "destructive"
           })
         }
       } else {
-        // Edit existing post
-        const response = await fetch(`/api/forum/${username}/posts/${post?.id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-csrf-token': csrfToken,
-          },
-          body: JSON.stringify({
-            title: sanitizeText(trimmedTitle),
-            content: sanitizeForumPost(trimmedContent)
-          })
+        // Edit existing post using ForumService
+        const response = await ForumService.updatePost(username, post!.id, {
+          title: sanitizeText(trimmedTitle),
+          content: sanitizeForumPost(trimmedContent)
         })
 
-        const data = await response.json()
-
-        if (response.ok && data.success) {
-          await onSave(post?.id, data.post.title, data.post.content)
+        if (response.success && response.data) {
+          await onSave(post?.id, response.data.title, response.data.content)
           onOpenChange(false)
           toast({
             title: "Success",
@@ -170,7 +151,7 @@ export default function EditPostDialog({
         } else {
           toast({
             title: "Error",
-            description: data.error || "Failed to update post",
+            description: response.message || "Failed to update post",
             variant: "destructive"
           })
         }

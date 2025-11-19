@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { DashboardStory, ApiResponse } from '@/types/dashboard';
-import { logError } from "@/lib/error-logger"
+import { DashboardStory } from '@/types/dashboard';
+import { DashboardService } from '@/lib/api/dashboard';
 
 /**
  * Custom hook for fetching top performing stories
@@ -20,16 +20,29 @@ export function useDashboardStories(limit: number = 5, sortBy: string = 'reads',
       setError(null);
 
       try {
-        const response = await fetch(`/api/dashboard/stories?limit=${limit}&sortBy=${sortBy}&timeRange=${timeRange}`);
-        const result = await response.json() as ApiResponse<DashboardStory[]>;
+        // Note: backend validator doesn't handle string to number conversion, so omitting limit to use default
+        const result = await DashboardService.getTopStories({ sortBy, timeRange });
 
         if (!result.success || !result.data) {
-          throw new Error(result.error || 'Failed to fetch stories');
+          throw new Error(result.message || 'Failed to fetch stories');
         }
 
-        setData(result.data);
+        // Transform backend data to frontend format
+        const transformedData = result.data.map(story => ({
+          id: story.id,
+          title: story.title,
+          genre: story.genreName || 'Unknown',
+          genreName: story.genreName,
+          slug: story.slug,
+          reads: story.reads,
+          likes: story.likes,
+          comments: story.comments,
+          date: new Date().toISOString(), // Fallback date since backend might not provide it
+          earnings: story.earnings,
+        }));
+
+        setData(transformedData);
       } catch (err) {
-        logError(err, { context: 'Error fetching stories' });
         setError(err instanceof Error ? err.message : 'An unknown error occurred');
 
         // Fallback to empty array to prevent UI errors

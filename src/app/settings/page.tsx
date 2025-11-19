@@ -5,7 +5,8 @@ import { useState, useEffect, Suspense } from "react"
 import { motion } from "framer-motion"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
-import { signOut, useSession } from "next-auth/react"
+import { signOut } from "next-auth/react"
+import { useAuth } from "@/lib/auth-context"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -13,7 +14,8 @@ import Navbar from "@/components/navbar"
 import { UserPreferences, defaultPreferences } from "@/types/user"
 import { ExtendedUser, ExtendedSession } from "@/components/settings/ProfileSettings"
 import { useRouter } from 'next/navigation';
-import { fetchWithCsrf } from "@/lib/client/csrf";
+
+import { UserService, type ProfileUpdateData } from "@/lib/api/user";
 import { logError } from "@/lib/error-logger"
 
 // Import the new settings components
@@ -110,8 +112,28 @@ function TabParamsHandler({
 
 export default function SettingsPage() {
   const { toast } = useToast()
-  const { data: session, update, status: sessionStatus } = useSession()
+  const { user, isLoading, isAuthenticated, refreshUser } = useAuth()
   const router = useRouter();
+
+  // Create session object compatible with existing code
+  const session = user ? {
+    user: {
+      ...user,
+      bannerImage: user.bannerImage || null,
+      isProfileComplete: user.isProfileComplete || false,
+      unreadNotifications: user.unreadNotifications || 0,
+      preferences: user.preferences || {},
+      marketingOptIn: user.marketingOptIn || false,
+      provider: "credentials" // Default provider
+    },
+    expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours from now
+  } : null;
+
+  const sessionStatus = isAuthenticated ? 'authenticated' : isLoading ? 'loading' : 'unauthenticated';
+
+  const update = async (options?: any) => {
+    await refreshUser();
+  };
 
   // Initialize activeTab correctly
   const [activeTab, setActiveTab] = useState('profile');
@@ -155,15 +177,19 @@ export default function SettingsPage() {
     },
   })
 
+  // Track if we've already loaded the form data to avoid unnecessary API calls
+  const [formInitialized, setFormInitialized] = useState(false);
+
   useEffect(() => {
     const loadUserData = async () => {
-      if (session?.user?.id) {
+      if (isAuthenticated && user && !formInitialized) {
         try {
-          const response = await fetch("/api/user/profile")
-          if (!response.ok) {
-            throw new Error('Failed to fetch profile data')
+          // Fetch current user profile
+          const profileResponse = await UserService.getCurrentUserProfile();
+          if (!profileResponse.success || !profileResponse.data) {
+            throw new Error('Failed to fetch profile data');
           }
-          const userData = await response.json()
+          const userData = profileResponse.data;
 
           // Reset main fields
           form.reset({
@@ -172,31 +198,15 @@ export default function SettingsPage() {
             bio: userData.bio || "",
             location: userData.location || "",
             website: userData.website || "",
-          })
+          });
 
-          // Explicitly set social link values - access the nested 'set' property
-          const links = userData.socialLinks?.set || {}; // Use optional chaining and access .set
-          form.setValue('socialLinks.twitter', links.twitter || "");
-          form.setValue('socialLinks.instagram', links.instagram || "");
-          form.setValue('socialLinks.facebook', links.facebook || "");
+          // Explicitly set social link values
+          form.setValue('socialLinks.twitter', userData.socialLinks?.twitter || "");
+          form.setValue('socialLinks.instagram', userData.socialLinks?.instagram || "");
+          form.setValue('socialLinks.facebook', userData.socialLinks?.facebook || "");
 
-          // Update session preferences if needed
-          if (userData.preferences) {
-            // Check if preferences don't exist or are empty
-            const userWithPrefs = session.user as ExtendedUser;
-            const hasNoPreferences = !userWithPrefs.preferences ||
-                                    Object.keys(userWithPrefs.preferences || {}).length === 0;
-
-            if (hasNoPreferences) {
-              await update({
-                ...session,
-                user: {
-                  ...session.user,
-                  preferences: userData.preferences,
-                }
-              });
-            }
-          }
+          // Mark form as initialized to prevent re-fetching
+          setFormInitialized(true);
 
         } catch (error) {
           logError(error, { context: "Error loading user data" })
@@ -210,18 +220,18 @@ export default function SettingsPage() {
     }
 
     loadUserData()
-  }, [session?.user?.id, form, toast, update, session])
+  }, [isAuthenticated, user, formInitialized, form, toast])
 
   // --- Donation Settings Effects (Copied & Adapted) ---
   const fetchDonationSettings = async () => {
     setIsLoadingDonations(true);
     setDonationError(null);
     try {
-      const response = await fetch('/api/user/donation-settings');
-      if (!response.ok) {
-        throw new Error('Failed to fetch donation settings.');
+      const response = await UserService.getDonationSettings();
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to fetch donation settings.');
       }
-      const data: DonationSettingsData = await response.json();
+      const data: DonationSettingsData = response.data;
       setDonationSettings(data);
       // Initialize donation form state
       setEnableDonations(data.donationsEnabled);
@@ -277,24 +287,13 @@ export default function SettingsPage() {
          return;
       }
 
-      const response = await fetchWithCsrf("/api/user/profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(profileData),
-      })
+      const response = await UserService.updateCurrentUserProfile(profileData as ProfileUpdateData);
 
-      const result = await response.json()
-
-      if (!response.ok) {
-        if (result.fields) {
-          Object.entries(result.fields).forEach(([key, value]) => {
-            form.setError(key as keyof SettingsFormValues, {
-              type: "manual",
-              message: value as string,
-            })
-          })
+      if (!response.success) {
+        if (response.message) {
+          form.setError("root", { type: "manual", message: response.message });
         }
-        throw new Error(result.error || "Failed to update profile information")
+        throw new Error(response.message || "Failed to update profile information");
       }
 
       await update()
@@ -319,20 +318,12 @@ export default function SettingsPage() {
     if (!session?.user?.id) return
 
     try {
-      const response = await fetchWithCsrf("/api/user/profile", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          image: imageUrl,
-        }),
-      })
+      const response = await UserService.updateCurrentUserProfile({
+        image: imageUrl,
+      });
 
-      const result = await response.json()
-
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to update profile image")
+      if (!response.success) {
+        throw new Error(response.message || "Failed to update profile image")
       }
 
       await update()
@@ -353,20 +344,12 @@ export default function SettingsPage() {
     if (!session?.user?.id) return
 
     try {
-      const response = await fetchWithCsrf("/api/user/profile", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          bannerImage: imageUrl,
-        }),
-      })
+      const response = await UserService.updateCurrentUserProfile({
+        bannerImage: imageUrl,
+      });
 
-      const result = await response.json()
-
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to update banner image")
+      if (!response.success) {
+        throw new Error(response.message || "Failed to update banner image")
       }
 
       await update()
@@ -386,50 +369,35 @@ export default function SettingsPage() {
   const saveSocialLinks = async (data: Pick<SettingsFormValues, 'username' | 'socialLinks'>) => {
     setIsUpdating(true)
     try {
-      const linksData = {
-        username: data.username || session?.user?.username,
+      const linksData: Record<string, any> = {
         socialLinks: data.socialLinks || {},
       }
 
-       if (!linksData.username) {
-        throw new Error("Username is required to update social links.")
+      // Include username if it changed
+      if (data.username && data.username !== session?.user?.username) {
+        linksData.username = data.username;
       }
 
-      const response = await fetchWithCsrf("/api/user/profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(linksData),
-      })
+      const response = await UserService.updateCurrentUserProfile(linksData as ProfileUpdateData);
 
-      const result = await response.json()
-
-      if (!response.ok) {
-        if (result.fields) {
-          Object.entries(result.fields).forEach(([key, value]) => {
-             if (key.startsWith('socialLinks.')) {
-                const fieldName = key.split('.')[1] as keyof SettingsFormValues['socialLinks'];
-                if (fieldName) {
-                    form.setError(`socialLinks.${fieldName}` as any, {
-                        type: "manual",
-                        message: value as string,
-                    });
-                }
-            } else {
-                 form.setError(key as keyof SettingsFormValues, {
-                    type: "manual",
-                    message: value as string,
-                 });
-            }
-          })
+      if (!response.success) {
+        if (response.message && response.message.includes('social')) {
+          // Handle field-specific errors if still needed
+          toast({
+            title: "Error",
+            description: response.message,
+            variant: "destructive",
+          });
+        } else {
+          throw new Error(response.message || "Failed to update social links")
         }
-        throw new Error(result.error || "Failed to update social links")
+      } else {
+        await update()
+        toast({
+          title: "Success",
+          description: "Your social links have been updated",
+        })
       }
-
-      await update()
-      toast({
-        title: "Success",
-        description: "Your social links have been updated",
-      })
 
     } catch (error) {
       logError(error, { context: "Error updating social links" })
@@ -459,15 +427,10 @@ export default function SettingsPage() {
 
     setIsChangingPassword(true)
     try {
-      const response = await fetchWithCsrf("/api/user/change-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(passwordForm),
-      })
-      const result = await response.json()
+      const response = await UserService.changePassword(passwordForm.currentPassword, passwordForm.newPassword, passwordForm.confirmPassword);
 
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to change password")
+      if (!response.success) {
+        throw new Error(response.message || "Failed to change password");
       }
 
       setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" })
@@ -492,19 +455,11 @@ export default function SettingsPage() {
   const deleteAccount = async () => {
     setIsDeletingAccount(true)
     try {
-      const requestData: { confirmation: boolean; password?: string } = { confirmation: true }
-      if ((session?.user as any)?.provider === "credentials") {
-        requestData.password = deletePassword
-      }
+      const password = (session?.user as any)?.provider === "credentials" ? deletePassword : undefined;
+      const response = await UserService.deleteAccount(password);
 
-      const response = await fetchWithCsrf("/api/user/delete-account", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestData),
-      })
-      const result = await response.json()
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to delete account")
+      if (!response.success) {
+        throw new Error(response.message || "Failed to delete account");
       }
 
       toast({
@@ -529,30 +484,14 @@ export default function SettingsPage() {
 
   const savePreferences = async (preferences: UserPreferences) => {
     try {
-      const response = await fetchWithCsrf('/api/user/preferences', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(preferences),
-      })
+      const response = await UserService.updateUserPreferences(preferences);
 
-      if (!response.ok) {
-         const errorResult = await response.json();
-        throw new Error(errorResult.error || 'Failed to save preferences')
+      if (!response.success) {
+        throw new Error(response.message || 'Failed to save preferences');
       }
 
-      if (session?.user) {
-        await update({
-          ...session,
-          user: {
-            ...session.user,
-            preferences: preferences
-          }
-        });
-      }
-
-      await update({ force: true });
-
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Refresh user data from backend to get latest preferences
+      await update();
 
       return true
 
@@ -683,42 +622,22 @@ export default function SettingsPage() {
     const finalLink = linkOverride ?? donationLink;
 
     try {
-      let response: Response | undefined;
+      let response;
       if (!enableDonations) {
-        response = await fetchWithCsrf('/api/user/disable-donations', { method: 'POST' });
+        response = await UserService.disableDonations();
       } else {
         if (!donationMethod) {
           throw new Error('Please select a valid donation method.');
         }
-        
-        const payload: { method: string; link?: string } = { method: donationMethod };
 
-        if (donationMethod === 'PAYPAL' || donationMethod === 'BMC' || donationMethod === 'KOFI') {
-          payload.link = finalLink;
-        }
-
-        response = await fetchWithCsrf('/api/user/enable-donations', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
+        response = await UserService.enableDonations(donationMethod, finalLink);
       }
 
-      if (!response) {
-        throw new Error('An unexpected error occurred during saving.');
+      if (!response.success) {
+        throw new Error(response.message || 'Failed to update donation settings.');
       }
 
-      if (!response.ok) {
-        let message = 'Failed to update donation settings.';
-        try {
-          const errorData = await response.json();
-          message = errorData?.errors?.[0]?.message || errorData?.message || message;
-        } catch (e) { /* Ignore */ }
-        throw new Error(message);
-      }
-
-      const result = await response.json();
-      toast({ title: 'Success', description: result.message || 'Settings updated.' });
+      toast({ title: 'Success', description: response.message || 'Settings updated.' });
 
       // Refetch settings to get the latest data, including the user ID for webhooks
       await fetchDonationSettings();
@@ -771,7 +690,7 @@ export default function SettingsPage() {
           >
             <TabsContent value="profile">
               <ProfileSettings
-                session={session as any}
+                session={session as ExtendedSession}
                 form={form as any}
                 isUpdating={isUpdating}
                 saveProfileInfo={saveProfileInfo}
@@ -782,7 +701,7 @@ export default function SettingsPage() {
             </TabsContent>
             <TabsContent value="account">
               <AccountSettings
-                session={session}
+                session={session as any}
                 passwordForm={passwordForm}
                 handlePasswordChange={handlePasswordChange}
                 changePassword={changePassword}

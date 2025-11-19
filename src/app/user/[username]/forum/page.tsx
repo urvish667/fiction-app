@@ -1,122 +1,113 @@
-import { Metadata } from "next"
-import { notFound, redirect } from "next/navigation"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/app/api/auth/[...nextauth]/route"
-import { prisma } from "@/lib/prisma"
-import { ForumType } from "@prisma/client"
+"use client"
+
+import { useEffect, useState } from "react"
+import { useParams, useRouter } from "next/navigation"
 import Navbar from "@/components/navbar"
 import { SiteFooter } from "@/components/site-footer"
 import ForumClient from "./forum-client"
-import { generateForumMetadata, generateForumStructuredData } from "@/lib/seo/metadata"
+import { Loader2 } from "lucide-react"
+import { useAuth } from "@/lib/auth-context"
+import { UserService } from "@/lib/api/user"
+import { ForumService } from "@/lib/api/forum"
 
-// Force dynamic rendering for proper caching behavior
-export const dynamic = 'force-dynamic'
+type ForumPageParams = { username: string };
 
-type ForumPageParams = { params: Promise<{ username: string }> };
+export default function ForumPage() {
+  const params = useParams() as ForumPageParams;
+  const router = useRouter();
+  const { user, isLoading: authLoading } = useAuth();
+  const [forumData, setForumData] = useState<{
+    user: any;
+    forum: any;
+    isOwner: boolean;
+    currentUserId: string | null;
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-// Get forum data
-async function getForumData(username: string) {
-  try {
-    const session = await getServerSession(authOptions);
+  useEffect(() => {
+    async function loadForumData() {
+      if (!params.username) return;
 
-    // Find user by username
-    const user = await prisma.user.findUnique({
-      where: { username },
-      select: {
-        id: true,
-        name: true,
-        username: true,
-        image: true,
-        preferences: true,
-        forums: {
-          where: { type: ForumType.AUTHOR },
-          select: {
-            id: true,
-            createdAt: true,
-          }
-        }
-      }
-    });
-
-    if (!user || !user.username) {
-      return null;
-    }
-
-    // Parse preferences
-    let preferences = {
-      privacySettings: {
-        forum: false
-      }
-    };
-
-    if (user.preferences) {
       try {
-        preferences = typeof user.preferences === 'string'
-          ? JSON.parse(user.preferences)
-          : user.preferences;
+        // Get user profile
+        const userProfileResponse = await UserService.getUserProfile(params.username);
+
+        if (!userProfileResponse.success || !userProfileResponse.data) {
+          setError(true);
+          return;
+        }
+
+        const userProfile = userProfileResponse.data;
+
+        // Check if forum is enabled
+        if (!userProfile.preferences?.privacySettings?.forum) {
+          router.replace('/404');
+          return;
+        }
+
+        // Use auth context for current user
+        const currentUserId = user?.id || null;
+        const isOwner = currentUserId !== null && currentUserId === userProfile.id;
+
+        setForumData({
+          user: {
+            id: userProfile.id,
+            name: userProfile.name ?? null,
+            username: userProfile.username ?? '',
+            image: userProfile.image ?? null,
+          },
+          forum: null, // No forum metadata fetched yet
+          isOwner,
+          currentUserId,
+        });
+
       } catch (error) {
-        // Fall back to default
+        console.error('Error loading forum data:', error);
+        setError(true);
+      } finally {
+        setLoading(false);
       }
     }
 
-    // Check if forum is enabled
-    if (!preferences.privacySettings?.forum) {
-      return null;
+    if (params.username && !authLoading) {
+      loadForumData();
     }
+  }, [params.username, user?.id, authLoading, router]);
 
-    // Check if user is the forum owner
-    const isOwner = session?.user?.id === user.id;
-
-    return {
-      user: {
-        id: user.id,
-        name: user.name || user.username,
-        username: user.username,
-        image: user.image,
-      },
-      forum: user.forums[0] || null,
-      isOwner,
-      currentUserId: session?.user?.id || null,
-    };
-  } catch (error) {
-    console.error('Error fetching forum data:', error);
-    return null;
-  }
-}
-
-// Generate metadata
-export async function generateMetadata({ params }: ForumPageParams): Promise<Metadata> {
-  const resolvedParams = await params;
-  const data = await getForumData(resolvedParams.username);
-
-  if (!data) {
-    return {
-      title: 'Forum Not Found - FableSpace',
-      description: 'The requested forum could not be found.',
-    };
+  if (loading || authLoading) {
+    return (
+      <div className="min-h-screen">
+        <Navbar />
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <span className="ml-2">Loading forum...</span>
+        </div>
+      </div>
+    );
   }
 
-  return generateForumMetadata(data.user);
-}
-
-export default async function ForumPage({ params }: ForumPageParams) {
-  const resolvedParams = await params;
-  const data = await getForumData(resolvedParams.username);
-
-  if (!data) {
-    notFound();
+  if (error || !forumData) {
+    return (
+      <div className="min-h-screen">
+        <Navbar />
+        <div className="flex items-center justify-center min-h-[400px]">
+          <p>Forum not found or unavailable</p>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="min-h-screen">
       <Navbar />
-      
+
       <main className="container mx-auto px-4 py-8">
-        <ForumClient 
-          user={data.user}
-          forumId={data.forum?.id || null}
-          isOwner={data.isOwner}
-          currentUserId={data.currentUserId}
+        <ForumClient
+          user={forumData.user}
+          forumId={forumData.forum?.id || null}
+          isOwner={forumData.isOwner}
+          currentUserId={forumData.currentUserId}
         />
       </main>
 

@@ -45,9 +45,9 @@ export const StoryService = {
       if (params) {
         Object.entries(params).forEach(([key, value]) => {
           if (value !== undefined) {
-            // Handle tags array by converting to comma-separated string
-            if (key === 'tags' && Array.isArray(value) && value.length > 0) {
-              queryParams.append(key, value.join(','));
+            // Handle arrays by appending multiple parameters with same key
+            if ((key === 'tags' || key === 'status') && Array.isArray(value) && value.length > 0) {
+              value.forEach(item => queryParams.append(key, String(item)));
             } else {
               queryParams.append(key, String(value));
             }

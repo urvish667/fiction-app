@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { DashboardStats, ApiResponse } from '@/types/dashboard';
-import { logError } from "@/lib/error-logger"
+import { DashboardStats } from '@/types/dashboard';
+import { DashboardService } from '@/lib/api/dashboard';
 
 /**
  * Custom hook for fetching dashboard statistics
@@ -18,16 +18,27 @@ export function useDashboardStats(timeRange: string) {
       setError(null);
 
       try {
-        const response = await fetch(`/api/dashboard/stats?timeRange=${timeRange}`);
-        const result = await response.json() as ApiResponse<DashboardStats>;
+        const result = await DashboardService.getAuthorStats({ timeRange });
 
         if (!result.success || !result.data) {
-          throw new Error(result.error || 'Failed to fetch dashboard stats');
+          throw new Error(result.message || 'Failed to fetch dashboard stats');
         }
 
-        setData(result.data);
+        // Transform backend data to frontend format
+        const backendData = result.data; // The backend returns stats directly
+        setData({
+          totalReads: backendData.totalReads || 0,
+          totalLikes: backendData.totalLikes || 0,
+          totalComments: backendData.totalComments || 0,
+          totalFollowers: backendData.totalFollowers || 0,
+          totalEarnings: backendData.totalEarnings || 0,
+          readsChange: backendData.readsChange || 0,
+          likesChange: backendData.likesChange || 0,
+          commentsChange: backendData.commentsChange || 0,
+          followersChange: backendData.followersChange || 0,
+          earningsChange: backendData.earningsChange || 0,
+        });
       } catch (err) {
-        logError(err, { context: 'Error fetching dashboard stats' });
         setError(err instanceof Error ? err.message : 'An unknown error occurred');
 
         // Create default stats to prevent UI errors

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { ReadsDataPoint, EngagementDataPoint, EarningsDataPoint, ApiResponse } from '@/types/dashboard';
-import { logError } from '@/lib/error-logger';
+import { ReadsDataPoint, EngagementDataPoint, EarningsDataPoint } from '@/types/dashboard';
+import { DashboardService } from '@/lib/api/dashboard';
 
 /**
  * Custom hook for fetching reads chart data
@@ -18,16 +18,20 @@ export function useReadsChartData(timeRange: string) {
       setError(null);
 
       try {
-        const response = await fetch(`/api/dashboard/charts/reads?timeRange=${timeRange}`);
-        const result = await response.json() as ApiResponse<ReadsDataPoint[]>;
+        const result = await DashboardService.getReadsChart({ timeRange });
 
         if (!result.success || !result.data) {
-          throw new Error(result.error || 'Failed to fetch reads chart data');
+          throw new Error(result.message || 'Failed to fetch reads chart data');
         }
 
-        setData(result.data);
+        // Transform to expected format
+        const transformedData = (result.data || []).map(point => ({
+          name: point.name || '',
+          reads: point.reads || 0,
+        }));
+
+        setData(transformedData);
       } catch (err) {
-        logError(err, { context: 'Error fetching reads chart data' });
         setError(err instanceof Error ? err.message : 'An unknown error occurred');
 
         // Fallback to empty array to prevent UI errors
@@ -59,16 +63,21 @@ export function useEngagementChartData(timeRange: string) {
       setError(null);
 
       try {
-        const response = await fetch(`/api/dashboard/charts/engagement?timeRange=${timeRange}`);
-        const result = await response.json() as ApiResponse<EngagementDataPoint[]>;
+        const result = await DashboardService.getEngagementChart({ timeRange });
 
         if (!result.success || !result.data) {
-          throw new Error(result.error || 'Failed to fetch engagement chart data');
+          throw new Error(result.message || 'Failed to fetch engagement chart data');
         }
 
-        setData(result.data);
+        // Transform to expected format
+        const transformedData = (result.data || []).map(point => ({
+          name: point.name || '',
+          likes: point.likes || 0,
+          comments: point.comments || 0,
+        }));
+
+        setData(transformedData);
       } catch (err) {
-        logError(err, { context: 'Error fetching engagement chart data' });
         setError(err instanceof Error ? err.message : 'An unknown error occurred');
 
         // Fallback to empty array to prevent UI errors
@@ -100,16 +109,20 @@ export function useEarningsChartData(timeRange: string) {
       setError(null);
 
       try {
-        const response = await fetch(`/api/dashboard/charts/earnings?timeRange=${timeRange}`);
-        const result = await response.json() as ApiResponse<EarningsDataPoint[]>;
+        const result = await DashboardService.getEarningsChart({ timeRange });
 
         if (!result.success || !result.data) {
-          throw new Error(result.error || 'Failed to fetch earnings chart data');
+          throw new Error(result.message || 'Failed to fetch earnings chart data');
         }
 
-        setData(result.data);
+        // Transform to expected format
+        const transformedData = (result.data || []).map(point => ({
+          name: point.name || '',
+          earnings: point.earnings || 0,
+        }));
+
+        setData(transformedData);
       } catch (err) {
-        logError(err, { context: 'Error fetching earnings chart data' });
         setError(err instanceof Error ? err.message : 'An unknown error occurred');
 
         // Fallback to empty array to prevent UI errors

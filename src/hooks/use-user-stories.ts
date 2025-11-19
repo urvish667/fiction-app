@@ -1,11 +1,9 @@
 import { useState, useEffect } from 'react';
-import { ApiResponse } from '@/types/dashboard';
-import { logError } from "@/lib/error-logger"
+import { DashboardService } from '@/lib/api/dashboard';
 
 /**
  * Custom hook for fetching user stories
  * @param timeRange The time range for filtering data
- * @param sortBy The field to sort the stories by
  * @returns User stories data, loading state, and error state
  */
 export function useUserStories(timeRange: string = 'all') {
@@ -19,16 +17,14 @@ export function useUserStories(timeRange: string = 'all') {
       setError(null);
 
       try {
-        const response = await fetch(`/api/dashboard/user-stories?timeRange=${timeRange}`);
-        const result = await response.json() as ApiResponse<any[]>;
+        const result = await DashboardService.getCurrentUserStories({ timeRange });
 
         if (!result.success || !result.data) {
-          throw new Error(result.error || 'Failed to fetch user stories');
+          throw new Error(result.message || 'Failed to fetch user stories');
         }
 
         setData(result.data);
       } catch (err) {
-        logError(err, { context: 'Error fetching user stories' });
         setError(err instanceof Error ? err.message : 'An unknown error occurred');
         setData([]);
       } finally {

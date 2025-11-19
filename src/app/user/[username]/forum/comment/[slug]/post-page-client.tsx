@@ -14,6 +14,7 @@ import ForumRules from "@/components/forum/ForumRules"
 import AdBanner from "@/components/ad-banner"
 import CommentOptions from "@/components/forum/CommentOptions"
 import InstructionForum from "@/components/forum/InstructionForum"
+import { ForumService } from "@/lib/api/forum"
 
 interface User {
   id: string
@@ -60,7 +61,6 @@ export default function PostPageClient({ post, user, forumRules, isOwner, curren
   const [displayedComments, setDisplayedComments] = useState(3)
   const [newComment, setNewComment] = useState("")
   const [comments, setComments] = useState([...post.comments])
-  const [csrfToken, setCsrfToken] = useState<string>('')
   const [submittingComment, setSubmittingComment] = useState(false)
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null)
   const [editingCommentContent, setEditingCommentContent] = useState('')
@@ -75,23 +75,23 @@ export default function PostPageClient({ post, user, forumRules, isOwner, curren
     if (newComment.trim() && user && !submittingComment) {
       setSubmittingComment(true)
       try {
-        const response = await fetch(`/api/forum/${user.username}/posts/${post.id}/comments`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(csrfToken && { 'x-csrf-token': csrfToken })
-          },
-          body: JSON.stringify({ content: newComment.trim() })
+        const response = await ForumService.createComment(user.username, post.id, {
+          content: newComment.trim()
         })
 
-        if (response.ok) {
-          const data = await response.json()
+        if (response.success && response.data) {
+          // Transform API response to match component interface
           const newCommentObj = {
-            id: data.comment.id,
-            content: data.comment.content,
-            createdAt: data.comment.createdAt,
-            editedAt: data.comment.editedAt,
-            author: data.comment.author
+            id: response.data.id,
+            content: response.data.content,
+            createdAt: new Date(response.data.createdAt),
+            editedAt: response.data.editedAt ? new Date(response.data.editedAt) : undefined,
+            author: {
+              id: response.data.user.id,
+              name: response.data.user.name,
+              username: response.data.user.username,
+              image: response.data.user.image
+            }
           }
 
           setComments(prev => [newCommentObj, ...prev]) // Add to beginning since we reverse display
@@ -107,10 +107,9 @@ export default function PostPageClient({ post, user, forumRules, isOwner, curren
             description: "Comment posted successfully"
           })
         } else {
-          const error = await response.json()
           toast({
             title: "Error",
-            description: error.message || "Failed to post comment",
+            description: response.message || "Failed to post comment",
             variant: "destructive"
           })
         }
@@ -127,23 +126,6 @@ export default function PostPageClient({ post, user, forumRules, isOwner, curren
     }
   }
 
-  // Fetch CSRF token
-  const setupCsrfToken = async () => {
-    try {
-      const response = await fetch('/api/csrf/setup')
-      if (response.ok) {
-        const data = await response.json()
-        if (data.success && data.token) {
-          setCsrfToken(data.token)
-        }
-      }
-    } catch (error) {
-      console.error('Error setting up CSRF token:', error)
-    }
-  }
-
-
-
   // Handle edit comment
   const handleEditComment = async (commentId: string) => {
     const comment = comments.find(c => c.id === commentId)
@@ -159,23 +141,17 @@ export default function PostPageClient({ post, user, forumRules, isOwner, curren
 
     setUpdatingComment(true)
     try {
-      const response = await fetch(`/api/forum/${user.username}/posts/${post.id}/comments/${editingCommentId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(csrfToken && { 'x-csrf-token': csrfToken })
-        },
-        body: JSON.stringify({ content: editingCommentContent.trim() })
+      const response = await ForumService.updateComment(user.username, post.id, editingCommentId, {
+        content: editingCommentContent.trim()
       })
 
-      if (response.ok) {
-        const data = await response.json()
+      if (response.success && response.data) {
         setComments(prev => prev.map(comment =>
           comment.id === editingCommentId
             ? {
                 ...comment,
-                content: data.comment.content,
-                editedAt: data.comment.editedAt
+                content: response.data!.content,
+                editedAt: response.data!.editedAt ? new Date(response.data!.editedAt) : undefined
               }
             : comment
         ))
@@ -186,10 +162,9 @@ export default function PostPageClient({ post, user, forumRules, isOwner, curren
           description: "Comment updated successfully"
         })
       } else {
-        const error = await response.json()
         toast({
           title: "Error",
-          description: error.message || "Failed to update comment",
+          description: response.message || "Failed to update comment",
           variant: "destructive"
         })
       }
@@ -214,24 +189,18 @@ export default function PostPageClient({ post, user, forumRules, isOwner, curren
   // Handle delete comment
   const handleDeleteComment = async (commentId: string) => {
     try {
-      const response = await fetch(`/api/forum/${user.username}/posts/${post.id}/comments/${commentId}`, {
-        method: 'DELETE',
-        headers: {
-          ...(csrfToken && { 'x-csrf-token': csrfToken })
-        }
-      })
+      const response = await ForumService.deleteComment(user.username, post.id, commentId)
 
-      if (response.ok) {
+      if (response.success) {
         setComments(prev => prev.filter(comment => comment.id !== commentId))
         toast({
           title: "Success",
           description: "Comment deleted successfully"
         })
       } else {
-        const error = await response.json()
         toast({
           title: "Error",
-          description: error.message || "Failed to delete comment",
+          description: response.message || "Failed to delete comment",
           variant: "destructive"
         })
       }
@@ -244,13 +213,6 @@ export default function PostPageClient({ post, user, forumRules, isOwner, curren
       })
     }
   }
-
-  useEffect(() => {
-    const initializePostPage = async () => {
-      await setupCsrfToken()
-    }
-    initializePostPage()
-  }, [user.username])
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -321,12 +283,11 @@ export default function PostPageClient({ post, user, forumRules, isOwner, curren
           <div className="mt-6">
             <Card>
               <CardContent className="space-y-4">
-                {/* Comment Input at Top */}
-                {user && (
+                {/* Comment Input at Top - Only for logged-in users */}
+                {currentUserId && (
                   <div className="flex gap-3 border-b pb-4 mt-6">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={user.image || undefined} />
-                      <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                      <AvatarFallback>You</AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
                       <Textarea

@@ -1,23 +1,13 @@
-import { notFound } from "next/navigation"
+"use client"
+
+import { useEffect, useState } from "react"
+import { useParams, useRouter } from "next/navigation"
 import PostPageClient from "./post-page-client"
-import type { Metadata } from "next"
 import Navbar from "@/components/navbar"
 import { SiteFooter } from "@/components/site-footer"
 import { getForumPostData } from "@/lib/forum-data"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/app/api/auth/[...nextauth]/route"
-import { prisma } from "@/lib/prisma"
-import { generateForumPostMetadata, generateForumPostStructuredData } from "@/lib/seo/metadata"
-
-interface PostPageProps {
-  params: Promise<{
-    username: string
-    slug: string
-  }>
-}
-
-// Force dynamic rendering to prevent static generation caching issues
-export const dynamic = 'force-dynamic'
+import { useAuth } from "@/lib/auth-context"
+import { Loader2 } from "lucide-react"
 
 // Mock data for forum rules and banned users
 const forumRules = [
@@ -29,60 +19,85 @@ const forumRules = [
   "Respect author's creative choices"
 ]
 
-export async function generateMetadata({ params }: PostPageProps): Promise<Metadata> {
-  const { username, slug } = await params
-  const data = await getForumPostData(username, slug)
+type PostPageParams = { username: string; slug: string };
 
-  if (!data) {
-    return {
-      title: 'Post Not Found - FableSpace',
-      description: 'The requested forum post could not be found.'
+export default function PostPage() {
+  const params = useParams() as PostPageParams;
+  const router = useRouter();
+  const { user, isLoading: authLoading } = useAuth();
+  const [postData, setPostData] = useState<{
+    post: any;
+    user: any;
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    async function loadPostData() {
+      if (!params.username || !params.slug) return;
+
+      try {
+        const data = await getForumPostData(params.username, params.slug);
+
+        if (!data) {
+          router.replace('/404');
+          return;
+        }
+
+        setPostData(data);
+      } catch (error) {
+        console.error('Error loading post data:', error);
+        setError(true);
+      } finally {
+        setLoading(false);
+      }
     }
+
+    if (params.username && params.slug && !authLoading) {
+      loadPostData();
+    }
+  }, [params.username, params.slug, authLoading, router]);
+
+  if (loading || authLoading) {
+    return (
+      <div className="min-h-screen">
+        <Navbar />
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <span className="ml-2">Loading post...</span>
+        </div>
+      </div>
+    );
   }
 
-  return generateForumPostMetadata(data.post, data.user)
-}
-
-export default async function PostPage({ params }: PostPageProps) {
-  const { username, slug } = await params
-  const data = await getForumPostData(username, slug)
-
-  if (!data) {
-    notFound()
+  if (error || !postData) {
+    return (
+      <div className="min-h-screen">
+        <Navbar />
+        <div className="flex items-center justify-center min-h-[400px]">
+          <p>Post not found or unavailable</p>
+        </div>
+      </div>
+    );
   }
 
-  // Check if current user is the owner
-  const session = await getServerSession(authOptions)
-  const currentUserId = session?.user?.id || null
-
-  // Get forum owner from database
-  const forumUser = await prisma.user.findUnique({
-    where: { username },
-    select: { id: true }
-  })
-
-  // Determine if current user is the forum owner
-  const isOwner = currentUserId !== null && forumUser?.id === currentUserId
-
-  // Generate structured data for SEO
-  const structuredData = generateForumPostStructuredData(data.post, data.user)
+  // Use auth context user for current user determination
+  const currentUserId = user?.id || null;
+  const isOwner = currentUserId !== null && postData.user.id === currentUserId;
 
   return (
     <div className="min-h-screen">
-      {/* Structured Data for SEO */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(structuredData),
-        }}
-      />
-
       <Navbar />
 
       <main className="container mx-auto px-4 py-8">
         <PostPageClient
-          post={data.post}
-          user={data.user}
+          post={postData.post}
+          user={{
+            id: postData.user.id,
+            name: postData.user.name || postData.user.username,
+            username: postData.user.username,
+            image: postData.user.image ?? null,
+          }}
           forumRules={forumRules}
           isOwner={isOwner}
           currentUserId={currentUserId}
@@ -91,5 +106,5 @@ export default async function PostPage({ params }: PostPageProps) {
 
       <SiteFooter />
     </div>
-  )
+  );
 }

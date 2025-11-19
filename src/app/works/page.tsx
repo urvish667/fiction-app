@@ -15,16 +15,16 @@ import { PenSquare, Eye, BarChart3, MoreVertical, Trash2, X, Heart, MessageSquar
 import StoryCardSkeleton from "@/components/story-card-skeleton"
 import Navbar from "@/components/navbar"
 import { useToast } from "@/hooks/use-toast"
-import { StoryService } from "@/services/story-service"
+import { StoryService } from "@/lib/api/story"
 import { ImageService } from "@/lib/api/images"
-import { useSession } from "next-auth/react"
+import { useAuth } from "@/lib/auth-context"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import type { Story } from "@/types/story"
 import { logError } from "@/lib/error-logger"
 
 // Extended story type with UI-specific properties
 interface WorkStory extends Omit<Story, 'genre'> {
-  lastEdited: Date;
+  lastEdited: any; // Can be Date, string, or object from API
   draftChapters: number;
   scheduledChapters: number;
   publishedChapters: number;
@@ -32,7 +32,8 @@ interface WorkStory extends Omit<Story, 'genre'> {
 }
 
 export default function MyWorksPage() {
-  const { data: session } = useSession()
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
+  const router = useRouter()
   const { toast } = useToast()
   const [activeTab, setActiveTab] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
@@ -45,7 +46,7 @@ export default function MyWorksPage() {
   const [isDeleting, setIsDeleting] = useState(false)
 
   const fetchStories = useCallback(async (page = 1, isMounted: () => boolean) => {
-    if (!session?.user?.id) return;
+    if (!user?.id) return;
 
     // If we're fetching more, don't show the main loader
     if (page > 1) {
@@ -56,16 +57,21 @@ export default function MyWorksPage() {
 
     try {
       const response = await StoryService.getStories({
-        authorId: session.user.id,
+        authorId: user.id,
         page: page,
         limit: 12 // Explicitly set limit to match API
       });
 
+      if (!response.success || !response.data) {
+        throw new Error(response.message || "Failed to fetch stories");
+      }
+
       // Create a batch of promises to fetch chapters for all stories
-      const storiesWithChaptersPromises = response.stories.map(async (story) => {
+      const storiesWithChaptersPromises = response.data.stories.map(async (story) => {
         try {
           // Fetch chapters for this story
-          const chapters = await StoryService.getChapters(story.id);
+          const chaptersResponse = await StoryService.getChapters(story.id);
+          const chapters = chaptersResponse.success && chaptersResponse.data ? chaptersResponse.data : [];
 
           // Only process if component is still mounted
           if (!isMounted()) return null;
@@ -77,7 +83,7 @@ export default function MyWorksPage() {
 
           return {
             ...story,
-            lastEdited: new Date(story.updatedAt),
+            lastEdited: story.updatedAt,
             draftChapters,
             scheduledChapters,
             publishedChapters
@@ -87,7 +93,7 @@ export default function MyWorksPage() {
           // Return the story without chapter counts if fetching chapters fails
           return {
             ...story,
-            lastEdited: new Date(story.updatedAt),
+            lastEdited: story.updatedAt,
             draftChapters: 0,
             scheduledChapters: 0,
             publishedChapters: 0
@@ -101,14 +107,14 @@ export default function MyWorksPage() {
       // Only update state if component is still mounted
       if (isMounted()) {
         const works = worksWithChapters.filter(Boolean) as WorkStory[];
-        
+
         // If it's the first page, replace the stories. Otherwise, append them.
         setMyWorks(prevWorks => (page === 1 ? works : [...prevWorks, ...works]));
-        
+
         // Update pagination state
         setPagination({
-          page: response.pagination.page,
-          hasMore: response.pagination.hasMore,
+          page: response.data.pagination.page,
+          hasMore: response.data.pagination.hasMore,
         });
 
         if (page > 1) {
@@ -128,7 +134,14 @@ export default function MyWorksPage() {
         setIsLoading(false)
       }
     }
-  }, [session?.user?.id, toast]);
+  }, [user?.id, toast]);
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.push('/login')
+    }
+  }, [authLoading, isAuthenticated, router])
 
   // Fetch user's stories from the database
   useEffect(() => {
@@ -160,7 +173,11 @@ export default function MyWorksPage() {
 
     setIsDeleting(true)
     try {
-      await StoryService.deleteStory(storyToDelete.id)
+      const response = await StoryService.deleteStory(storyToDelete.id)
+
+      if (!response.success) {
+        throw new Error(response.message || "Failed to delete the story")
+      }
 
       // Update the local state by removing the deleted story
       setMyWorks(prevWorks => prevWorks.filter(work => work.id !== storyToDelete.id))
@@ -212,7 +229,11 @@ export default function MyWorksPage() {
   })
 
   // Sort works by last edited date
-  filteredWorks.sort((a, b) => b.lastEdited.getTime() - a.lastEdited.getTime())
+  filteredWorks.sort((a, b) => {
+    const aDate = a.lastEdited ? new Date(a.lastEdited).getTime() : 0;
+    const bDate = b.lastEdited ? new Date(b.lastEdited).getTime() : 0;
+    return bDate - aDate;
+  })
 
   return (
     <div className="min-h-screen">
@@ -341,6 +362,53 @@ interface WorksContentProps {
 
 function WorksContent({ works, searchQuery, isLoading, onDeleteStory }: WorksContentProps) {
   const router = useRouter()
+
+  // Format date for display - handles Date objects, strings, or null
+  const formatDate = (dateValue: any) => {
+    if (!dateValue) {
+      return "Unknown date";
+    }
+
+    try {
+      let date: Date;
+
+      // If it's already a Date object
+      if (dateValue instanceof Date) {
+        date = dateValue;
+      }
+      // If it's a string, try to parse it
+      else if (typeof dateValue === 'string') {
+        date = new Date(dateValue);
+      }
+      // If it's an object (might have a $date field or similar)
+      else if (typeof dateValue === 'object') {
+        // Try different common date object formats
+        if (dateValue.$date) {
+          date = new Date(dateValue.$date);
+        } else if (dateValue._seconds) {
+          // MongoDB timestamp format
+          date = new Date(dateValue._seconds * 1000);
+        } else {
+          // Try to convert the whole object to date
+          date = new Date(dateValue);
+        }
+      } else {
+        // For other types, try direct conversion
+        date = new Date(dateValue);
+      }
+
+      // Check if the date is valid
+      if (isNaN(date.getTime())) {
+        console.log('Invalid date conversion:', dateValue, 'resulted in:', date);
+        return "Unknown date";
+      }
+
+      return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    } catch (error) {
+      console.log('Error formatting date:', dateValue, error);
+      return "Unknown date";
+    }
+  };
 
   const handleContinueEditing = (storyId: string) => {
     // Redirect to story-metadata page instead of editor
@@ -498,7 +566,7 @@ function WorksContent({ works, searchQuery, isLoading, onDeleteStory }: WorksCon
               </div>
 
               <div className="mt-2 text-xs text-muted-foreground">
-                Last edited: {work.lastEdited.toLocaleDateString()}
+                Last edited: {formatDate(work.lastEdited)}
               </div>
 
               {work.status !== "draft" && (

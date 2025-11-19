@@ -13,14 +13,12 @@ import ProfileActionButtons from "@/components/profile-action-buttons"
 import Navbar from "@/components/navbar"
 import { SiteFooter } from "@/components/site-footer"
 import { generateUserProfileMetadata, generateUserProfileStructuredData } from "@/lib/seo/metadata"
-import { prisma } from "@/lib/prisma"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 import { formatDistanceToNow } from "date-fns/formatDistanceToNow"
 import { notFound } from "next/navigation"
+import { UserService } from "@/lib/api/user"
 import UserProfileClient from "./user-profile-client"
 
-// Define user profile type
+// Define user profile type (matches API response structure)
 type UserProfile = {
   id: string
   name: string | null
@@ -37,9 +35,11 @@ type UserProfile = {
   bannerImage: string | null
   joinedDate: string | null
   storyCount: number
+  followerCount?: number // API field name
+  followingCount?: number // API field name
   isCurrentUser: boolean
-  followers?: number
-  following?: number
+  followers?: number // Local field for consistency
+  following?: number // Local field for consistency
   donationsEnabled?: boolean | null;
   donationMethod?: string | null;
   donationLink?: string | null;
@@ -63,105 +63,56 @@ type ExpectedSocialLinks = {
 // Define the params type for the page
 type UserPageParams = { params: Promise<{ username: string }> };
 
-// Server-side function to fetch user data
+// Server-side function to fetch user data from new backend API
 async function getUserData(username: string): Promise<UserProfile | null> {
   try {
-    const session = await getServerSession(authOptions);
+    // Use the existing UserService function
+    const response = await UserService.getUserProfile(username);
 
-    // Try to find user by username or ID
-    const user = await prisma.user.findFirst({
-      where: {
-        OR: [
-          { username: username },
-          { id: username }
-        ]
-      },
-      select: {
-        id: true,
-        name: true,
-        username: true,
-        email: true,
-        bio: true,
-        location: true,
-        website: true,
-        socialLinks: true,
-        image: true,
-        bannerImage: true,
-        createdAt: true,
-        preferences: true,
-        donationsEnabled: true,
-        donationMethod: true,
-        donationLink: true,
-        stories: {
-          where: {
-            status: { not: "draft" }
-          },
-          select: { id: true }
-        },
-        _count: {
-          select: {
-            followers: true,
-            following: true
-          }
-        }
-      }
-    });
-
-    if (!user || !user.username) {
+    if (!response.success || !response.data) {
       return null;
     }
 
-    // Parse preferences safely
-    let preferences = {
-      privacySettings: {
-        publicProfile: false,
-        showEmail: false,
-        showLocation: false,
-        allowMessages: false
-      }
-    };
-
-    if (user.preferences) {
-      try {
-        preferences = typeof user.preferences === 'string'
-          ? JSON.parse(user.preferences)
-          : user.preferences;
-      } catch (error) {
-        // Silently fall back to default preferences if parsing fails
-      }
-    }
+    const user = response.data;
 
     // Check if the current user is the profile owner
-    const isCurrentUser = session?.user?.id === user.id;
+    // For SSR, we cannot check auth state, so we set it conservatively
+    // The client components will handle the correct state
+    const isCurrentUser = false;
 
-    // Get follower/following counts
-    const followerCount = user._count.followers;
-    const followingCount = user._count.following;
+    // Parse preferences safely - user.preferences comes from the new API
+    let preferences = {
+      privacySettings: {
+        publicProfile: user.preferences?.privacySettings?.publicProfile || false,
+        showEmail: user.preferences?.privacySettings?.showEmail || false,
+        showLocation: user.preferences?.privacySettings?.showLocation || false,
+        allowMessages: user.preferences?.privacySettings?.allowMessages || false,
+        forum: user.preferences?.privacySettings?.forum || false
+      }
+    };
 
     // Safely parse and normalize socialLinks
     let parsedSocialLinks: ExpectedSocialLinks | null = null;
     if (user.socialLinks) {
-      try {
-        let tempLinks = typeof user.socialLinks === 'string'
-          ? JSON.parse(user.socialLinks)
-          : user.socialLinks;
+      parsedSocialLinks = user.socialLinks;
+    }
 
-        if (tempLinks && typeof tempLinks === 'object' && !Array.isArray(tempLinks)) {
-          if ('set' in tempLinks && typeof tempLinks.set === 'object' && tempLinks.set !== null) {
-            parsedSocialLinks = tempLinks.set as ExpectedSocialLinks;
-          } else {
-            parsedSocialLinks = tempLinks as ExpectedSocialLinks;
-          }
-        }
+    // Format the joined date as relative time
+    let formattedJoinedDate = null;
+    if (user.createdAt) {
+      try {
+        const joinedDate = new Date(user.createdAt);
+        formattedJoinedDate = formatDistanceToNow(joinedDate, { addSuffix: true });
       } catch (error) {
-        // Silently fall back to null if parsing fails
+        // Fall back to original value if parsing fails
+        formattedJoinedDate = user.createdAt;
       }
     }
 
-    // Format the response with privacy checks
+    // Return the formatted user data using the correct field names from API response
     return {
       id: user.id,
-      username: user.username, // We already checked this is not null above
+      username: user.username || '',
       name: user.name,
       bio: user.bio,
       location: preferences.privacySettings?.showLocation ? user.location : null,
@@ -170,10 +121,10 @@ async function getUserData(username: string): Promise<UserProfile | null> {
       socialLinks: parsedSocialLinks,
       image: user.image,
       bannerImage: user.bannerImage,
-      joinedDate: user.createdAt ? formatDistanceToNow(new Date(user.createdAt), { addSuffix: true }) : null,
-      storyCount: user.stories.length,
-      followers: followerCount,
-      following: followingCount,
+      joinedDate: formattedJoinedDate,
+      storyCount: user.storyCount || 0,
+      followers: (user as any).followerCount || user.followers || 0,
+      following: (user as any).followingCount || user.following || 0,
       donationsEnabled: user.donationsEnabled,
       donationMethod: user.donationMethod,
       donationLink: user.donationLink,

@@ -1,150 +1,90 @@
-import { prisma } from '@/lib/prisma'
-import { ForumType } from '@prisma/client'
+import { UserService } from '@/lib/api/user'
+import { ForumService } from '@/lib/api/forum'
 
 export async function getForumPostData(username: string, slug: string) {
   try {
-    // Find forum owner
-    const forumOwner = await prisma.user.findUnique({
-      where: { username },
-      select: {
-        id: true,
-        name: true,
-        username: true,
-        image: true,
-        preferences: true
-      }
-    })
+    // Get user profile from API
+    const userProfileResponse = await UserService.getUserProfile(username)
 
-    if (!forumOwner) {
+    if (!userProfileResponse.success || !userProfileResponse.data) {
       return null
     }
+
+    const userProfile = userProfileResponse.data
 
     // Check if forum is enabled
-    let preferences = {
-      privacySettings: {
-        forum: false
-      }
-    }
-
-    if (forumOwner.preferences) {
-      try {
-        preferences = typeof forumOwner.preferences === 'string'
-          ? JSON.parse(forumOwner.preferences)
-          : forumOwner.preferences
-      } catch (error) {
-        // Fall back to default
-      }
-    }
-
-    if (!preferences.privacySettings?.forum) {
+    if (!userProfile.preferences?.privacySettings?.forum) {
       return null
     }
 
-    // Find forum
-    const forum = await prisma.forum.findFirst({
-      where: { authorId: forumOwner.id, type: ForumType.AUTHOR },
-      select: { id: true }
-    })
+    // Get all posts to find the one with matching slug
+    const postsResponse = await ForumService.getPosts(username, { limit: 100 })
 
-    if (!forum) {
+    if (!postsResponse.success || !postsResponse.data) {
       return null
     }
 
-    // Get post by slug with comments and counts
-    const post = await prisma.forumPost.findFirst({
-      where: {
-        forumId: forum.id,
-        slug: slug,
-        deleted: false
-      },
-      select: {
-        id: true,
-        title: true,
-        slug: true,
-        content: true,
-        pinned: true,
-        pinnedOrder: true,
-        createdAt: true,
-        updatedAt: true,
-        author: {
-          select: {
-            id: true,
-            name: true,
-            username: true,
-            image: true
-          }
-        },
-        _count: {
-          select: {
-            comments: {
-              where: { deleted: false }
-            }
-          }
-        }
-      }
-    })
-
-    if (!post) {
+    // Find the post with matching slug
+    const postData = postsResponse.data.posts.find(p => p.slug === slug)
+    if (!postData) {
       return null
     }
 
-    // Get comments separately
-    const comments = await prisma.forumPostComment.findMany({
-      where: {
-        postId: post.id,
-        deleted: false
-      },
-      select: {
-        id: true,
-        content: true,
-        createdAt: true,
-        user: {
-          select: {
-            id: true,
-            name: true,
-            username: true,
-            image: true
-          }
-        }
-      },
-      orderBy: { createdAt: 'asc' }
-    })
+    // Use the new getPost API method to get full post details
+    const singlePostResponse = await ForumService.getPost(username, postData.id)
 
-    // Transform post to match expected format
-    const transformedPost = {
-      id: post.id,
-      title: post.title,
-      slug: post.slug,
-      content: post.content,
-      pinned: post.pinned,
-      createdAt: post.createdAt,
-      commentCount: post._count.comments,
-      comments: comments.map((comment) => ({
+    let finalPostData
+    if (singlePostResponse.success && singlePostResponse.data) {
+      finalPostData = singlePostResponse.data
+    } else {
+      // Fallback to the data we already have from posts list
+      finalPostData = postData
+    }
+
+    // Get comments for the post
+    const commentsResponse = await ForumService.getComments(username, postData.id)
+
+    let comments: any[] = []
+    if (commentsResponse.success && commentsResponse.data) {
+      comments = commentsResponse.data.comments.map((comment) => ({
         id: comment.id,
         content: comment.content,
-        createdAt: comment.createdAt,
+        createdAt: new Date(comment.createdAt),
+        editedAt: comment.editedAt ? new Date(comment.editedAt) : null,
         author: {
           id: comment.user.id,
           name: comment.user.name || comment.user.username || 'Unknown',
           username: comment.user.username || 'unknown',
           image: comment.user.image
         }
-      })),
+      }))
+    }
+
+    // Transform post to match expected format
+    const transformedPost = {
+      id: finalPostData.id,
+      title: finalPostData.title,
+      slug: finalPostData.slug,
+      content: finalPostData.content,
+      pinned: finalPostData.pinned,
+      createdAt: new Date(finalPostData.createdAt),
+      commentCount: comments.length,
+      comments: comments,
       author: {
-        id: post.author.id,
-        name: post.author.name || post.author.username || 'Unknown',
-        username: post.author.username || 'unknown',
-        image: post.author.image
+        id: finalPostData.author.id,
+        name: finalPostData.author.name || finalPostData.author.username || 'Unknown',
+        username: finalPostData.author.username || 'unknown',
+        image: finalPostData.author.image
       }
     }
 
     return {
       post: transformedPost,
       user: {
-        id: forumOwner.id,
-        name: forumOwner.name || forumOwner.username || 'Unknown',
-        username: forumOwner.username || 'unknown',
-        image: forumOwner.image
+        id: userProfile.id,
+        name: userProfile.name ?? userProfile.username ?? 'Unknown',
+        username: userProfile.username ?? 'unknown',
+        image: userProfile.image
       }
     }
   } catch (error) {

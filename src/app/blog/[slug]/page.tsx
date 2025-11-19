@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getBlogBySlug } from "@/services/blog-service";
+import { BlogService } from "@/lib/api/blog";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
 import Navbar from "@/components/navbar";
 import { SiteFooter } from "@/components/site-footer";
@@ -29,7 +29,8 @@ const formatString = (str: string) => {
 export async function generateMetadata({ params }: BlogPageProps): Promise<Metadata> {
   try {
     const { slug } = await params;
-    const blog = await getBlogBySlug(slug);
+    const response = await BlogService.getBlogBySlug(slug);
+    const blog = response.success && response.data ? response.data : null;
     if (!blog) {
       return {
         title: "Blog Post Not Found - FableSpace",
@@ -48,7 +49,8 @@ export async function generateMetadata({ params }: BlogPageProps): Promise<Metad
 export default async function BlogPostPage({ params }: BlogPageProps) {
   try {
     const { slug } = await params;
-    const blog = await getBlogBySlug(slug);
+    const response = await BlogService.getBlogBySlug(slug);
+    const blog = response.success && response.data ? response.data : null;
 
     if (!blog || blog.status !== "published") {
       notFound();
@@ -79,7 +81,7 @@ export default async function BlogPostPage({ params }: BlogPageProps) {
                   {formatString(blog.category)}
                 </Badge>
                 <span className="hidden xs:inline">•</span>
-                <span className="text-xs sm:text-sm">Created {blog.publishDate?.toLocaleDateString()}</span>
+                <span className="text-xs sm:text-sm">Created {blog.publishDate ? new Date(blog.publishDate).toLocaleDateString() : 'Unknown'}</span>
               </div>
               {blog.featuredImage && (
                 <img
@@ -97,7 +99,7 @@ export default async function BlogPostPage({ params }: BlogPageProps) {
                   slot="6596765108"
                 />
               </div>
-              
+
             </article>
           </div>
 
