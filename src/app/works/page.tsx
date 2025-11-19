@@ -16,6 +16,7 @@ import StoryCardSkeleton from "@/components/story-card-skeleton"
 import Navbar from "@/components/navbar"
 import { useToast } from "@/hooks/use-toast"
 import { StoryService } from "@/lib/api/story"
+import { ChapterService } from "@/lib/api/chapter"
 import { ImageService } from "@/lib/api/images"
 import { useAuth } from "@/lib/auth-context"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
@@ -42,7 +43,7 @@ export default function MyWorksPage() {
   const [pagination, setPagination] = useState({ page: 1, hasMore: true });
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [storyToDelete, setStoryToDelete] = useState<{id: string, title: string} | null>(null)
+  const [storyToDelete, setStoryToDelete] = useState<{ id: string, title: string } | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
   const fetchStories = useCallback(async (page = 1, isMounted: () => boolean) => {
@@ -70,7 +71,7 @@ export default function MyWorksPage() {
       const storiesWithChaptersPromises = response.data.stories.map(async (story) => {
         try {
           // Fetch chapters for this story
-          const chaptersResponse = await StoryService.getChapters(story.id);
+          const chaptersResponse = await ChapterService.getChapters(story.id);
           const chapters = chaptersResponse.success && chaptersResponse.data ? chaptersResponse.data : [];
 
           // Only process if component is still mounted
@@ -162,7 +163,7 @@ export default function MyWorksPage() {
   };
 
   // Open delete confirmation dialog
-  const openDeleteDialog = (story: {id: string, title: string}) => {
+  const openDeleteDialog = (story: { id: string, title: string }) => {
     setStoryToDelete(story)
     setDeleteDialogOpen(true)
   }
@@ -209,9 +210,9 @@ export default function MyWorksPage() {
     // - ongoing: stories with status="ongoing" (at least one published chapter, more coming)
     // - completed: stories with status="completed" (all chapters published, story ended)
     const matchesTab = activeTab === "all" ||
-                      (activeTab === "draft" && work.status === "draft") ||
-                      (activeTab === "ongoing" && work.status === "ongoing") ||
-                      (activeTab === "completed" && work.status === "completed")
+      (activeTab === "draft" && work.status === "draft") ||
+      (activeTab === "ongoing" && work.status === "ongoing") ||
+      (activeTab === "completed" && work.status === "completed")
     // Extract genre name for search
     let genreName = 'General';
     if (typeof work.genre === 'string') {
@@ -242,78 +243,78 @@ export default function MyWorksPage() {
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-          <h1 className="text-3xl font-semibold">My Works</h1>
+            <h1 className="text-3xl font-semibold">My Works</h1>
 
-          <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
-            <div className="relative flex-1 sm:w-64">
-              <Input
-                placeholder="Search works..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pr-8"
-              />
-              {searchQuery && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-0 top-0 h-full"
-                  onClick={() => setSearchQuery("")}
-                >
-                  <X className="h-4 w-4" />
-                  <span className="sr-only">Clear search</span>
-                </Button>
-              )}
+            <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
+              <div className="relative flex-1 sm:w-64">
+                <Input
+                  placeholder="Search works..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pr-8"
+                />
+                {searchQuery && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full"
+                    onClick={() => setSearchQuery("")}
+                  >
+                    <X className="h-4 w-4" />
+                    <span className="sr-only">Clear search</span>
+                  </Button>
+                )}
+              </div>
+
+              <Button asChild className="border-2 border-primary">
+                <Link href="/write/story-info">
+                  <PenSquare className="h-4 w-4 mr-2" />
+                  New Story
+                </Link>
+              </Button>
+            </div>
+          </div>
+
+          <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="mt-6">
+            <div className="overflow-x-auto sm:overflow-x-visible px-4 -mx-4 md:px-0 md:mx-0">
+              <TabsList className="mb-8 w-max sm:w-auto ml-0 sm:ml-0">
+                <TabsTrigger value="all" className="text-xs sm:text-sm">All Works</TabsTrigger>
+                <TabsTrigger value="draft" className="text-xs sm:text-sm">Drafts</TabsTrigger>
+                <TabsTrigger value="ongoing" className="text-xs sm:text-sm">Ongoing</TabsTrigger>
+                <TabsTrigger value="completed" className="text-xs sm:text-sm">Completed</TabsTrigger>
+              </TabsList>
             </div>
 
-            <Button asChild className="border-2 border-primary">
-              <Link href="/write/story-info">
-                <PenSquare className="h-4 w-4 mr-2" />
-                New Story
-              </Link>
-            </Button>
-          </div>
-        </div>
+            {/* Use a single TabsContent component that renders for all tab values */}
+            <TabsContent value={activeTab}>
+              <WorksContent
+                works={filteredWorks}
+                searchQuery={searchQuery}
+                isLoading={isLoading}
+                onDeleteStory={openDeleteDialog}
+              />
 
-        <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="mt-6">
-          <div className="overflow-x-auto sm:overflow-x-visible px-4 -mx-4 md:px-0 md:mx-0">
-            <TabsList className="mb-8 w-max sm:w-auto ml-0 sm:ml-0">
-              <TabsTrigger value="all" className="text-xs sm:text-sm">All Works</TabsTrigger>
-              <TabsTrigger value="draft" className="text-xs sm:text-sm">Drafts</TabsTrigger>
-              <TabsTrigger value="ongoing" className="text-xs sm:text-sm">Ongoing</TabsTrigger>
-              <TabsTrigger value="completed" className="text-xs sm:text-sm">Completed</TabsTrigger>
-            </TabsList>
-          </div>
-
-          {/* Use a single TabsContent component that renders for all tab values */}
-          <TabsContent value={activeTab}>
-            <WorksContent
-              works={filteredWorks}
-              searchQuery={searchQuery}
-              isLoading={isLoading}
-              onDeleteStory={openDeleteDialog}
-            />
-            
-            {/* Load More Button */}
-            {pagination.hasMore && (
-              <div className="text-center mt-8">
-                <Button
-                  onClick={loadMoreStories}
-                  disabled={isFetchingMore}
-                  className="border-2 border-primary"
-                >
-                  {isFetchingMore ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Loading...
-                    </>
-                  ) : (
-                    "Load More"
-                  )}
-                </Button>
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
+              {/* Load More Button */}
+              {pagination.hasMore && (
+                <div className="text-center mt-8">
+                  <Button
+                    onClick={loadMoreStories}
+                    disabled={isFetchingMore}
+                    className="border-2 border-primary"
+                  >
+                    {isFetchingMore ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Loading...
+                      </>
+                    ) : (
+                      "Load More"
+                    )}
+                  </Button>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
         </div>
       </main>
 
@@ -357,7 +358,7 @@ interface WorksContentProps {
   works: WorkStory[]
   searchQuery: string
   isLoading: boolean
-  onDeleteStory: (story: {id: string, title: string}) => void
+  onDeleteStory: (story: { id: string, title: string }) => void
 }
 
 function WorksContent({ works, searchQuery, isLoading, onDeleteStory }: WorksContentProps) {
@@ -556,7 +557,7 @@ function WorksContent({ works, searchQuery, isLoading, onDeleteStory }: WorksCon
                     )} */}
                     <DropdownMenuItem
                       className="text-destructive"
-                      onClick={() => onDeleteStory({id: work.id, title: work.title})}
+                      onClick={() => onDeleteStory({ id: work.id, title: work.title })}
                     >
                       <Trash2 className="h-4 w-4 mr-2" />
                       Delete

@@ -18,10 +18,17 @@ export const ImageService = {
       return imageInput;
     }
 
+    const apiPrefix = '/api/v1/images/';
+
+    // If it's a local path (starts with /) but not our API prefix, return as-is
+    // This handles static assets like /placeholder.svg
+    if (imageInput.startsWith('/') && !imageInput.startsWith(apiPrefix)) {
+      return imageInput;
+    }
+
     let imageKey = imageInput;
 
     // Check if it's a full API path (backward compatibility for database entries)
-    const apiPrefix = '/api/v1/images/';
     if (imageInput.startsWith(apiPrefix)) {
       // Extract the key part after the prefix and decode it
       imageKey = decodeURIComponent(imageInput.substring(apiPrefix.length));
@@ -86,14 +93,51 @@ export const ImageService = {
    * @param imageData The image file or data to upload
    * @returns Upload result with URL
    */
+  /**
+   * Upload an image to the backend
+   * @param imageData The image file to upload
+   * @param metadata Optional metadata including custom key
+   * @returns Upload result with URL
+   */
   async uploadImage(imageData: File, metadata?: {
-    folder?: string;
-    filename?: string;
+    key?: string;
   }): Promise<{ success: boolean; url?: string; error?: string }> {
     try {
-      // This would delegate to the existing upload logic
-      // For now, this is a placeholder for future centralized image operations
-      throw new Error('Image uploading should use ImageUpload utility');
+      // Read file as ArrayBuffer
+      const arrayBuffer = await imageData.arrayBuffer();
+
+      // Generate key if not provided
+      let imageKey = metadata?.key;
+      if (!imageKey) {
+        const timestamp = Date.now();
+        const fileExtension = imageData.name.split('.').pop() || 'jpg';
+        imageKey = `uploads/${timestamp}.${fileExtension}`;
+      }
+
+      // Prepare payload matching backend expectation: { key, contentType, data: number[] }
+      const payload = {
+        key: imageKey,
+        contentType: imageData.type,
+        data: Array.from(new Uint8Array(arrayBuffer))
+      };
+
+      const response = await apiClient.post<{
+        success: boolean;
+        data: { url: string };
+        error?: string;
+      }>('/upload/image', payload);
+
+      if (response.success && response.data?.url) {
+        return {
+          success: true,
+          url: response.data.url
+        };
+      } else {
+        return {
+          success: false,
+          error: response.error || 'Failed to upload image'
+        };
+      }
     } catch (error: any) {
       return {
         success: false,

@@ -2,13 +2,10 @@ import { apiClient } from "@/lib/apiClient";
 import { logError } from "@/lib/error-logger";
 import type {
   Story,
-  Chapter,
+  Story,
   CreateStoryRequest,
   UpdateStoryRequest,
-  CreateChapterRequest,
-  UpdateChapterRequest,
   StoryResponse,
-  ChapterResponse,
   StoryRecommendation
 } from "@/types/story";
 
@@ -514,179 +511,96 @@ export const StoryService = {
   },
 
   /**
-   * Get all chapters for a story
+   * Get tags for a story
    */
-  async getChapters(storyId: string): Promise<ApiResponse<ChapterResponse[]>> {
+  async getStoryTags(storyId: string): Promise<ApiResponse<string[]>> {
     try {
       const response = await apiClient.get<{
         success: boolean;
-        data: ChapterResponse[];
-      }>(`/stories/${storyId}/chapters`);
+        data: { tags: string[] };
+      }>(`/stories/${storyId}/tags`);
 
       return {
         success: true,
-        data: response.data
+        data: response.data.tags
       };
     } catch (error: any) {
-      logError(error.message || "Failed to fetch chapters", {
-        context: 'Fetching chapters',
+      logError(error.message || "Failed to fetch story tags", {
+        context: 'Fetching story tags',
         storyId,
         status: error.status,
         errorDetails: error
       });
       return {
         success: false,
-        message: error.message || "Failed to fetch chapters"
+        message: error.message || "Failed to fetch story tags"
       };
     }
   },
 
   /**
-   * Get a specific chapter
+   * Add tags to a story
    */
-  async getChapter(storyId: string, chapterId: string): Promise<ApiResponse<ChapterResponse>> {
-    try {
-      const response = await apiClient.get<{
-        success: boolean;
-        data: ChapterResponse;
-      }>(`/stories/${storyId}/chapters/${chapterId}`);
-
-      return {
-        success: true,
-        data: response.data
-      };
-    } catch (error: any) {
-      logError(error.message || "Failed to fetch chapter", {
-        context: 'Fetching chapter',
-        storyId,
-        chapterId,
-        status: error.status,
-        errorDetails: error
-      });
-      return {
-        success: false,
-        message: error.message || "Failed to fetch chapter"
-      };
-    }
-  },
-
-  /**
-   * Create a new chapter
-   */
-  async createChapter(storyId: string, data: CreateChapterRequest): Promise<ApiResponse<Chapter>> {
+  async addTagsToStory(storyId: string, tags: string[]): Promise<ApiResponse<string[]>> {
     try {
       const response = await apiClient.post<{
         success: boolean;
-        data: Chapter;
+        data: { tags: string[] };
         message: string;
-      }>(`/stories/${storyId}/chapters`, data);
+      }>(`/stories/${storyId}/tags`, { tags });
 
       return {
         success: true,
-        data: response.data,
+        data: response.data.tags,
         message: response.message
       };
     } catch (error: any) {
-      logError(error.message || "Failed to create chapter", {
-        context: 'Creating chapter',
+      logError(error.message || "Failed to add tags to story", {
+        context: 'Adding tags to story',
         storyId,
+        tags,
         status: error.status,
         errorDetails: error
       });
       return {
         success: false,
-        message: error.message || "Failed to create chapter"
+        message: error.message || "Failed to add tags to story"
       };
     }
   },
 
   /**
-   * Update a chapter
+   * Remove tags from a story
    */
-  async updateChapter(storyId: string, chapterId: string, data: UpdateChapterRequest): Promise<ApiResponse<Chapter>> {
+  async removeTagsFromStory(storyId: string, tags: string[]): Promise<ApiResponse<string[]>> {
     try {
-      const response = await apiClient.put<{
-        success: boolean;
-        data: Chapter;
-        message: string;
-      }>(`/stories/${storyId}/chapters/${chapterId}`, data);
-
-      return {
-        success: true,
-        data: response.data,
-        message: response.message
-      };
-    } catch (error: any) {
-      logError(error.message || "Failed to update chapter", {
-        context: 'Updating chapter',
-        storyId,
-        chapterId,
-        status: error.status,
-        errorDetails: error
-      });
-      return {
-        success: false,
-        message: error.message || "Failed to update chapter"
-      };
-    }
-  },
-
-  /**
-   * Delete a chapter
-   */
-  async deleteChapter(storyId: string, chapterId: string): Promise<ApiResponse<void>> {
-    try {
+      // DELETE request with body is not standard, but some APIs support it.
+      // If the API expects query params or a different method, adjust here.
+      // Assuming the API supports sending tags in the body for DELETE or uses a specific endpoint.
+      // Based on typical REST, maybe DELETE /stories/:id/tags with body?
+      // Axios supports data in config for delete.
       const response = await apiClient.delete<{
         success: boolean;
+        data: { tags: string[] };
         message: string;
-      }>(`/stories/${storyId}/chapters/${chapterId}`);
+      }>(`/stories/${storyId}/tags`, { data: { tags } });
 
       return {
         success: true,
+        data: response.data.tags,
         message: response.message
       };
     } catch (error: any) {
-      logError(error.message || "Failed to delete chapter", {
-        context: 'Deleting chapter',
+      logError(error.message || "Failed to remove tags from story", {
+        context: 'Removing tags from story',
         storyId,
-        chapterId,
+        tags,
         status: error.status,
         errorDetails: error
       });
       return {
         success: false,
-        message: error.message || "Failed to delete chapter"
-      };
-    }
-  },
-
-  /**
-   * Update reading progress
-   */
-  async updateReadingProgress(chapterId: string, progress: number): Promise<ApiResponse<any>> {
-    try {
-      const response = await apiClient.put<{
-        success: boolean;
-        data: any;
-        message: string;
-      }>("/reading-progress", { chapterId, progress });
-
-      return {
-        success: true,
-        data: response.data,
-        message: response.message
-      };
-    } catch (error: any) {
-      logError(error.message || "Failed to update reading progress", {
-        context: 'Updating reading progress',
-        chapterId,
-        progress,
-        status: error.status,
-        errorDetails: error
-      });
-      return {
-        success: false,
-        message: error.message || "Failed to update reading progress"
+        message: error.message || "Failed to remove tags from story"
       };
     }
   },
@@ -749,67 +663,7 @@ export const StoryService = {
     }
   },
 
-  /**
-   * Like a chapter
-   */
-  async likeChapter(storyId: string, chapterId: string): Promise<ApiResponse<{ like: any; likeCount: number }>> {
-    try {
-      const response = await apiClient.post<{
-        success: boolean;
-        data: { like: any; likeCount: number };
-        message: string;
-      }>(`/stories/${storyId}/chapters/${chapterId}/like`);
 
-      return {
-        success: true,
-        data: response.data,
-        message: response.message
-      };
-    } catch (error: any) {
-      logError(error.message || "Failed to like chapter", {
-        context: 'Liking chapter',
-        storyId,
-        chapterId,
-        status: error.status,
-        errorDetails: error
-      });
-      return {
-        success: false,
-        message: error.message || "Failed to like chapter"
-      };
-    }
-  },
-
-  /**
-   * Unlike a chapter
-   */
-  async unlikeChapter(storyId: string, chapterId: string): Promise<ApiResponse<{ likeCount: number }>> {
-    try {
-      const response = await apiClient.delete<{
-        success: boolean;
-        data: { likeCount: number };
-        message: string;
-      }>(`/stories/${storyId}/chapters/${chapterId}/like`);
-
-      return {
-        success: true,
-        data: response.data,
-        message: response.message
-      };
-    } catch (error: any) {
-      logError(error.message || "Failed to unlike chapter", {
-        context: 'Unliking chapter',
-        storyId,
-        chapterId,
-        status: error.status,
-        errorDetails: error
-      });
-      return {
-        success: false,
-        message: error.message || "Failed to unlike chapter"
-      };
-    }
-  },
 
   /**
    * Bookmark a story

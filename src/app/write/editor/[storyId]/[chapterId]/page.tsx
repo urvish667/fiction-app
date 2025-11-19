@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { useSession } from "next-auth/react"
+import { useAuth } from "@/lib/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import { Editor } from "@/components/editor"
-import { StoryService } from "@/services/story-service"
+import { StoryService } from "@/lib/api/story"
 import { useChapterEditor } from "@/hooks/use-chapter-editor"
 import { logError } from "@/lib/error-logger"
 import { EditorHeader } from "@/components/editor/editor-header"
@@ -20,7 +20,7 @@ export default function ChapterEditorPage() {
   const chapterId = params?.chapterId as string
 
   // Get the session for authentication
-  const { data: session, status } = useSession()
+  const { user, isLoading: isAuthLoading, isAuthenticated } = useAuth()
 
   // State for UI elements
   const [showPreview, setShowPreview] = useState(false)
@@ -64,10 +64,10 @@ export default function ChapterEditorPage() {
   useEffect(() => {
     // Only redirect if we're sure the user is not authenticated
     // Don't redirect during loading state
-    if (status === "unauthenticated") {
+    if (!isAuthLoading && !isAuthenticated) {
       router.push(`/login?callbackUrl=/write/editor/${storyId}/${chapterId}`)
     }
-  }, [session, status, router, storyId, chapterId])
+  }, [isAuthenticated, isAuthLoading, router, storyId, chapterId])
 
   // Add keyboard shortcuts
   useEffect(() => {
@@ -115,13 +115,17 @@ export default function ChapterEditorPage() {
 
   // Load story metadata
   useEffect(() => {
-    if (!storyId || !session) return
+    if (!storyId || !user) return
 
     const fetchStory = async () => {
       try {
-        const story = await StoryService.getStory(storyId)
+        const response = await StoryService.getStory(storyId)
+        if (!response.success || !response.data) {
+          throw new Error(response.message || "Failed to load story")
+        }
+        const story = response.data
         // Check if the user is the author
-        if (story.authorId !== session.user.id) {
+        if (story.authorId !== user.id) {
           toast({
             title: "Unauthorized",
             description: "You can only edit your own stories.",
@@ -142,7 +146,7 @@ export default function ChapterEditorPage() {
     }
 
     fetchStory()
-  }, [storyId, session, router, toast])
+  }, [storyId, user, router, toast])
 
   // Handle publish settings change
   const handlePublishSettingsChange = useCallback((field: string, value: any) => {
@@ -201,7 +205,7 @@ export default function ChapterEditorPage() {
   }, [publishChapter, setIsPublishDialogOpen, validateBeforePublish])
 
   // Show loading state while session is being restored
-  if (status === "loading") {
+  if (isAuthLoading) {
     return (
       <div className="min-h-screen flex flex-col">
         <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">

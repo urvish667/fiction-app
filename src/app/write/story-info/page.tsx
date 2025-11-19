@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { useSession } from "next-auth/react"
+import { useAuth } from "@/lib/auth-context"
 import { motion } from "framer-motion"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
@@ -33,7 +33,9 @@ import {
 import { ArrowLeft, Upload, Trash2, AlertCircle, Eye, BookOpen, Plus, FileText, Clock, CheckCircle2, Edit, X, Save, RefreshCw, Info, AlertTriangle, Check } from "lucide-react"
 import Navbar from "@/components/navbar"
 import { SiteFooter } from "@/components/site-footer"
-import { StoryService } from "@/services/story-service"
+import { StoryService } from "@/lib/api/story"
+import { ChapterService } from "@/lib/api/chapter"
+import { MetaService } from "@/lib/api/meta"
 import { CreateStoryRequest, UpdateStoryRequest } from "@/types/story"
 import { fetchWithCsrf } from "@/lib/client/csrf"
 
@@ -83,7 +85,8 @@ type SaveStatus = 'idle' | 'unsaved' | 'saving' | 'success' | 'error';
 export default function StoryInfoPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { data: session, status: sessionStatus } = useSession();
+
+  const { user, isLoading: isAuthLoading, isAuthenticated } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isInitialLoad = useRef(true);
 
@@ -128,7 +131,7 @@ export default function StoryInfoPage() {
   const [isLoadingChapters, setIsLoadingChapters] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [chapterToDelete, setChapterToDelete] = useState<{id: string, title: string} | null>(null);
+  const [chapterToDelete, setChapterToDelete] = useState<{ id: string, title: string } | null>(null);
   const [justCreatedStory, setJustCreatedStory] = useState(false);
   const [chapters, setChapters] = useState<ChapterData[]>([]);
 
@@ -198,18 +201,20 @@ export default function StoryInfoPage() {
         status: dataToSave.status || "draft",
         license: dataToSave.license || "ALL_RIGHTS_RESERVED",
       };
-      let savedStory;
+      let savedStoryResponse;
       if (dataToSave.id) {
-        savedStory = await StoryService.updateStory(dataToSave.id, storyRequest);
+        savedStoryResponse = await StoryService.updateStory(dataToSave.id, storyRequest);
       } else {
-        savedStory = await StoryService.createStory(storyRequest as CreateStoryRequest);
+        savedStoryResponse = await StoryService.createStory(storyRequest as CreateStoryRequest);
       }
+
+      if (!savedStoryResponse.success || !savedStoryResponse.data) {
+        throw new Error(savedStoryResponse.message || "Failed to save story");
+      }
+
+      const savedStory = savedStoryResponse.data;
       const storyId = savedStory.id;
-      await fetchWithCsrf('/api/tags/upsert', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ storyId, tags: tagsToSave }),
-      });
+      await StoryService.addTagsToStory(storyId, tagsToSave);
       setStoryData(prev => ({
         ...prev,
         id: storyId,
@@ -243,13 +248,25 @@ export default function StoryInfoPage() {
   }, [saveStatus, toast, validateForm]);
 
   const handleStateChange = useCallback((update: Partial<StoryFormData>) => {
-    if (update.status === 'completed' && chapters.length === 0) {
-      toast({
-        title: "Cannot mark as completed",
-        description: "A story must have at least one chapter to be marked as completed.",
-        variant: "destructive",
-      });
-      return;
+    if (update.status === 'completed') {
+      if (chapters.length === 0) {
+        toast({
+          title: "Cannot mark as completed",
+          description: "A story must have at least one chapter to be marked as completed.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const hasUnpublishedChapters = chapters.some(c => c.status === 'draft' || c.status === 'scheduled');
+      if (hasUnpublishedChapters) {
+        toast({
+          title: "Cannot mark as completed",
+          description: "All chapters must be published before marking the story as completed.",
+          variant: "destructive",
+        });
+        return;
+      }
     }
     setStoryData(prev => ({ ...prev, ...update }));
     // Mark as having unsaved changes
@@ -267,12 +284,24 @@ export default function StoryInfoPage() {
 
   // Fetch genres/languages/tags on mount
   useEffect(() => {
-    fetch("/api/genres").then(r => r.json()).then(setGenres);
-    fetch("/api/languages").then(r => r.json()).then(setLanguages);
-    fetch("/api/tags").then(r => r.json()).then(data => {
-      setPopularTags(data);
-      setTagSuggestions(data);
-    });
+    const fetchData = async () => {
+      const genresResponse = await MetaService.getGenres();
+      if (genresResponse.success && genresResponse.data) {
+        setGenres(genresResponse.data);
+      }
+
+      const languagesResponse = await MetaService.getLanguages();
+      if (languagesResponse.success && languagesResponse.data) {
+        setLanguages(languagesResponse.data);
+      }
+
+      const tagsResponse = await MetaService.getTags();
+      if (tagsResponse.success && tagsResponse.data) {
+        setPopularTags(tagsResponse.data);
+        setTagSuggestions(tagsResponse.data);
+      }
+    };
+    fetchData();
   }, []);
 
   // REMOVED: Duplicate tag fetching
@@ -347,7 +376,11 @@ export default function StoryInfoPage() {
     if (storyId) {
       const fetchStory = async () => {
         try {
-          const story = await StoryService.getStory(storyId);
+          const response = await StoryService.getStory(storyId);
+          if (!response.success || !response.data) {
+            throw new Error(response.message || "Failed to load story");
+          }
+          const story = response.data;
 
           // Extract genre and language IDs from the response
           let genreId = "";
@@ -411,7 +444,7 @@ export default function StoryInfoPage() {
             }).filter(Boolean);
             setTags(tagNames);
           }
-          
+
           // Mark initial load as complete AFTER loading all data
           // This prevents the tag loading from triggering "unsaved changes"
           setTimeout(() => {
@@ -441,13 +474,17 @@ export default function StoryInfoPage() {
     setIsLoadingChapters(true);
 
     try {
-      const chaptersData = await StoryService.getChapters(storyId);
+      const response = await ChapterService.getChapters(storyId);
+      if (!response.success || !response.data) {
+        throw new Error(response.message || "Failed to load chapters");
+      }
+      const chaptersData = response.data;
 
       // Convert to our local format
       const formattedChapters = chaptersData.map(chapter => {
         // Determine status based on chapter status and isPremium flag
         const status = chapter.status === 'scheduled' ? 'scheduled' as const :
-                (chapter.status === 'published' ? (chapter.isPremium ? 'premium' as const : 'published' as const) : 'draft' as const);
+          (chapter.status === 'published' ? (chapter.isPremium ? 'premium' as const : 'published' as const) : 'draft' as const);
 
         return {
           id: chapter.id,
@@ -505,55 +542,49 @@ export default function StoryInfoPage() {
     setIsUploading(true)
 
     try {
-      // First, read the file as an ArrayBuffer for S3 upload
-      const arrayBuffer = await file.arrayBuffer();
-
       // Generate a unique key for the image
       const timestamp = Date.now();
       const fileExtension = file.name.split('.').pop() || 'jpg';
       const imageKey = `stories/covers/${storyData.id || 'new'}-${timestamp}.${fileExtension}`;
 
-      // Upload to S3 with CSRF token
-      const response = await fetchWithCsrf('/api/upload-image', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          key: imageKey,
-          contentType: file.type,
-          data: Array.from(new Uint8Array(arrayBuffer)),
-        }),
-      });
+      // Upload using ImageService
+      const uploadResult = await ImageService.uploadImage(file, { key: imageKey });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to upload image');
+      if (!uploadResult.success || !uploadResult.url) {
+        throw new Error(uploadResult.error || 'Failed to upload image');
       }
 
-      const data = await response.json();
-      const imageUrl = data.url;
+      const imageUrl = uploadResult.url;
 
       if (!imageUrl) {
         throw new Error('No image URL returned from server');
       }
 
-      // Update the story data with the S3 URL
+      // Update the story data with the new cover image URL
       setStoryData((prev) => ({
         ...prev,
         coverImage: imageUrl,
-        lastSaved: null, // Mark as unsaved
       }));
 
-      // Force a save immediately instead of waiting for auto-save
-      setTimeout(() => {
-        // Get the latest state to ensure we have the most up-to-date data
-        setStoryData(currentState => {
-          // Save with the current state to ensure we have the latest data
-          saveAllStoryData(currentState, tags, true);
-          return currentState; // Don't actually change the state
-        });
-      }, 500);
+      // Mark as having unsaved changes
+      setSaveStatus('unsaved');
+
+      // Show success toast
+      toast({
+        title: "Image uploaded successfully!",
+        description: "Don't forget to save your changes.",
+      });
+
+      // Auto-save if story already exists
+      if (storyData.id) {
+        // Wait a bit to ensure state is updated, then save
+        setTimeout(async () => {
+          // We need to get the current state at the time of saving
+          // Use a ref or just call saveAllStoryData with the updated data
+          const updatedData = { ...storyData, coverImage: imageUrl };
+          await saveAllStoryData(updatedData, tags, false); // Don't show toast, we already showed one
+        }, 500);
+      }
     } catch (error) {
       logError(error, { context: 'Uploading cover image', storyId: storyData.id });
       toast({
@@ -579,21 +610,13 @@ export default function StoryInfoPage() {
 
       // Only proceed if we have an ID (existing story)
       if (storyData.id) {
-        // Make a direct fetch call to ensure we're bypassing any client-side type checking
-        const response = await fetchWithCsrf(`/api/stories/${storyData.id}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(deleteImageRequest),
-        });
+        // Use StoryService to update the story
+        // Cast to any to bypass strict type checking for null coverImage which is used to delete
+        const response = await StoryService.updateStory(storyData.id, deleteImageRequest as any);
 
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || "Failed to remove cover image");
+        if (!response.success) {
+          throw new Error(response.message || "Failed to remove cover image");
         }
-
-        await response.json();
 
         // Update the state with the result
         setStoryData(prev => ({
@@ -679,7 +702,10 @@ export default function StoryInfoPage() {
 
     setIsDeleting(true);
     try {
-      await StoryService.deleteChapter(storyData.id, chapterToDelete.id);
+      const response = await ChapterService.deleteChapter(chapterToDelete.id);
+      if (!response.success) {
+        throw new Error(response.message || "Failed to delete chapter");
+      }
 
       // Update the chapters list
       setChapters(prevChapters =>
@@ -707,7 +733,7 @@ export default function StoryInfoPage() {
   }, [chapterToDelete, storyData.id, toast]);
 
   // Open delete confirmation dialog
-  const openDeleteDialog = useCallback((chapter: {id: string, title: string}) => {
+  const openDeleteDialog = useCallback((chapter: { id: string, title: string }) => {
     setChapterToDelete(chapter);
     setDeleteDialogOpen(true);
   }, []);
@@ -716,10 +742,12 @@ export default function StoryInfoPage() {
   useEffect(() => {
     // Only redirect if we're sure the user is not authenticated
     // Don't redirect during loading state
-    if (sessionStatus === "unauthenticated") {
+    // Only redirect if we're sure the user is not authenticated
+    // Don't redirect during loading state
+    if (!isAuthLoading && !isAuthenticated) {
       router.push('/login?callbackUrl=/write/story-info')
     }
-  }, [session, sessionStatus, router])
+  }, [isAuthenticated, isAuthLoading, router])
 
   // Mark initial load complete after first render (for new stories)
   useEffect(() => {
@@ -758,7 +786,7 @@ export default function StoryInfoPage() {
   }, [saveStatus]);
 
   // Show loading state while session is being restored
-  if (sessionStatus === "loading") {
+  if (isAuthLoading) {
     return (
       <div className="min-h-screen flex flex-col">
         <Navbar />
@@ -771,8 +799,8 @@ export default function StoryInfoPage() {
     );
   }
 
-  const isFormDisabled = saveStatus === 'saving' || sessionStatus !== 'authenticated';
-  
+  const isFormDisabled = saveStatus === 'saving' || !isAuthenticated;
+
   const isActuallySaving = saveStatus === 'saving';
   return (
     <div className="min-h-screen flex flex-col">
@@ -782,8 +810,8 @@ export default function StoryInfoPage() {
         {/* Header with Back button and Auto-save status on the same line */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 mb-8">
           <div className="flex items-center gap-2">
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               onClick={() => {
                 if (saveStatus === 'unsaved') {
                   if (window.confirm('You have unsaved changes. Are you sure you want to leave?')) {
@@ -792,7 +820,7 @@ export default function StoryInfoPage() {
                 } else {
                   router.push('/works')
                 }
-              }} 
+              }}
               className="pl-0 flex items-center gap-2"
             >
               <ArrowLeft size={16} />
@@ -846,7 +874,7 @@ export default function StoryInfoPage() {
             )}
 
             {/* Manual Save Button - with text for prominence */}
-            <Button 
+            <Button
               onClick={() => saveAllStoryData(storyData, tags, true)}
               disabled={isFormDisabled || isActuallySaving}
               variant="outline"
@@ -906,8 +934,8 @@ export default function StoryInfoPage() {
                   variant="outline"
                   onClick={handleRemoveCoverImage}
                   disabled={storyData.coverImage === "/placeholder.svg?height=1600&width=900" ||
-                           storyData.coverImage === "/placeholder.svg" ||
-                           isUploading}
+                    storyData.coverImage === "/placeholder.svg" ||
+                    isUploading}
                 >
                   <Trash2 size={16} />
                 </Button>
@@ -1145,7 +1173,7 @@ export default function StoryInfoPage() {
                       onClick={() => addTag(t.name)}
                       disabled={tags.includes(t.name)}
                     >
-                     {t.name}
+                      {t.name}
                     </button>
                   ))}
                 </div>
@@ -1158,7 +1186,7 @@ export default function StoryInfoPage() {
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <Label htmlFor="original-story">Original Story</Label>
-                    
+
                     {/* Info Tooltip */}
                     <TooltipProvider>
                       <Tooltip>
@@ -1200,7 +1228,7 @@ export default function StoryInfoPage() {
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <Label htmlFor="mature-content">Mature Content</Label>
-                    
+
                     {/* Info Tooltip */}
                     <TooltipProvider>
                       <Tooltip>
@@ -1316,11 +1344,11 @@ export default function StoryInfoPage() {
                         <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="font-medium">{chapter.title}</h3>
                           <div className="flex gap-1">
-                            <Badge 
-                              variant={chapter.status === "draft" ? "outline" : "default"} 
+                            <Badge
+                              variant={chapter.status === "draft" ? "outline" : "default"}
                               className={
-                                chapter.status === "premium" ? "bg-amber-500" : 
-                                chapter.status === "scheduled" ? "bg-orange-500 hover:bg-orange-600" : ""
+                                chapter.status === "premium" ? "bg-amber-500" :
+                                  chapter.status === "scheduled" ? "bg-orange-500 hover:bg-orange-600" : ""
                               }
                             >
                               {chapter.status.charAt(0).toUpperCase() + chapter.status.slice(1)}
@@ -1381,7 +1409,7 @@ export default function StoryInfoPage() {
                                 variant: "destructive",
                               });
                             } else {
-                              openDeleteDialog({id: chapter.id, title: chapter.title});
+                              openDeleteDialog({ id: chapter.id, title: chapter.title });
                             }
                           }}
                           disabled={storyData.status === 'completed'}

@@ -14,6 +14,9 @@ interface ChapterPageProps {
   }>
 }
 
+// Force dynamic rendering to prevent caching issues with chapter content
+export const dynamic = 'force-dynamic';
+
 // Generate metadata for SEO
 export async function generateMetadata({ params }: ChapterPageProps): Promise<Metadata> {
   try {
@@ -31,7 +34,7 @@ export async function generateMetadata({ params }: ChapterPageProps): Promise<Me
     const story = storyResponse.data
 
     // Fetch chapters to find the specific chapter
-    const chaptersResponse = await StoryService.getChapters(story.id)
+    const chaptersResponse = await ChapterService.getChapters(story.id)
     if (!chaptersResponse.success || !chaptersResponse.data) {
       return {
         title: "Chapter Not Found - FableSpace",
@@ -73,7 +76,7 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
     const story = storyResponse.data
 
     // Fetch chapters to find the specific chapter
-    const chaptersResponse = await StoryService.getChapters(story.id)
+    const chaptersResponse = await ChapterService.getChapters(story.id)
     if (!chaptersResponse.success || !chaptersResponse.data) {
       notFound()
     }

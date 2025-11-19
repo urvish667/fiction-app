@@ -7,6 +7,7 @@
 import { getRedisClient } from '@/lib/redis';
 import { logger } from '@/lib/logger';
 import { StoryService } from '@/lib/api/story';
+import { ChapterService } from '@/lib/api/chapter';
 import { StoryResponse, ChapterResponse } from '@/types/story';
 
 interface StoryParams {
@@ -118,7 +119,7 @@ export async function fetchStoryData(slug: string): Promise<StoryResponse & { vi
     const storyData = response.data;
 
     // Fetch chapters for this story
-    const chaptersResponse = await StoryService.getChapters(storyData.id);
+    const chaptersResponse = await ChapterService.getChapters(storyData.id);
 
     if (!chaptersResponse.success) {
       logger.warn(`Failed to fetch chapters for story: ${slug}`);

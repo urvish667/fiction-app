@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect } from 'react'
-import { StoryService } from '@/services/story-service'
+import { StoryService } from '@/lib/api/story'
+import { ChapterService } from '@/lib/api/chapter'
 import { Chapter, CreateChapterRequest, UpdateChapterRequest } from '@/types/story'
 import { logInfo, logError, logWarning } from '@/lib/error-logger'
 import { useToast } from '@/components/ui/use-toast'
@@ -136,7 +137,13 @@ export function useChapterEditor({
     const fetchChapter = async () => {
       try {
         logInfo('Fetching chapter data', { storyId, chapterId })
-        const chapterData = await StoryService.getChapter(storyId, chapterId)
+        const response = await ChapterService.getChapter(chapterId)
+
+        if (!response.success || !response.data) {
+          throw new Error(response.message || "Failed to load chapter")
+        }
+
+        const chapterData = response.data
 
         // Convert to our local state format
         setChapter({
@@ -154,7 +161,7 @@ export function useChapterEditor({
         setInitialContent(chapterData.content || "")
         setInitialTitle(chapterData.title)
         setInitialIsDraft(chapterData.status === 'draft')
-        
+
         // Reset hasChanges flag when loading existing chapter
         setHasChanges(false)
 
@@ -196,7 +203,13 @@ export function useChapterEditor({
     const fetchNextChapterNumber = async () => {
       try {
         // Get all chapters for the story
-        const chapters = await StoryService.getChapters(storyId)
+        const response = await ChapterService.getChapters(storyId)
+
+        if (!response.success || !response.data) {
+          throw new Error(response.message || "Failed to fetch chapters")
+        }
+
+        const chapters = response.data
 
         // Find the highest chapter number
         const highestNumber = chapters.length > 0
@@ -346,13 +359,14 @@ export function useChapterEditor({
       }
 
       let savedChapter: Chapter
+      let response
 
       if (isNewChapter || !chapter.id) {
         // For new chapters, only create if this is a manual save (showToast is true)
         // This prevents auto-save from creating multiple chapters
         if (showToast) {
           // Create new chapter
-          savedChapter = await StoryService.createChapter(storyId, chapterData)
+          response = await ChapterService.createChapter(storyId, chapterData)
         } else {
           // Skip auto-save for new chapters that haven't been manually saved yet
           setIsSaving(false)
@@ -367,8 +381,14 @@ export function useChapterEditor({
           status: statusField.status
         })
 
-        savedChapter = await StoryService.updateChapter(storyId, chapter.id, chapterData)
+        response = await ChapterService.updateChapter(chapter.id, chapterData)
       }
+
+      if (!response.success || !response.data) {
+        throw new Error(response.message || "Failed to save chapter")
+      }
+
+      savedChapter = response.data
 
       // Update local state with saved data
       syncStateWithBackend(savedChapter)
@@ -440,7 +460,13 @@ export function useChapterEditor({
         publishDate: formattedDate
       })
 
-      const savedChapter = await StoryService.updateChapter(storyId, chapter.id, chapterData)
+      const response = await ChapterService.updateChapter(chapter.id, chapterData)
+
+      if (!response.success || !response.data) {
+        throw new Error(response.message || "Failed to publish chapter")
+      }
+
+      const savedChapter = response.data
 
       // Update local state
       syncStateWithBackend(savedChapter)
