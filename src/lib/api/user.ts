@@ -449,4 +449,61 @@ export const UserService = {
       };
     }
   },
+
+  /**
+   * Check if username is available
+   */
+  async checkUsername(username: string): Promise<ApiResponse<{ available: boolean }>> {
+    try {
+      const response = await apiClient.get<{
+        success: boolean;
+        data: { available: boolean };
+      }>(`/users/check-username?username=${encodeURIComponent(username)}`);
+
+      return response;
+    } catch (error: any) {
+      logError(error.message || "Failed to check username", {
+        context: 'Checking username availability',
+        username,
+        status: error.status,
+        errorDetails: error
+      });
+      return {
+        success: false,
+        message: error.message || "Failed to check username availability"
+      };
+    }
+  },
+
+  /**
+   * Complete user profile (for OAuth users)
+   */
+  async completeProfile(data: {
+    username: string;
+    birthdate: string;
+    pronoun: string;
+    termsAccepted: boolean;
+  }): Promise<ApiResponse<UserProfile>> {
+    try {
+      const response = await apiClient.put<{
+        success: boolean;
+        data: UserProfile;
+      }>('/users/me', {
+        ...data,
+        isProfileComplete: true
+      });
+
+      return response;
+    } catch (error: any) {
+      logError(error.message || "Failed to complete profile", {
+        context: 'Completing user profile',
+        status: error.status,
+        errorDetails: error
+      });
+      return {
+        success: false,
+        message: error.message || "Failed to complete profile"
+      };
+    }
+  },
 };

@@ -7,6 +7,7 @@ import Providers from "./providers"
 import { Toaster } from "@/components/ui/toaster"
 import Script from "next/script"
 import { Analytics } from "@/components/analytics"
+import { GoogleAuthProvider } from "@/components/auth/google-provider"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -53,9 +54,11 @@ export default function RootLayout({
       <body className={inter.className}>
         <Analytics />
         <Providers>
-          <ThemeProvider>
-            {children}
-          </ThemeProvider>
+          <GoogleAuthProvider>
+            <ThemeProvider>
+              {children}
+            </ThemeProvider>
+          </GoogleAuthProvider>
         </Providers>
         <Toaster />
       </body>

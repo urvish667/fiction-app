@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Notification, NotificationResponse} from "@/types/notification";
-import { fetchWithCsrf } from "@/lib/client/csrf";
+import { Notification, NotificationResponse } from "@/types/notification";
+import { NotificationService } from "@/lib/api/notification";
 import { getWebSocketClient, WebSocketStatus } from "@/lib/client/websocket-client";
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/lib/auth-context";
 import { logError, logInfo } from "@/lib/error-logger";
 
 interface UseNotificationsProps {
@@ -17,7 +17,7 @@ export function useNotifications({
   useMockData = false,
   useWebSocket = true
 }: UseNotificationsProps = {}) {
-  const { data: session } = useSession();
+  const { user } = useAuth();
   const [wsStatus, setWsStatus] = useState<WebSocketStatus>(WebSocketStatus.DISCONNECTED);
   const wsConnectedRef = useRef(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -31,6 +31,7 @@ export function useNotifications({
     pages: 0,
     hasMore: false,
   });
+
   // Fetch notifications from API
   const fetchNotifications = useCallback(async (reset = true) => {
     try {
@@ -39,31 +40,30 @@ export function useNotifications({
       }
       setError(null);
 
-      // Build query parameters
-      let queryParams = new URLSearchParams();
-      queryParams.append("page", reset ? "1" : (pagination.page + 1).toString());
-      queryParams.append("limit", pagination.limit.toString());
+      // Use the new API service
+      const response = await NotificationService.getNotifications({
+        page: reset ? 1 : pagination.page + 1,
+        limit: pagination.limit,
+      });
 
-      const response = await fetch(`/api/notifications?${queryParams.toString()}`);
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch notifications: ${response.status}`);
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to fetch notifications');
       }
 
-      const data: NotificationResponse = await response.json();
+      const { notifications: newNotifications, pagination: paginationData } = response.data;
 
       if (reset) {
-        setNotifications(data.notifications);
+        setNotifications(newNotifications);
       } else {
-        setNotifications(prev => [...prev, ...data.notifications]);
+        setNotifications(prev => [...prev, ...newNotifications]);
       }
 
       setPagination({
-        page: data.pagination.page,
-        limit: data.pagination.limit,
-        total: data.pagination.total,
-        pages: data.pagination.pages,
-        hasMore: data.pagination.page < data.pagination.pages,
+        page: paginationData.page,
+        limit: paginationData.limit,
+        total: paginationData.total,
+        pages: paginationData.pages,
+        hasMore: paginationData.page < paginationData.pages,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
@@ -84,26 +84,11 @@ export function useNotifications({
     }
 
     try {
-      // First mark as read, then delete
-      const markReadResponse = await fetchWithCsrf("/api/notifications/mark-read", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ ids: [id] }),
-      });
+      // Use the new API service for combined operation
+      const response = await NotificationService.markAsReadAndDelete(id);
 
-      if (!markReadResponse.ok) {
-        throw new Error(`Failed to mark notification as read: ${markReadResponse.status}`);
-      }
-
-      // Then delete the notification
-      const deleteResponse = await fetchWithCsrf(`/api/notifications/${id}`, {
-        method: "DELETE",
-      });
-
-      if (!deleteResponse.ok) {
-        throw new Error(`Failed to delete notification: ${deleteResponse.status}`);
+      if (!response.success) {
+        throw new Error(response.message || 'Failed to mark as read and delete');
       }
 
       // Update local state - remove the notification using functional update
@@ -123,6 +108,37 @@ export function useNotifications({
       }
     } catch (err) {
       logError(err, { context: 'Error marking notification as read and deleting' });
+    }
+  }, [useMockData]);
+
+  // Mark all notifications as read
+  const markAllAsRead = useCallback(async () => {
+    if (useMockData) {
+      // Update mock data - mark all as read
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      return;
+    }
+
+    try {
+      // Use the new API service
+      const response = await NotificationService.markAllAsRead();
+
+      if (!response.success) {
+        throw new Error(response.message || 'Failed to mark all as read');
+      }
+
+      // Update local state - mark all as read
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+
+      // Send WebSocket message if connected
+      const wsClient = getWebSocketClient();
+      if (wsClient && wsClient.getStatus() === WebSocketStatus.CONNECTED) {
+        wsClient.send({
+          type: 'mark_all_read',
+        });
+      }
+    } catch (err) {
+      logError(err, { context: 'Error marking all notifications as read' });
     }
   }, [useMockData]);
 
@@ -247,7 +263,7 @@ export function useNotifications({
   // Initialize WebSocket connection
   useEffect(() => {
     // Skip if using mock data or WebSocket is disabled
-    if (useMockData || !useWebSocket || !session?.user?.id) return;
+    if (useMockData || !useWebSocket || !user?.id) return;
 
     // Get JWT token for WebSocket authentication
     const getToken = async () => {
@@ -302,7 +318,7 @@ export function useNotifications({
         wsConnectedRef.current = false;
       }
     };
-  }, [session, useMockData, useWebSocket, handleWebSocketMessage]);
+  }, [user, useMockData, useWebSocket, handleWebSocketMessage]);
 
   // Fetch notifications on mount
   useEffect(() => {
@@ -396,6 +412,7 @@ export function useNotifications({
     isLoadingMore,
     error,
     markAsReadAndDelete,
+    markAllAsRead,
     loadMoreNotifications,
     hasMore: pagination.hasMore,
     pagination,

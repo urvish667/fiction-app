@@ -6,17 +6,19 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { AlertCircle, Eye, EyeOff } from "lucide-react"
+import { AlertCircle, Eye, EyeOff, Loader2 } from "lucide-react"
 import { format } from "date-fns"
 import { useRouter, useSearchParams } from "next/navigation"
-import { signIn } from "next-auth/react"
 import { debounce } from "lodash"
 import Link from "next/link"
 import { motion } from "framer-motion"
 import "../auth-background.css"
 import AuthLogo from "@/components/auth/logo"
-import { GoogleIcon, XIcon } from "@/components/auth/social-icons"
 import { logError } from "@/lib/error-logger"
+import { useAuth } from "@/lib/auth-context"
+import { UserService } from "@/lib/api/user"
+import { GoogleLoginButton } from "@/components/auth/google-login-button"
+import { DiscordLoginButton } from "@/components/auth/discord-login-button"
 
 // Component that uses searchParams
 function SignupContent() {
@@ -24,6 +26,7 @@ function SignupContent() {
   const searchParams = useSearchParams()
   const callbackUrl = searchParams?.get("callbackUrl") || "/"
   const error = searchParams?.get("error")
+  const { signup } = useAuth()
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -120,22 +123,29 @@ function SignupContent() {
     setUsernameAvailability((prev) => ({ ...prev, isChecking: true }))
 
     try {
-      const response = await fetch(`/api/auth/username-check?username=${encodeURIComponent(username)}`)
-      const data = await response.json()
+      const response = await UserService.checkUsername(username)
 
-      setUsernameAvailability({
-        available: data.available,
-        error: data.error,
-        isChecking: false,
-      })
+      if (response.success && response.data) {
+        setUsernameAvailability({
+          available: response.data.available,
+          error: response.data.available ? null : "Username is already taken",
+          isChecking: false,
+        })
 
-      if (!data.available && data.error) {
-        setErrors((prev) => ({ ...prev, username: data.error }))
+        if (!response.data.available) {
+          setErrors((prev) => ({ ...prev, username: "Username is already taken" }))
+        } else {
+          setErrors((prev) => {
+            const newErrors = { ...prev }
+            delete newErrors.username
+            return newErrors
+          })
+        }
       } else {
-        setErrors((prev) => {
-          const newErrors = { ...prev }
-          delete newErrors.username
-          return newErrors
+        setUsernameAvailability({
+          available: false,
+          error: response.message || "Error checking username availability",
+          isChecking: false,
         })
       }
     } catch (error) {
@@ -201,59 +211,26 @@ function SignupContent() {
       setIsSubmitting(true)
 
       try {
-        // Submit signup data to the API
-        const response = await fetch("/api/auth/signup", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            email: signupForm.email,
-            username: signupForm.username,
-            password: signupForm.password,
-            birthdate: signupForm.birthdate ? signupForm.birthdate.toISOString().split("T")[0] : "",
-            pronoun: signupForm.pronoun,
-            termsAccepted: signupForm.termsAccepted,
-            marketingOptIn: signupForm.marketingOptIn,
-          }),
+        await signup({
+          email: signupForm.email,
+          username: signupForm.username,
+          password: signupForm.password,
+          birthdate: signupForm.birthdate ? signupForm.birthdate.toISOString().split("T")[0] : "",
+          pronoun: signupForm.pronoun,
+          termsAccepted: signupForm.termsAccepted,
+          marketingOptIn: signupForm.marketingOptIn,
         })
 
-        const data = await response.json()
-
-        if (!response.ok) {
-          if (data.error) {
-            setErrors({ form: data.error })
-          } else {
-            setErrors({ form: "An error occurred during signup" })
-          }
-        } else {
-          // Redirect to verification page
-          router.push("/verify-email?email=" + encodeURIComponent(signupForm.email))
-        }
-      } catch (error) {
+        // Redirect to verification page
+        router.push("/verify-email?email=" + encodeURIComponent(signupForm.email))
+      } catch (error: any) {
         logError(error, { context: 'Signup error' })
-        setErrors({ form: "An error occurred during signup" })
+        // Handle specific error messages if available
+        const errorMessage = error.message || "An error occurred during signup"
+        setErrors({ form: errorMessage })
       } finally {
         setIsSubmitting(false)
       }
-    }
-  }
-
-  // Handle OAuth signup with improved error handling
-  const handleOAuthSignup = async (provider: "google" | "twitter") => {
-    setIsSubmitting(true)
-
-    try {
-      // Add state parameter for CSRF protection
-      await signIn(provider, {
-        callbackUrl,
-        redirect: true,
-      })
-      // Note: This will redirect the page, so no need to set isSubmitting to false
-    } catch (error) {
-      logError(error, { context: 'OAuth signup error', provider })
-      setErrors({ form: `Error signing in with ${provider}. Please try again.` })
-      setIsSubmitting(false)
     }
   }
 
@@ -325,26 +302,10 @@ function SignupContent() {
         >
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <Button
-                variant="outline"
-                type="button"
-                onClick={() => handleOAuthSignup("google")}
-                disabled={isSubmitting}
-                className="w-full flex items-center justify-center gap-2"
-              >
-                <GoogleIcon />
-                <span>Google</span>
-              </Button>
-              <Button
-                variant="outline"
-                type="button"
-                onClick={() => handleOAuthSignup("twitter")}
-                disabled={isSubmitting}
-                className="w-full flex items-center justify-center gap-2"
-              >
-                <XIcon className="text-black dark:text-white" />
-                <span>X</span>
-              </Button>
+              {process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && (
+                <GoogleLoginButton className="w-full" />
+              )}
+              <DiscordLoginButton className="w-full" />
             </div>
 
             <div className="relative my-4">
@@ -539,7 +500,14 @@ function SignupContent() {
               )}
 
               <Button className="w-full mt-4" type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Creating Account..." : "Create Account"}
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Creating Account...
+                  </>
+                ) : (
+                  "Create Account"
+                )}
               </Button>
 
               <p className="text-xs text-center text-muted-foreground">

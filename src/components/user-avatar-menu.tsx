@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { signOut } from "next-auth/react"
 import { useTheme } from "next-themes"
+import { useAuth } from "@/lib/auth-context"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -37,24 +37,21 @@ interface UserAvatarMenuProps {
 export default function UserAvatarMenu({ user, onLogout }: UserAvatarMenuProps) {
   const router = useRouter()
   const { theme, setTheme } = useTheme()
+  const { logout } = useAuth()
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [isPulsing, setIsPulsing] = useState(false)
 
   const handleLogout = async () => {
     try {
       setIsLoggingOut(true)
-      // Use callbackUrl to ensure proper redirection after logout
-      await signOut({
-        redirect: true,
-        callbackUrl: "/"
-      })
-      // The following code won't execute due to the redirect: true above
-      // It's kept as a fallback in case the redirect fails
+      await logout()
       onLogout() // Notify parent component
+      router.push("/")
+      router.refresh()
     } catch (error) {
       logError(error, { context: "Logout error" })
       setIsLoggingOut(false)
-      // Fallback manual navigation if signOut fails
+      // Fallback manual navigation if logout fails
       router.push("/")
       router.refresh()
     }

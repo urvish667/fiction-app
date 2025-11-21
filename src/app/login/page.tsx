@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, Suspense } from "react"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -9,12 +8,13 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { AlertCircle, Loader2 } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion } from "framer-motion"
 import "../auth-background.css"
 import AuthLogo from "@/components/auth/logo"
-import { GoogleIcon, XIcon } from "@/components/auth/social-icons"
 import { logError } from "@/lib/error-logger"
 import { useAuth } from "@/lib/auth-context"
+import { GoogleLoginButton } from "@/components/auth/google-login-button"
+import { DiscordLoginButton } from "@/components/auth/discord-login-button"
 
 // Component that uses searchParams
 function LoginContent() {
@@ -22,9 +22,8 @@ function LoginContent() {
   const searchParams = useSearchParams()
   const callbackUrl = searchParams?.get("callbackUrl") || "/"
   const error = searchParams?.get("error")
-  const { login, googleAuth, twitterAuth } = useAuth()
+  const { login } = useAuth()
 
-  const [activeTab, setActiveTab] = useState("login")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -69,23 +68,6 @@ function LoginContent() {
     } catch (error) {
       logError(error, { context: 'Login error' })
       setErrors({ login: "Invalid email or password" })
-      setIsSubmitting(false)
-    }
-  }
-
-  // Handle OAuth login with improved error handling
-  const handleOAuthLogin = async (provider: "google" | "twitter") => {
-    setIsSubmitting(true)
-
-    try {
-      // For OAuth, we need to redirect to the OAuth provider first
-      // This would require implementing OAuth flow on the client side
-      // For now, we'll show an error since OAuth needs to be reimplemented
-      setErrors({ login: `${provider.charAt(0).toUpperCase() + provider.slice(1)} OAuth temporarily unavailable. Use email/password login instead.` })
-      setIsSubmitting(false)
-    } catch (error) {
-      logError(error, { context: 'OAuth login error', provider })
-      setErrors({ login: `Error signing in with ${provider}. Please try again.` })
       setIsSubmitting(false)
     }
   }
@@ -147,169 +129,103 @@ function LoginContent() {
           <p className="text-muted-foreground">Sign in to continue your journey</p>
         </div>
 
-        <Tabs defaultValue="login" value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-6">
-            <TabsTrigger value="login">Login</TabsTrigger>
-            <TabsTrigger value="signup">Sign Up</TabsTrigger>
-          </TabsList>
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              {process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && (
+                <GoogleLoginButton className="w-full" />
+              )}
+              <DiscordLoginButton className="w-full" />
+            </div>
 
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
-            >
-              {/* Login Tab */}
-              {activeTab === "login" && (
-                <TabsContent value="login" className="space-y-4">
-                  <form onSubmit={handleLogin}>
-                    <div className="space-y-2">
-                      <Label htmlFor="login-email">Email or Username</Label>
-                      <Input
-                        id="login-email"
-                        name="email"
-                        type="text"
-                        placeholder="your@email.com"
-                        value={loginForm.email}
-                        onChange={handleLoginChange}
-                        disabled={isSubmitting}
-                      />
-                    </div>
-                    <div className="space-y-2 mt-4">
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="login-password">Password</Label>
-                        <Link
-                          href="/reset-password/request"
-                          className="text-xs text-muted-foreground hover:text-primary"
-                        >
-                          Forgot password?
-                        </Link>
-                      </div>
-                      <Input
-                        id="login-password"
-                        name="password"
-                        type="password"
-                        placeholder="••••••••"
-                        value={loginForm.password}
-                        onChange={handleLoginChange}
-                        disabled={isSubmitting}
-                      />
-                    </div>
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">Or continue with email</span>
+              </div>
+            </div>
 
-                    {errors.login && (
-                      <p className="text-xs text-destructive flex items-center gap-1 mt-2">
-                        <AlertCircle className="h-3 w-3" />
-                        {errors.login}
-                      </p>
-                    )}
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="login-email">Email or Username</Label>
+                <Input
+                  id="login-email"
+                  name="email"
+                  type="text"
+                  placeholder="your@email.com"
+                  value={loginForm.email}
+                  onChange={handleLoginChange}
+                  disabled={isSubmitting}
+                />
+              </div>
 
-                    <div className="flex items-center space-x-2 mt-4">
-                      <Checkbox
-                        id="remember"
-                        name="remember"
-                        checked={loginForm.remember}
-                        onCheckedChange={(checked) => setLoginForm((prev) => ({ ...prev, remember: checked === true }))}
-                        disabled={isSubmitting}
-                      />
-                      <Label htmlFor="remember" className="text-sm">
-                        Remember me
-                      </Label>
-                    </div>
-                    <Button className="w-full mt-4" type="submit" disabled={isSubmitting}>
-                      {isSubmitting ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Logging in...
-                        </>
-                      ) : (
-                        "Login"
-                      )}
-                    </Button>
-                    <div className="relative my-4">
-                      <div className="absolute inset-0 flex items-center">
-                        <span className="w-full border-t" />
-                      </div>
-                      <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <Button
-                        variant="outline"
-                        type="button"
-                        onClick={() => handleOAuthLogin("google")}
-                        disabled={isSubmitting}
-                        className="flex items-center justify-center gap-2"
-                      >
-                        <GoogleIcon />
-                        <span>Google</span>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        type="button"
-                        onClick={() => handleOAuthLogin("twitter")}
-                        disabled={isSubmitting}
-                        className="flex items-center justify-center gap-2"
-                      >
-                        <XIcon className="text-black dark:text-white" />
-                        <span>X</span>
-                      </Button>
-                    </div>
-                  </form>
-                </TabsContent>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="login-password">Password</Label>
+                  <Link
+                    href="/reset-password/request"
+                    className="text-xs text-muted-foreground hover:text-primary"
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
+                <Input
+                  id="login-password"
+                  name="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={loginForm.password}
+                  onChange={handleLoginChange}
+                  disabled={isSubmitting}
+                />
+              </div>
+
+              {errors.login && (
+                <p className="text-xs text-destructive flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {errors.login}
+                </p>
               )}
 
-              {/* Signup Tab */}
-              {activeTab === "signup" && (
-                <TabsContent value="signup" className="space-y-4">
-                  <div className="space-y-4">
-                    <p className="text-sm text-center">
-                      Create a new account to start sharing your stories
-                    </p>
-                    <Button
-                      className="w-full"
-                      onClick={() => router.push("/signup")}
-                    >
-                      Create Account
-                    </Button>
-                    <div className="relative my-4">
-                      <div className="absolute inset-0 flex items-center">
-                        <span className="w-full border-t" />
-                      </div>
-                      <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-background px-2 text-muted-foreground">Or sign up with</span>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <Button
-                        variant="outline"
-                        type="button"
-                        onClick={() => handleOAuthLogin("google")}
-                        disabled={isSubmitting}
-                        className="flex items-center justify-center gap-2"
-                      >
-                        <GoogleIcon />
-                        <span>Google</span>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        type="button"
-                        onClick={() => handleOAuthLogin("twitter")}
-                        disabled={isSubmitting}
-                        className="flex items-center justify-center gap-2"
-                      >
-                        <XIcon className="text-black dark:text-white" />
-                        <span>X</span>
-                      </Button>
-                    </div>
-                  </div>
-                </TabsContent>
-              )}
-            </motion.div>
-          </AnimatePresence>
-        </Tabs>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="remember"
+                  name="remember"
+                  checked={loginForm.remember}
+                  onCheckedChange={(checked) => setLoginForm((prev) => ({ ...prev, remember: checked === true }))}
+                  disabled={isSubmitting}
+                />
+                <Label htmlFor="remember" className="text-sm">
+                  Remember me
+                </Label>
+              </div>
+
+              <Button className="w-full" type="submit" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Logging in...
+                  </>
+                ) : (
+                  "Login"
+                )}
+              </Button>
+
+              <p className="text-xs text-center text-muted-foreground">
+                Don't have an account?{" "}
+                <Link href="/signup" className="text-primary hover:underline">
+                  Sign up
+                </Link>
+              </p>
+            </form>
+          </div>
+        </motion.div>
       </motion.div>
     </div>
   )

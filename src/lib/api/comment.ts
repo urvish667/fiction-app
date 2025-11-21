@@ -187,11 +187,12 @@ export const CommentService = {
   /**
    * Create a new chapter comment
    */
-  async createChapterComment(chapterId: string, data: { content: string; parentId?: string }): Promise<ApiResponse<Comment>> {
+  async createChapterComment(chapterId: string, storyId: string, data: { content: string; parentId?: string }): Promise<ApiResponse<Comment>> {
     try {
       const requestBody = {
         ...data,
-        chapterId
+        chapterId,
+        storyId
       };
 
       const response = await apiClient.post<{
@@ -207,6 +208,7 @@ export const CommentService = {
       logError(error.message || "Failed to create chapter comment", {
         context: 'Creating chapter comment',
         chapterId,
+        storyId,
         status: error.status,
         errorDetails: error
       });

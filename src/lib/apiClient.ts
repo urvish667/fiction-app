@@ -30,7 +30,7 @@ class ApiClient {
           console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`, config);
         }
         return config;
-      },  
+      },
       (error) => {
         if (process.env.NODE_ENV !== 'production') {
           console.error('API Request Error:', error);

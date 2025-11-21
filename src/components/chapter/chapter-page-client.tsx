@@ -134,7 +134,32 @@ export default function ChapterPageClient({
     }
   }, [story, isAuthenticated, authLoading, user, slug])
 
+  // Fetch chapter like status and follow status
+  useEffect(() => {
+    const fetchInitialStates = async () => {
+      if (!user || !chapter || !story) return;
 
+      try {
+        // Fetch chapter like status
+        const likeResponse = await ChapterService.checkChapterLike(chapter.id);
+        if (likeResponse.success && likeResponse.data !== undefined) {
+          setState(prev => ({ ...prev, isChapterLiked: likeResponse.data || false }));
+        }
+
+        // Fetch follow status if author exists and is not the current user
+        if (story.author && typeof story.author === 'object' && story.author.id !== user.id && story.author.username) {
+          const followResponse = await StoryService.isFollowingUser(story.author.username);
+          if (followResponse.success && followResponse.data !== undefined) {
+            setState(prev => ({ ...prev, isFollowing: followResponse.data === true }));
+          }
+        }
+      } catch (err) {
+        logError(err, { context: "Error fetching initial states", chapterId: chapter?.id, userId: user?.id });
+      }
+    };
+
+    fetchInitialStates();
+  }, [user, chapter, story]);
 
 
 

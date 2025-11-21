@@ -68,29 +68,21 @@ export function EngagementSection({
       setChapterLikeLoading(true)
 
       // Try to toggle the like status based on current state
-      try {
-        if (isChapterLiked) {
-          await ChapterService.unlikeChapter(chapter.id)
-        } else {
-          await ChapterService.likeChapter(chapter.id)
-        }
-      } catch (apiError: any) {
-        // Handle specific API errors gracefully
-        if (apiError.message?.includes("Chapter already liked")) {
-          // Chapter is already liked, try to unlike it instead
-          await ChapterService.unlikeChapter(chapter.id)
-        } else if (apiError.message?.includes("Like not found")) {
-          // Chapter is not liked, try to like it instead
-          await ChapterService.likeChapter(chapter.id)
-        } else {
-          // Re-throw other errors
-          throw apiError
-        }
+      let response;
+      if (isChapterLiked) {
+        response = await ChapterService.unlikeChapter(chapter.id)
+      } else {
+        response = await ChapterService.likeChapter(chapter.id)
       }
 
-      // Toggle like status locally
-      if (setIsChapterLiked) {
-        setIsChapterLiked(!isChapterLiked)
+      // Check if the API call was successful
+      if (response.success) {
+        // Toggle like status locally
+        if (setIsChapterLiked) {
+          setIsChapterLiked(!isChapterLiked)
+        }
+      } else {
+        throw new Error(response.message || "Failed to update chapter like status")
       }
     } catch (err) {
       logError(err, { context: "Error updating chapter like status", chapterId: chapter?.id, userId: user?.id })
@@ -229,9 +221,9 @@ export function EngagementSection({
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button 
-                variant="outline" 
-                size="icon" 
+              <Button
+                variant="outline"
+                size="icon"
                 className="rounded-full h-9 w-9"
                 title="Share"
               >
@@ -264,7 +256,7 @@ export function EngagementSection({
 
         {/* Only show follow button if user is not the author */}
         {isAuthenticated && user && story?.author && typeof story.author === 'object' &&
-         user.id !== story.author.id ? (
+          user.id !== story.author.id ? (
           <Button
             variant={isFollowing ? "default" : "outline"}
             size="icon"
@@ -311,21 +303,21 @@ export function EngagementSection({
 
       {/* Support the Author Section - Only shown when monetization is enabled and user is not the author */}
       {story.author && typeof story.author === 'object' && story.author.donationsEnabled &&
-       isAuthenticated && user && user.id !== story.author.id && (
-        <div className="bg-muted/30 rounded-lg p-4 sm:p-6 text-center mb-8 sm:mb-12">
-          <h2 className="text-lg sm:text-xl font-bold mb-2">Support the Author</h2>
-          <p className="text-sm sm:text-base text-muted-foreground mb-4">
-            If you enjoyed this chapter, consider supporting the author to help them create more amazing content.
-          </p>
-          <SupportButton
-            authorId={story.author.id}
-            donationMethod={story.author.donationMethod ?? null}
-            donationLink={story.author.donationLink ?? null}
-            authorName={story.author.name || story.author.username || 'Author'}
-            authorUsername={story.author.username || undefined}
-          />
-        </div>
-      )}
+        isAuthenticated && user && user.id !== story.author.id && (
+          <div className="bg-muted/30 rounded-lg p-4 sm:p-6 text-center mb-8 sm:mb-12">
+            <h2 className="text-lg sm:text-xl font-bold mb-2">Support the Author</h2>
+            <p className="text-sm sm:text-base text-muted-foreground mb-4">
+              If you enjoyed this chapter, consider supporting the author to help them create more amazing content.
+            </p>
+            <SupportButton
+              authorId={story.author.id}
+              donationMethod={story.author.donationMethod ?? null}
+              donationLink={story.author.donationLink ?? null}
+              authorName={story.author.name || story.author.username || 'Author'}
+              authorUsername={story.author.username || undefined}
+            />
+          </div>
+        )}
 
       {/* Story Recommendations - You Might Also Like */}
       <div className="mt-6 sm:mt-8">

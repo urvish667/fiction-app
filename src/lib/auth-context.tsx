@@ -1,6 +1,6 @@
 'use client';
 
-import { AuthUser, getCurrentUser, login, logout, signup, googleOAuth, twitterOAuth, LoginData, SignupData } from './auth';
+import { AuthService, AuthUser, LoginData, SignupData } from '@/lib/api/auth';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
 // Auth Context and Hook
@@ -12,8 +12,8 @@ interface AuthContextType {
   logout: () => Promise<void>;
   signup: (data: SignupData) => Promise<AuthUser>;
   refreshUser: () => Promise<void>;
-  googleAuth: (idToken: string) => Promise<AuthUser>;
-  twitterAuth: (accessToken: string) => Promise<AuthUser>;
+  googleAuth: (idToken?: string, accessToken?: string) => Promise<AuthUser>;
+  discordAuth: (accessToken: string) => Promise<AuthUser>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -33,48 +33,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Check for existing session on mount
   useEffect(() => {
     const checkAuth = async () => {
-  try {
-    const response = await getCurrentUser();
-    if (response.success) {
-      setUser(response.data.user);
-    }
-  } catch (error) {
-    // User is not authenticated, that's expected for public pages
-    setUser(null);
-  } finally {
-    setIsLoading(false);
-  }
+      try {
+        const response = await AuthService.getCurrentUser();
+        if (response.success && response.data) {
+          setUser(response.data.user);
+        }
+      } catch (error) {
+        // User is not authenticated, that's expected for public pages
+        setUser(null);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     checkAuth();
   }, []);
 
   const loginHandler = async (data: LoginData): Promise<AuthUser> => {
-    const response = await login(data);
-    if (response.success) {
+    const response = await AuthService.login(data);
+    if (response.success && response.data) {
       setUser(response.data.user);
       return response.data.user;
     }
-    throw new Error(response.message);
+    throw new Error(response.message || 'Login failed');
   };
 
   const logoutHandler = async (): Promise<void> => {
-    await logout();
+    await AuthService.logout();
     setUser(null);
   };
 
   const signupHandler = async (data: SignupData): Promise<AuthUser> => {
-    const response = await signup(data);
-    if (response.success) {
+    const response = await AuthService.signup(data);
+    if (response.success && response.data) {
       return response.data.user;
     }
-    throw new Error(response.message);
+    throw new Error(response.message || 'Signup failed');
   };
 
   const refreshUserHandler = async (): Promise<void> => {
     try {
-      const response = await getCurrentUser();
-      if (response.success) {
+      const response = await AuthService.getCurrentUser();
+      if (response.success && response.data) {
         setUser(response.data.user);
       } else {
         setUser(null);
@@ -84,22 +84,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const googleAuthHandler = async (idToken: string): Promise<AuthUser> => {
-    const response = await googleOAuth(idToken);
-    if (response.success) {
+  const googleAuthHandler = async (idToken?: string, accessToken?: string): Promise<AuthUser> => {
+    const response = await AuthService.googleAuth(idToken, accessToken);
+    if (response.success && response.data) {
       setUser(response.data.user);
       return response.data.user;
     }
-    throw new Error(response.message);
+    throw new Error(response.message || 'Google authentication failed');
   };
 
-  const twitterAuthHandler = async (accessToken: string): Promise<AuthUser> => {
-    const response = await twitterOAuth(accessToken);
-    if (response.success) {
+  const discordAuthHandler = async (accessToken: string): Promise<AuthUser> => {
+    const response = await AuthService.discordAuth(accessToken);
+    if (response.success && response.data) {
       setUser(response.data.user);
       return response.data.user;
     }
-    throw new Error(response.message);
+    throw new Error(response.message || 'Discord authentication failed');
   };
 
   const value: AuthContextType = {
@@ -111,7 +111,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signup: signupHandler,
     refreshUser: refreshUserHandler,
     googleAuth: googleAuthHandler,
-    twitterAuth: twitterAuthHandler,
+    discordAuth: discordAuthHandler,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

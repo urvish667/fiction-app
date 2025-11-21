@@ -2,7 +2,6 @@ import { apiClient } from "@/lib/apiClient";
 import { logError } from "@/lib/error-logger";
 import type {
   Story,
-  Story,
   CreateStoryRequest,
   UpdateStoryRequest,
   StoryResponse,

@@ -91,8 +91,8 @@ export const refreshToken = async (): Promise<{ success: boolean; message: strin
   return apiClient.post<{ success: boolean; message: string }>('/auth/refresh');
 };
 
-export const googleOAuth = async (idToken: string): Promise<OAuthResponse> => {
-  return apiClient.post<OAuthResponse>('/auth/oauth/google', { idToken });
+export const googleOAuth = async (idToken?: string, accessToken?: string): Promise<OAuthResponse> => {
+  return apiClient.post<OAuthResponse>('/auth/oauth/google', { idToken, accessToken });
 };
 
 export const twitterOAuth = async (accessToken: string): Promise<OAuthResponse> => {

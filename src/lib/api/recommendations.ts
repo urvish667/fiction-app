@@ -56,6 +56,20 @@ export const RecommendationService = {
         data: response
       };
     } catch (error: any) {
+      // Handle 401 Unauthorized errors gracefully (user not logged in)
+      if (error.status === 401) {
+        logError("Recommendations require authentication", {
+          context: 'Fetching recommendations',
+          storyId,
+          options,
+          status: error.status
+        });
+        return {
+          success: true,
+          data: [] // Return empty array for unauthenticated users
+        };
+      }
+
       logError(error.message || "Failed to fetch recommendations", {
         context: 'Fetching recommendations',
         storyId,

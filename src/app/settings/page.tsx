@@ -5,7 +5,6 @@ import { useState, useEffect, Suspense } from "react"
 import { motion } from "framer-motion"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
-import { signOut } from "next-auth/react"
 import { useAuth } from "@/lib/auth-context"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -112,7 +111,7 @@ function TabParamsHandler({
 
 export default function SettingsPage() {
   const { toast } = useToast()
-  const { user, isLoading, isAuthenticated, refreshUser } = useAuth()
+  const { user, isLoading, isAuthenticated, refreshUser, logout } = useAuth()
   const router = useRouter();
 
   // Create session object compatible with existing code
@@ -283,8 +282,8 @@ export default function SettingsPage() {
       if (data.website !== undefined) profileData.website = data.website
 
       if (Object.keys(profileData).length === 0 || (Object.keys(profileData).length === 1 && profileData.username === session?.user?.username)) {
-         setIsUpdating(false);
-         return;
+        setIsUpdating(false);
+        return;
       }
 
       const response = await UserService.updateCurrentUserProfile(profileData as ProfileUpdateData);
@@ -421,8 +420,8 @@ export default function SettingsPage() {
       return
     }
     if (passwordForm.newPassword === passwordForm.currentPassword) {
-        toast({ title: "Same password", description: "New password must be different from your current password.", variant: "destructive" })
-        return
+      toast({ title: "Same password", description: "New password must be different from your current password.", variant: "destructive" })
+      return
     }
 
     setIsChangingPassword(true)
@@ -467,7 +466,8 @@ export default function SettingsPage() {
         description: "Your account has been successfully deleted.",
         variant: "default",
       })
-      await signOut({ callbackUrl: "/" })
+      await logout()
+      router.push("/")
 
     } catch (error) {
       logError(error, { context: "Error deleting account" })
@@ -511,7 +511,7 @@ export default function SettingsPage() {
 
     // Initialize preferences if they don't exist
     const userWithPrefs = session.user as ExtendedUser;
-    const currentPrefs: UserPreferences = userWithPrefs.preferences || {...defaultPreferences};
+    const currentPrefs: UserPreferences = userWithPrefs.preferences || { ...defaultPreferences };
 
     setSavingPreferences(`notification-${key}`);
     try {
@@ -526,7 +526,7 @@ export default function SettingsPage() {
       await savePreferences(newPreferences);
       toast({ title: "Preference Updated", description: `Email notification for ${key} updated.` });
     } catch (error) {
-       logError(error, { context: `Error updating notification preference ${key}` });
+      logError(error, { context: `Error updating notification preference ${key}` });
     } finally {
       setSavingPreferences(null);
     }
@@ -537,7 +537,7 @@ export default function SettingsPage() {
 
     // Initialize preferences if they don't exist
     const userWithPrefs = session.user as ExtendedUser;
-    const currentPrefs: UserPreferences = userWithPrefs.preferences || {...defaultPreferences};
+    const currentPrefs: UserPreferences = userWithPrefs.preferences || { ...defaultPreferences };
 
     setSavingPreferences(`privacy-${key}`);
     try {
@@ -552,7 +552,7 @@ export default function SettingsPage() {
       await savePreferences(newPreferences);
       toast({ title: "Preference Updated", description: `Privacy setting for ${key} updated.` });
     } catch (error) {
-       logError(error, { context: `Error updating privacy preference ${key}` });
+      logError(error, { context: `Error updating privacy preference ${key}` });
     } finally {
       setSavingPreferences(null);
     }
@@ -581,10 +581,10 @@ export default function SettingsPage() {
     const redirectUri = `${window.location.origin}/api/stripe/oauth/callback`;
 
     if (!clientId) {
-        setDonationError('Stripe Client ID is not configured.');
-        toast({ title: 'Configuration Error', description: 'Stripe is not configured.', variant: 'destructive' });
-        setIsSavingDonations(false);
-        return;
+      setDonationError('Stripe Client ID is not configured.');
+      toast({ title: 'Configuration Error', description: 'Stripe is not configured.', variant: 'destructive' });
+      setIsSavingDonations(false);
+      return;
     }
 
     try {
@@ -659,98 +659,98 @@ export default function SettingsPage() {
         <div className="max-w-7xl mx-auto">
           <h1 className="text-3xl font-semibold mb-8">Settings</h1>
 
-        {/* Wrap the TabParamsHandler in a Suspense boundary */}
-        <Suspense fallback={null}>
-          <TabParamsHandler
-            toast={toast}
-            router={router}
-            setActiveTab={setActiveTab}
-            setEnableDonations={setEnableDonations}
-            setDonationMethod={setDonationMethod}
-            donationSettings={donationSettings}
-          />
-        </Suspense>
+          {/* Wrap the TabParamsHandler in a Suspense boundary */}
+          <Suspense fallback={null}>
+            <TabParamsHandler
+              toast={toast}
+              router={router}
+              setActiveTab={setActiveTab}
+              setEnableDonations={setEnableDonations}
+              setDonationMethod={setDonationMethod}
+              donationSettings={donationSettings}
+            />
+          </Suspense>
 
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="mt-6">
-          <div className="overflow-x-auto sm:overflow-x-visible">
-            <TabsList className="mb-8 w-max sm:w-auto">
-              <TabsTrigger value="profile" className="text-xs sm:text-sm">Profile</TabsTrigger>
-              <TabsTrigger value="account" className="text-xs sm:text-sm">Account</TabsTrigger>
-              <TabsTrigger value="notifications" className="text-xs sm:text-sm">Notifications</TabsTrigger>
-              <TabsTrigger value="privacy" className="text-xs sm:text-sm">Privacy</TabsTrigger>
-              <TabsTrigger value="monetization" className="text-xs sm:text-sm">Monetization</TabsTrigger>
-            </TabsList>
-          </div>
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="mt-6">
+            <div className="overflow-x-auto sm:overflow-x-visible">
+              <TabsList className="mb-8 w-max sm:w-auto">
+                <TabsTrigger value="profile" className="text-xs sm:text-sm">Profile</TabsTrigger>
+                <TabsTrigger value="account" className="text-xs sm:text-sm">Account</TabsTrigger>
+                <TabsTrigger value="notifications" className="text-xs sm:text-sm">Notifications</TabsTrigger>
+                <TabsTrigger value="privacy" className="text-xs sm:text-sm">Privacy</TabsTrigger>
+                <TabsTrigger value="monetization" className="text-xs sm:text-sm">Monetization</TabsTrigger>
+              </TabsList>
+            </div>
 
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            <TabsContent value="profile">
-              <ProfileSettings
-                session={session as ExtendedSession}
-                form={form as any}
-                isUpdating={isUpdating}
-                saveProfileInfo={saveProfileInfo}
-                saveSocialLinks={saveSocialLinks}
-                updateProfileImage={updateProfileImage}
-                updateBannerImage={updateBannerImage}
-              />
-            </TabsContent>
-            <TabsContent value="account">
-              <AccountSettings
-                session={session as any}
-                passwordForm={passwordForm}
-                handlePasswordChange={handlePasswordChange}
-                changePassword={changePassword}
-                isChangingPassword={isChangingPassword}
-                isDeleteDialogOpen={isDeleteDialogOpen}
-                setIsDeleteDialogOpen={setIsDeleteDialogOpen}
-                deletePassword={deletePassword}
-                setDeletePassword={setDeletePassword}
-                deleteAccount={deleteAccount}
-                isDeletingAccount={isDeletingAccount}
-              />
-            </TabsContent>
-            <TabsContent value="notifications">
-              <NotificationSettings
-                session={session}
-                handleNotificationToggle={handleNotificationToggle}
-                savingPreferences={savingPreferences}
-                update={update}
-                toast={toast}
-              />
-            </TabsContent>
-            <TabsContent value="privacy">
-              <PrivacySettings
-                session={session}
-                handlePrivacyToggle={handlePrivacyToggle}
-                savingPreferences={savingPreferences}
-              />
-            </TabsContent>
-            <TabsContent value="monetization">
-              <MonetizationSettings
-                session={session}
-                donationSettings={donationSettings}
-                isLoadingDonations={isLoadingDonations}
-                isSavingDonations={isSavingDonations}
-                donationError={donationError}
-                enableDonations={enableDonations}
-                donationMethod={donationMethod}
-                donationLink={donationLink}
-                setDonationLink={setDonationLink}
-                handleEnableDonationToggle={handleEnableDonationToggle}
-                handleDonationMethodChange={handleDonationMethodChange}
-                handleConnectStripe={handleConnectStripe}
-                handleSaveDonationChanges={handleSaveDonationChanges}
-                setIsSavingDonations={setIsSavingDonations}
-                setDonationError={setDonationError}
-              />
-            </TabsContent>
-          </motion.div>
-        </Tabs>
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <TabsContent value="profile">
+                <ProfileSettings
+                  session={session as ExtendedSession}
+                  form={form as any}
+                  isUpdating={isUpdating}
+                  saveProfileInfo={saveProfileInfo}
+                  saveSocialLinks={saveSocialLinks}
+                  updateProfileImage={updateProfileImage}
+                  updateBannerImage={updateBannerImage}
+                />
+              </TabsContent>
+              <TabsContent value="account">
+                <AccountSettings
+                  session={session as any}
+                  passwordForm={passwordForm}
+                  handlePasswordChange={handlePasswordChange}
+                  changePassword={changePassword}
+                  isChangingPassword={isChangingPassword}
+                  isDeleteDialogOpen={isDeleteDialogOpen}
+                  setIsDeleteDialogOpen={setIsDeleteDialogOpen}
+                  deletePassword={deletePassword}
+                  setDeletePassword={setDeletePassword}
+                  deleteAccount={deleteAccount}
+                  isDeletingAccount={isDeletingAccount}
+                />
+              </TabsContent>
+              <TabsContent value="notifications">
+                <NotificationSettings
+                  session={session}
+                  handleNotificationToggle={handleNotificationToggle}
+                  savingPreferences={savingPreferences}
+                  update={update}
+                  toast={toast}
+                />
+              </TabsContent>
+              <TabsContent value="privacy">
+                <PrivacySettings
+                  session={session}
+                  handlePrivacyToggle={handlePrivacyToggle}
+                  savingPreferences={savingPreferences}
+                />
+              </TabsContent>
+              <TabsContent value="monetization">
+                <MonetizationSettings
+                  session={session}
+                  donationSettings={donationSettings}
+                  isLoadingDonations={isLoadingDonations}
+                  isSavingDonations={isSavingDonations}
+                  donationError={donationError}
+                  enableDonations={enableDonations}
+                  donationMethod={donationMethod}
+                  donationLink={donationLink}
+                  setDonationLink={setDonationLink}
+                  handleEnableDonationToggle={handleEnableDonationToggle}
+                  handleDonationMethodChange={handleDonationMethodChange}
+                  handleConnectStripe={handleConnectStripe}
+                  handleSaveDonationChanges={handleSaveDonationChanges}
+                  setIsSavingDonations={setIsSavingDonations}
+                  setDonationError={setDonationError}
+                />
+              </TabsContent>
+            </motion.div>
+          </Tabs>
         </div>
       </main>
     </div>

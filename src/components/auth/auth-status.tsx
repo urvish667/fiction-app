@@ -1,6 +1,6 @@
 'use client'
 
-import { useSession, signOut } from 'next-auth/react'
+import { useAuth } from '@/lib/auth-context'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -16,7 +16,7 @@ import { useRouter } from 'next/navigation'
 import { clientLogger } from '@/lib/logger/client-logger'
 
 export default function AuthStatus() {
-  const { data: session, status } = useSession()
+  const { user, isLoading, logout } = useAuth()
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
 
@@ -66,7 +66,7 @@ export default function AuthStatus() {
   }
 
   // Show loading state
-  if (status === "loading") {
+  if (isLoading) {
     return (
       <Button variant="ghost" className="relative w-8 h-8 rounded-full" disabled>
         <Avatar>
@@ -79,12 +79,12 @@ export default function AuthStatus() {
   // Create a component logger
   const authLogger = clientLogger.child('auth-status');
 
-  if (session?.user) {
-    const initials = getInitials(session.user)
+  if (user) {
+    const initials = getInitials(user)
     authLogger.debug('User session loaded', {
-      hasName: !!session.user.name,
-      hasUsername: !!session.user.username,
-      hasImage: !!session.user.image,
+      hasName: !!user.name,
+      hasUsername: !!user.username,
+      hasImage: !!user.image,
       initials
     })
 
@@ -93,10 +93,10 @@ export default function AuthStatus() {
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="relative w-8 h-8 rounded-full">
             <Avatar>
-              {session.user.image ? (
+              {user.image ? (
                 <AvatarImage
-                  src={session.user.image}
-                  alt={session.user.name || session.user.username || 'User avatar'}
+                  src={user.image}
+                  alt={user.name || user.username || 'User avatar'}
                 />
               ) : null}
               <AvatarFallback className="bg-primary text-primary-foreground">
@@ -108,10 +108,10 @@ export default function AuthStatus() {
         <DropdownMenuContent align="end" className="w-56">
           <div className="flex items-center justify-start gap-2 p-2">
             <Avatar className="h-8 w-8">
-              {session.user.image ? (
+              {user.image ? (
                 <AvatarImage
-                  src={session.user.image}
-                  alt={session.user.name || session.user.username || 'User avatar'}
+                  src={user.image}
+                  alt={user.name || user.username || 'User avatar'}
                 />
               ) : null}
               <AvatarFallback className="bg-primary text-primary-foreground">
@@ -119,15 +119,15 @@ export default function AuthStatus() {
               </AvatarFallback>
             </Avatar>
             <div className="flex flex-col space-y-1 leading-none">
-              {session.user.name && <p className="font-medium">{session.user.name}</p>}
-              {session.user.username && (
+              {user.name && <p className="font-medium">{user.name}</p>}
+              {user.username && (
                 <p className="text-sm text-muted-foreground">
-                  @{session.user.username}
+                  @{user.username}
                 </p>
               )}
-              {session.user.email && (
+              {user.email && (
                 <p className="w-[200px] truncate text-xs text-muted-foreground">
-                  {session.user.email}
+                  {user.email}
                 </p>
               )}
             </div>
@@ -147,12 +147,10 @@ export default function AuthStatus() {
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
-            onClick={() => {
-              // Use direct redirect to avoid callback issues
-              signOut({
-                redirect: true,
-                callbackUrl: window.location.origin
-              })
+            onClick={async () => {
+              await logout()
+              router.push('/')
+              router.refresh()
             }}
             className="text-destructive cursor-pointer focus:text-destructive"
           >

@@ -38,11 +38,11 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
   const [editContent, setEditContent] = useState("")
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
   const [replyContent, setReplyContent] = useState("")
-  const [expandedReplies, setExpandedReplies] = useState<{[key: string]: Comment[]}>({})
-  const [loadingReplies, setLoadingReplies] = useState<{[key: string]: boolean}>({})
+  const [expandedReplies, setExpandedReplies] = useState<{ [key: string]: Comment[] }>({})
+  const [loadingReplies, setLoadingReplies] = useState<{ [key: string]: boolean }>({})
   const [editingReply, setEditingReply] = useState<string | null>(null)
   const [editReplyContent, setEditReplyContent] = useState("")
-  const [likingComment, setLikingComment] = useState<{[key: string]: boolean}>({})
+  const [likingComment, setLikingComment] = useState<{ [key: string]: boolean }>({})
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false)
   const [reportingCommentId, setReportingCommentId] = useState<string | null>(null)
 
@@ -70,12 +70,12 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
           });
         }
 
-      if (response.success && response.data) {
-        setComments(response.data!.comments)
-        setHasMore(response.data!.pagination.hasMore)
-      } else {
-        throw new Error(response.message || "Failed to fetch comments")
-      }
+        if (response.success && response.data) {
+          setComments(response.data!.comments)
+          setHasMore(response.data!.pagination.hasMore)
+        } else {
+          throw new Error(response.message || "Failed to fetch comments")
+        }
       } catch (err) {
         logError(err, { context: 'Fetching initial comments', storyId, chapterId })
         setError(`Failed to load ${isChapter ? 'chapter' : 'story'} comments`)
@@ -147,7 +147,7 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
 
       if (isChapter && chapterId) {
         // Create chapter comment
-        response = await CommentService.createChapterComment(chapterId, {
+        response = await CommentService.createChapterComment(chapterId, storyId, {
           content: newComment
         });
       } else {
@@ -256,7 +256,7 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
 
       if (isChapter && chapterId) {
         // Create chapter comment reply
-        response = await CommentService.createChapterComment(chapterId, {
+        response = await CommentService.createChapterComment(chapterId, storyId, {
           content: replyContent,
           parentId
         });
@@ -493,7 +493,7 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
     // If replies are already loaded, toggle visibility instead
     if (expandedReplies[commentId]) {
       setExpandedReplies(prev => {
-        const newState = {...prev}
+        const newState = { ...prev }
         delete newState[commentId]
         return newState
       })
@@ -630,341 +630,341 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
         <>
           {/* Comments list */}
           {comments.length > 0 ? (
-        <div className="space-y-6">
-          {comments.map((comment) => (
-            <div key={comment.id} className="flex gap-4">
-              <Avatar className="h-10 w-10">
-                <AvatarImage src={comment.user?.image || "/placeholder-user.jpg"} alt={comment.user?.name || "User"} />
-                <AvatarFallback>{(comment.user?.name?.[0] || "U").toUpperCase()}</AvatarFallback>
-              </Avatar>
+            <div className="space-y-6">
+              {comments.map((comment) => (
+                <div key={comment.id} className="flex gap-4">
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src={comment.user?.image || "/placeholder-user.jpg"} alt={comment.user?.name || "User"} />
+                    <AvatarFallback>{(comment.user?.name?.[0] || "U").toUpperCase()}</AvatarFallback>
+                  </Avatar>
 
-              <div className="flex-1">
-                <div className="bg-muted/30 rounded-lg p-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <span className="font-medium">{comment.user?.name || comment.user?.username || "Unknown User"}</span>
-                      <span className="text-xs text-muted-foreground ml-2">{formatDate(comment.createdAt)}</span>
+                  <div className="flex-1">
+                    <div className="bg-muted/30 rounded-lg p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <span className="font-medium">{comment.user?.name || comment.user?.username || "Unknown User"}</span>
+                          <span className="text-xs text-muted-foreground ml-2">{formatDate(comment.createdAt)}</span>
+                        </div>
+
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreVertical size={16} />
+                              <span className="sr-only">More</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => {
+                              if (!user) {
+                                router.push(`/login?callbackUrl=/story/${storyId}`);
+                                return;
+                              }
+                              setReplyingTo(comment.id);
+                              setReplyContent("");
+                            }}>
+                              <Reply size={16} className="mr-2" />
+                              Reply
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setReportingCommentId(comment.id)
+                                setIsReportDialogOpen(true)
+                              }}
+                            >
+                              <Flag size={16} className="mr-2" />
+                              Report
+                            </DropdownMenuItem>
+                            {user?.id === comment.userId && (
+                              <>
+                                <DropdownMenuItem onClick={() => {
+                                  setEditingComment(comment.id);
+                                  setEditContent(comment.content);
+                                }}>
+                                  <Edit size={16} className="mr-2" />
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="text-destructive"
+                                  onClick={() => handleDeleteComment(comment.id)}
+                                >
+                                  <Trash size={16} className="mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+
+                      {/* Comment content - show edit form if editing */}
+                      {editingComment === comment.id ? (
+                        <div className="space-y-2">
+                          <Textarea
+                            value={editContent}
+                            onChange={(e) => setEditContent(e.target.value)}
+                            className="resize-none text-sm"
+                            disabled={isSubmitting}
+                          />
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setEditingComment(null);
+                                setEditContent("");
+                              }}
+                              disabled={isSubmitting}
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => handleEditComment(comment.id)}
+                              disabled={!editContent.trim() || isSubmitting}
+                            >
+                              {isSubmitting ? "Saving..." : "Save"}
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-sm">{comment.content}</p>
+                      )}
                     </div>
 
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreVertical size={16} />
-                          <span className="sr-only">More</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => {
+                    <div className="flex items-center gap-2 mt-2 ml-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="rounded-full h-8 w-8"
+                        onClick={() => handleLike(comment.id)}
+                        disabled={likingComment[comment.id]}
+                        title={likingComment[comment.id] ? 'Liking...' : (comment.isLiked ? 'Unlike' : 'Like')}
+                      >
+                        <Heart
+                          size={14}
+                          className={comment.isLiked ? 'fill-current text-red-500' : ''}
+                        />
+                      </Button>
+
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="rounded-full h-8 w-8"
+                        onClick={() => {
                           if (!user) {
                             router.push(`/login?callbackUrl=/story/${storyId}`);
                             return;
                           }
                           setReplyingTo(comment.id);
                           setReplyContent("");
-                        }}>
-                          <Reply size={16} className="mr-2" />
-                          Reply
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setReportingCommentId(comment.id)
-                            setIsReportDialogOpen(true)
-                          }}
-                        >
-                          <Flag size={16} className="mr-2" />
-                          Report
-                        </DropdownMenuItem>
-                        {user?.id === comment.userId && (
-                          <>
-                            <DropdownMenuItem onClick={() => {
-                              setEditingComment(comment.id);
-                              setEditContent(comment.content);
-                            }}>
-                              <Edit size={16} className="mr-2" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onClick={() => handleDeleteComment(comment.id)}
-                            >
-                              <Trash size={16} className="mr-2" />
-                              Delete
-                            </DropdownMenuItem>
-                          </>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-
-                  {/* Comment content - show edit form if editing */}
-                  {editingComment === comment.id ? (
-                    <div className="space-y-2">
-                      <Textarea
-                        value={editContent}
-                        onChange={(e) => setEditContent(e.target.value)}
-                        className="resize-none text-sm"
-                        disabled={isSubmitting}
-                      />
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setEditingComment(null);
-                            setEditContent("");
-                          }}
-                          disabled={isSubmitting}
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={() => handleEditComment(comment.id)}
-                          disabled={!editContent.trim() || isSubmitting}
-                        >
-                          {isSubmitting ? "Saving..." : "Save"}
-                        </Button>
-                      </div>
+                        }}
+                        title="Reply"
+                      >
+                        <Reply size={14} />
+                      </Button>
                     </div>
-                  ) : (
-                    <p className="text-sm">{comment.content}</p>
-                  )}
-                </div>
 
-                <div className="flex items-center gap-2 mt-2 ml-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="rounded-full h-8 w-8"
-                    onClick={() => handleLike(comment.id)}
-                    disabled={likingComment[comment.id]}
-                    title={likingComment[comment.id] ? 'Liking...' : (comment.isLiked ? 'Unlike' : 'Like')}
-                  >
-                    <Heart
-                      size={14}
-                      className={comment.isLiked ? 'fill-current text-red-500' : ''}
-                    />
-                  </Button>
-
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="rounded-full h-8 w-8"
-                    onClick={() => {
-                      if (!user) {
-                        router.push(`/login?callbackUrl=/story/${storyId}`);
-                        return;
-                      }
-                      setReplyingTo(comment.id);
-                      setReplyContent("");
-                    }}
-                    title="Reply"
-                  >
-                    <Reply size={14} />
-                  </Button>
-                </div>
-
-                {/* Reply form */}
-                {replyingTo === comment.id && (
-                  <div className="mt-2 ml-4">
-                    <div className="flex gap-2">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={user?.image || "/placeholder-user.jpg"} alt="Your Avatar" />
-                        <AvatarFallback>{user?.name?.[0] || "U"}</AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 space-y-2">
-                        <Textarea
-                          placeholder="Write a reply..."
-                          value={replyContent}
-                          onChange={(e) => setReplyContent(e.target.value)}
-                          className="resize-none"
-                          disabled={isSubmitting}
-                        />
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setReplyingTo(null)}
-                            disabled={isSubmitting}
-                          >
-                            Cancel
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={() => handleReplyToComment(comment.id)}
-                            disabled={!replyContent.trim() || isSubmitting}
-                          >
-                            {isSubmitting ? "Posting..." : "Reply"}
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Show reply count and toggle button */}
-                {(comment.replyCount ?? 0) > 0 && (
-                  <div className="mt-2 ml-4">
-                    <Button
-                      variant="link"
-                      className="h-auto p-0 text-sm"
-                      onClick={() => loadReplies(comment.id)}
-                      disabled={loadingReplies[comment.id]}
-                    >
-                      {loadingReplies[comment.id] ? (
-                        <>
-                          <div className="animate-spin rounded-full h-3 w-3 border-t-2 border-b-2 border-primary mr-2"></div>
-                          Loading replies...
-                        </>
-                      ) : expandedReplies[comment.id] ? (
-                        `Hide ${comment.replyCount ?? 0} ${(comment.replyCount ?? 0) === 1 ? "reply" : "replies"}`
-                      ) : (
-                        `View ${comment.replyCount ?? 0} ${(comment.replyCount ?? 0) === 1 ? "reply" : "replies"}`
-                      )}
-                    </Button>
-                  </div>
-                )}
-
-                {/* Display replies when expanded */}
-                {expandedReplies[comment.id] && expandedReplies[comment.id].length > 0 && (
-                  <div className="mt-4 ml-8 space-y-4">
-                    {expandedReplies[comment.id].map(reply => (
-                      <div key={reply.id} className="flex gap-3">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={reply.user?.image || "/placeholder-user.jpg"} alt={reply.user?.name || "User"} />
-                          <AvatarFallback>{(reply.user?.name?.[0] || "U").toUpperCase()}</AvatarFallback>
-                        </Avatar>
-
-                        <div className="flex-1">
-                          <div className="bg-muted/30 rounded-lg p-3">
-                            <div className="flex justify-between items-start mb-1">
-                              <div>
-                                <span className="font-medium text-sm">{reply.user?.name || reply.user?.username || "Unknown User"}</span>
-                                <span className="text-xs text-muted-foreground ml-2">{formatDate(reply.createdAt)}</span>
-                              </div>
-
-                              {/* Reply dropdown menu */}
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-6 w-6">
-                                    <MoreVertical size={14} />
-                                    <span className="sr-only">More</span>
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem
-                                    onClick={() => {
-                                      setReportingCommentId(reply.id)
-                                      setIsReportDialogOpen(true)
-                                    }}
-                                  >
-                                    <Flag size={14} className="mr-2" />
-                                    Report
-                                  </DropdownMenuItem>
-                                  {user?.id === reply.userId && (
-                                    <>
-                                      <DropdownMenuItem onClick={() => {
-                                        setEditingReply(reply.id);
-                                        setEditReplyContent(reply.content);
-                                      }}>
-                                        <Edit size={14} className="mr-2" />
-                                        Edit
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem
-                                        className="text-destructive"
-                                        onClick={() => handleDeleteReply(comment.id, reply.id)}
-                                      >
-                                        <Trash size={14} className="mr-2" />
-                                        Delete
-                                      </DropdownMenuItem>
-                                    </>
-                                  )}
-                                </DropdownMenuContent>
-                              </DropdownMenu>
+                    {/* Reply form */}
+                    {replyingTo === comment.id && (
+                      <div className="mt-2 ml-4">
+                        <div className="flex gap-2">
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={user?.image || "/placeholder-user.jpg"} alt="Your Avatar" />
+                            <AvatarFallback>{user?.name?.[0] || "U"}</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 space-y-2">
+                            <Textarea
+                              placeholder="Write a reply..."
+                              value={replyContent}
+                              onChange={(e) => setReplyContent(e.target.value)}
+                              className="resize-none"
+                              disabled={isSubmitting}
+                            />
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setReplyingTo(null)}
+                                disabled={isSubmitting}
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => handleReplyToComment(comment.id)}
+                                disabled={!replyContent.trim() || isSubmitting}
+                              >
+                                {isSubmitting ? "Posting..." : "Reply"}
+                              </Button>
                             </div>
-
-                            {/* Reply content - show edit form if editing */}
-                            {editingReply === reply.id ? (
-                              <div className="space-y-2">
-                                <Textarea
-                                  value={editReplyContent}
-                                  onChange={(e) => setEditReplyContent(e.target.value)}
-                                  className="resize-none text-sm"
-                                  disabled={isSubmitting}
-                                />
-                                <div className="flex justify-end gap-2">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-7 text-xs"
-                                    onClick={() => {
-                                      setEditingReply(null);
-                                      setEditReplyContent("");
-                                    }}
-                                    disabled={isSubmitting}
-                                  >
-                                    Cancel
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    className="h-7 text-xs"
-                                    onClick={() => handleEditReply(comment.id, reply.id)}
-                                    disabled={!editReplyContent.trim() || isSubmitting}
-                                  >
-                                    {isSubmitting ? "Saving..." : "Save"}
-                                  </Button>
-                                </div>
-                              </div>
-                            ) : (
-                              <p className="text-sm">{reply.content}</p>
-                            )}
-                          </div>
-
-                          <div className="flex items-center gap-2 mt-1 ml-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="rounded-full h-6 w-6"
-                              onClick={() => handleLike(reply.id, true)}
-                              disabled={likingComment[reply.id]}
-                              title={likingComment[reply.id] ? 'Liking...' : (reply.isLiked ? 'Unlike' : 'Like')}
-                            >
-                              <Heart
-                                size={12}
-                                className={reply.isLiked ? 'fill-current text-red-500' : ''}
-                              />
-                            </Button>
                           </div>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
+                    )}
 
-          {/* Load more comments button */}
-          {hasMore && (
-            <div className="flex justify-center mt-6">
-              <Button
-                variant="outline"
-                onClick={loadMoreComments}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-primary mr-2"></div>
-                    Loading...
-                  </>
-                ) : (
-                  "Load More Comments"
-                )}
-              </Button>
+                    {/* Show reply count and toggle button */}
+                    {(comment.replyCount ?? 0) > 0 && (
+                      <div className="mt-2 ml-4">
+                        <Button
+                          variant="link"
+                          className="h-auto p-0 text-sm"
+                          onClick={() => loadReplies(comment.id)}
+                          disabled={loadingReplies[comment.id]}
+                        >
+                          {loadingReplies[comment.id] ? (
+                            <>
+                              <div className="animate-spin rounded-full h-3 w-3 border-t-2 border-b-2 border-primary mr-2"></div>
+                              Loading replies...
+                            </>
+                          ) : expandedReplies[comment.id] ? (
+                            `Hide ${comment.replyCount ?? 0} ${(comment.replyCount ?? 0) === 1 ? "reply" : "replies"}`
+                          ) : (
+                            `View ${comment.replyCount ?? 0} ${(comment.replyCount ?? 0) === 1 ? "reply" : "replies"}`
+                          )}
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* Display replies when expanded */}
+                    {expandedReplies[comment.id] && expandedReplies[comment.id].length > 0 && (
+                      <div className="mt-4 ml-8 space-y-4">
+                        {expandedReplies[comment.id].map(reply => (
+                          <div key={reply.id} className="flex gap-3">
+                            <Avatar className="h-8 w-8">
+                              <AvatarImage src={reply.user?.image || "/placeholder-user.jpg"} alt={reply.user?.name || "User"} />
+                              <AvatarFallback>{(reply.user?.name?.[0] || "U").toUpperCase()}</AvatarFallback>
+                            </Avatar>
+
+                            <div className="flex-1">
+                              <div className="bg-muted/30 rounded-lg p-3">
+                                <div className="flex justify-between items-start mb-1">
+                                  <div>
+                                    <span className="font-medium text-sm">{reply.user?.name || reply.user?.username || "Unknown User"}</span>
+                                    <span className="text-xs text-muted-foreground ml-2">{formatDate(reply.createdAt)}</span>
+                                  </div>
+
+                                  {/* Reply dropdown menu */}
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="h-6 w-6">
+                                        <MoreVertical size={14} />
+                                        <span className="sr-only">More</span>
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      <DropdownMenuItem
+                                        onClick={() => {
+                                          setReportingCommentId(reply.id)
+                                          setIsReportDialogOpen(true)
+                                        }}
+                                      >
+                                        <Flag size={14} className="mr-2" />
+                                        Report
+                                      </DropdownMenuItem>
+                                      {user?.id === reply.userId && (
+                                        <>
+                                          <DropdownMenuItem onClick={() => {
+                                            setEditingReply(reply.id);
+                                            setEditReplyContent(reply.content);
+                                          }}>
+                                            <Edit size={14} className="mr-2" />
+                                            Edit
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem
+                                            className="text-destructive"
+                                            onClick={() => handleDeleteReply(comment.id, reply.id)}
+                                          >
+                                            <Trash size={14} className="mr-2" />
+                                            Delete
+                                          </DropdownMenuItem>
+                                        </>
+                                      )}
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </div>
+
+                                {/* Reply content - show edit form if editing */}
+                                {editingReply === reply.id ? (
+                                  <div className="space-y-2">
+                                    <Textarea
+                                      value={editReplyContent}
+                                      onChange={(e) => setEditReplyContent(e.target.value)}
+                                      className="resize-none text-sm"
+                                      disabled={isSubmitting}
+                                    />
+                                    <div className="flex justify-end gap-2">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-7 text-xs"
+                                        onClick={() => {
+                                          setEditingReply(null);
+                                          setEditReplyContent("");
+                                        }}
+                                        disabled={isSubmitting}
+                                      >
+                                        Cancel
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        className="h-7 text-xs"
+                                        onClick={() => handleEditReply(comment.id, reply.id)}
+                                        disabled={!editReplyContent.trim() || isSubmitting}
+                                      >
+                                        {isSubmitting ? "Saving..." : "Save"}
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <p className="text-sm">{reply.content}</p>
+                                )}
+                              </div>
+
+                              <div className="flex items-center gap-2 mt-1 ml-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="rounded-full h-6 w-6"
+                                  onClick={() => handleLike(reply.id, true)}
+                                  disabled={likingComment[reply.id]}
+                                  title={likingComment[reply.id] ? 'Liking...' : (reply.isLiked ? 'Unlike' : 'Like')}
+                                >
+                                  <Heart
+                                    size={12}
+                                    className={reply.isLiked ? 'fill-current text-red-500' : ''}
+                                  />
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+
+              {/* Load more comments button */}
+              {hasMore && (
+                <div className="flex justify-center mt-6">
+                  <Button
+                    variant="outline"
+                    onClick={loadMoreComments}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-primary mr-2"></div>
+                        Loading...
+                      </>
+                    ) : (
+                      "Load More Comments"
+                    )}
+                  </Button>
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      ) : (
+          ) : (
             <div className="text-center py-8 bg-muted/30 rounded-lg">
               <p className="text-muted-foreground">No comments yet. Be the first to comment!</p>
             </div>

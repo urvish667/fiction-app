@@ -16,9 +16,11 @@ import UserAvatarMenu from "./user-avatar-menu"
 import { Skeleton } from "@/components/ui/skeleton"
 import { clientLogger } from "@/lib/logger/client-logger"
 import { useAuth } from "@/lib/auth-context"
+import { useUnreadNotificationCount } from "@/hooks/use-unread-notification-count"
 
 export default function Navbar() {
   const { user, isLoading, isAuthenticated, logout } = useAuth()
+  const { unreadCount } = useUnreadNotificationCount()
 
   // Create a component logger
   const navLogger = clientLogger.child("navbar")
@@ -28,18 +30,18 @@ export default function Navbar() {
 
   const userWithAvatar = user
     ? {
-        id: user.id,
-        name:
-          user.name && user.name.trim() !== ""
-            ? user.name
-            : "User",
-        username:
-          user.username ||
-          user.name?.split(" ")[0].toLowerCase() ||
-          "user",
-        avatar: user.image || "/placeholder-user.jpg",
-        unreadNotifications: 0,
-      }
+      id: user.id,
+      name:
+        user.name && user.name.trim() !== ""
+          ? user.name
+          : "User",
+      username:
+        user.username ||
+        user.name?.split(" ")[0].toLowerCase() ||
+        "user",
+      avatar: user.image || "/placeholder-user.jpg",
+      unreadNotifications: unreadCount,
+    }
     : null
 
   const handleLogout = async () => {
@@ -51,9 +53,9 @@ export default function Navbar() {
   }
 
   if (isLoading) {
-  return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-md">
-      <div className="max-w-7xl mx-auto px-4 py-8 flex h-16 items-center justify-between">
+    return (
+      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-md">
+        <div className="max-w-7xl mx-auto px-4 py-8 flex h-16 items-center justify-between">
           <Link href="/" className="flex items-center">
             <motion.h1
               className="text-3xl font-bold font-serif"

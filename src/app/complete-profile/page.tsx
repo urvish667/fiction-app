@@ -10,7 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { AlertCircle } from "lucide-react"
 import { format } from "date-fns"
 import { useRouter } from "next/navigation"
-import { useSession } from "next-auth/react"
+import { useAuth } from "@/lib/auth-context"
+import { UserService } from "@/lib/api/user"
 import { debounce } from "lodash"
 import Link from "next/link"
 import "../auth-background.css"
@@ -19,7 +20,7 @@ import { logError } from "@/lib/error-logger"
 
 export default function CompleteProfilePage() {
   const router = useRouter()
-  const { data: session, update } = useSession()
+  const { user, refreshUser } = useAuth()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -50,10 +51,10 @@ export default function CompleteProfilePage() {
     const callback = urlParams.get('callbackUrl') || '/';
     setCallbackUrl(callback);
 
-    if (session?.user?.isProfileComplete) {
+    if (user?.isProfileComplete) {
       router.push(callback)
     }
-  }, [session, router])
+  }, [user, router])
 
   // Check username availability with debounce
   const checkUsernameAvailability = debounce(async (username: string) => {
@@ -64,17 +65,16 @@ export default function CompleteProfilePage() {
     setUsernameAvailability((prev) => ({ ...prev, isChecking: true }))
 
     try {
-      const response = await fetch(`/api/auth/username-check?username=${encodeURIComponent(username)}`)
-      const data = await response.json()
+      const response = await UserService.checkUsername(username)
 
       setUsernameAvailability({
-        available: data.available,
-        error: data.error,
+        available: response.success && response.data?.available || false,
+        error: response.success ? null : (response.message || "Username not available"),
         isChecking: false,
       })
 
-      if (!data.available && data.error) {
-        setErrors((prev) => ({ ...prev, username: data.error }))
+      if (!response.success || !response.data?.available) {
+        setErrors((prev) => ({ ...prev, username: response.message || "Username not available" }))
       } else {
         setErrors((prev) => {
           const newErrors = { ...prev }
@@ -184,33 +184,21 @@ export default function CompleteProfilePage() {
     setIsSubmitting(true)
 
     try {
-      // Call API to complete profile
-      const response = await fetch("/api/auth/complete-profile", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          username: formData.username,
-          birthdate: formData.birthdate ? formData.birthdate.toISOString().split("T")[0] : "",
-          pronoun: formData.pronoun,
-          termsAccepted: formData.termsAccepted,
-        }),
+      // Call UserService to complete profile
+      const response = await UserService.completeProfile({
+        username: formData.username,
+        birthdate: formData.birthdate ? formData.birthdate.toISOString().split("T")[0] : "",
+        pronoun: formData.pronoun,
+        termsAccepted: formData.termsAccepted,
       })
 
-      const data = await response.json()
-
-      if (!response.ok) {
-        if (data.fields) {
-          setErrors(data.fields)
-        } else {
-          setErrors({ form: data.error || "An error occurred" })
-        }
+      if (!response.success) {
+        setErrors({ form: response.message || "An error occurred" })
       } else {
-        // Update the session to reflect completed profile
-        await update()
-        // Wait for session to be updated, then do a full page reload
-        await new Promise(resolve => setTimeout(resolve, 100))
+        // Update the user data
+        await refreshUser()
+        // Wait a bit for the user data to be refreshed
+        await new Promise(resolve => setTimeout(resolve, 200))
         window.location.href = callbackUrl
       }
     } catch (error) {
@@ -221,18 +209,18 @@ export default function CompleteProfilePage() {
     }
   }
 
-  if (!session) {
+  if (!user) {
     return (
       <div className="min-h-screen auth-background flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
         <div className="w-full max-w-md">
           <Card className="shadow-xl border border-border overflow-hidden w-full backdrop-blur-sm bg-opacity-95">
-          <CardHeader>
-            <div className="flex justify-center mb-4">
-              <AuthLogo />
-            </div>
-            <CardTitle className="text-2xl font-bold text-center">Loading...</CardTitle>
-          </CardHeader>
-        </Card>
+            <CardHeader>
+              <div className="flex justify-center mb-4">
+                <AuthLogo />
+              </div>
+              <CardTitle className="text-2xl font-bold text-center">Loading...</CardTitle>
+            </CardHeader>
+          </Card>
         </div>
       </div>
     )
@@ -242,129 +230,129 @@ export default function CompleteProfilePage() {
     <div className="min-h-screen auth-background flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="w-full max-w-md">
         <Card className="shadow-xl border border-border overflow-hidden w-full backdrop-blur-sm bg-opacity-95">
-        <CardHeader>
-          <div className="flex justify-center mb-4">
-            <AuthLogo />
-          </div>
-          <CardTitle className="text-2xl font-bold text-center">Complete Your Profile</CardTitle>
-          <CardDescription className="text-center">
-            Please provide a few more details to complete your account setup
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Username field */}
-            <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
-              <Input
-                id="username"
-                name="username"
-                type="text"
-                placeholder="coolwriter123"
-                value={formData.username}
-                onChange={handleChange}
-                disabled={isSubmitting}
-              />
-              {errors.username && (
-                <p className="text-xs text-destructive flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3" />
-                  {errors.username}
-                </p>
-              )}
-              {usernameAvailability.isChecking && (
-                <p className="text-xs text-muted-foreground">Checking availability...</p>
-              )}
-              {usernameAvailability.available && formData.username.length >= 3 && !errors.username && !usernameAvailability.isChecking && (
-                <p className="text-xs text-green-500">Username is available</p>
-              )}
+          <CardHeader>
+            <div className="flex justify-center mb-4">
+              <AuthLogo />
             </div>
-
-            {/* Birthdate field */}
-            <div className="space-y-2">
-              <Label htmlFor="birthdate">Birthdate</Label>
-              <div className="relative">
+            <CardTitle className="text-2xl font-bold text-center">Complete Your Profile</CardTitle>
+            <CardDescription className="text-center">
+              Please provide a few more details to complete your account setup
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Username field */}
+              <div className="space-y-2">
+                <Label htmlFor="username">Username</Label>
                 <Input
-                  id="birthdate"
-                  type="date"
-                  value={formData.birthdate ? format(formData.birthdate, "yyyy-MM-dd") : ""}
-                  onChange={handleDateChange}
-                  max={format(new Date(new Date().setFullYear(new Date().getFullYear() - 13)), "yyyy-MM-dd")}
-                  min={format(new Date(new Date().setFullYear(new Date().getFullYear() - 100)), "yyyy-MM-dd")}
-                  className="w-full"
-                />
-              </div>
-              {errors.birthdate && (
-                <p className="text-xs text-destructive flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3" />
-                  {errors.birthdate}
-                </p>
-              )}
-            </div>
-
-            {/* Pronoun field */}
-            <div className="space-y-2">
-              <Label htmlFor="pronoun">Pronoun</Label>
-              <Select
-                value={formData.pronoun}
-                onValueChange={handleSelectChange}
-              >
-                <SelectTrigger id="pronoun">
-                  <SelectValue placeholder="Select your pronoun" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="he/him">He/Him</SelectItem>
-                  <SelectItem value="she/her">She/Her</SelectItem>
-                  <SelectItem value="they/them">They/Them</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
-                  <SelectItem value="prefer-not-to-say">Prefer not to say</SelectItem>
-                </SelectContent>
-              </Select>
-              {errors.pronoun && (
-                <p className="text-xs text-destructive flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3" />
-                  {errors.pronoun}
-                </p>
-              )}
-            </div>
-
-            {/* Terms acceptance */}
-            <div className="space-y-2">
-              <div className="flex items-start space-x-2">
-                <Checkbox
-                  id="terms"
-                  checked={formData.termsAccepted}
-                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, termsAccepted: checked === true }))}
+                  id="username"
+                  name="username"
+                  type="text"
+                  placeholder="coolwriter123"
+                  value={formData.username}
+                  onChange={handleChange}
                   disabled={isSubmitting}
                 />
-                <Label htmlFor="terms" className="text-sm">
-                  I agree to the{" "}
-                  <Button variant="link" className="p-0 h-auto text-xs" asChild>
-                    <Link href="/terms" target="_blank">terms and conditions</Link>
-                  </Button>
-                </Label>
+                {errors.username && (
+                  <p className="text-xs text-destructive flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {errors.username}
+                  </p>
+                )}
+                {usernameAvailability.isChecking && (
+                  <p className="text-xs text-muted-foreground">Checking availability...</p>
+                )}
+                {usernameAvailability.available && formData.username.length >= 3 && !errors.username && !usernameAvailability.isChecking && (
+                  <p className="text-xs text-green-500">Username is available</p>
+                )}
               </div>
-              {errors.termsAccepted && (
-                <p className="text-xs text-destructive flex items-center gap-1">
+
+              {/* Birthdate field */}
+              <div className="space-y-2">
+                <Label htmlFor="birthdate">Birthdate</Label>
+                <div className="relative">
+                  <Input
+                    id="birthdate"
+                    type="date"
+                    value={formData.birthdate ? format(formData.birthdate, "yyyy-MM-dd") : ""}
+                    onChange={handleDateChange}
+                    max={format(new Date(new Date().setFullYear(new Date().getFullYear() - 13)), "yyyy-MM-dd")}
+                    min={format(new Date(new Date().setFullYear(new Date().getFullYear() - 100)), "yyyy-MM-dd")}
+                    className="w-full"
+                  />
+                </div>
+                {errors.birthdate && (
+                  <p className="text-xs text-destructive flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {errors.birthdate}
+                  </p>
+                )}
+              </div>
+
+              {/* Pronoun field */}
+              <div className="space-y-2">
+                <Label htmlFor="pronoun">Pronoun</Label>
+                <Select
+                  value={formData.pronoun}
+                  onValueChange={handleSelectChange}
+                >
+                  <SelectTrigger id="pronoun">
+                    <SelectValue placeholder="Select your pronoun" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="he/him">He/Him</SelectItem>
+                    <SelectItem value="she/her">She/Her</SelectItem>
+                    <SelectItem value="they/them">They/Them</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                    <SelectItem value="prefer-not-to-say">Prefer not to say</SelectItem>
+                  </SelectContent>
+                </Select>
+                {errors.pronoun && (
+                  <p className="text-xs text-destructive flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {errors.pronoun}
+                  </p>
+                )}
+              </div>
+
+              {/* Terms acceptance */}
+              <div className="space-y-2">
+                <div className="flex items-start space-x-2">
+                  <Checkbox
+                    id="terms"
+                    checked={formData.termsAccepted}
+                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, termsAccepted: checked === true }))}
+                    disabled={isSubmitting}
+                  />
+                  <Label htmlFor="terms" className="text-sm">
+                    I agree to the{" "}
+                    <Button variant="link" className="p-0 h-auto text-xs" asChild>
+                      <Link href="/terms" target="_blank">terms and conditions</Link>
+                    </Button>
+                  </Label>
+                </div>
+                {errors.termsAccepted && (
+                  <p className="text-xs text-destructive flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {errors.termsAccepted}
+                  </p>
+                )}
+              </div>
+
+              {/* General form error */}
+              {errors.form && (
+                <p className="text-xs text-destructive flex items-center gap-1 mt-2">
                   <AlertCircle className="h-3 w-3" />
-                  {errors.termsAccepted}
+                  {errors.form}
                 </p>
               )}
-            </div>
 
-            {/* General form error */}
-            {errors.form && (
-              <p className="text-xs text-destructive flex items-center gap-1 mt-2">
-                <AlertCircle className="h-3 w-3" />
-                {errors.form}
-              </p>
-            )}
-
-            <Button className="w-full" type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Saving..." : "Complete Profile"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+              <Button className="w-full" type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Saving..." : "Complete Profile"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )

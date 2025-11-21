@@ -13,27 +13,27 @@ import type { NextRequest } from 'next/server';
  */
 export const securityHeaders = {
   'Content-Security-Policy':
-  "default-src 'self'; " +
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' " +
-    "https://apis.google.com https://connect.facebook.net https://www.googletagmanager.com " +
+    "default-src 'self'; " +
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' " +
+    "https://accounts.google.com https://apis.google.com https://connect.facebook.net https://www.googletagmanager.com " +
     "https://js.stripe.com https://www.paypal.com https://www.paypalobjects.com " +
     "https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net " +
     "https://tpc.googlesyndication.com https://securepubads.g.doubleclick.net " +
     "*.adtrafficquality.google *.googlesyndication.com *.googleadservices.com *.doubleclick.net " +
     "fundingchoicesmessages.google.com https://ads.fablespace.space " +
     "https://static.cloudflareinsights.com;" +
-  "fenced-frame-src 'self' blob: data: " +
+    "fenced-frame-src 'self' blob: data: " +
     "https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com " +
     "https://*.googleadservices.com https://*.ezoic.net https://*.ezodn.com https://*.ezojs.com " +
     "https://*.gatekeeperconsent.com https://*.adtrafficquality.google " +
     "https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net " +
     "https://ad.doubleclick.net https://adservice.google.com " +
     "https://securepubads.g.doubleclick.net https://tpc.googlesyndication.com; " +
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
-  "img-src 'self' data: https: blob: https://ads.fablespace.space http://localhost:4000; " +
-  "font-src 'self' https://fonts.gstatic.com; " +
-  "connect-src 'self' ws: wss: " +
-    "https://apis.google.com https://www.googleapis.com https://securetoken.googleapis.com " +
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+    "img-src 'self' data: https: blob: https://ads.fablespace.space http://localhost:4000; " +
+    "font-src 'self' https://fonts.gstatic.com; " +
+    "connect-src 'self' ws: wss: " +
+    "https://accounts.google.com https://apis.google.com https://www.googleapis.com https://securetoken.googleapis.com " +
     "https://api.stripe.com https://api.paypal.com https://www.sandbox.paypal.com " +
     "https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net " +
     "https://tpc.googlesyndication.com https://securepubads.g.doubleclick.net " +
@@ -41,13 +41,13 @@ export const securityHeaders = {
     "http://localhost:4000 https://localhost:4000 https://api.fablespace.com " +
     "*.google.com *.googlesyndication.com *.googleadservices.com *.adtrafficquality.google " +
     "*.adsterra.com *.pop.adsterra.com *.profitableratecpm.com *.highperformanceformat.com professionaltrafficmonitor.com; " +
-  "frame-src 'self' https://www.youtube.com https://www.facebook.com https://connect.facebook.net " +
+    "frame-src 'self' https://www.youtube.com https://www.facebook.com https://connect.facebook.net " +
     "https://checkout.stripe.com https://js.stripe.com https://www.paypal.com " +
     "https://www.sandbox.paypal.com https://googleads.g.doubleclick.net " +
     "https://tpc.googlesyndication.com https://securepubads.g.doubleclick.net " +
     "*.googlesyndication.com *.doubleclick.net *.adtrafficquality.google https://www.google.com " +
     "https://ads.fablespace.space *.pop.adsterra.com; " +
-  "object-src 'none';",
+    "object-src 'none';",
 
   // Prevent clickjacking attacks
   'X-Frame-Options': 'SAMEORIGIN',
