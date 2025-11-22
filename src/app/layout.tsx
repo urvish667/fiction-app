@@ -8,6 +8,8 @@ import { Toaster } from "@/components/ui/toaster"
 import Script from "next/script"
 import { Analytics } from "@/components/analytics"
 import { GoogleAuthProvider } from "@/components/auth/google-provider"
+import { OfflineBanner } from "@/components/offline-banner"
+import { GlobalErrorHandler } from "@/components/global-error-handler"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -53,6 +55,8 @@ export default function RootLayout({
       </head>
       <body className={inter.className}>
         <Analytics />
+        <GlobalErrorHandler />
+        <OfflineBanner />
         <Providers>
           <GoogleAuthProvider>
             <ThemeProvider>

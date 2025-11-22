@@ -24,7 +24,7 @@ type PostPageParams = { username: string; slug: string };
 export default function PostPage() {
   const params = useParams() as PostPageParams;
   const router = useRouter();
-  const { user, isLoading: authLoading } = useAuth();
+  const { user } = useAuth();
   const [postData, setPostData] = useState<{
     post: any;
     user: any;
@@ -53,12 +53,12 @@ export default function PostPage() {
       }
     }
 
-    if (params.username && params.slug && !authLoading) {
+    if (params.username && params.slug) {
       loadPostData();
     }
-  }, [params.username, params.slug, authLoading, router]);
+  }, [params.username, params.slug, router]);
 
-  if (loading || authLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen">
         <Navbar />

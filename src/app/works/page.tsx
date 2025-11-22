@@ -18,7 +18,7 @@ import { useToast } from "@/hooks/use-toast"
 import { StoryService } from "@/lib/api/story"
 import { ChapterService } from "@/lib/api/chapter"
 import { ImageService } from "@/lib/api/images"
-import { useAuth } from "@/lib/auth-context"
+import { useRequireAuth } from "@/hooks/use-require-auth"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import type { Story } from "@/types/story"
 import { logError } from "@/lib/error-logger"
@@ -33,7 +33,7 @@ interface WorkStory extends Omit<Story, 'genre'> {
 }
 
 export default function MyWorksPage() {
-  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
+  const { user, isAuthenticated, isLoading: authLoading } = useRequireAuth()
   const router = useRouter()
   const { toast } = useToast()
   const [activeTab, setActiveTab] = useState("all")
@@ -136,13 +136,6 @@ export default function MyWorksPage() {
       }
     }
   }, [user?.id, toast]);
-
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      router.push('/login')
-    }
-  }, [authLoading, isAuthenticated, router])
 
   // Fetch user's stories from the database
   useEffect(() => {
@@ -367,6 +360,7 @@ function WorksContent({ works, searchQuery, isLoading, onDeleteStory }: WorksCon
   // Format date for display - handles Date objects, strings, or null
   const formatDate = (dateValue: any) => {
     if (!dateValue) {
+      console.warn('formatDate: No date value provided');
       return "Unknown date";
     }
 
@@ -389,6 +383,9 @@ function WorksContent({ works, searchQuery, isLoading, onDeleteStory }: WorksCon
         } else if (dateValue._seconds) {
           // MongoDB timestamp format
           date = new Date(dateValue._seconds * 1000);
+        } else if (dateValue.toISOString) {
+          // Object with toISOString method (like Prisma Date)
+          date = new Date(dateValue.toISOString());
         } else {
           // Try to convert the whole object to date
           date = new Date(dateValue);
@@ -400,13 +397,13 @@ function WorksContent({ works, searchQuery, isLoading, onDeleteStory }: WorksCon
 
       // Check if the date is valid
       if (isNaN(date.getTime())) {
-        console.log('Invalid date conversion:', dateValue, 'resulted in:', date);
+        console.warn('formatDate: Invalid date conversion:', { dateValue, parsedDate: date });
         return "Unknown date";
       }
 
       return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
     } catch (error) {
-      console.log('Error formatting date:', dateValue, error);
+      console.error('formatDate: Error formatting date:', { dateValue, error });
       return "Unknown date";
     }
   };

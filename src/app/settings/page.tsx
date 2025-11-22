@@ -13,7 +13,7 @@ import Navbar from "@/components/navbar"
 import { UserPreferences, defaultPreferences } from "@/types/user"
 import { ExtendedUser, ExtendedSession } from "@/components/settings/ProfileSettings"
 import { useRouter } from 'next/navigation';
-
+import { useRequireAuth } from "@/hooks/use-require-auth"
 import { UserService, type ProfileUpdateData } from "@/lib/api/user";
 import { logError } from "@/lib/error-logger"
 
@@ -111,7 +111,8 @@ function TabParamsHandler({
 
 export default function SettingsPage() {
   const { toast } = useToast()
-  const { user, isLoading, isAuthenticated, refreshUser, logout } = useAuth()
+  const { user, isLoading, isAuthenticated } = useRequireAuth()
+  const { refreshUser, logout } = useAuth()
   const router = useRouter();
 
   // Create session object compatible with existing code

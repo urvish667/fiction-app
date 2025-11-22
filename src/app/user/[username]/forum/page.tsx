@@ -8,14 +8,13 @@ import ForumClient from "./forum-client"
 import { Loader2 } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 import { UserService } from "@/lib/api/user"
-import { ForumService } from "@/lib/api/forum"
 
 type ForumPageParams = { username: string };
 
 export default function ForumPage() {
   const params = useParams() as ForumPageParams;
   const router = useRouter();
-  const { user, isLoading: authLoading } = useAuth();
+  const { user } = useAuth();
   const [forumData, setForumData] = useState<{
     user: any;
     forum: any;
@@ -70,12 +69,12 @@ export default function ForumPage() {
       }
     }
 
-    if (params.username && !authLoading) {
+    if (params.username) {
       loadForumData();
     }
-  }, [params.username, user?.id, authLoading, router]);
+  }, [params.username, user?.id, router]);
 
-  if (loading || authLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen">
         <Navbar />

@@ -21,6 +21,7 @@ import { SiteFooter } from "@/components/site-footer"
 import { StoryService } from "@/lib/api/story"
 import { UserService } from "@/lib/api/user"
 import { ImageService } from "@/lib/api/images"
+import { ViewAPI } from "@/lib/api/view"
 import { Story as StoryType, Chapter as ChapterType } from "@/types/story"
 import { SupportButton } from "@/components/SupportButton"
 import MatureContentDialog, { needsMatureContentConsent } from "@/components/mature-content-dialog"
@@ -61,6 +62,20 @@ export default function StoryPageClient({
   const [isForumEnabled, setIsForumEnabled] = useState(false)
   const [forumLoading, setForumLoading] = useState(true)
 
+  // Track story view on mount
+  useEffect(() => {
+    const trackView = async () => {
+      try {
+        await ViewAPI.trackStoryView(story.id);
+      } catch (error) {
+        // Silently fail - view tracking shouldn't block the user experience
+        console.error('Failed to track story view:', error);
+      }
+    };
+
+    trackView();
+  }, [story.id]);
+
   // Check mature content consent on mount
   useEffect(() => {
     if (story.isMature) {
@@ -77,6 +92,36 @@ export default function StoryPageClient({
       }
     }
   }, [story.isMature, slug, isAuthenticated, isLoading])
+
+  // Fetch like and bookmark status when user is authenticated
+  useEffect(() => {
+    const fetchInteractionStatus = async () => {
+      if (!user || !story) return;
+
+      try {
+        const [likeResponse, bookmarkResponse] = await Promise.all([
+          StoryService.checkStoryLike(story.id),
+          StoryService.checkStoryBookmark(story.id)
+        ]);
+
+        if (likeResponse.success && likeResponse.data !== undefined) {
+          setStory(s => ({
+            ...s,
+            isLiked: likeResponse.data,
+            likeCount: (likeResponse as any).likeCount !== undefined ? (likeResponse as any).likeCount : s.likeCount
+          }));
+        }
+
+        if (bookmarkResponse.success && bookmarkResponse.data !== undefined) {
+          setStory(s => ({ ...s, isBookmarked: bookmarkResponse.data }));
+        }
+      } catch (err) {
+        logError(err, { context: "Error fetching interaction status", storyId: story.id, userId: user.id });
+      }
+    };
+
+    fetchInteractionStatus();
+  }, [user, story.id])
 
   // Combined check for follow status and forum settings to minimize API calls
   useEffect(() => {

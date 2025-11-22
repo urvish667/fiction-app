@@ -26,6 +26,7 @@ import { TopNavigation } from "@/components/chapter/TopNavigation"
 // Services and Types
 import { StoryService } from "@/lib/api/story"
 import { ChapterService } from "@/lib/api/chapter"
+import { ViewAPI } from "@/lib/api/view"
 import { Story as StoryType, Chapter as ChapterType } from "@/types/story"
 import { isUser18OrOlder } from "@/utils/age"
 import { logError } from "@/lib/error-logger"
@@ -161,31 +162,23 @@ export default function ChapterPageClient({
     fetchInitialStates();
   }, [user, chapter, story]);
 
+  // Track chapter view on mount
+  useEffect(() => {
+    const trackView = async () => {
+      if (!chapter) return;
 
-
-  // Track reading progress with debouncing
-  const updateProgressDebounced = useCallback(
-    (progress: number) => {
-      if (!chapter || !user?.id) return;
-
-      // Skip if user is the author
-      if (story && user.id === story.author?.id) return;
-
-      // Debounce the API call to avoid too many requests
-      // Only send updates when progress changes by at least 10%
-      const debounceProgress = Math.floor(progress / 10) * 10;
-
-      if (Math.abs(debounceProgress - readingProgress) >= 10) {
-        // Update reading progress in the API
-        ChapterService.updateReadingProgress(chapter.id, debounceProgress)
-          .catch(err => logError(err, { context: "Error updating reading progress", chapterId: chapter?.id, userId: user?.id }));
-
-        // Update local state
-        setState(prev => ({ ...prev, readingProgress: debounceProgress }));
+      try {
+        await ViewAPI.trackChapterView(chapter.id);
+      } catch (error) {
+        // Silently fail - view tracking shouldn't block the user experience
+        console.error('Failed to track chapter view:', error);
       }
-    },
-    [chapter, readingProgress, user, story]
-  );
+    };
+
+    trackView();
+  }, [chapter?.id]);
+
+
 
   // Track reading progress
   useEffect(() => {
@@ -201,14 +194,11 @@ export default function ChapterPageClient({
       if (roundedProgress !== readingProgress) {
         setState(prev => ({ ...prev, readingProgress: roundedProgress }));
       }
-
-      // Update backend with debouncing
-      updateProgressDebounced(progress);
     };
 
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [readingProgress, updateProgressDebounced])
+  }, [readingProgress])
 
   // Function to fetch chapter data without page navigation
   const fetchChapterData = useCallback(async (chapterNumber: number) => {

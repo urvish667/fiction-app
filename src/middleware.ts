@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { rateLimit, rateLimitConfigs } from '@/lib/security/rate-limit';
-import { csrfProtection } from '@/lib/security/csrf';
+
 import { applySecurityHeaders } from '@/lib/security/headers';
 import { safeDecodeURIComponent } from '@/utils/safe-decode-uri-component';
 
@@ -105,21 +105,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Apply CSRF protection for non-GET requests to API routes
-  // Since auth moved to backend, we can remove the auth exclusion
-  if (pathname.startsWith('/api/') &&
-      !pathname.startsWith('/api/webhooks/') &&
-      !pathname.startsWith('/api/scheduled-tasks') &&
-      !pathname.startsWith('/api/cron/') && // Exclude cron endpoints (use API key auth)
-      !pathname.startsWith('/api/recommendations/generate') &&
-      !pathname.startsWith('/api/report') &&
-      !pathname.startsWith('/api/csrf/') && // Exclude CSRF setup endpoint
-      !['GET', 'HEAD', 'OPTIONS'].includes(method)) {
-    const csrfResult = await csrfProtection(request);
-    if (csrfResult) {
-      return csrfResult;
-    }
-  }
+
 
   // Apply rate limiting based on endpoint type
   // Check if this is an editor endpoint that needs special rate limiting
@@ -177,9 +163,35 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Removed authentication and profile completion checks since auth is now cookie-based
-  // and handled by the backend. The client-side useAuth hook will handle authentication state
-  // and protected routes are handled by individual components.
+  // ========================================
+  // Authentication Protection for Protected Routes
+  // ========================================
+  const protectedRoutes = [
+    '/settings',
+    '/library',
+    '/works',
+    '/write',
+    '/dashboard',
+    '/notifications',
+    '/complete-profile',
+  ];
+
+  // Check if the current route is protected
+  const isProtectedRoute = protectedRoutes.some(route =>
+    pathname.startsWith(route)
+  );
+
+  // If route is protected and user doesn't have a token, redirect to login
+  if (isProtectedRoute) {
+    const token = request.cookies.get('fablespace_access_token')?.value;
+
+    if (!token) {
+      const url = new URL('/login', request.url);
+      // Preserve the original URL (including query params) for redirect after login
+      url.searchParams.set('callbackUrl', pathname + (searchParams.toString() ? `?${searchParams.toString()}` : ''));
+      return NextResponse.redirect(url);
+    }
+  }
 
   // Apply security headers to the response
   const response = NextResponse.next();

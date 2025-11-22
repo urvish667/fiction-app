@@ -1064,4 +1064,62 @@ export const StoryService = {
       };
     }
   },
+
+  /**
+   * Check if a story is liked by the current user
+   */
+  async checkStoryLike(storyId: string): Promise<ApiResponse<boolean> & { likeCount?: number }> {
+    try {
+      const response = await apiClient.get<{
+        isLiked: boolean;
+        likeCount: number;
+      }>(`/stories/${storyId}/like/check`);
+
+      return {
+        success: true,
+        data: response.isLiked,
+        likeCount: response.likeCount
+      };
+    } catch (error: any) {
+      logError(error.message || "Failed to check story like status", {
+        context: 'Checking story like status',
+        storyId,
+        status: error.status,
+        errorDetails: error
+      });
+      return {
+        success: false,
+        message: error.message || "Failed to check story like status",
+        data: false
+      };
+    }
+  },
+
+  /**
+   * Check if a story is bookmarked by the current user
+   */
+  async checkStoryBookmark(storyId: string): Promise<ApiResponse<boolean>> {
+    try {
+      const response = await apiClient.get<{
+        isBookmarked: boolean;
+      }>(`/stories/${storyId}/bookmark/check`);
+
+      return {
+        success: true,
+        data: response.isBookmarked
+      };
+    } catch (error: any) {
+      logError(error.message || "Failed to check story bookmark status", {
+        context: 'Checking story bookmark status',
+        storyId,
+        status: error.status,
+        errorDetails: error
+      });
+      return {
+        success: false,
+        message: error.message || "Failed to check story bookmark status",
+        data: false
+      };
+    }
+  },
 };

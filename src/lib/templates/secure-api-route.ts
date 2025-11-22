@@ -16,14 +16,14 @@ import { withRateLimit, rateLimitConfigs } from '../security/rate-limit';
 import { withCsrfProtection } from '../security/csrf';
 
 // Import validation middleware
-import { 
-  withRequestValidation, 
+import {
+  withRequestValidation,
   HttpMethod,
-  ApiValidationSchemas 
+  ApiValidationSchemas
 } from '../validation/api-validation';
 
 // Import error handling middleware
-import { 
+import {
   withErrorHandler,
   withErrorHandlingAndMiddleware,
   ResourceNotFoundError,
@@ -53,17 +53,17 @@ export async function exampleSecureGetWithApiKey(req: NextRequest) {
     // Your handler logic here
     return NextResponse.json({ message: 'Secure GET endpoint with API key' });
   }
-  
+
   // Apply middleware by composing them in the correct order
   const handlerWithMiddleware = withErrorHandler(
     withRateLimit(handler, rateLimitConfigs.default)
   );
-  
+
   const handlerWithHeaders = withApiSecurityHeaders(handlerWithMiddleware, CacheControl.NO_STORE);
   const handlerWithApiKey = withApiKey(handlerWithHeaders, ApiKeyType.EXTERNAL_SERVICE);
   const handlerWithSecurity = withSecurityMonitoring(handlerWithApiKey);
   const finalHandler = withApiLogging(handlerWithSecurity);
-  
+
   return finalHandler(req);
 }
 
@@ -80,29 +80,29 @@ export async function exampleSecurePostWithAuth(req: NextRequest) {
     email: z.string().email(),
     message: z.string().min(10).max(1000),
   });
-  
+
   // Define the handler function
   async function handler(req: NextRequest, validated: { body?: any }) {
     // Your handler logic here
-    return NextResponse.json({ 
+    return NextResponse.json({
       message: 'Secure POST endpoint with JWT authentication',
       data: validated.body
     });
   }
-  
+
   // Apply middleware by composing them in the correct order
   const handlerWithValidation = withRequestValidation({
     body: bodySchema,
     allowedMethods: [HttpMethod.POST],
   }, handler);
-  
+
   const handlerWithAuth = withAuth(handlerWithValidation);
   const handlerWithCsrf = withCsrfProtection(handlerWithAuth);
   const handlerWithHeaders = withApiSecurityHeaders(handlerWithCsrf, CacheControl.NO_STORE);
   const handlerWithRateLimit = withRateLimit(handlerWithHeaders, rateLimitConfigs.default);
   const handlerWithSecurity = withSecurityMonitoring(handlerWithRateLimit);
   const finalHandler = withErrorHandler(withApiLogging(handlerWithSecurity));
-  
+
   return finalHandler(req);
 }
 
@@ -120,53 +120,53 @@ export async function exampleSecurePutWithRoles(req: NextRequest) {
     content: z.string().min(10).max(10000),
     published: z.boolean().optional(),
   });
-  
+
   // Define the handler function
   async function handler(req: NextRequest, token: any, validated: { body?: any }) {
     // Check if the user is the owner of the resource
     const resourceId = validated.body.id;
     const resource = await fetchResource(resourceId);
-    
+
     if (!resource) {
       throw new ResourceNotFoundError('resource');
     }
-    
+
     if (resource.userId !== token.sub) {
       throw new UnauthorizedError('You do not have permission to update this resource');
     }
-    
+
     // Your handler logic here
-    return NextResponse.json({ 
+    return NextResponse.json({
       message: 'Secure PUT endpoint with role-based access control',
       data: validated.body
     });
   }
-  
+
   // Create a wrapper to combine token and validated data
   function handlerWrapper(req: NextRequest, validated: { body?: any }) {
     return async (req: NextRequest, token: any) => {
       return handler(req, token, validated);
     };
   }
-  
+
   // Create the validation handler
   const validationHandler = (req: NextRequest, validated: { body?: any }) => {
     const handlerWithValidation = handlerWrapper(req, validated);
     return withAuthAndRoles(handlerWithValidation, ['admin', 'editor'])(req);
   };
-  
+
   // Apply middleware by composing them in the correct order
   const handlerWithValidation = withRequestValidation({
     body: bodySchema,
     allowedMethods: [HttpMethod.PUT],
   }, validationHandler);
-  
+
   const handlerWithCsrf = withCsrfProtection(handlerWithValidation);
   const handlerWithHeaders = withApiSecurityHeaders(handlerWithCsrf, CacheControl.NO_STORE);
   const handlerWithRateLimit = withRateLimit(handlerWithHeaders, rateLimitConfigs.contentCreation);
   const handlerWithSecurity = withSecurityMonitoring(handlerWithRateLimit);
   const finalHandler = withErrorHandler(withApiLogging(handlerWithSecurity));
-  
+
   return finalHandler(req);
 }
 
@@ -181,53 +181,53 @@ export async function exampleSecureDeleteWithSession(req: NextRequest) {
   const querySchema = z.object({
     id: z.string().uuid(),
   });
-  
+
   // Define the handler function
   async function handler(req: NextRequest, session: any, validated: { query?: any }) {
     // Check if the user is the owner of the resource
     const resourceId = validated.query.id;
     const resource = await fetchResource(resourceId);
-    
+
     if (!resource) {
       throw new ResourceNotFoundError('resource');
     }
-    
+
     if (resource.userId !== session.userId) {
       throw new UnauthorizedError('You do not have permission to delete this resource');
     }
-    
+
     // Your handler logic here
-    return NextResponse.json({ 
+    return NextResponse.json({
       message: 'Secure DELETE endpoint with session validation',
       id: resourceId
     });
   }
-  
+
   // Create a wrapper to combine session and validated data
   function handlerWrapper(req: NextRequest, validated: { query?: any }) {
     return async (req: NextRequest, session: any) => {
       return handler(req, session, validated);
     };
   }
-  
+
   // Create the validation handler
   const validationHandler = (req: NextRequest, validated: { query?: any }) => {
     const handlerWithValidation = handlerWrapper(req, validated);
     return withSession(handlerWithValidation)(req);
   };
-  
+
   // Apply middleware by composing them in the correct order
   const handlerWithValidation = withRequestValidation({
     query: querySchema,
     allowedMethods: [HttpMethod.DELETE],
   }, validationHandler);
-  
+
   const handlerWithCsrf = withCsrfProtection(handlerWithValidation);
   const handlerWithHeaders = withApiSecurityHeaders(handlerWithCsrf, CacheControl.NO_STORE);
   const handlerWithRateLimit = withRateLimit(handlerWithHeaders, rateLimitConfigs.default);
   const handlerWithSecurity = withSecurityMonitoring(handlerWithRateLimit);
   const finalHandler = withErrorHandler(withApiLogging(handlerWithSecurity));
-  
+
   return finalHandler(req);
 }
 
@@ -241,18 +241,18 @@ export async function exampleSecurePublicEndpoint(req: NextRequest) {
   // Define the handler function
   async function handler(req: NextRequest) {
     // Your handler logic here
-    return NextResponse.json({ 
+    return NextResponse.json({
       message: 'Secure public endpoint with rate limiting',
       timestamp: new Date().toISOString()
     });
   }
-  
+
   // Apply middleware by composing them in the correct order
   const handlerWithRateLimit = withRateLimit(handler, rateLimitConfigs.default);
   const handlerWithHeaders = withApiSecurityHeaders(handlerWithRateLimit, CacheControl.SHORT);
   const handlerWithSecurity = withSecurityMonitoring(handlerWithHeaders);
   const finalHandler = withErrorHandler(withApiLogging(handlerWithSecurity));
-  
+
   return finalHandler(req);
 }
 

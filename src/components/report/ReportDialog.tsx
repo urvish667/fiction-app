@@ -1,6 +1,6 @@
 'use client';
 
-import { useState,useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -12,8 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
-import { ReportRequest } from '@/lib/validators/report';
-import axios, { AxiosError } from 'axios';
+import { ReportService, ReportSubmissionData } from '@/lib/api/report';
 import { useToast } from "@/hooks/use-toast";
 
 const reasons = [
@@ -46,7 +45,7 @@ export function ReportDialog({ isOpen, onClose, storyId, commentId, postId, foru
 
   const handleSubmit = () => {
     startTransition(async () => {
-      const payload: ReportRequest = {
+      const payload: ReportSubmissionData = {
         storyId: storyId || undefined,
         commentId: commentId || undefined,
         postId: postId || undefined,
@@ -57,35 +56,37 @@ export function ReportDialog({ isOpen, onClose, storyId, commentId, postId, foru
       };
 
       try {
-        await axios.post('/api/report', payload);
+        const response = await ReportService.submitReport(payload);
 
-        toast({
-          title: 'Success',
-          description: 'Report submitted successfully.',
-        });
+        if (response.success) {
+          toast({
+            title: 'Success',
+            description: response.message || 'Report submitted successfully.',
+          });
 
-        onClose(); // Close dialog
-      } catch (err) {
-        const error = err as AxiosError;
-        if (error.response?.status === 409) {
-          toast({
-            title: 'Error',
-            description: 'You have already reported this content.',
-            variant: 'destructive',
-          });
-        } else if (error.response?.status === 422) {
-          toast({
-            title: 'Error',
-            description: 'Invalid report data.',
-            variant: 'destructive',
-          });
+          onClose(); // Close dialog
         } else {
-          toast({
-            title: 'Error',
-            description: 'Could not submit report, please try again later.',
-            variant: 'destructive',
-          });
+          // Handle error response from the service
+          if (response.message?.includes('already reported')) {
+            toast({
+              title: 'Error',
+              description: 'You have already reported this content.',
+              variant: 'destructive',
+            });
+          } else {
+            toast({
+              title: 'Error',
+              description: response.message || 'Could not submit report, please try again later.',
+              variant: 'destructive',
+            });
+          }
         }
+      } catch (err) {
+        toast({
+          title: 'Error',
+          description: 'Could not submit report, please try again later.',
+          variant: 'destructive',
+        });
       }
     });
   };

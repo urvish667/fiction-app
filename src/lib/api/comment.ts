@@ -327,11 +327,11 @@ export const CommentService = {
   /**
    * Like a comment
    */
-  async likeComment(commentId: string): Promise<ApiResponse<any>> {
+  async likeComment(commentId: string): Promise<ApiResponse<{ likeCount: number }>> {
     try {
       const response = await apiClient.post<{
         success: boolean;
-        data: any;
+        data: { likeCount: number };
       }>(`/comments/${commentId}/like`);
 
       return {
@@ -355,16 +355,18 @@ export const CommentService = {
   /**
    * Unlike a comment
    */
-  async unlikeComment(commentId: string): Promise<ApiResponse<any>> {
+  async unlikeComment(commentId: string): Promise<ApiResponse<{ likeCount: number }>> {
     try {
       const response = await apiClient.delete<{
         success: boolean;
-        data: any;
+        data: { likeCount: number };
+        message: string;
       }>(`/comments/${commentId}/like`);
 
       return {
         success: true,
-        data: response.data
+        data: response.data,
+        message: response.message
       };
     } catch (error: any) {
       logError(error.message || "Failed to unlike comment", {

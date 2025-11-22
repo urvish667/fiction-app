@@ -31,7 +31,7 @@ export async function fetchForumData(username: string): Promise<ServerForumData 
   try {
     // Get current user from JWT cookies (server-side)
     const cookieStore = await cookies();
-    const accessToken = cookieStore.get('access-token')?.value;
+    const accessToken = cookieStore.get('fablespace_access_token')?.value;
 
     // Try to get current user from API using direct fetch
     let currentUser = null;

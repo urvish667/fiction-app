@@ -14,6 +14,7 @@ interface AuthContextType {
   refreshUser: () => Promise<void>;
   googleAuth: (idToken?: string, accessToken?: string) => Promise<AuthUser>;
   discordAuth: (accessToken: string) => Promise<AuthUser>;
+  checkAuth: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -28,25 +29,11 @@ export const useAuth = () => {
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Check for existing session on mount
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const response = await AuthService.getCurrentUser();
-        if (response.success && response.data) {
-          setUser(response.data.user);
-        }
-      } catch (error) {
-        // User is not authenticated, that's expected for public pages
-        setUser(null);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    checkAuth();
+    checkAuthHandler();
   }, []);
 
   const loginHandler = async (data: LoginData): Promise<AuthUser> => {
@@ -102,6 +89,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     throw new Error(response.message || 'Discord authentication failed');
   };
 
+  const checkAuthHandler = async (): Promise<boolean> => {
+    // Only check if we don't already have a user
+    if (user) {
+      return true;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await AuthService.getCurrentUser();
+      if (response.success && response.data) {
+        setUser(response.data.user);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      setUser(null);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const value: AuthContextType = {
     user,
     isLoading,
@@ -112,6 +121,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     refreshUser: refreshUserHandler,
     googleAuth: googleAuthHandler,
     discordAuth: discordAuthHandler,
+    checkAuth: checkAuthHandler,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

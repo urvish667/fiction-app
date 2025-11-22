@@ -16,7 +16,7 @@ export class ApiError extends Error {
   code: ErrorCode;
   status: number;
   details?: any;
-  
+
   constructor(
     code: ErrorCode,
     message: string,
@@ -27,7 +27,7 @@ export class ApiError extends Error {
     this.code = code;
     this.status = getStatusCodeForError(code);
     this.details = details;
-    
+
     // Ensure instanceof works correctly
     Object.setPrototypeOf(this, ApiError.prototype);
   }
@@ -156,20 +156,7 @@ export class ExternalServiceError extends ApiError {
   }
 }
 
-// CSRF errors
-export class CsrfTokenMissingError extends ApiError {
-  constructor(message: string = 'CSRF token is missing', details?: any) {
-    super(ErrorCode.CSRF_TOKEN_MISSING, message, details);
-    this.name = 'CsrfTokenMissingError';
-  }
-}
 
-export class CsrfTokenInvalidError extends ApiError {
-  constructor(message: string = 'CSRF token is invalid', details?: any) {
-    super(ErrorCode.CSRF_TOKEN_INVALID, message, details);
-    this.name = 'CsrfTokenInvalidError';
-  }
-}
 
 // Method not allowed error
 export class MethodNotAllowedError extends ApiError {
@@ -197,31 +184,29 @@ function getStatusCodeForError(code: ErrorCode): number {
     [ErrorCode.TOKEN_EXPIRED]: 401,
     [ErrorCode.EMAIL_VERIFICATION_REQUIRED]: 403,
     [ErrorCode.INSUFFICIENT_PERMISSIONS]: 403,
-    
+
     // Validation errors
     [ErrorCode.VALIDATION_ERROR]: 400,
     [ErrorCode.INVALID_INPUT]: 400,
     [ErrorCode.MISSING_REQUIRED_FIELD]: 400,
     [ErrorCode.METHOD_NOT_ALLOWED]: 405,
-    
+
     // Resource errors
     [ErrorCode.RESOURCE_NOT_FOUND]: 404,
     [ErrorCode.RESOURCE_ALREADY_EXISTS]: 409,
     [ErrorCode.NOT_RESOURCE_OWNER]: 403,
-    
+
     // Rate limiting errors
     [ErrorCode.RATE_LIMIT_EXCEEDED]: 429,
-    
+
     // Server errors
     [ErrorCode.INTERNAL_SERVER_ERROR]: 500,
     [ErrorCode.DATABASE_ERROR]: 500,
     [ErrorCode.EXTERNAL_SERVICE_ERROR]: 502,
-    
-    // CSRF errors
-    [ErrorCode.CSRF_TOKEN_MISSING]: 403,
-    [ErrorCode.CSRF_TOKEN_INVALID]: 403,
+
+
   };
-  
+
   return statusCodes[code] || 500;
 }
 
@@ -238,7 +223,7 @@ function sanitizeErrorDetails(error: any): any {
       const { query, params, ...safeDetails } = error.details || {};
       return safeDetails;
     }
-    
+
     // If it's a server error, remove stack traces
     if (error && error.code && [
       ErrorCode.INTERNAL_SERVER_ERROR,
@@ -249,7 +234,7 @@ function sanitizeErrorDetails(error: any): any {
       return safeDetails;
     }
   }
-  
+
   return error.details;
 }
 
@@ -268,7 +253,7 @@ export function handleApiError(error: unknown): NextResponse {
         details: error.details,
       });
     }
-    
+
     // Create the error response
     return createErrorResponse(
       error.code,
@@ -276,7 +261,7 @@ export function handleApiError(error: unknown): NextResponse {
       sanitizeErrorDetails(error)
     );
   }
-  
+
   // If the error is a Zod validation error, convert it to a ValidationError
   if (error instanceof ZodError) {
     return createErrorResponse(
@@ -285,12 +270,12 @@ export function handleApiError(error: unknown): NextResponse {
       process.env.NODE_ENV === 'production' ? undefined : { errors: error.issues }
     );
   }
-  
+
   // For other errors, log them and return a generic error
   logError(error, {
     errorType: error instanceof Error ? error.constructor.name : typeof error,
   });
-  
+
   return createErrorResponse(
     ErrorCode.INTERNAL_SERVER_ERROR,
     error instanceof Error ? error.message : 'An unexpected error occurred',
@@ -323,7 +308,7 @@ export function withErrorHandler(
  */
 export function withErrorHandlingAndMiddleware(
   handler: (req: NextRequest) => Promise<NextResponse> | NextResponse,
-  ...middlewares: ((handler: (req: NextRequest) => Promise<NextResponse> | NextResponse) => 
+  ...middlewares: ((handler: (req: NextRequest) => Promise<NextResponse> | NextResponse) =>
     (req: NextRequest) => Promise<NextResponse> | NextResponse)[]
 ) {
   // Apply middlewares in reverse order (last middleware is applied first)
@@ -331,7 +316,7 @@ export function withErrorHandlingAndMiddleware(
     (acc, middleware) => middleware(acc),
     handler
   );
-  
+
   // Apply error handling last (outermost)
   return withErrorHandler(handlerWithMiddleware);
 }

@@ -85,7 +85,7 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
     }
 
     fetchInitialComments()
-  }, [storyId, chapterId, isChapter])
+  }, [storyId, chapterId, isChapter, isAuthenticated])
 
   // Load more comments (3 at a time)
   const loadMoreComments = async () => {

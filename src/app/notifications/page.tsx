@@ -11,9 +11,11 @@ import Navbar from "@/components/navbar"
 import { useNotifications } from "@/hooks/use-notifications"
 import { useUnreadNotificationCount } from "@/hooks/use-unread-notification-count"
 import { formatRelativeTime } from "@/utils/date-utils"
+import { useRequireAuth } from "@/hooks/use-require-auth"
 
 
 export default function NotificationsPage() {
+  const { user, isLoading: isAuthLoading } = useRequireAuth()
   const {
     filteredNotifications,
     markAsReadAndDelete,
@@ -257,6 +259,20 @@ export default function NotificationsPage() {
       default:
         return notification.message || `New ${notification.type} notification`;
     }
+  }
+
+  // Show loading state while checking authentication
+  if (isAuthLoading) {
+    return (
+      <TooltipProvider>
+        <div className="min-h-screen">
+          <Navbar />
+          <div className="flex justify-center items-center min-h-[400px]">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+          </div>
+        </div>
+      </TooltipProvider>
+    )
   }
 
   return (

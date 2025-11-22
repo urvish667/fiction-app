@@ -11,6 +11,7 @@ import { AlertCircle } from "lucide-react"
 import { format } from "date-fns"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
+import { useRequireAuth } from "@/hooks/use-require-auth"
 import { UserService } from "@/lib/api/user"
 import { debounce } from "lodash"
 import Link from "next/link"
@@ -20,7 +21,8 @@ import { logError } from "@/lib/error-logger"
 
 export default function CompleteProfilePage() {
   const router = useRouter()
-  const { user, refreshUser } = useAuth()
+  const { user } = useRequireAuth()
+  const { refreshUser } = useAuth()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
 

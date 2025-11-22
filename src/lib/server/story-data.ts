@@ -131,14 +131,9 @@ export async function fetchStoryData(slug: string): Promise<StoryResponse & { vi
       chapter.status === 'published'
     );
 
-    // Get the combined view count (story + all chapters)
-    let viewCount = 0;
-    try {
-      const { getCombinedStoryViewCount } = await import('@/lib/redis/view-tracking');
-      viewCount = await getCombinedStoryViewCount(storyData.id);
-    } catch (viewCountError) {
-      logger.warn('Error getting combined view count:', viewCountError);
-    }
+    // Use readCount from the story data (synced from Redis every 12 hours)
+    // This is more efficient than real-time Redis queries for every page load
+    const viewCount = storyData.readCount || 0;
 
     // Return the story data as-is from API, adding view count
     const storyWithViewCount = {

@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import Navbar from "@/components/navbar"
 import { SiteFooter } from "@/components/site-footer"
-import { fetchWithCsrf } from "@/lib/client/csrf"
+import { ContactService } from "@/lib/api/contact"
 
 export default function ContactPage() {
   const { toast } = useToast()
@@ -30,23 +30,16 @@ export default function ContactPage() {
     }
 
     try {
-      const response = await fetchWithCsrf('/api/contact', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(contactData),
-      })
+      const result = await ContactService.submitContactForm(contactData)
 
-      if (response.ok) {
+      if (result.success) {
         toast({
           title: "Message sent successfully!",
           description: "Thanks for reaching out! We'll get back to you soon.",
         })
         form.reset()
       } else {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to send message')
+        throw new Error(result.message || 'Failed to send message')
       }
     } catch (error) {
       console.error('Error sending message:', error)

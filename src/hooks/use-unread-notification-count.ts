@@ -1,24 +1,30 @@
 import { useState, useEffect, useCallback } from "react";
+import { useAuth } from "@/lib/auth-context";
 import { NotificationService } from "@/lib/api/notification";
 import { logError } from "@/lib/error-logger";
 
 /**
- * Hook for managing unread notification count with real-time updates
- * This hook can be used across multiple components to keep the count in sync
+ * Hook for managing unread notification count with real-time updates.
+ * Skips API calls when the user is not authenticated to avoid 401 errors on public pages.
  */
 export function useUnreadNotificationCount() {
+    const { user, isLoading: authLoading } = useAuth();
     const [unreadCount, setUnreadCount] = useState<number>(0);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     // Fetch unread count from API
     const fetchUnreadCount = useCallback(async () => {
+        // If no authenticated user, reset count and skip request
+        if (!user) {
+            setUnreadCount(0);
+            return;
+        }
         try {
             setLoading(true);
             setError(null);
 
             const response = await NotificationService.getUnreadCount();
-
             if (response.success && response.data) {
                 setUnreadCount(response.data.unreadCount);
             } else {
@@ -27,50 +33,50 @@ export function useUnreadNotificationCount() {
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : "An error occurred";
             setError(errorMessage);
-            logError(err, { context: 'Error fetching unread notification count' });
+            logError(err, { context: "Error fetching unread notification count" });
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [user]);
 
-    // Manually update the count (useful for optimistic updates)
+    // Initial fetch when component mounts or user changes
+    useEffect(() => {
+        if (user) {
+            fetchUnreadCount();
+        } else {
+            setUnreadCount(0);
+        }
+    }, [fetchUnreadCount, user]);
+
+    // Periodic refresh (fallback) – only when user is present
+    useEffect(() => {
+        if (!user) return;
+        const interval = setInterval(() => {
+            fetchUnreadCount();
+        }, 60000);
+        return () => clearInterval(interval);
+    }, [fetchUnreadCount, user]);
+
+    // Helper functions for manual adjustments
     const updateCount = useCallback((newCount: number) => {
         setUnreadCount(newCount);
     }, []);
 
-    // Increment the count
     const incrementCount = useCallback(() => {
-        setUnreadCount(prev => prev + 1);
+        setUnreadCount((prev) => prev + 1);
     }, []);
 
-    // Decrement the count
     const decrementCount = useCallback(() => {
-        setUnreadCount(prev => Math.max(0, prev - 1));
+        setUnreadCount((prev) => Math.max(0, prev - 1));
     }, []);
 
-    // Reset count to zero
     const resetCount = useCallback(() => {
         setUnreadCount(0);
     }, []);
 
-    // Fetch initial count on mount
-    useEffect(() => {
-        fetchUnreadCount();
-    }, [fetchUnreadCount]);
-
-    // Set up periodic refresh of unread count (as a fallback)
-    useEffect(() => {
-        // Refresh count every 60 seconds
-        const interval = setInterval(() => {
-            fetchUnreadCount();
-        }, 60000);
-
-        return () => clearInterval(interval);
-    }, [fetchUnreadCount]);
-
     return {
         unreadCount,
-        loading,
+        loading: loading || authLoading,
         error,
         fetchUnreadCount,
         updateCount,

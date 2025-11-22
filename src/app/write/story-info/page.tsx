@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { useAuth } from "@/lib/auth-context"
+import { useRequireAuth } from "@/hooks/use-require-auth"
 import { motion } from "framer-motion"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
@@ -37,7 +37,6 @@ import { StoryService } from "@/lib/api/story"
 import { ChapterService } from "@/lib/api/chapter"
 import { MetaService } from "@/lib/api/meta"
 import { CreateStoryRequest, UpdateStoryRequest } from "@/types/story"
-import { fetchWithCsrf } from "@/lib/client/csrf"
 
 import { logError } from "@/lib/error-logger"
 import { licenses } from "@/constants/licenses"
@@ -86,7 +85,7 @@ export default function StoryInfoPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const { user, isLoading: isAuthLoading, isAuthenticated } = useAuth();
+  const { user, isLoading: isAuthLoading, isAuthenticated } = useRequireAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isInitialLoad = useRef(true);
 
@@ -737,17 +736,6 @@ export default function StoryInfoPage() {
     setChapterToDelete(chapter);
     setDeleteDialogOpen(true);
   }, []);
-
-  // Check authentication
-  useEffect(() => {
-    // Only redirect if we're sure the user is not authenticated
-    // Don't redirect during loading state
-    // Only redirect if we're sure the user is not authenticated
-    // Don't redirect during loading state
-    if (!isAuthLoading && !isAuthenticated) {
-      router.push('/login?callbackUrl=/write/story-info')
-    }
-  }, [isAuthenticated, isAuthLoading, router])
 
   // Mark initial load complete after first render (for new stories)
   useEffect(() => {

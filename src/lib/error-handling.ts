@@ -37,9 +37,7 @@ export enum ErrorCode {
   DATABASE_ERROR = 'DATABASE_ERROR',
   EXTERNAL_SERVICE_ERROR = 'EXTERNAL_SERVICE_ERROR',
 
-  // CSRF errors
-  CSRF_TOKEN_MISSING = 'CSRF_TOKEN_MISSING',
-  CSRF_TOKEN_INVALID = 'CSRF_TOKEN_INVALID',
+
 }
 
 // HTTP status codes for different error types
@@ -71,9 +69,7 @@ export const ErrorStatusCodes: Record<ErrorCode, number> = {
   [ErrorCode.DATABASE_ERROR]: 500,
   [ErrorCode.EXTERNAL_SERVICE_ERROR]: 502,
 
-  // CSRF errors
-  [ErrorCode.CSRF_TOKEN_MISSING]: 403,
-  [ErrorCode.CSRF_TOKEN_INVALID]: 403,
+
 };
 
 // Error response interface
@@ -167,11 +163,7 @@ function getDefaultErrorMessage(code: ErrorCode): string {
     case ErrorCode.EXTERNAL_SERVICE_ERROR:
       return 'An error occurred while communicating with an external service';
 
-    // CSRF errors
-    case ErrorCode.CSRF_TOKEN_MISSING:
-      return 'CSRF token is missing';
-    case ErrorCode.CSRF_TOKEN_INVALID:
-      return 'CSRF token is invalid';
+
 
     default:
       return 'An error occurred';
