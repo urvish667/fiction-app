@@ -2,10 +2,10 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { useSession } from "next-auth/react"
+import { useAuth } from "@/lib/auth-context"
 import { Button } from "@/components/ui/button"
 import { Heart, Share2, Bell, Twitter, Facebook, LinkIcon, Check } from "lucide-react"
-import type { Story } from "@/lib/types"
+import type { Story } from "@/types/story"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { toast, useToast } from "@/components/ui/use-toast"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -16,14 +16,14 @@ interface LikeShareFollowProps {
 
 export default function LikeShareFollow({ story }: LikeShareFollowProps) {
   const router = useRouter()
-  const { data: session } = useSession()
+  const { user } = useAuth()
   const { toast: showToast } = useToast()
   const [liked, setLiked] = useState(false)
   const [following, setFollowing] = useState(false)
   const [copied, setCopied] = useState(false)
 
   const handleLike = () => {
-    if (!session) {
+    if (!user) {
       showToast({
         title: "Sign in required",
         description: "Please sign in to like this story",
@@ -47,7 +47,7 @@ export default function LikeShareFollow({ story }: LikeShareFollowProps) {
   }
 
   const handleFollow = () => {
-    if (!session) {
+    if (!user) {
       showToast({
         title: "Sign in required",
         description: "Please sign in to follow this author",
@@ -107,7 +107,7 @@ export default function LikeShareFollow({ story }: LikeShareFollowProps) {
             </Button>
           </TooltipTrigger>
           <TooltipContent>
-            <p>{!session ? "Sign in to like this story" : (liked ? "Unlike this story" : "Like this story")}</p>
+            <p>{!user ? "Sign in to like this story" : (liked ? "Unlike this story" : "Like this story")}</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -126,7 +126,7 @@ export default function LikeShareFollow({ story }: LikeShareFollowProps) {
             </Button>
           </TooltipTrigger>
           <TooltipContent>
-            <p>{!session ? "Sign in to follow this author" : (following ? "Unfollow this author" : "Follow this author for updates")}</p>
+            <p>{!user ? "Sign in to follow this author" : (following ? "Unfollow this author" : "Follow this author for updates")}</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>

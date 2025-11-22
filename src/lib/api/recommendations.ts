@@ -47,13 +47,13 @@ export const RecommendationService = {
     });
 
     try {
-      const response = await apiClient.get<RecommendedStory[]>(
+      const response = await apiClient.get<{ success: boolean; data: RecommendedStory[] }>(
         `/recommendations/${storyId}?${params.toString()}`
       );
 
       return {
         success: true,
-        data: response
+        data: response.data
       };
     } catch (error: any) {
       // Handle 401 Unauthorized errors gracefully (user not logged in)

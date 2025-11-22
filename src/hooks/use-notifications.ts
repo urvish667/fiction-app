@@ -268,16 +268,13 @@ export function useNotifications({
     // Get JWT token for WebSocket authentication
     const getToken = async () => {
       try {
-        // Get token from session or fetch from API
-        const response = await fetch('/api/auth/ws-token');
+        // Import apiClient to call the backend API
+        const { apiClient } = await import('@/lib/apiClient');
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          logError(`Failed to get WebSocket token: ${response.status} ${response.statusText}`, { context: 'useNotifications', errorText });
-          throw new Error(`Failed to get WebSocket token: ${response.status} ${response.statusText}`);
-        }
+        // Get token from backend API
+        const response = await apiClient.get<{ success: boolean; data: { token: string } }>('/auth/ws-token');
 
-        const { token } = await response.json();
+        const token = response.data.token;
 
         // Log WebSocket URL for debugging
         const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001/api/ws';

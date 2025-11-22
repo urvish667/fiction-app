@@ -1,4 +1,4 @@
-import { PayoutProvider } from '@prisma/client';
+export type PaymentMethod = 'STRIPE' | 'PAYPAL' | 'BMC' | 'KOFI';
 
 export interface UserSummary {
   id: string;
@@ -8,7 +8,7 @@ export interface UserSummary {
   bio?: string;
   location?: string;
   donationsEnabled?: boolean;
-  donationMethod?: PayoutProvider | null;
+  donationMethod?: PaymentMethod | null;
   donationLink?: string;
 }
 
