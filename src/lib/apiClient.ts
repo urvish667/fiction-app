@@ -58,9 +58,10 @@ class ApiClient {
 
         const originalRequest = error.config;
         const isAuthCheck = originalRequest?.url === '/auth/me';
+        const isLogin = originalRequest?.url === '/auth/login';
 
-        // For /auth/me endpoint, don't try to refresh tokens - let 401 responses through
-        if (error.response?.status === 401 && isAuthCheck) {
+        // For /auth/me and /auth/login endpoints, don't try to refresh tokens - let 401 responses through
+        if (error.response?.status === 401 && (isAuthCheck || isLogin)) {
           return Promise.reject(error);
         }
 

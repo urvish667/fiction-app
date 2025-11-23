@@ -5,6 +5,9 @@ import StoryPageClient from "@/components/story/story-page-client"
 import StructuredData from "@/components/seo/structured-data"
 import { fetchStoryData } from "@/lib/server/story-data"
 
+// ISR: Revalidate every 60 seconds for fresh content while maintaining performance
+export const revalidate = 60
+
 interface StoryPageProps {
   params: Promise<{
     slug: string

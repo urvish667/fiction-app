@@ -8,7 +8,7 @@ export const ImageService = {
   /**
    * Get the full URL for an image stored in the backend
    * @param imageInput The image key/path or full URL
-   * @returns Full URL to the image on the backend API
+   * @returns Full URL to the image on the backend API or CDN
    */
   getImageUrl: (imageInput?: string | null): string | null => {
     if (!imageInput) return null;
@@ -28,10 +28,19 @@ export const ImageService = {
 
     let imageKey = imageInput;
 
-    // Check if it's a full API path (backward compatibility for database entries)
+    // Check if it's a full API path (backend proxy URL from database)
     if (imageInput.startsWith(apiPrefix)) {
       // Extract the key part after the prefix and decode it
-      imageKey = decodeURIComponent(imageInput.substring(apiPrefix.length));
+      const encodedKey = imageInput.substring(apiPrefix.length);
+      imageKey = decodeURIComponent(encodedKey);
+
+      // In production, use CDN directly for better performance
+      // In development, keep using backend proxy (localhost:4000)
+      if (process.env.NODE_ENV === 'production') {
+        return `https://cdn.fablespace.space/${imageKey}`;
+      }
+      // In development, return the proxy URL as-is
+      return imageInput;
     }
 
     // Otherwise, construct the URL from the image key

@@ -5,7 +5,7 @@ import { ChapterService } from "@/lib/api/chapter"
 import { generateChapterMetadata, generateChapterStructuredData, generateChapterBreadcrumbStructuredData } from "@/lib/seo/metadata"
 import ChapterPageClient from "@/components/chapter/chapter-page-client"
 import StructuredData from "@/components/seo/structured-data"
-import { logger } from "@azure/storage-blob"
+
 
 interface ChapterPageProps {
   params: Promise<{
@@ -14,8 +14,8 @@ interface ChapterPageProps {
   }>
 }
 
-// Force dynamic rendering to prevent caching issues with chapter content
-export const dynamic = 'force-dynamic';
+// ISR: Revalidate every 60 seconds for fresh content while maintaining performance
+export const revalidate = 60;
 
 // Generate metadata for SEO
 export async function generateMetadata({ params }: ChapterPageProps): Promise<Metadata> {
@@ -121,7 +121,7 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
       </>
     )
   } catch (error) {
-    logger.error('Error loading chapter page:', error)
+    console.error('Error loading chapter page:', error)
     notFound()
   }
 }

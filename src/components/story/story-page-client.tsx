@@ -392,7 +392,7 @@ export default function StoryPageClient({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
-                className="relative aspect-video sm:aspect-[4/3] lg:aspect-video rounded-lg overflow-hidden shadow-lg mb-4 sm:mb-6"
+                className="relative aspect-video w-full max-w-md mx-auto lg:mx-0 rounded-lg overflow-hidden shadow-lg mb-4 sm:mb-6"
               >
                 <Image
                   src={imageFallback ? "/placeholder.svg" : (ImageService.getImageUrl(story.coverImage) || "/placeholder.svg")}

@@ -1,6 +1,9 @@
 import { MetadataRoute } from 'next'
-import { prisma } from '@/lib/prisma'
 import { generateBrowseSitemapEntries, validateSitemapEntries } from '@/lib/seo/sitemap-utils'
+import { SitemapService } from '@/lib/api/sitemap'
+
+export const revalidate = 86400 // Revalidate once every day
+
 
 /**
  * Dynamic sitemap generation for FableSpace
@@ -74,36 +77,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ]
 
   try {
-    // Get all published stories (ongoing and completed)
-    const stories = await prisma.story.findMany({
-      where: {
-        status: {
-          in: ['ongoing', 'completed'],
-        },
-      },
-      select: {
-        slug: true,
-        updatedAt: true,
-        createdAt: true,
-        chapters: {
-          where: {
-            status: 'published',
-          },
-          select: {
-            number: true,
-            updatedAt: true,
-          },
-          orderBy: {
-            number: 'asc',
-          },
-        },
-      },
-    })
+    // Fetch data from backend APIs
+    const [stories, tags, blogs, users, usersWithForums] = await Promise.all([
+      SitemapService.getStories(),
+      SitemapService.getTags(),
+      SitemapService.getBlogs(),
+      SitemapService.getUsers(),
+      SitemapService.getForums(),
+    ])
 
     // Generate story pages
     const storyPages: MetadataRoute.Sitemap = stories.map((story) => ({
       url: `${baseUrl}/story/${story.slug}`,
-      lastModified: story.updatedAt,
+      lastModified: new Date(story.updatedAt),
       changeFrequency: 'weekly' as const,
       priority: 0.8,
     }))
@@ -112,130 +98,43 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const chapterPages: MetadataRoute.Sitemap = stories.flatMap((story) =>
       story.chapters.map((chapter) => ({
         url: `${baseUrl}/story/${story.slug}/chapter/${chapter.number}`,
-        lastModified: chapter.updatedAt,
+        lastModified: new Date(chapter.updatedAt),
         changeFrequency: 'monthly' as const,
         priority: 0.7,
       }))
     )
 
-    // Tags
-    const pageSize = 1000
-    let page = 0
-    let tagPages: MetadataRoute.Sitemap = []
-
-    while (true) {
-      const tags = await prisma.tag.findMany({
-        skip: page * pageSize,
-        take: pageSize,
-        select: { slug: true },
-      })
-
-      if (tags.length === 0) break
-
-      const entries = tags.map(tag => ({
-        url: `${baseUrl}/browse?tag=${encodeURIComponent(tag.slug)}`,
-        lastModified: new Date(),
-        changeFrequency: 'weekly' as const,
-        priority: 0.7,
-      }))
-
-      tagPages = tagPages.concat(entries)
-      page++
-    }
-
-    // Get blogs
-    const blogs = await prisma.blog.findMany({
-      where: { status: 'published' }, // Adjust if needed
-      select: {
-        slug: true,
-        updatedAt: true
-      } 
-    })
+    // Generate tag pages
+    const tagPages: MetadataRoute.Sitemap = tags.map(tag => ({
+      url: `${baseUrl}/browse?tag=${encodeURIComponent(tag.slug)}`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly' as const,
+      priority: 0.7,
+    }))
 
     // Generate blog pages
     const blogPages: MetadataRoute.Sitemap = blogs.map((blog) => ({
       url: `${baseUrl}/blog/${blog.slug}`,
-      lastModified: blog.updatedAt,
+      lastModified: new Date(blog.updatedAt),
       changeFrequency: 'weekly' as const,
       priority: 0.6,
     }))
 
-    // Get all users with public profiles
-    const users = await prisma.user.findMany({
-      where: {
-        username: {
-          not: null,
-        },
-      },
-      select: {
-        username: true,
-        updatedAt: true,
-        preferences: true,
-      },
-    })
+    // Generate user profile pages
+    const userPages: MetadataRoute.Sitemap = users.map((user) => ({
+      url: `${baseUrl}/user/${user.username}`,
+      lastModified: new Date(user.updatedAt),
+      changeFrequency: 'weekly' as const,
+      priority: 0.6,
+    }))
 
-    // Filter users with public profiles and generate user profile pages
-    const userPages: MetadataRoute.Sitemap = users
-      .filter((user) => {
-        if (!user.username) return false
-
-        // Parse preferences to check if profile is public
-        try {
-          const preferences = typeof user.preferences === 'string'
-            ? JSON.parse(user.preferences)
-            : user.preferences
-          return preferences?.privacySettings?.publicProfile === true
-        } catch {
-          return false // Default to private if preferences can't be parsed
-        }
-      })
-      .map((user) => ({
-        url: `${baseUrl}/user/${user.username}`,
-        lastModified: user.updatedAt,
-        changeFrequency: 'weekly' as const,
-        priority: 0.6,
-      }))
-
-    // Get users with enabled forums (author forums only)
-    const usersWithForums = await prisma.user.findMany({
-      where: {
-        username: {
-          not: null,
-        },
-        forums: {
-          some: {
-            type: 'AUTHOR'
-          }
-        }
-      },
-      select: {
-        username: true,
-        updatedAt: true,
-        preferences: true,
-      },
-    })
-
-    // Filter users with forum enabled in preferences and generate forum pages
-    const forumPages: MetadataRoute.Sitemap = usersWithForums
-      .filter((user) => {
-        if (!user.username) return false
-
-        // Parse preferences to check if forum is enabled
-        try {
-          const preferences = typeof user.preferences === 'string'
-            ? JSON.parse(user.preferences)
-            : user.preferences
-          return preferences?.privacySettings?.forum === true
-        } catch {
-          return false // Default to disabled if preferences can't be parsed
-        }
-      })
-      .map((user) => ({
-        url: `${baseUrl}/user/${user.username}/forum`,
-        lastModified: user.updatedAt,
-        changeFrequency: 'daily' as const,
-        priority: 0.7,
-      }))
+    // Generate forum pages
+    const forumPages: MetadataRoute.Sitemap = usersWithForums.map((user) => ({
+      url: `${baseUrl}/user/${user.username}/forum`,
+      lastModified: new Date(user.updatedAt),
+      changeFrequency: 'daily' as const,
+      priority: 0.7,
+    }))
 
     // Generate category and search pages
     const browseSitemapEntries = generateBrowseSitemapEntries()
@@ -252,7 +151,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     return validatedPages
   } catch (error) {
     console.error('Error generating sitemap:', error)
-    // Return at least static pages and browse pages if database query fails
+    // Return at least static pages and browse pages if API query fails
     const browseSitemapEntries = generateBrowseSitemapEntries()
     const browsePages: MetadataRoute.Sitemap = browseSitemapEntries.map(entry => ({
       url: entry.url,

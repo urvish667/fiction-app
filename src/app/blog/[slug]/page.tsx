@@ -4,7 +4,6 @@ import MarkdownRenderer from "@/components/MarkdownRenderer";
 import Navbar from "@/components/navbar";
 import { SiteFooter } from "@/components/site-footer";
 import { Metadata } from "next";
-import { logger } from "@azure/storage-blob";
 import { Badge } from "@/components/ui/badge";
 import AdBanner from "@/components/ad-banner";
 import { generateBlogMetadata, generateBlogStructuredData, generateBlogBreadcrumbStructuredData } from "@/lib/seo/metadata";
@@ -108,7 +107,7 @@ export default async function BlogPostPage({ params }: BlogPageProps) {
       </div>
     );
   } catch (error) {
-    logger.error("Error loading blog post page:", error);
+    console.error("Error loading blog post page:", error);
     notFound();
   }
 }

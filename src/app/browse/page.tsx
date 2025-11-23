@@ -13,6 +13,9 @@ import BrowseContent from "./browse-content"
 import { getAllGenreNames } from "@/lib/seo/genre-descriptions"
 import { fetchBrowseStories } from "@/lib/server/browse-data"
 
+// ISR: Revalidate every 5 minutes for browse pages (less frequent updates needed)
+export const revalidate = 300
+
 interface BrowsePageProps {
   searchParams: Promise<{
     genre?: string
