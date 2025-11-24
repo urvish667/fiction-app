@@ -148,6 +148,32 @@ export default function MyWorksPage() {
     };
   }, [fetchStories]);
 
+  // Refetch stories when page becomes visible (user navigates back from editor)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      // Only refetch if page is visible and we have a user ID
+      if (!document.hidden && user?.id) {
+        // Reset to first page to get latest data
+        fetchStories(1, () => true);
+      }
+    };
+
+    // Listen for visibility changes
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Also refetch when window gains focus (for better UX)
+    window.addEventListener('focus', () => {
+      if (user?.id) {
+        fetchStories(1, () => true);
+      }
+    });
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleVisibilityChange);
+    };
+  }, [user?.id, fetchStories]);
+
   // Function to load more stories
   const loadMoreStories = () => {
     if (!pagination.hasMore || isFetchingMore) return;

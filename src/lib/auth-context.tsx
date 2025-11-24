@@ -31,6 +31,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Track pending getCurrentUser request to prevent duplicate calls
+  const pendingAuthCheckRef = React.useRef<Promise<boolean> | null>(null);
+
   // Check for existing session on mount
   useEffect(() => {
     checkAuthHandler();
@@ -95,20 +98,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return true;
     }
 
-    setIsLoading(true);
-    try {
-      const response = await AuthService.getCurrentUser();
-      if (response.success && response.data) {
-        setUser(response.data.user);
-        return true;
-      }
-      return false;
-    } catch (error) {
-      setUser(null);
-      return false;
-    } finally {
-      setIsLoading(false);
+    // If there's already a pending request, return it instead of making a new one
+    if (pendingAuthCheckRef.current) {
+      return pendingAuthCheckRef.current;
     }
+
+    setIsLoading(true);
+
+    // Create and store the promise
+    const authCheckPromise = (async () => {
+      try {
+        const response = await AuthService.getCurrentUser();
+        if (response.success && response.data) {
+          setUser(response.data.user);
+          return true;
+        }
+        return false;
+      } catch (error) {
+        setUser(null);
+        return false;
+      } finally {
+        setIsLoading(false);
+        // Clear the pending request after completion
+        pendingAuthCheckRef.current = null;
+      }
+    })();
+
+    pendingAuthCheckRef.current = authCheckPromise;
+    return authCheckPromise;
   };
 
   const value: AuthContextType = {

@@ -7,7 +7,6 @@ import Providers from "./providers"
 import { Toaster } from "@/components/ui/toaster"
 import Script from "next/script"
 import { Analytics } from "@/components/analytics"
-import { GoogleAuthProvider } from "@/components/auth/google-provider"
 import { OfflineBanner } from "@/components/offline-banner"
 import { GlobalErrorHandler } from "@/components/global-error-handler"
 
@@ -58,11 +57,9 @@ export default function RootLayout({
         <GlobalErrorHandler />
         <OfflineBanner />
         <Providers>
-          <GoogleAuthProvider>
-            <ThemeProvider>
-              {children}
-            </ThemeProvider>
-          </GoogleAuthProvider>
+          <ThemeProvider>
+            {children}
+          </ThemeProvider>
         </Providers>
         <Toaster />
       </body>

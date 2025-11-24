@@ -368,105 +368,7 @@ export default function StoryInfoPage() {
   // Auto-save has been removed to reduce unnecessary database pings.
   // Users now manually save using the "Save Changes" button or Ctrl/Cmd+S.
 
-  // Load existing story data if editing
-  useEffect(() => {
-    const storyId = new URLSearchParams(window.location.search).get("id");
-
-    if (storyId) {
-      const fetchStory = async () => {
-        try {
-          const response = await StoryService.getStory(storyId);
-          if (!response.success || !response.data) {
-            throw new Error(response.message || "Failed to load story");
-          }
-          const story = response.data;
-
-          // Extract genre and language IDs from the response
-          let genreId = "";
-          let languageId = "";
-
-          // Handle genre - it might be an object with id property or a string ID
-          if (story.genre && typeof story.genre === 'object') {
-            const genreObj = story.genre as { id: string, name: string };
-            if (genreObj.id) {
-              genreId = genreObj.id;
-            }
-          } else if (typeof story.genre === 'string') {
-            genreId = story.genre;
-          }
-
-          // Handle language - it might be an object with id property or a string ID
-          if (story.language && typeof story.language === 'object') {
-            const languageObj = story.language as { id: string, name: string };
-            if (languageObj.id) {
-              languageId = languageObj.id;
-            }
-          } else if (typeof story.language === 'string') {
-            languageId = story.language;
-          }
-
-          // Determine the status with type safety
-          const storyStatus = story.status === "ongoing" || story.status === "completed"
-            ? story.status
-            : "draft" as const;
-
-          const newStoryData: StoryFormData = {
-            id: story.id,
-            title: story.title,
-            description: story.description || "",
-            genre: genreId,
-            language: languageId || "English",
-            isMature: story.isMature,
-            isOriginal: story.isOriginal || false,
-            // Only use the actual coverImage if it exists and is not null/empty
-            coverImage: story.coverImage && story.coverImage.trim() !== ""
-              ? story.coverImage
-              : "/placeholder.svg?height=1600&width=900",
-            status: storyStatus,
-            license: story.license || "ALL_RIGHTS_RESERVED",
-            lastSaved: new Date(story.updatedAt),
-            slug: story.slug,
-          };
-
-          setStoryData(newStoryData);
-
-          // Extract and set tags from the story data
-          if (Array.isArray(story.tags)) {
-            const tagNames = story.tags.map((tag: any) => {
-              // Handle both string format (legacy) and object format (current)
-              if (typeof tag === 'string') {
-                return tag;
-              } else if (tag && typeof tag === 'object' && tag.name) {
-                return tag.name;
-              }
-              return '';
-            }).filter(Boolean);
-            setTags(tagNames);
-          }
-
-          // Mark initial load as complete AFTER loading all data
-          // This prevents the tag loading from triggering "unsaved changes"
-          setTimeout(() => {
-            isInitialLoad.current = false;
-          }, 100);
-
-          // Fetch chapters for this story
-          fetchChapters(story.id);
-        } catch (error) {
-          logError(error, { context: 'Fetching story', storyId });
-          toast({
-            title: "Error loading story",
-            description: "Failed to load story data. Please try again.",
-            variant: "destructive",
-          });
-        }
-      };
-
-      fetchStory();
-    }
-  }, [toast])
-
-  // Fetch chapters for a story
+  // Fetch chapters for a story (defined early to avoid circular dependency)
   const fetchChapters = useCallback(async (storyId: string) => {
     if (!storyId) return;
 
@@ -508,6 +410,132 @@ export default function StoryInfoPage() {
       setIsLoadingChapters(false);
     }
   }, [toast]);
+
+  // Fetch story data
+  const fetchStory = useCallback(async (id: string) => {
+    try {
+      const response = await StoryService.getStory(id);
+      if (!response.success || !response.data) {
+        throw new Error(response.message || "Failed to load story");
+      }
+      const story = response.data;
+
+      // Extract genre and language IDs from the response
+      let genreId = "";
+      let languageId = "";
+
+      // Handle genre - it might be an object with id property or a string ID
+      if (story.genre && typeof story.genre === 'object') {
+        const genreObj = story.genre as { id: string, name: string };
+        if (genreObj.id) {
+          genreId = genreObj.id;
+        }
+      } else if (typeof story.genre === 'string') {
+        genreId = story.genre;
+      }
+
+      // Handle language - it might be an object with id property or a string ID
+      if (story.language && typeof story.language === 'object') {
+        const languageObj = story.language as { id: string, name: string };
+        if (languageObj.id) {
+          languageId = languageObj.id;
+        }
+      } else if (typeof story.language === 'string') {
+        languageId = story.language;
+      }
+
+      // Determine the status with type safety
+      const storyStatus = story.status === "ongoing" || story.status === "completed"
+        ? story.status
+        : "draft" as const;
+
+      const newStoryData: StoryFormData = {
+        id: story.id,
+        title: story.title,
+        description: story.description || "",
+        genre: genreId,
+        language: languageId || "English",
+        isMature: story.isMature,
+        isOriginal: story.isOriginal || false,
+        // Only use the actual coverImage if it exists and is not null/empty
+        coverImage: story.coverImage && story.coverImage.trim() !== ""
+          ? story.coverImage
+          : "/placeholder.svg?height=1600&width=900",
+        status: storyStatus,
+        license: story.license || "ALL_RIGHTS_RESERVED",
+        lastSaved: new Date(story.updatedAt),
+        slug: story.slug,
+      };
+
+      setStoryData(newStoryData);
+
+      // Extract and set tags from the story data
+      if (Array.isArray(story.tags)) {
+        const tagNames = story.tags.map((tag: any) => {
+          // Handle both string format (legacy) and object format (current)
+          if (typeof tag === 'string') {
+            return tag;
+          } else if (tag && typeof tag === 'object' && tag.name) {
+            return tag.name;
+          }
+          return '';
+        }).filter(Boolean);
+        setTags(tagNames);
+      }
+
+      // Mark initial load as complete AFTER loading all data
+      // This prevents the tag loading from triggering "unsaved changes"
+      setTimeout(() => {
+        isInitialLoad.current = false;
+      }, 100);
+
+      // Fetch chapters for this story
+      fetchChapters(story.id);
+    } catch (error) {
+      logError(error, { context: 'Fetching story', storyId: id });
+      toast({
+        title: "Error loading story",
+        description: "Failed to load story data. Please try again.",
+        variant: "destructive",
+      });
+    }
+  }, [toast, fetchChapters]);
+
+  // Load existing story data if editing
+  useEffect(() => {
+    const storyId = new URLSearchParams(window.location.search).get("id");
+
+    if (storyId) {
+      fetchStory(storyId);
+    }
+  }, [fetchStory]);
+
+  // Refetch chapters when page becomes visible (user navigates back from editor)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      // Only refetch if page is visible and we have a story ID
+      if (!document.hidden && storyData.id) {
+        fetchChapters(storyData.id);
+        // Also refetch story data to get updated status
+        fetchStory(storyData.id);
+      }
+    };
+
+    // Listen for visibility changes
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Also refetch when window gains focus (for better UX)
+    window.addEventListener('focus', () => {
+      if (storyData.id) {
+        fetchChapters(storyData.id);
+      }
+    });
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleVisibilityChange);
+    };
+  }, [storyData.id, fetchChapters, fetchStory]);
 
   // Handle cover image upload
   const handleCoverImageClick = useCallback(() => {
@@ -701,35 +729,28 @@ export default function StoryInfoPage() {
 
     setIsDeleting(true);
     try {
-      const response = await ChapterService.deleteChapter(chapterToDelete.id);
-      if (!response.success) {
-        throw new Error(response.message || "Failed to delete chapter");
-      }
-
-      // Update the chapters list
-      setChapters(prevChapters =>
-        prevChapters.filter(chapter => chapter.id !== chapterToDelete.id)
-      );
+      await ChapterService.deleteChapter(chapterToDelete.id);
 
       toast({
         title: "Chapter deleted",
         description: `"${chapterToDelete.title}" has been deleted successfully.`,
       });
 
-      // Close the dialog
       setDeleteDialogOpen(false);
       setChapterToDelete(null);
     } catch (error) {
-      logError(error, { context: 'Deleting chapter', storyId: storyData.id, chapterId: chapterToDelete.id })
+      logError(error, { context: 'Deleting chapter', storyId: storyData.id, chapterId: chapterToDelete.id });
       toast({
         title: "Delete failed",
         description: error instanceof Error ? error.message : "Failed to delete the chapter. Please try again.",
         variant: "destructive",
       });
     } finally {
+      // Always refetch chapters to ensure UI is in sync with database
+      await fetchChapters(storyData.id);
       setIsDeleting(false);
     }
-  }, [chapterToDelete, storyData.id, toast]);
+  }, [chapterToDelete, storyData.id, toast, fetchChapters]);
 
   // Open delete confirmation dialog
   const openDeleteDialog = useCallback((chapter: { id: string, title: string }) => {
@@ -927,18 +948,6 @@ export default function StoryInfoPage() {
                 >
                   <Trash2 size={16} />
                 </Button>
-              </div>
-
-              <div className="bg-green-100 dark:bg-green-900 p-3 rounded-lg text-sm text-green-800 dark:text-green-200">
-                Need help creating a thumbnail?{' '}
-                <a
-                  href="https://fablespace.space/blog/creating-amazing-story-thumbnails-using-perchance-ai-a-complete-beginners-guide"
-                  className="underline hover:text-green-600 dark:hover:text-green-400 font-semibold"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  click here
-                </a>
               </div>
               <p className="text-xs text-muted-foreground">Recommended size: 1600x900 pixels. Max file size: 5MB.</p>
             </motion.div>

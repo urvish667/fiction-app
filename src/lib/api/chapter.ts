@@ -31,10 +31,13 @@ export const ChapterService = {
    */
   async getChapters(storyId: string): Promise<ApiResponse<ChapterResponse[]>> {
     try {
+      // Add cache-busting parameter to ensure fresh data (especially important for story-info page)
+      // Use a random component to prevent race conditions with rapid updates
+      const cacheBuster = `${Date.now()}_${Math.random().toString(36).substring(7)}`;
       const response = await apiClient.get<{
         success: boolean;
         data: ChapterResponse[];
-      }>(`/stories/${storyId}/chapters`);
+      }>(`/stories/${storyId}/chapters?_t=${cacheBuster}`, { noCache: true });
 
       return {
         success: true,

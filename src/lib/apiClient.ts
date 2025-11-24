@@ -134,7 +134,17 @@ class ApiClient {
   // Public methods - return data directly, throw on error
   async get<T>(url: string, config?: any): Promise<T> {
     try {
-      const response = await this.client.get(url, config);
+      const { noCache, ...axiosConfig } = config || {};
+
+      const requestConfig = {
+        ...axiosConfig,
+        headers: {
+          ...axiosConfig?.headers,
+          // Force fresh data if noCacheRequested
+          ...(noCache && { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' })
+        }
+      };
+      const response = await this.client.get(url, requestConfig);
       return response.data;
     } catch (error) {
       this.handleError(error as AxiosError);

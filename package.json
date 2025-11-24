@@ -84,6 +84,7 @@
     "tailwind-merge": "^3.0.2",
     "tailwindcss-animate": "^1.0.7",
     "tsconfig-paths": "^4.2.0",
+    "tslib": "^2.6.2",
     "vaul": "^1.1.2",
     "ws": "^8.18.3",
     "zod": "^4.1.11"

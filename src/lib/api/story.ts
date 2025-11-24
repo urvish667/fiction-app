@@ -38,6 +38,11 @@ export const StoryService = {
     try {
       // Build query string from params
       const queryParams = new URLSearchParams();
+
+      // Add cache-busting parameter
+      const cacheBuster = `${Date.now()}_${Math.random().toString(36).substring(7)}`;
+      queryParams.append('_t', cacheBuster);
+
       if (params) {
         Object.entries(params).forEach(([key, value]) => {
           if (value !== undefined) {
@@ -58,7 +63,7 @@ export const StoryService = {
         success: boolean;
         data: StoryResponse[];
         meta: any;
-      }>(url);
+      }>(url, { noCache: true });
 
       return {
         success: true,
@@ -363,10 +368,12 @@ export const StoryService = {
    */
   async getStory(id: string): Promise<ApiResponse<StoryResponse>> {
     try {
+      // Add cache-busting parameter to ensure fresh data
+      const cacheBuster = `${Date.now()}_${Math.random().toString(36).substring(7)}`;
       const response = await apiClient.get<{
         success: boolean;
         data: StoryResponse;
-      }>(`/stories/${id}`);
+      }>(`/stories/${id}?_t=${cacheBuster}`, { noCache: true });
 
       return {
         success: true,
