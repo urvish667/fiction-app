@@ -1,5 +1,4 @@
 import type React from "react"
-import type { Session } from "next-auth"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { PasswordInput } from "@/components/ui/password-input"
@@ -9,7 +8,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { AlertCircle, Loader2 } from "lucide-react"
 
 interface AccountSettingsProps {
-  session: Session | null
+  session: any | null
   passwordForm: {
     currentPassword: string
     newPassword: string

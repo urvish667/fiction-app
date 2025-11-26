@@ -144,9 +144,9 @@ export const AuthService = {
     /**
      * Refresh access token
      */
-    async refreshToken(): Promise<ApiResponse<void>> {
+    async refreshToken(): Promise<ApiResponse<{ expiresIn?: number }>> {
         try {
-            const response = await apiClient.post<ApiResponse<void>>('/auth/refresh');
+            const response = await apiClient.post<ApiResponse<{ expiresIn?: number }>>('/auth/refresh');
             return response;
         } catch (error: any) {
             logError(error.message || "Token refresh failed", {
@@ -377,6 +377,27 @@ export const AuthService = {
             return {
                 success: false,
                 message: error.message || "Password reset failed"
+            };
+        }
+    },
+
+    /**
+     * Get WebSocket authentication token
+     */
+    async getWebSocketToken(): Promise<ApiResponse<{ token: string }>> {
+        try {
+            const response = await apiClient.get<ApiResponse<{ token: string }>>('/auth/ws-token');
+            return response;
+        } catch (error: any) {
+            logError(error.message || "Failed to get WebSocket token", {
+                context: 'Get WebSocket token',
+                status: error.status,
+                errorDetails: error
+            });
+
+            return {
+                success: false,
+                message: error.message || "Failed to get WebSocket token"
             };
         }
     }

@@ -2,6 +2,7 @@
 
 import { ReactNode } from 'react'
 import { AuthProvider } from '@/lib/auth-context'
+import { NotificationProvider } from '@/contexts/notification-context'
 
 type ProvidersProps = {
   children: ReactNode
@@ -10,7 +11,9 @@ type ProvidersProps = {
 export default function Providers({ children }: ProvidersProps) {
   return (
     <AuthProvider>
-      {children}
+      <NotificationProvider>
+        {children}
+      </NotificationProvider>
     </AuthProvider>
   )
 }

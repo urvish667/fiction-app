@@ -2,14 +2,13 @@
 
 import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Bell, Heart, MessageSquare, UserPlus, BookOpen, Check } from "lucide-react"
 import Navbar from "@/components/navbar"
 import { useNotifications } from "@/hooks/use-notifications"
-import { useUnreadNotificationCount } from "@/hooks/use-unread-notification-count"
 import { formatRelativeTime } from "@/utils/date-utils"
 import { useRequireAuth } from "@/hooks/use-require-auth"
 
@@ -25,10 +24,17 @@ export default function NotificationsPage() {
     loadMoreNotifications,
     hasMore,
     isLoadingMore,
+    refetch,
   } = useNotifications()
 
-  // Use the unread count hook to keep the navbar in sync
-  const { resetCount } = useUnreadNotificationCount()
+  // TRIGGER 2: Fetch notifications when visiting notifications page
+  useEffect(() => {
+    if (user) {
+      refetch();
+    }
+  }, [user, refetch]);
+
+
 
   // Track notifications being deleted for animation
   const [deletingNotifications, setDeletingNotifications] = useState<Set<string>>(new Set())
@@ -54,9 +60,6 @@ export default function NotificationsPage() {
   const markAllAsReadAndDismiss = async () => {
     // Mark all as read using the hook function
     await markAllAsRead()
-
-    // Reset the unread count in the navbar
-    resetCount()
 
     // Delete all unread notifications with animation
     const unreadNotifications = filteredNotifications.filter((n: any) => !n.read)

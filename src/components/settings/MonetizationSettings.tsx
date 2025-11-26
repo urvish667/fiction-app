@@ -1,6 +1,5 @@
 import type React from "react"
 import { useState, useEffect } from "react"
-import type { Session } from "next-auth"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
@@ -18,7 +17,7 @@ interface DonationSettingsData {
 }
 
 interface MonetizationSettingsProps {
-  session: Session | null;
+  session: any | null;
   donationSettings: DonationSettingsData | null;
   isLoadingDonations: boolean;
   isSavingDonations: boolean;

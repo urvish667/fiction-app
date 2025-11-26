@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosResponse, AxiosError } from 'axios';
+import { toast } from '@/hooks/use-toast';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.fablespace.com/api/v1';
 
@@ -49,9 +50,10 @@ class ApiClient {
       },
       async (error: AxiosError) => {
         if (process.env.NODE_ENV !== 'production') {
-          // Don't log expected 401s for authentication checks
+          // Don't log expected 401s for authentication checks and notification endpoints
           const isAuthMe401 = error.response?.status === 401 && error.config?.url === '/auth/me';
-          if (!isAuthMe401) {
+          const isNotification401 = error.response?.status === 401 && error.config?.url?.includes('/notifications');
+          if (!isAuthMe401 && !isNotification401) {
             console.error('API Response Error:', error.response?.status, error.response?.data);
           }
         }
@@ -111,6 +113,15 @@ class ApiClient {
             }
             return Promise.reject(refreshError);
           }
+        }
+
+        // Handle rate limiting (429)
+        if (error.response?.status === 429) {
+          toast({
+            title: "Too Many Requests",
+            description: "You're making requests too quickly. Please wait a moment and try again.",
+            variant: "destructive",
+          });
         }
 
         return Promise.reject(error);

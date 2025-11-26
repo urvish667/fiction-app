@@ -577,42 +577,7 @@ export default function SettingsPage() {
   };
 
   const handleConnectStripe = async () => {
-    setIsSavingDonations(true);
-    const clientId = process.env.NEXT_PUBLIC_STRIPE_CONNECT_CLIENT_ID;
-    const redirectUri = `${window.location.origin}/api/stripe/oauth/callback`;
-
-    if (!clientId) {
-      setDonationError('Stripe Client ID is not configured.');
-      toast({ title: 'Configuration Error', description: 'Stripe is not configured.', variant: 'destructive' });
-      setIsSavingDonations(false);
-      return;
-    }
-
-    try {
-      // Generate a secure random state for CSRF protection
-      const stateResponse = await fetch('/api/csrf/generate-state');
-      if (!stateResponse.ok) {
-        throw new Error('Failed to generate secure state for Stripe Connect');
-      }
-
-      const { state } = await stateResponse.json();
-
-      // Set the state in a cookie with a short expiration (10 minutes)
-      document.cookie = `stripe_connect_state=${state}; path=/; max-age=600; SameSite=Lax; Secure`;
-
-      // Use standard OAuth flow with the secure state
-      const stripeConnectUrl = `https://connect.stripe.com/oauth/authorize?response_type=code&client_id=${clientId}&scope=read_write&state=${state}&redirect_uri=${encodeURIComponent(redirectUri)}&stripe_user[email]=${session?.user?.email || ''}`;
-      window.location.href = stripeConnectUrl;
-    } catch (error) {
-      logError(error, { context: 'Error initiating Stripe Connect flow' });
-      setDonationError('Failed to initiate Stripe Connect flow');
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to initiate Stripe Connect flow',
-        variant: 'destructive'
-      });
-      setIsSavingDonations(false);
-    }
+    // We'll be implemented in future
   };
 
   const handleSaveDonationChanges = async (linkOverride?: string) => {

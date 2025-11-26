@@ -1,10 +1,9 @@
 /**
  * Server-side data fetching utilities for story pages
  * This enables SSR for better SEO and Google indexing by calling backend APIs
- * Includes Redis caching for improved performance and reduced API load
+ * Uses Next.js built-in caching with backend Cache-Control headers
  */
 
-import { getRedisClient } from '@/lib/redis';
 import { logger } from '@/lib/logger';
 import { StoryService } from '@/lib/api/story';
 import { ChapterService } from '@/lib/api/chapter';
@@ -65,50 +64,14 @@ export interface ServerStory {
 }
 
 /**
- * Redis cache configuration for story data
- */
-const STORY_CACHE_CONFIG = {
-  // Cache TTL for story results (5 minutes - stories change less frequently than browse data)
-  TTL: 5 * 60,
-
-  // Whether Redis caching is enabled
-  ENABLED: process.env.STORY_CACHE_ENABLED !== 'false',
-};
-
-/**
- * Generate cache key for story data
- */
-function getStoryCacheKey(slug: string): string {
-  return `story:data:${slug}`;
-}
-
-/**
- * Fetch story data from backend API with caching (server-side only)
+ * Fetch story data from backend API (server-side only)
  * This function should only be called from Server Components and uses unified API service
- * Includes Redis caching for improved performance and reduced API load, similar to browse-data.ts
+ * Relies on backend Cache-Control headers and Next.js built-in caching for performance
  */
 export async function fetchStoryData(slug: string): Promise<StoryResponse & { viewCount: number; chapters: ChapterResponse[] } | null> {
-  const redis = getRedisClient();
-
-  // Check cache first
-  if (STORY_CACHE_CONFIG.ENABLED && redis) {
-    try {
-      const cacheKey = getStoryCacheKey(slug);
-      const cachedData = await redis.get(cacheKey);
-
-      if (cachedData) {
-        logger.debug(`[Redis] Story cache hit for key: ${cacheKey}`);
-        return JSON.parse(cachedData);
-      }
-      logger.debug(`[Redis] Story cache miss for key: ${cacheKey}`);
-    } catch (cacheError) {
-      logger.error('Error reading from story cache:', cacheError);
-      // Continue to API call on cache error
-    }
-  }
-
   try {
     // Fetch story from backend API
+    // Next.js will automatically cache this based on backend Cache-Control headers
     const response = await StoryService.getStoryBySlug(slug);
 
     if (!response.success || !response.data) {
@@ -141,18 +104,6 @@ export async function fetchStoryData(slug: string): Promise<StoryResponse & { vi
       viewCount: viewCount,
       chapters: publishedChapters,
     };
-
-    // Cache the result if caching is enabled and story has chapters
-    if (STORY_CACHE_CONFIG.ENABLED && redis && storyWithViewCount.chapters && storyWithViewCount.chapters.length > 0) {
-      try {
-        const cacheKey = getStoryCacheKey(slug);
-        await redis.setex(cacheKey, STORY_CACHE_CONFIG.TTL, JSON.stringify(storyWithViewCount));
-        logger.debug(`[Redis] Cached story result for key: ${cacheKey}`);
-      } catch (cacheError) {
-        logger.error('Error caching story result:', cacheError);
-        // Don't throw - caching failure shouldn't break the response
-      }
-    }
 
     return storyWithViewCount;
   } catch (error: any) {

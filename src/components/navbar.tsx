@@ -16,11 +16,11 @@ import UserAvatarMenu from "./user-avatar-menu"
 import { Skeleton } from "@/components/ui/skeleton"
 import { clientLogger } from "@/lib/logger/client-logger"
 import { useAuth } from "@/lib/auth-context"
-import { useUnreadNotificationCount } from "@/hooks/use-unread-notification-count"
+import { useNotificationContext } from "@/contexts/notification-context"
 
 export default function Navbar() {
   const { user, isLoading, isAuthenticated, logout } = useAuth()
-  const { unreadCount } = useUnreadNotificationCount()
+  const { unreadCount } = useNotificationContext()
 
   // Create a component logger
   const navLogger = clientLogger.child("navbar")

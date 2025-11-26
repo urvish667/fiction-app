@@ -1,7 +1,7 @@
 'use client';
 
 import { AuthService, AuthUser, LoginData, SignupData } from '@/lib/api/auth';
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 
 // Auth Context and Hook
 interface AuthContextType {
@@ -32,17 +32,96 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(false);
 
   // Track pending getCurrentUser request to prevent duplicate calls
-  const pendingAuthCheckRef = React.useRef<Promise<boolean> | null>(null);
+  const pendingAuthCheckRef = useRef<Promise<boolean> | null>(null);
+
+  // Track last refresh time to avoid excessive refreshes
+  const lastRefreshTimeRef = useRef<number>(0);
+
+  // Track refresh interval
+  const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Check for existing session on mount
   useEffect(() => {
     checkAuthHandler();
   }, []);
 
+  // Smart proactive token refresh - only when user is authenticated and active
+  useEffect(() => {
+    if (!user) {
+      // Clear interval if user logs out
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+        refreshIntervalRef.current = null;
+      }
+      return;
+    }
+
+    // Refresh token proactively 2 minutes before expiry (at 13-minute mark for 15-minute tokens)
+    const REFRESH_INTERVAL = 13 * 60 * 1000; // 13 minutes
+    const MIN_REFRESH_GAP = 5 * 60 * 1000; // Don't refresh if last refresh was < 5 minutes ago
+
+    const refreshTokenProactively = async () => {
+      // Skip if tab is hidden (user not active)
+      if (typeof document !== 'undefined' && document.hidden) {
+        console.log('[Auth] Skipping token refresh - tab is hidden');
+        return;
+      }
+
+      // Skip if we refreshed recently
+      const timeSinceLastRefresh = Date.now() - lastRefreshTimeRef.current;
+      if (timeSinceLastRefresh < MIN_REFRESH_GAP) {
+        console.log('[Auth] Skipping token refresh - last refresh was', Math.floor(timeSinceLastRefresh / 1000), 'seconds ago');
+        return;
+      }
+
+      try {
+        console.log('[Auth] Attempting proactive token refresh...');
+        await AuthService.refreshToken();
+        lastRefreshTimeRef.current = Date.now();
+        console.log('[Auth] ✅ Token refreshed successfully - next refresh in 13 minutes');
+      } catch (error) {
+        console.error('[Auth] ❌ Proactive token refresh failed:', error);
+        // If refresh fails, user will be logged out on next API call
+      }
+    };
+
+    // Set up interval for proactive refresh
+    refreshIntervalRef.current = setInterval(refreshTokenProactively, REFRESH_INTERVAL);
+
+    // Also refresh when tab becomes visible (if needed)
+    const handleVisibilityChange = () => {
+      if (!document.hidden && user) {
+        const timeSinceLastRefresh = Date.now() - lastRefreshTimeRef.current;
+        const minutesSinceRefresh = Math.floor(timeSinceLastRefresh / 60000);
+        // If it's been more than 10 minutes since last refresh, refresh now
+        if (timeSinceLastRefresh > 10 * 60 * 1000) {
+          console.log(`[Auth] Tab became visible after ${minutesSinceRefresh} minutes - triggering refresh`);
+          refreshTokenProactively();
+        }
+      }
+    };
+
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+    }
+
+    // Cleanup
+    return () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+        refreshIntervalRef.current = null;
+      }
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      }
+    };
+  }, [user]);
+
   const loginHandler = async (data: LoginData): Promise<AuthUser> => {
     const response = await AuthService.login(data);
     if (response.success && response.data) {
       setUser(response.data.user);
+      lastRefreshTimeRef.current = Date.now(); // Mark login time
       return response.data.user;
     }
     throw new Error(response.message || 'Login failed');
@@ -51,6 +130,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logoutHandler = async (): Promise<void> => {
     await AuthService.logout();
     setUser(null);
+    lastRefreshTimeRef.current = 0;
   };
 
   const signupHandler = async (data: SignupData): Promise<AuthUser> => {
@@ -78,6 +158,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const response = await AuthService.googleAuth(idToken, accessToken);
     if (response.success && response.data) {
       setUser(response.data.user);
+      lastRefreshTimeRef.current = Date.now(); // Mark auth time
       return response.data.user;
     }
     throw new Error(response.message || 'Google authentication failed');
@@ -87,6 +168,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const response = await AuthService.discordAuth(accessToken);
     if (response.success && response.data) {
       setUser(response.data.user);
+      lastRefreshTimeRef.current = Date.now(); // Mark auth time
       return response.data.user;
     }
     throw new Error(response.message || 'Discord authentication failed');
@@ -111,6 +193,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const response = await AuthService.getCurrentUser();
         if (response.success && response.data) {
           setUser(response.data.user);
+          lastRefreshTimeRef.current = Date.now(); // Mark check time
           return true;
         }
         return false;

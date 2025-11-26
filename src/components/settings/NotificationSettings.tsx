@@ -1,6 +1,5 @@
 import type React from "react"
 import { useState, useEffect, useCallback, memo } from "react"
-import type { Session } from "next-auth"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
@@ -9,7 +8,7 @@ import { Loader2 } from "lucide-react"
 import { UserPreferences, defaultPreferences } from "@/types/user"
 
 interface NotificationSettingsProps {
-  session: Session | null
+  session: any | null
   handleNotificationToggle: (key: keyof UserPreferences['emailNotifications']) => Promise<void>
   savingPreferences: string | null
   update: () => Promise<any> // Type for session update function
@@ -97,7 +96,7 @@ const NotificationSettings: React.FC<NotificationSettingsProps> = ({
 
     // Then check session data
     if ((session?.user as any).preferences?.emailNotifications &&
-        typeof (session?.user as any).preferences.emailNotifications[key] === 'boolean') {
+      typeof (session?.user as any).preferences.emailNotifications[key] === 'boolean') {
       return (session?.user as any).preferences.emailNotifications[key];
     }
 

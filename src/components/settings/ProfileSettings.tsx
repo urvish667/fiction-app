@@ -1,7 +1,6 @@
 import type React from "react"
 import { useState } from "react"
 import type { UseFormReturn } from "react-hook-form"
-import type { Session } from "next-auth"
 import { UserPreferences } from "@/types/user"
 import { z } from "zod"
 
@@ -20,9 +19,10 @@ export interface ExtendedUser {
   provider?: string;
 }
 
-// Extend the Session type to include our ExtendedUser
-export interface ExtendedSession extends Omit<Session, 'user'> {
+// Session-like interface for compatibility
+export interface ExtendedSession {
   user: ExtendedUser;
+  expires: string;
 }
 
 // Define the schema subset needed for profile validation within this component

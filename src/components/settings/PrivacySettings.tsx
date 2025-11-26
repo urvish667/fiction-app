@@ -1,6 +1,5 @@
 import type React from "react"
 import { useState, useEffect } from "react"
-import type { Session } from "next-auth"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
@@ -18,7 +17,7 @@ import {
 import ConfirmationDialog from "@/components/forum/ConfirmationDialog"
 
 interface PrivacySettingsProps {
-  session: Session | null
+  session: any | null
   handlePrivacyToggle: (key: keyof UserPreferences['privacySettings']) => Promise<void>
   savingPreferences: string | null
 }

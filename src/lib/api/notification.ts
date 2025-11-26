@@ -118,11 +118,14 @@ export const NotificationService = {
                 data: response.data
             };
         } catch (error: any) {
-            logError(error.message || "Failed to fetch unread count", {
-                context: 'Fetching unread notification count',
-                status: error.status,
-                errorDetails: error
-            });
+            // Don't log 401 errors - they're expected when not authenticated
+            if (error.status !== 401) {
+                logError(error.message || "Failed to fetch unread count", {
+                    context: 'Fetching unread notification count',
+                    status: error.status,
+                    errorDetails: error
+                });
+            }
             return {
                 success: false,
                 message: error.message || "Failed to fetch unread count"
