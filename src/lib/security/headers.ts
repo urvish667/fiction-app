@@ -68,7 +68,7 @@ function buildCSP(): string {
     "https://www.google-analytics.com " +
     `${apiHost} ${wsHost} ${wsHostSecure} ` +
     `${isDevelopment ? 'http://localhost:3500 http://localhost:3001 ws://localhost:3001 ' : ''}` +
-    "https://api.fablespace.com " +
+    "https://api.fablespace.com https://api.fablespace.space " +
     "*.google.com *.googlesyndication.com *.googleadservices.com *.adtrafficquality.google " +
     "*.adsterra.com *.pop.adsterra.com *.profitableratecpm.com *.highperformanceformat.com professionaltrafficmonitor.com; " +
     "frame-src 'self' https://www.youtube.com https://www.facebook.com https://connect.facebook.net " +

@@ -2,13 +2,15 @@
  * Enhanced Rate Limiting Utility
  *
  * This module provides enhanced rate limiting for the FableSpace application.
- * It extends the base rate limiting implementation with additional features
- * like IP allowlisting, distributed rate limiting with Redis, and more
- * sophisticated progressive backoff.
+ * It uses in-memory storage for rate limiting with features like IP allowlisting,
+ * progressive backoff, and suspicious activity tracking.
+ *
+ * Note: Rate limits are stored in-memory and will reset on server restart.
+ * For distributed rate limiting across multiple instances, implement at the
+ * API Gateway/Load Balancer level or use backend rate limiting.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { Redis } from 'ioredis';
 import { headers } from 'next/headers';
 import { ErrorCode, createErrorResponse } from '../error-handling';
 import { logWarning, logError } from '../error-logger';
@@ -19,9 +21,7 @@ export interface RateLimitConfig {
   limit: number;
   // Time window in milliseconds
   windowMs: number;
-  // Optional Redis client for distributed rate limiting
-  redis?: Redis;
-  // Key prefix for Redis
+  // Key prefix for in-memory storage
   keyPrefix?: string;
   // Whether to include user ID in the rate limit key (if authenticated)
   includeUserContext?: boolean;
@@ -330,7 +330,6 @@ export async function rateLimit(
   const {
     limit,
     windowMs,
-    redis,
     keyPrefix,
     includeUserContext,
     useProgressiveBackoff,
@@ -374,67 +373,6 @@ export async function rateLimit(
   // Current timestamp
   const now = Date.now();
 
-  // If using Redis
-  if (redis) {
-    try {
-      // Increment counter and set expiry
-      const multi = redis.multi();
-      multi.incr(key);
-      multi.pttl(key);
-
-      // If key is new, set expiry
-      multi.setnx(key, '1');
-      multi.pexpire(key, windowMs);
-
-      const results = await multi.exec();
-      if (!results) {
-        throw new Error('Redis transaction failed');
-      }
-
-      const count = results[0][1] as number;
-      let ttl = results[1][1] as number;
-
-      // If TTL is -1 (no expiry set), set it now
-      if (ttl === -1) {
-        await redis.pexpire(key, windowMs);
-        ttl = windowMs;
-      }
-
-      const resetTime = now + ttl;
-      const remaining = Math.max(0, limit - count);
-
-      // Calculate backoff factor if progressive backoff is enabled
-      let backoffFactor = 1;
-      if (useProgressiveBackoff && count > limit) {
-        // Calculate how many times over the limit
-        const overLimitFactor = Math.ceil(count / limit);
-
-        // Track suspicious activity if enabled
-        if (trackSuspicious) {
-          trackSuspiciousActivity(
-            clientIp,
-            req.nextUrl.pathname,
-            overLimitFactor,
-            suspiciousActivityThreshold || defaultConfig.suspiciousActivityThreshold!
-          );
-        }
-
-        // Apply progressive backoff, capped at maxBackoffFactor
-        backoffFactor = Math.min(overLimitFactor, maxBackoffFactor || 10);
-      }
-
-      return {
-        success: count <= limit,
-        limit,
-        remaining,
-        reset: Math.ceil(resetTime / 1000), // Reset time in seconds
-        ...(useProgressiveBackoff && { backoffFactor }),
-      };
-    } catch (error) {
-      logError(error, { context: 'Redis rate limiting error' })
-      // Fallback to in-memory store on Redis error
-    }
-  }
 
   // In-memory rate limiting
   if (!inMemoryStore.has(key)) {
@@ -573,44 +511,3 @@ export function createRateLimiter(config: Partial<RateLimitConfig> = {}) {
     return null; // Continue to the next middleware or route handler
   };
 }
-
-/**
- * Get the Redis client for rate limiting
- * @returns A Redis client or null if not configured
- */
-export function getRateLimitRedisClient(): any | null {
-  // Check if we're in Edge Runtime
-  const isEdgeRuntime = typeof process !== 'undefined' &&
-    process.env.NEXT_RUNTIME === 'edge';
-
-  // Don't use Redis in Edge Runtime
-  if (isEdgeRuntime) {
-    return null;
-  }
-
-  // Check if Redis is enabled for rate limiting
-  if (process.env.RATE_LIMIT_REDIS_ENABLED !== 'true') {
-    return null;
-  }
-
-  try {
-    // Import the shared Redis client from the main Redis module
-    const { getRedisClient } = require('../redis');
-    return getRedisClient();
-  } catch (error) {
-    logWarning('Failed to get Redis client for rate limiting', { context: 'Rate Limiting' })
-    return null;
-  }
-}
-
-// Export a singleton Redis client for rate limiting
-// Only initialize if not in Edge Runtime
-let redisClient: any = null;
-if (typeof process !== 'undefined' && process.env.NEXT_RUNTIME !== 'edge') {
-  try {
-    redisClient = getRateLimitRedisClient();
-  } catch (error) {
-    logWarning('Failed to initialize Redis client for rate limiting', { context: 'Rate Limiting' })
-  }
-}
-export { redisClient };

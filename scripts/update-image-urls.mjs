@@ -9,6 +9,8 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+const batchSize = 50; // Process records in batches of 50
+
 async function updateImageUrls() {
   console.log('Starting image URL migration: /api/images/ → /api/v1/images/');
 

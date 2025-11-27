@@ -102,7 +102,6 @@ export const StoryService = {
   }, options?: {
     serverSide?: boolean;
     enableCache?: boolean;
-    redisClient?: any;
     logger?: any;
   }): Promise<{
     stories: Array<{
@@ -150,39 +149,11 @@ export const StoryService = {
       totalPages: number;
     };
   }> {
-    const { serverSide = false, enableCache = true, redisClient, logger } = options || {};
+    const { serverSide = false, enableCache = true, logger } = options || {};
 
-    // Server-side cache check
-    if (serverSide && enableCache && redisClient) {
-      try {
-        // Generate cache key (similar to original browse-data logic)
-        const sortedParams = Object.keys(params)
-          .filter(key => params[key as keyof typeof params] !== undefined)
-          .sort()
-          .reduce((result: Record<string, any>, key) => {
-            result[key] = params[key as keyof typeof params];
-            return result;
-          }, {} as Record<string, any>);
+    // Note: Redis caching has been removed. Relying on Next.js built-in caching
+    // and backend Cache-Control headers for performance.
 
-        const cacheKey = `browse:data:${JSON.stringify(sortedParams)}`;
-        const cachedData = await redisClient.get(cacheKey);
-
-        if (cachedData) {
-          if (logger) {
-            logger.debug(`[Redis] Browse cache hit for key: ${cacheKey}`);
-          }
-          return JSON.parse(cachedData);
-        }
-        if (logger) {
-          logger.debug(`[Redis] Browse cache miss for key: ${cacheKey}`);
-        }
-      } catch (cacheError) {
-        if (logger) {
-          logger.error('Error reading from browse cache:', cacheError);
-        }
-        // Continue to API call on cache error
-      }
-    }
 
     try {
       // Build API parameters
@@ -318,31 +289,6 @@ export const StoryService = {
           totalPages: pagination?.totalPages || 0,
         }
       };
-
-      // Server-side caching
-      if (serverSide && enableCache && redisClient && result.stories.length > 0) {
-        try {
-          const sortedParams = Object.keys(params)
-            .filter(key => params[key as keyof typeof params] !== undefined)
-            .sort()
-            .reduce((accumulator: Record<string, any>, key) => {
-              accumulator[key] = params[key as keyof typeof params];
-              return accumulator;
-            }, {} as Record<string, any>);
-
-          const cacheKey = `browse:data:${JSON.stringify(sortedParams)}`;
-          const cacheTTL = 10 * 60; // 10 minutes
-          await redisClient.setex(cacheKey, cacheTTL, JSON.stringify(result));
-          if (logger) {
-            logger.debug(`[Redis] Cached browse result for key: ${cacheKey}`);
-          }
-        } catch (cacheError) {
-          if (logger) {
-            logger.error('Error caching browse result:', cacheError);
-          }
-          // Don't throw - caching failure shouldn't break the response
-        }
-      }
 
       return result;
     } catch (error: any) {

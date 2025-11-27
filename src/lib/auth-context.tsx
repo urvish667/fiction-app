@@ -63,24 +63,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const refreshTokenProactively = async () => {
       // Skip if tab is hidden (user not active)
       if (typeof document !== 'undefined' && document.hidden) {
-        console.log('[Auth] Skipping token refresh - tab is hidden');
         return;
       }
 
       // Skip if we refreshed recently
       const timeSinceLastRefresh = Date.now() - lastRefreshTimeRef.current;
       if (timeSinceLastRefresh < MIN_REFRESH_GAP) {
-        console.log('[Auth] Skipping token refresh - last refresh was', Math.floor(timeSinceLastRefresh / 1000), 'seconds ago');
         return;
       }
 
       try {
-        console.log('[Auth] Attempting proactive token refresh...');
         await AuthService.refreshToken();
         lastRefreshTimeRef.current = Date.now();
-        console.log('[Auth] ✅ Token refreshed successfully - next refresh in 13 minutes');
       } catch (error) {
-        console.error('[Auth] ❌ Proactive token refresh failed:', error);
         // If refresh fails, user will be logged out on next API call
       }
     };
@@ -95,7 +90,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const minutesSinceRefresh = Math.floor(timeSinceLastRefresh / 60000);
         // If it's been more than 10 minutes since last refresh, refresh now
         if (timeSinceLastRefresh > 10 * 60 * 1000) {
-          console.log(`[Auth] Tab became visible after ${minutesSinceRefresh} minutes - triggering refresh`);
           refreshTokenProactively();
         }
       }

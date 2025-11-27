@@ -4,10 +4,11 @@
  * This module provides security monitoring for the FableSpace application.
  * It includes utilities for tracking suspicious activity, monitoring authentication
  * failures, and implementing an alert system.
+ *
+ * Note: Security events are tracked in-memory and will reset on server restart.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { Redis } from 'ioredis';
 import { getClientIp } from '../security/rate-limit';
 import { logError, logWarning } from '../error-logger';
 import { SecurityEventType, logSecurityEvent, generateRequestId } from './api-logger';
@@ -31,22 +32,20 @@ export const SUSPICIOUS_ACTIVITY_THRESHOLDS = {
   CSRF_FAILURE_WINDOW: 10 * 60, // 10 minutes
 };
 
-// Import the global Redis client
-import { getRedisClient } from '../redis';
+// In-memory store for tracking security events
+const securityEventStore = new Map<string, { count: number; lastSeen: number }>();
 
-/**
- * Initialize the Redis client for security monitoring
- * Uses the global Redis client singleton to prevent connection cycling
- */
-export function initSecurityMonitor(): Redis | null {
-  // Check if Redis is enabled for security monitoring
-  if (process.env.SECURITY_MONITOR_REDIS_ENABLED !== 'true') {
-    return null;
+// Clean up expired entries periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, value] of securityEventStore.entries()) {
+    // Remove entries older than 24 hours
+    if (now - value.lastSeen > 24 * 60 * 60 * 1000) {
+      securityEventStore.delete(key);
+    }
   }
+}, 60000); // Clean up every minute
 
-  // Use the global Redis client instead of creating a new one
-  return getRedisClient();
-}
 
 /**
  * Track a security event
@@ -77,63 +76,60 @@ export async function trackSecurityEvent(
     details,
   });
 
-  // Track the event in Redis if available
-  const redis = initSecurityMonitor();
-  if (redis) {
-    try {
-      // Increment the counter for this event type and IP
-      const key = `security:${eventType}:${ip}`;
-      await redis.incr(key);
+  // Track the event in-memory
+  try {
+    // Create a unique key for this event type and IP
+    const key = `security:${eventType}:${ip}`;
+    const now = Date.now();
 
-      // Set expiration based on event type
-      let expiration = 60 * 60; // Default: 1 hour
-
-      switch (eventType) {
-        case SecurityEventType.AUTHENTICATION_FAILURE:
-          expiration = SUSPICIOUS_ACTIVITY_THRESHOLDS.AUTH_FAILURE_WINDOW;
-          break;
-        case SecurityEventType.RATE_LIMIT_EXCEEDED:
-          expiration = SUSPICIOUS_ACTIVITY_THRESHOLDS.RATE_LIMIT_WINDOW;
-          break;
-        case SecurityEventType.INVALID_API_KEY:
-          expiration = SUSPICIOUS_ACTIVITY_THRESHOLDS.INVALID_API_KEY_WINDOW;
-          break;
-        case SecurityEventType.CSRF_FAILURE:
-          expiration = SUSPICIOUS_ACTIVITY_THRESHOLDS.CSRF_FAILURE_WINDOW;
-          break;
-      }
-
-      // Set expiration for the key
-      await redis.expire(key, expiration);
-
-      // Check if the count exceeds the threshold
-      const count = parseInt(await redis.get(key) || '0', 10);
-
-      // Check thresholds based on event type
-      let threshold = 0;
-
-      switch (eventType) {
-        case SecurityEventType.AUTHENTICATION_FAILURE:
-          threshold = SUSPICIOUS_ACTIVITY_THRESHOLDS.AUTH_FAILURES;
-          break;
-        case SecurityEventType.RATE_LIMIT_EXCEEDED:
-          threshold = SUSPICIOUS_ACTIVITY_THRESHOLDS.RATE_LIMIT_EXCEEDED;
-          break;
-        case SecurityEventType.INVALID_API_KEY:
-          threshold = SUSPICIOUS_ACTIVITY_THRESHOLDS.INVALID_API_KEY;
-          break;
-        case SecurityEventType.CSRF_FAILURE:
-          threshold = SUSPICIOUS_ACTIVITY_THRESHOLDS.CSRF_FAILURES;
-          break;
-      }
-
-      // If the count exceeds the threshold, trigger an alert
-      if (threshold > 0 && count >= threshold) {
-        await triggerSecurityAlert(eventType, ip, count, userId, details);
-      }
-    } catch (error) {
-      logError('Failed to track security event in Redis', { error, eventType, ip, path, userId });
+    // Update or create entry
+    if (securityEventStore.has(key)) {
+      const entry = securityEventStore.get(key)!;
+      entry.count += 1;
+      entry.lastSeen = now;
+    } else {
+      securityEventStore.set(key, {
+        count: 1,
+        lastSeen: now,
+      });
     }
+
+    // Get current count
+    const count = securityEventStore.get(key)!.count;
+
+    // Check thresholds based on event type
+    let threshold = 0;
+    let windowMs = 0;
+
+    switch (eventType) {
+      case SecurityEventType.AUTHENTICATION_FAILURE:
+        threshold = SUSPICIOUS_ACTIVITY_THRESHOLDS.AUTH_FAILURES;
+        windowMs = SUSPICIOUS_ACTIVITY_THRESHOLDS.AUTH_FAILURE_WINDOW * 1000;
+        break;
+      case SecurityEventType.RATE_LIMIT_EXCEEDED:
+        threshold = SUSPICIOUS_ACTIVITY_THRESHOLDS.RATE_LIMIT_EXCEEDED;
+        windowMs = SUSPICIOUS_ACTIVITY_THRESHOLDS.RATE_LIMIT_WINDOW * 1000;
+        break;
+      case SecurityEventType.INVALID_API_KEY:
+        threshold = SUSPICIOUS_ACTIVITY_THRESHOLDS.INVALID_API_KEY;
+        windowMs = SUSPICIOUS_ACTIVITY_THRESHOLDS.INVALID_API_KEY_WINDOW * 1000;
+        break;
+      case SecurityEventType.CSRF_FAILURE:
+        threshold = SUSPICIOUS_ACTIVITY_THRESHOLDS.CSRF_FAILURES;
+        windowMs = SUSPICIOUS_ACTIVITY_THRESHOLDS.CSRF_FAILURE_WINDOW * 1000;
+        break;
+    }
+
+    // Check if entry is within the time window
+    const entry = securityEventStore.get(key)!;
+    const isWithinWindow = now - entry.lastSeen < windowMs;
+
+    // If the count exceeds the threshold and within window, trigger an alert
+    if (threshold > 0 && count >= threshold && isWithinWindow) {
+      await triggerSecurityAlert(eventType, ip, count, userId, details);
+    }
+  } catch (error) {
+    logError('Failed to track security event in-memory', { error, eventType, ip, path, userId });
   }
 }
 

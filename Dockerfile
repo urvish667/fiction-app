@@ -1,12 +1,5 @@
 FROM node:20-slim AS base
 
-# Install OpenSSL and other necessary packages for Prisma
-RUN apt-get update -y && apt-get install -y \
-    openssl \
-    libssl-dev \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
-
 # Install dependencies only when needed
 FROM base AS deps
 WORKDIR /app
@@ -29,11 +22,8 @@ COPY . .
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Copy .env.docker to .env for build
+# Copy .env.prod to .env for build
 COPY .env.prod .env
-
-# Generate Prisma client
-RUN npx prisma generate
 
 # Build the application
 RUN npm run build

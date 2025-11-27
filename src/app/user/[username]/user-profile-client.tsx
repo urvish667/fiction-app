@@ -105,7 +105,6 @@ export default function UserProfileClient({ user }: UserProfileClientProps) {
       }
 
       // Fetch published stories by this author with pagination
-      console.log(`Fetching stories for user: ${user.id}, page: ${page}, limit: ${STORIES_PER_PAGE}`)
       let storiesForUser: any[] = []
       let totalCount = 0
 
@@ -115,7 +114,6 @@ export default function UserProfileClient({ user }: UserProfileClientProps) {
         page,
         limit: STORIES_PER_PAGE
       })
-      console.log('Stories response:', storiesResponse)
 
       if (!storiesResponse.success || !storiesResponse.data) {
         console.error('StoryService failed, trying fallback approach')
@@ -133,7 +131,6 @@ export default function UserProfileClient({ user }: UserProfileClientProps) {
           storiesForUser = paginatedStories
           totalCount = allStories.filter((story: any) => story.author?.id === user.id &&
             ['ongoing', 'completed'].includes(story.status)).length
-          console.log(`Fallback found ${storiesForUser.length} stories for user (page ${page})`)
         }
       } else {
         // Normal case - use the filtered stories from API
