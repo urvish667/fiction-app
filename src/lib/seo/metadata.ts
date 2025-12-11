@@ -1035,9 +1035,9 @@ export function generateBrowseStructuredData(params?: {
     description: isTag
       ? `Collection of ${tagDisplay?.toLowerCase()} stories on FableSpace`
       : genreInfo?.description ||
-        (isGenre
-          ? `Collection of ${params?.genre?.toLowerCase()} stories on FableSpace`
-          : 'Browse and discover amazing fiction stories on FableSpace'),
+      (isGenre
+        ? `Collection of ${params?.genre?.toLowerCase()} stories on FableSpace`
+        : 'Browse and discover amazing fiction stories on FableSpace'),
     url: isTag
       ? `${baseUrl}/browse?tag=${encodeURIComponent(tag!)}`
       : isGenre
@@ -1076,19 +1076,19 @@ export function generateBrowseStructuredData(params?: {
         },
         ...(isGenre
           ? [{
-              '@type': 'ListItem',
-              position: 3,
-              name: params?.genre,
-              item: `${baseUrl}/browse?genre=${encodeURIComponent(params?.genre!)}`
-            }]
+            '@type': 'ListItem',
+            position: 3,
+            name: params?.genre,
+            item: `${baseUrl}/browse?genre=${encodeURIComponent(params?.genre!)}`
+          }]
           : []),
         ...(isTag
           ? [{
-              '@type': 'ListItem',
-              position: 3,
-              name: tagDisplay,
-              item: `${baseUrl}/browse?tag=${encodeURIComponent(tag!)}`
-            }]
+            '@type': 'ListItem',
+            position: 3,
+            name: tagDisplay,
+            item: `${baseUrl}/browse?tag=${encodeURIComponent(tag!)}`
+          }]
           : [])
       ]
     }

@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Ban, Loader2, Trash2 } from "lucide-react"
 import ConfirmationDialog from "./ConfirmationDialog"
+import { ImageService } from "@/lib/api/images"
 
 interface BannedUser {
   id: string
@@ -60,7 +61,7 @@ const BannedUsersContent = ({
           {visibleUsers.map((bannedUser) => (
             <div key={bannedUser.id} className="flex items-center gap-3">
               <Avatar className="h-8 w-8">
-                <AvatarImage src={bannedUser.image || undefined} />
+                <AvatarImage src={ImageService.getImageUrl(bannedUser.image) || undefined} />
                 <AvatarFallback>{bannedUser.name.charAt(0)}</AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">

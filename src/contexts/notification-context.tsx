@@ -41,7 +41,7 @@ interface NotificationProviderProps {
 }
 
 export function NotificationProvider({ children }: NotificationProviderProps) {
-    const { user } = useAuth();
+    const { user, isLoading: authLoading } = useAuth();
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [mode, setMode] = useState<NotificationMode>(NotificationMode.POLLING);
@@ -52,12 +52,13 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     const wsClient = useRef<NotificationWebSocketClient | null>(null);
     const pollingInterval = useRef<NodeJS.Timeout | null>(null);
     const notificationIds = useRef<Set<string>>(new Set());
+    const lastFetchTime = useRef<number>(0); // For throttling visibility change fetches
 
     /**
      * Fetch notifications from REST API
      */
     const fetchNotifications = useCallback(async () => {
-        if (!user) return;
+        if (!user || authLoading) return;
 
         try {
             setLoading(true);
@@ -101,7 +102,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
      * Fetch unread count
      */
     const fetchUnreadCount = useCallback(async () => {
-        if (!user) return;
+        if (!user || authLoading) return;
 
         try {
             const response = await NotificationService.getUnreadCount();
@@ -360,10 +361,17 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         fetchUnreadCount();
 
         // TRIGGER 3: Fetch when tab becomes visible after being hidden
+        // Throttled to once every 5 minutes (300,000 ms)
+        const THROTTLE_DURATION = 5 * 60 * 1000;
+
         const handleVisibilityChange = () => {
             if (document.visibilityState === 'visible') {
-                fetchNotifications();
-                fetchUnreadCount();
+                const now = Date.now();
+                if (now - lastFetchTime.current > THROTTLE_DURATION) {
+                    fetchNotifications();
+                    fetchUnreadCount();
+                    lastFetchTime.current = now;
+                }
             }
         };
 

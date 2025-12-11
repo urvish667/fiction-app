@@ -14,6 +14,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { clientLogger } from '@/lib/logger/client-logger'
+import { ImageService } from '@/lib/api/images'
 
 export default function AuthStatus() {
   const { user, isLoading, logout } = useAuth()
@@ -95,7 +96,7 @@ export default function AuthStatus() {
             <Avatar>
               {user.image ? (
                 <AvatarImage
-                  src={user.image}
+                  src={ImageService.getImageUrl(user.image) || ''}
                   alt={user.name || user.username || 'User avatar'}
                 />
               ) : null}
@@ -110,7 +111,7 @@ export default function AuthStatus() {
             <Avatar className="h-8 w-8">
               {user.image ? (
                 <AvatarImage
-                  src={user.image}
+                  src={ImageService.getImageUrl(user.image) || ''}
                   alt={user.name || user.username || 'User avatar'}
                 />
               ) : null}

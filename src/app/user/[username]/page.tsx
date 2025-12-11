@@ -16,6 +16,7 @@ import { generateUserProfileMetadata, generateUserProfileStructuredData } from "
 import { formatDistanceToNow } from "date-fns/formatDistanceToNow"
 import { notFound } from "next/navigation"
 import { UserService } from "@/lib/api/user"
+import { ImageService } from "@/lib/api/images"
 import UserProfileClient from "./user-profile-client"
 
 // ISR: Revalidate every 2 minutes for user profiles (moderate update frequency)
@@ -203,7 +204,7 @@ export default async function UserProfilePage({ params }: UserPageParams) {
             <div className="mb-4 md:mb-8">
               <div className="relative h-32 sm:h-48 md:h-64 w-full rounded-lg overflow-hidden mb-8 sm:mb-12 md:mb-16">
                 <img
-                  src={user.bannerImage || "/placeholder.svg"}
+                  src={ImageService.getImageUrl(typeof user.bannerImage === 'string' ? user.bannerImage : null) || "/placeholder.svg"}
                   alt="Profile banner"
                   className="w-full h-full object-cover"
                 />
@@ -212,7 +213,7 @@ export default async function UserProfilePage({ params }: UserPageParams) {
               {/* Avatar positioned to overlap the banner */}
               <div className="relative -mt-20 sm:-mt-28 md:-mt-36 ml-2 sm:ml-4 md:ml-8 flex items-end justify-between">
                 <Avatar className="w-20 h-20 sm:w-32 sm:h-32 md:w-40 md:h-40 border-2 sm:border-4 border-background shadow-lg">
-                  <AvatarImage src={user.image || "/placeholder-user.jpg"} alt={user.name || user.username} />
+                  <AvatarImage src={ImageService.getImageUrl(user.image) || "/placeholder-user.jpg"} alt={user.name || user.username} />
                   <AvatarFallback>{(user.name || user.username).charAt(0)}</AvatarFallback>
                 </Avatar>
                 <div className="flex items-center space-x-2 pb-2 sm:pb-4 pr-2 sm:pr-4">
@@ -333,13 +334,13 @@ export default async function UserProfilePage({ params }: UserPageParams) {
               {/* Stats */}
               <div className="mt-6 pl-2 sm:pl-4 md:pl-40 flex flex-wrap gap-4 sm:gap-6 text-sm">
                 <div>
-                  <span className="font-bold">{user.storyCount}</span> Stories
+                  <span className="font-bold">{user.storyCount ?? 0}</span> Stories
                 </div>
                 <Link href="#followers" className="hover:text-primary">
-                  <span className="font-bold">{user.followers || 0}</span> Followers
+                  <span className="font-bold">{user.followers}</span> Followers
                 </Link>
                 <Link href="#following" className="hover:text-primary">
-                  <span className="font-bold">{user.following || 0}</span> Following
+                  <span className="font-bold">{user.following}</span> Following
                 </Link>
               </div>
             </div>

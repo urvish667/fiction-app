@@ -24,12 +24,52 @@ class ApiClient {
   }
 
   private setupInterceptors() {
-    // Request interceptor for logging in dev mode
+    // Request interceptor for CSRF and logging
     this.client.interceptors.request.use(
-      (config) => {
+      async (config) => {
+        // Log in dev mode
         if (process.env.NODE_ENV !== 'production') {
           console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`, config);
         }
+
+        // CSRF Protection
+        // Only for state-changing methods
+        if (
+          config.method &&
+          ['post', 'put', 'delete', 'patch'].includes(config.method.toLowerCase()) &&
+          typeof document !== 'undefined'
+        ) {
+          const getCookie = (name: string) => {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop()?.split(';').shift();
+          };
+
+          let csrfToken = getCookie('fablespace_csrf_token');
+
+          // If no token, try to fetch it
+          if (!csrfToken) {
+            try {
+              // Use a separate axios instance or fetch to avoid interceptor loop
+              const response = await axios.get(`${API_BASE_URL}/csrf/token`, { withCredentials: true });
+
+              // Prefer getting token from response data as it's more reliable than reading cookie immediately
+              if (response.data?.data?.csrfToken) {
+                csrfToken = response.data.data.csrfToken;
+              } else {
+                // Fallback to cookie if not in response
+                csrfToken = getCookie('fablespace_csrf_token');
+              }
+            } catch (error) {
+              console.error('Failed to fetch CSRF token', error);
+            }
+          }
+
+          if (csrfToken) {
+            config.headers['x-csrf-token'] = csrfToken;
+          }
+        }
+
         return config;
       },
       (error) => {
@@ -40,7 +80,7 @@ class ApiClient {
       }
     );
 
-    // Response interceptor for logging and 401 handling
+    // Response interceptor for logging and 401 handling with optimized refresh
     this.client.interceptors.response.use(
       (response: AxiosResponse) => {
         if (process.env.NODE_ENV !== 'production') {
@@ -61,9 +101,10 @@ class ApiClient {
         const originalRequest = error.config;
         const isAuthCheck = originalRequest?.url === '/auth/me';
         const isLogin = originalRequest?.url === '/auth/login';
+        const isRefreshEndpoint = originalRequest?.url === '/auth/refresh';
 
-        // For /auth/me and /auth/login endpoints, don't try to refresh tokens - let 401 responses through
-        if (error.response?.status === 401 && (isAuthCheck || isLogin)) {
+        // For /auth/me, /auth/login, and /auth/refresh endpoints, don't try to refresh tokens
+        if (error.response?.status === 401 && (isAuthCheck || isLogin || isRefreshEndpoint)) {
           return Promise.reject(error);
         }
 

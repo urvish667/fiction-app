@@ -10,6 +10,7 @@ import { Loader2 } from "lucide-react"
 import Link from "next/link"
 import StoryCard from "@/components/story-card"
 import { StoryService } from "@/lib/api/story"
+import { ImageService } from "@/lib/api/images"
 import { UserService } from "@/lib/api/user"
 import { logError } from "@/lib/error-logger"
 
@@ -84,7 +85,7 @@ export default function UserProfileClient({ user }: UserProfileClientProps) {
         // Ensure these fields exist for StoryCard component
         author: story.author || user.name || user.username,
         excerpt: story.description,
-        coverImage: story.coverImage,
+        coverImage: story.coverImage ? ImageService.getImageUrl(story.coverImage) || "/placeholder.svg" : "/placeholder.svg",
         likeCount: story.likeCount || 0,
         commentCount: story.commentCount || 0,
         viewCount: story.readCount || 0, // New backend uses readCount
@@ -368,7 +369,7 @@ export default function UserProfileClient({ user }: UserProfileClientProps) {
                     <Card key={follower.id}>
                       <CardContent className="p-4 flex flex-col items-center text-center">
                         <Avatar className="h-16 w-16 mb-2">
-                          <AvatarImage src={follower.image || "/placeholder-user.jpg"} alt={follower.name || follower.username} />
+                          <AvatarImage src={ImageService.getImageUrl(follower.image) || "/placeholder-user.jpg"} alt={follower.name || follower.username} />
                           <AvatarFallback>{(follower.name || follower.username || "U").charAt(0)}</AvatarFallback>
                         </Avatar>
                         <Link href={`/user/${follower.username}`} className="font-medium hover:text-primary">
@@ -406,7 +407,7 @@ export default function UserProfileClient({ user }: UserProfileClientProps) {
                     <Card key={follow.id}>
                       <CardContent className="p-4 flex flex-col items-center text-center">
                         <Avatar className="h-16 w-16 mb-2">
-                          <AvatarImage src={follow.image || "/placeholder-user.jpg"} alt={follow.name || follow.username} />
+                          <AvatarImage src={ImageService.getImageUrl(follow.image) || "/placeholder-user.jpg"} alt={follow.name || follow.username} />
                           <AvatarFallback>{(follow.name || follow.username || "U").charAt(0)}</AvatarFallback>
                         </Avatar>
                         <Link href={`/user/${follow.username}`} className="font-medium hover:text-primary">

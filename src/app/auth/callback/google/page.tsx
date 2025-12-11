@@ -65,7 +65,6 @@ export default function GoogleCallbackPage() {
 
             try {
                 // Pass accessToken as the second parameter (not idToken)
-                console.log('Calling googleAuth with token');
                 const user = await googleAuth(undefined, accessToken);
                 toast({
                     title: "Success",

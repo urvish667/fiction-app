@@ -11,6 +11,7 @@ import Navbar from "@/components/navbar"
 import { useNotifications } from "@/hooks/use-notifications"
 import { formatRelativeTime } from "@/utils/date-utils"
 import { useRequireAuth } from "@/hooks/use-require-auth"
+import { ImageService } from "@/lib/api/images"
 
 
 export default function NotificationsPage() {
@@ -335,7 +336,7 @@ export default function NotificationsPage() {
                               <Link href={`/user/${notification.actor.username}`}>
                                 <Avatar className="h-10 w-10">
                                   <AvatarImage
-                                    src={notification.actor.image}
+                                    src={ImageService.getImageUrl(notification.actor.image) || "/placeholder-user.jpg"}
                                     alt={notification.actor.username}
                                   />
                                   <AvatarFallback>

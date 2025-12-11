@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge"
 import { BookMarked, PenSquare, Bell, Settings, LogOut, Home, LayoutDashboard, FileEdit, Moon, Sun, Monitor } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { logError, logInfo } from "@/lib/error-logger"
+import { ImageService } from "@/lib/api/images"
 
 interface UserAvatarMenuProps {
   user: {
@@ -95,37 +96,39 @@ export default function UserAvatarMenu({ user, onLogout }: UserAvatarMenuProps) 
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
-          <Avatar className="h-10 w-10">
-            <AvatarImage src={user.avatar} alt={user.name} />
-            <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-          </Avatar>
-          <AnimatePresence>
-            {user.unreadNotifications > 0 && (
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{
-                  scale: isPulsing ? 1.1 : 1,
-                }}
-                exit={{
-                  scale: 0,
-                  opacity: 0
-                }}
-                transition={{
-                  type: "spring",
-                  stiffness: 500,
-                  damping: 15
-                }}
-                className="absolute -right-2 -top-2"
-              >
-                <Badge
-                  variant="destructive"
-                  className={`flex items-center justify-center min-w-6 h-6 rounded-full px-2 text-xs font-bold shadow-lg border-2 border-background ${user.unreadNotifications > 99 ? 'px-1' : ''}`}
+          <div className="relative flex items-center justify-center h-full w-full">
+            <Avatar className="h-10 w-10">
+              <AvatarImage src={ImageService.getImageUrl(user.avatar) || "/placeholder-user.jpg"} alt={user.name} />
+              <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+            </Avatar>
+            <AnimatePresence>
+              {user.unreadNotifications > 0 && (
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{
+                    scale: isPulsing ? 1.1 : 1,
+                  }}
+                  exit={{
+                    scale: 0,
+                    opacity: 0
+                  }}
+                  transition={{
+                    type: "spring",
+                    stiffness: 500,
+                    damping: 15
+                  }}
+                  className="absolute -right-2 -top-2"
                 >
-                  {user.unreadNotifications > 99 ? '99+' : user.unreadNotifications}
-                </Badge>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                  <Badge
+                    variant="destructive"
+                    className={`flex items-center justify-center min-w-6 h-6 rounded-full px-2 text-xs font-bold shadow-lg border-2 border-background ${user.unreadNotifications > 99 ? 'px-1' : ''}`}
+                  >
+                    {user.unreadNotifications > 99 ? '99+' : user.unreadNotifications}
+                  </Badge>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </Button>
       </DropdownMenuTrigger>
 

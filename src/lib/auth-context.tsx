@@ -1,6 +1,7 @@
 'use client';
 
 import { AuthService, AuthUser, LoginData, SignupData } from '@/lib/api/auth';
+import { saveAuthUser, getAuthUser, clearAuthUser } from '@/lib/auth-storage';
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 
 // Auth Context and Hook
@@ -28,8 +29,10 @@ export const useAuth = () => {
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Initialize state as null to prevent SSR hydration mismatch
+  // We'll load from localStorage after mount on client side
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // Start as loading during SSR
 
   // Track pending getCurrentUser request to prevent duplicate calls
   const pendingAuthCheckRef = useRef<Promise<boolean> | null>(null);
@@ -39,6 +42,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Track refresh interval
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Load cached user from localStorage on client side only (after mount)
+  useEffect(() => {
+    const cachedUser = getAuthUser();
+    if (cachedUser) {
+      setUser(cachedUser);
+      setIsLoading(false);
+    }
+  }, []);
 
   // Check for existing session on mount
   useEffect(() => {
@@ -56,8 +68,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
-    // Refresh token proactively 2 minutes before expiry (at 13-minute mark for 15-minute tokens)
-    const REFRESH_INTERVAL = 13 * 60 * 1000; // 13 minutes
+    // Refresh token proactively 5 minutes before expiry (at 13 days 23 hours 55 minutes for 14-day tokens)
+    const REFRESH_INTERVAL = (14 * 24 * 60 - 5) * 60 * 1000; // 14 days - 5 minutes
     const MIN_REFRESH_GAP = 5 * 60 * 1000; // Don't refresh if last refresh was < 5 minutes ago
 
     const refreshTokenProactively = async () => {
@@ -87,9 +99,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const handleVisibilityChange = () => {
       if (!document.hidden && user) {
         const timeSinceLastRefresh = Date.now() - lastRefreshTimeRef.current;
-        const minutesSinceRefresh = Math.floor(timeSinceLastRefresh / 60000);
-        // If it's been more than 10 minutes since last refresh, refresh now
-        if (timeSinceLastRefresh > 10 * 60 * 1000) {
+        // If it's been more than 1 hour since last refresh, refresh now
+        if (timeSinceLastRefresh > 60 * 60 * 1000) {
           refreshTokenProactively();
         }
       }
@@ -115,6 +126,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const response = await AuthService.login(data);
     if (response.success && response.data) {
       setUser(response.data.user);
+      saveAuthUser(response.data.user); // Save to localStorage
       lastRefreshTimeRef.current = Date.now(); // Mark login time
       return response.data.user;
     }
@@ -124,6 +136,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logoutHandler = async (): Promise<void> => {
     await AuthService.logout();
     setUser(null);
+    clearAuthUser(); // Clear localStorage
     lastRefreshTimeRef.current = 0;
   };
 
@@ -140,11 +153,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const response = await AuthService.getCurrentUser();
       if (response.success && response.data) {
         setUser(response.data.user);
+        saveAuthUser(response.data.user); // Sync with localStorage
       } else {
         setUser(null);
+        clearAuthUser(); // Clear stale cache
       }
     } catch (error) {
       setUser(null);
+      clearAuthUser(); // Clear stale cache
     }
   };
 
@@ -152,6 +168,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const response = await AuthService.googleAuth(idToken, accessToken);
     if (response.success && response.data) {
       setUser(response.data.user);
+      saveAuthUser(response.data.user); // Save to localStorage
       lastRefreshTimeRef.current = Date.now(); // Mark auth time
       return response.data.user;
     }
@@ -162,6 +179,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const response = await AuthService.discordAuth(accessToken);
     if (response.success && response.data) {
       setUser(response.data.user);
+      saveAuthUser(response.data.user); // Save to localStorage
       lastRefreshTimeRef.current = Date.now(); // Mark auth time
       return response.data.user;
     }
@@ -187,11 +205,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const response = await AuthService.getCurrentUser();
         if (response.success && response.data) {
           setUser(response.data.user);
+          saveAuthUser(response.data.user); // Sync with localStorage
           lastRefreshTimeRef.current = Date.now(); // Mark check time
           return true;
         }
+        // If API call fails, clear any stale cache
+        clearAuthUser();
+        setUser(null);
         return false;
       } catch (error) {
+        // If API call fails, clear any stale cache
+        clearAuthUser();
         setUser(null);
         return false;
       } finally {

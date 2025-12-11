@@ -1,66 +1,10 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { rateLimit, rateLimitConfigs } from '@/lib/security/rate-limit';
 
 import { applySecurityHeaders } from '@/lib/security/headers';
 import { safeDecodeURIComponent } from '@/utils/safe-decode-uri-component';
 
 // Note: Middleware runs in Edge Runtime by default
-// The security rate limiter automatically uses in-memory storage in Edge Runtime
-// In Node.js API routes, it can use Redis if available
-
-// Helper function to calculate retry time
-function getRetryAfter(result: { reset: number; backoffFactor?: number }): number {
-  const baseRetry = Math.ceil((result.reset * 1000 - Date.now()) / 1000);
-  return result.backoffFactor ? baseRetry * result.backoffFactor : baseRetry;
-}
-
-// Helper function to generate rate limit error response
-function createRateLimitResponse(
-  result: { limit: number; remaining: number; reset: number; backoffFactor?: number },
-  error: string,
-  message: string
-): NextResponse {
-  const retryAfter = getRetryAfter(result);
-  return new NextResponse(
-    JSON.stringify({
-      error,
-      message,
-      code: 'RATE_LIMIT_EXCEEDED',
-      retryAfter,
-    }),
-    {
-      status: 429,
-      headers: {
-        'Content-Type': 'application/json',
-        'X-RateLimit-Limit': result.limit.toString(),
-        'X-RateLimit-Remaining': result.remaining.toString(),
-        'X-RateLimit-Reset': result.reset.toString(),
-        'Retry-After': retryAfter.toString(),
-      },
-    }
-  );
-}
-
-// Auth routes that should be rate limited (now these are backend routes)
-const authRateLimitedRoutes = [
-  // Since auth is now handled by backend, we don't need these frontend routes
-  // Keeping this for any remaining frontend auth routes if needed
-];
-
-// Optional: List of known bad bots (for extra protection)
-const knownBadBots = [
-  'python-requests',
-  'curl',
-  'libwww-perl',
-  'HttpClient',
-  'Go-http-client',
-  'scrapy',
-  'wget',
-  'scanner',
-  'attack',
-  'bot',
-];
 
 // Note: We identify editor endpoints dynamically in the middleware function
 // by checking for paths that include '/api/stories/' and '/chapters/'
@@ -80,11 +24,7 @@ export async function middleware(request: NextRequest) {
     const decodedValue = safeDecodeURIComponent(value);
     if (decodedValue === null) {
       hasMalformedParams = true;
-      // Decide how to handle malformed params.
-      // Option 1: Skip the parameter.
-      // newSearchParams.set(key, ''); // or some default
-      // Option 2: Redirect to a clean URL.
-      // For now, we will log it and redirect to the base path.
+      // Log malformed params for debugging
       console.error("🚨 Malformed URI Param Detected", {
         key,
         value,
@@ -105,63 +45,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-
-
-  // Apply rate limiting based on endpoint type
-  // Check if this is an editor endpoint that needs special rate limiting
-  const isEditorEndpoint = pathname.includes('/api/stories/') &&
-    (pathname.includes('/chapters/') || pathname.endsWith('/chapters'));
-
-  // Check if this is a forum post endpoint that needs special rate limiting
-  const isForumPostEndpoint = pathname.includes('/api/forum/') &&
-    pathname.includes('/posts') && method === 'POST';
-
-  // Apply higher rate limits for editor endpoints (for autosave functionality)
-  if (isEditorEndpoint) {
-    const result = await rateLimit(request, {
-      ...rateLimitConfigs.editor,
-      includeUserContext: true,
-    });
-
-    if (!result.success) {
-      return createRateLimitResponse(
-        result,
-        'Too many editor requests',
-        'You have exceeded the rate limit for editor operations. Please try again later.'
-      );
-    }
-  }
-  // Apply forum posts rate limiting
-  else if (isForumPostEndpoint) {
-    const result = await rateLimit(request, {
-      ...rateLimitConfigs.forumPosts,
-      includeUserContext: true,
-    });
-
-    if (!result.success) {
-      return createRateLimitResponse(
-        result,
-        'Too many forum posts',
-        'You can only create up to 3 posts per minute. Please try again later.'
-      );
-    }
-  }
-
-  // Apply default rate limiting to all other API endpoints
-  else if (pathname.startsWith('/api/')) {
-    const result = await rateLimit(request, {
-      ...rateLimitConfigs.default,
-      includeUserContext: true,
-    });
-
-    if (!result.success) {
-      return createRateLimitResponse(
-        result,
-        'Too many requests',
-        'Rate limit exceeded. Please try again later.'
-      );
-    }
-  }
+  // ========================================
+  // Rate Limiting
+  // ========================================
+  // Note: Rate limiting is now handled by the backend (fiction-app-backend)
+  // We have removed the frontend-side rate limiting to avoid double-enforcement
+  // and potential synchronization issues.
+  // The backend uses Redis-backed rate limiting which is more robust.
 
   // ========================================
   // Authentication Protection for Protected Routes
@@ -181,15 +71,29 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith(route)
   );
 
-  // If route is protected and user doesn't have a token, redirect to login
+  // If route is protected, check for authentication
   if (isProtectedRoute) {
     const token = request.cookies.get('fablespace_access_token')?.value;
+    const hasOldNextAuthCookie = request.cookies.get('next-auth.session-token')?.value;
+    const hasSecureNextAuthCookie = request.cookies.get('__Secure-next-auth.session-token')?.value;
 
     if (!token) {
       const url = new URL('/login', request.url);
-      // Preserve the original URL (including query params) for redirect after login
       url.searchParams.set('callbackUrl', pathname + (searchParams.toString() ? `?${searchParams.toString()}` : ''));
-      return NextResponse.redirect(url);
+
+      const response = NextResponse.redirect(url);
+
+      // Clean up old NextAuth cookies if they exist (migration from old auth system)
+      if (hasOldNextAuthCookie || hasSecureNextAuthCookie) {
+        response.cookies.delete('next-auth.session-token');
+        response.cookies.delete('next-auth.callback-url');
+        response.cookies.delete('next-auth.csrf-token');
+        response.cookies.delete('__Secure-next-auth.session-token');
+        response.cookies.delete('__Secure-next-auth.callback-url');
+        response.cookies.delete('__Host-next-auth.csrf-token');
+      }
+
+      return response;
     }
   }
 

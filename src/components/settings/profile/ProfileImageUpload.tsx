@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Upload, Trash2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ImageUpload } from "@/lib/image-upload";
+import { ImageService } from "@/lib/api/images";
 import type { ExtendedSession } from "../ProfileSettings";
 import { logError } from "@/lib/error-logger";
 
@@ -101,7 +102,7 @@ export const ProfileImageUpload = ({
       </CardHeader>
       <CardContent className="flex flex-col items-center">
         <Avatar className="h-32 w-32 mb-4">
-          <AvatarImage src={session?.user?.image || ""} alt={session?.user?.name || ""} />
+          <AvatarImage src={ImageService.getImageUrl(session?.user?.image) || ""} alt={session?.user?.name || ""} />
           <AvatarFallback>{session?.user?.name?.[0] || "?"}</AvatarFallback>
         </Avatar>
 

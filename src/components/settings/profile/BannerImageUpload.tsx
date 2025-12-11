@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Upload, Trash2, Loader2, ImageIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ImageUpload } from "@/lib/image-upload";
+import { ImageService } from "@/lib/api/images";
 import type { ExtendedSession } from "../ProfileSettings";
 import { logError } from "@/lib/error-logger";
 
@@ -104,7 +105,7 @@ export const BannerImageUpload = ({
         <div className="relative w-full h-32 rounded-md overflow-hidden mb-4">
           {session?.user?.bannerImage ? (
             <img
-              src={session.user.bannerImage}
+              src={ImageService.getImageUrl(session.user.bannerImage) || ""}
               alt="Profile banner"
               className="w-full h-full object-cover"
             />

@@ -13,6 +13,7 @@ import Navbar from "@/components/navbar"
 import StoryCard from "@/components/story-card"
 import StoryCardSkeleton from "@/components/story-card-skeleton"
 import { StoryService } from "@/lib/api/story"
+import { ImageService } from "@/lib/api/images"
 import { useToast } from "@/hooks/use-toast"
 import { logError } from "@/lib/error-logger"
 
@@ -54,6 +55,7 @@ export default function LibraryPage() {
               ...story,
               author: story.author?.name || story.author?.username || "Unknown",
               excerpt: story.description || "",
+              coverImage: story.coverImage ? ImageService.getImageUrl(story.coverImage) || "/placeholder.svg" : "/placeholder.svg",
               likeCount: story.likeCount || 0,
               commentCount: story.commentCount || 0,
               viewCount: story.viewCount || 0,

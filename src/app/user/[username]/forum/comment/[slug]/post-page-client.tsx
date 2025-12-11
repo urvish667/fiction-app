@@ -15,6 +15,7 @@ import AdBanner from "@/components/ad-banner"
 import CommentOptions from "@/components/forum/CommentOptions"
 import InstructionForum from "@/components/forum/InstructionForum"
 import { ForumService } from "@/lib/api/forum"
+import { ImageService } from "@/lib/api/images"
 
 interface User {
   id: string
@@ -149,10 +150,10 @@ export default function PostPageClient({ post, user, forumRules, isOwner, curren
         setComments(prev => prev.map(comment =>
           comment.id === editingCommentId
             ? {
-                ...comment,
-                content: response.data!.content,
-                editedAt: response.data!.editedAt ? new Date(response.data!.editedAt) : undefined
-              }
+              ...comment,
+              content: response.data!.content,
+              editedAt: response.data!.editedAt ? new Date(response.data!.editedAt) : undefined
+            }
             : comment
         ))
         setEditingCommentId(null)
@@ -253,7 +254,7 @@ export default function PostPageClient({ post, user, forumRules, isOwner, curren
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3 flex-1">
                   <Avatar>
-                    <AvatarImage src={post.author.image || undefined} />
+                    <AvatarImage src={ImageService.getImageUrl(post.author.image) || undefined} />
                     <AvatarFallback>{post.author.name.charAt(0)}</AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
@@ -328,7 +329,7 @@ export default function PostPageClient({ post, user, forumRules, isOwner, curren
                   <div key={comment.id}>
                     <div className="flex gap-3">
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src={comment.author.image || undefined} />
+                        <AvatarImage src={ImageService.getImageUrl(comment.author.image) || undefined} />
                         <AvatarFallback>{comment.author.name.charAt(0)}</AvatarFallback>
                       </Avatar>
                       <div className="flex-1 relative">
@@ -440,7 +441,7 @@ export default function PostPageClient({ post, user, forumRules, isOwner, curren
               width={300}
               height={600}
               slot="3146074170"
-            />          
+            />
           </div>
         </div>
       </div>

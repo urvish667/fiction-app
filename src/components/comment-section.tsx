@@ -13,6 +13,7 @@ import { CommentService } from "@/lib/api/comment"
 import { Comment } from "@/types/story"
 import { logError } from "@/lib/error-logger"
 import { ReportDialog } from "@/components/report/ReportDialog"
+import { ImageService } from "@/lib/api/images"
 
 interface CommentSectionProps {
   storyId: string
@@ -594,7 +595,7 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
       {/* Comment form */}
       <div className="flex gap-4">
         <Avatar className="h-10 w-10">
-          <AvatarImage src={user?.image || "/placeholder-user.jpg"} alt="Your Avatar" />
+          <AvatarImage src={ImageService.getImageUrl(user?.image) || "/placeholder-user.jpg"} alt="Your Avatar" />
           <AvatarFallback>{user?.name?.[0] || "U"}</AvatarFallback>
         </Avatar>
 
@@ -634,7 +635,7 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
               {comments.map((comment) => (
                 <div key={comment.id} className="flex gap-4">
                   <Avatar className="h-10 w-10">
-                    <AvatarImage src={comment.user?.image || "/placeholder-user.jpg"} alt={comment.user?.name || "User"} />
+                    <AvatarImage src={ImageService.getImageUrl(comment.user?.image) || "/placeholder-user.jpg"} alt={comment.user?.name || "User"} />
                     <AvatarFallback>{(comment.user?.name?.[0] || "U").toUpperCase()}</AvatarFallback>
                   </Avatar>
 
@@ -769,7 +770,7 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
                       <div className="mt-2 ml-4">
                         <div className="flex gap-2">
                           <Avatar className="h-8 w-8">
-                            <AvatarImage src={user?.image || "/placeholder-user.jpg"} alt="Your Avatar" />
+                            <AvatarImage src={ImageService.getImageUrl(user?.image) || "/placeholder-user.jpg"} alt="Your Avatar" />
                             <AvatarFallback>{user?.name?.[0] || "U"}</AvatarFallback>
                           </Avatar>
                           <div className="flex-1 space-y-2">
@@ -831,7 +832,7 @@ export default function CommentSection({ storyId, chapterId, isChapterComment = 
                         {expandedReplies[comment.id].map(reply => (
                           <div key={reply.id} className="flex gap-3">
                             <Avatar className="h-8 w-8">
-                              <AvatarImage src={reply.user?.image || "/placeholder-user.jpg"} alt={reply.user?.name || "User"} />
+                              <AvatarImage src={ImageService.getImageUrl(reply.user?.image) || "/placeholder-user.jpg"} alt={reply.user?.name || "User"} />
                               <AvatarFallback>{(reply.user?.name?.[0] || "U").toUpperCase()}</AvatarFallback>
                             </Avatar>
 

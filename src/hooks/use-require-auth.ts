@@ -20,6 +20,13 @@ export function useRequireAuth() {
         const verifyAuth = async () => {
             if (hasChecked) return;
 
+            // If user already exists in context (e.g., from OAuth callback),
+            // no need to call the API again
+            if (user) {
+                setHasChecked(true);
+                return;
+            }
+
             const isAuthenticated = await checkAuth();
             setHasChecked(true);
 
@@ -30,7 +37,7 @@ export function useRequireAuth() {
         };
 
         verifyAuth();
-    }, [checkAuth, hasChecked, router]);
+    }, [user, checkAuth, hasChecked, router]);
 
     return {
         user,
