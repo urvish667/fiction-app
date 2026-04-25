@@ -17,12 +17,23 @@ const nextConfig = {
     ],
   },
 
-  // Proxy API requests in development to avoid CORS issues
+  // Proxy API requests to avoid CORS issues and handle legacy image URLs
   async rewrites() {
+    // In development, use localhost. In production, use the API URL.
+    const isDev = process.env.NODE_ENV !== 'production';
+    const baseUrl = isDev 
+      ? 'http://localhost:4000/api/v1' 
+      : (process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.fablespace.space/api/v1');
+
     return [
       {
         source: '/api/v1/images/:path*',
-        destination: 'http://localhost:4000/api/v1/images/:path*',
+        destination: `${baseUrl}/images/:path*`,
+      },
+      {
+        // Handle legacy image URLs embedded in chapter HTML content
+        source: '/api/images/:path*',
+        destination: `${baseUrl}/images/:path*`,
       },
     ]
   },

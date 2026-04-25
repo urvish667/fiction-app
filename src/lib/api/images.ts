@@ -34,15 +34,8 @@ export const ImageService = {
       const encodedKey = imageInput.substring(apiPrefix.length);
       imageKey = decodeURIComponent(encodedKey);
 
-      // In production, use CDN directly for better performance
-      // In development, keep using backend proxy (localhost:4000)
-      if (process.env.NODE_ENV === 'production') {
-        const cdnUrl = process.env.NEXT_PUBLIC_CDN_URL || 'https://cdn.fablespace.space';
-        // Remove trailing slash from CDN URL if present
-        const cleanCdnUrl = cdnUrl.endsWith('/') ? cdnUrl.slice(0, -1) : cdnUrl;
-        return `${cleanCdnUrl}/${imageKey}`;
-      }
-      // In development, return the proxy URL as-is
+      // Always return the original proxy URL to ensure requests go through 
+      // the backend proxy (which handles IAM auth to the private S3 bucket)
       return imageInput;
     }
 
