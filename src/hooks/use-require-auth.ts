@@ -19,6 +19,7 @@ export function useRequireAuth() {
     useEffect(() => {
         const verifyAuth = async () => {
             if (hasChecked) return;
+            if (isLoading) return; // ✅ Wait for auth context to finish loading
 
             // If user already exists in context (e.g., from OAuth callback),
             // no need to call the API again
@@ -37,7 +38,7 @@ export function useRequireAuth() {
         };
 
         verifyAuth();
-    }, [user, checkAuth, hasChecked, router]);
+    }, [user, isLoading, checkAuth, hasChecked, router]); // ✅ added isLoading
 
     return {
         user,

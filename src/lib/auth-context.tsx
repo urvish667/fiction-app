@@ -29,10 +29,21 @@ export const useAuth = () => {
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Initialize state as null to prevent SSR hydration mismatch
-  // We'll load from localStorage after mount on client side
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true); // Start as loading during SSR
+  // Initialize state synchronously from localStorage
+  const [user, setUser] = useState<AuthUser | null>(() => {
+    if (typeof window !== 'undefined') {
+      return getAuthUser();
+    }
+    return null;
+  });
+
+  // Start as loading only if we don't have a cached user
+  const [isLoading, setIsLoading] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return !getAuthUser();
+    }
+    return true;
+  });
 
   // Track pending getCurrentUser request to prevent duplicate calls
   const pendingAuthCheckRef = useRef<Promise<boolean> | null>(null);
@@ -42,15 +53,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Track refresh interval
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Load cached user from localStorage on client side only (after mount)
-  useEffect(() => {
-    const cachedUser = getAuthUser();
-    if (cachedUser) {
-      setUser(cachedUser);
-      setIsLoading(false);
-    }
-  }, []);
 
   // Check for existing session on mount
   useEffect(() => {
@@ -214,8 +216,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(null);
         return false;
       } catch (error) {
-        // If API call fails, clear any stale cache
-        clearAuthUser();
+        // ✅ Don't clear user on network error — keep existing session
+        // Only clear if server explicitly says unauthorized
+        const cachedUser = getAuthUser();
+        if (cachedUser) {
+          setUser(cachedUser);
+          return true; // Trust the cache on network failure
+        }
         setUser(null);
         return false;
       } finally {
