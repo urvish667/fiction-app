@@ -29,21 +29,9 @@ export const useAuth = () => {
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Initialize state synchronously from localStorage
-  const [user, setUser] = useState<AuthUser | null>(() => {
-    if (typeof window !== 'undefined') {
-      return getAuthUser();
-    }
-    return null;
-  });
-
-  // Start as loading only if we don't have a cached user
-  const [isLoading, setIsLoading] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      return !getAuthUser();
-    }
-    return true;
-  });
+  // Initialize state with default values to prevent hydration mismatch
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // Track pending getCurrentUser request to prevent duplicate calls
   const pendingAuthCheckRef = useRef<Promise<boolean> | null>(null);
@@ -56,6 +44,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Check for existing session on mount
   useEffect(() => {
+    // Synchronously restore cached user for immediate UI feedback after hydration
+    const cachedUser = getAuthUser();
+    if (cachedUser) {
+      setUser(cachedUser);
+      setIsLoading(false);
+    }
+    
     checkAuthHandler();
   }, []);
 
@@ -189,7 +184,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const checkAuthHandler = async (): Promise<boolean> => {
-    // Only check if we don't already have a user
+    // Only check if we don't already have a user in state
     if (user) {
       return true;
     }
@@ -199,7 +194,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return pendingAuthCheckRef.current;
     }
 
-    setIsLoading(true);
+    const hasCachedUser = !!getAuthUser();
+    
+    // Only show loading state if we have no cached user to show immediately
+    if (!hasCachedUser) {
+      setIsLoading(true);
+    }
 
     // Create and store the promise
     const authCheckPromise = (async () => {

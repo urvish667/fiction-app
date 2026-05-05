@@ -13,16 +13,18 @@ export default async function BlogPage() {
   const initialBlogs = await fetchPublishedBlogs()
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen">
       <Navbar />
-      <BlogContent initialBlogs={initialBlogs} />
-      <div className="w-full py-2">
-        <AdBanner
-          type="banner"
-          className="w-full max-w-[720px] h-[90px] mx-auto"
-          slot="6596765108"
-        />
-      </div>
+      <main className="container mx-auto px-4 py-8">
+        <BlogContent initialBlogs={initialBlogs} />
+        <div className="w-full py-4">
+          <AdBanner
+            type="banner"
+            className="w-full max-w-[720px] h-[90px] mx-auto"
+            slot="6596765108"
+          />
+        </div>
+      </main>
       <SiteFooter />
     </div>
   )
