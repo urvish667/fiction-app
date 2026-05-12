@@ -18,10 +18,32 @@ export const metadata: Metadata = {
     process.env.NEXTAUTH_URL ||
     'http://localhost:3000'
   ),
-  title: "FableSpace - Unleash Your Stories",
+  title: {
+    default: "FableSpace - Unleash Your Stories",
+    template: "%s | FableSpace",
+  },
+  description: "Unleash your imagination on FableSpace. Publish original stories, explore fantasy, romance, and more. Connect with readers and writers in a growing creative community—no fees, no limits.",
+  openGraph: {
+    siteName: "FableSpace",
+    locale: "en_US",
+    type: "website",
+    images: [
+      {
+        url: "/og-image.jpg",
+        width: 1200,
+        height: 630,
+        alt: "FableSpace - Creative Fiction Platform",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    site: "@FableSpace",
+  },
   icons: {
     icon: "/favicon.ico",
-  }
+    apple: "/apple-touch-icon.png",
+  },
 }
 
 export default function RootLayout({

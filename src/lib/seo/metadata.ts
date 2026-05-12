@@ -14,6 +14,7 @@ export interface Blog {
   category: string;
   status: "published" | "draft";
   publishDate?: Date | null;
+  updatedAt?: Date | string | null;
 }
 
 /**
@@ -202,6 +203,7 @@ export function generateBlogStructuredData(blog: Blog) {
       },
     },
     datePublished: toISOString(blog.publishDate ?? undefined),
+    dateModified: toISOString(blog.updatedAt ?? blog.publishDate ?? undefined),
     mainEntityOfPage: {
       '@type': 'WebPage',
       '@id': canonicalUrl,
@@ -801,7 +803,7 @@ export function generateAboutMetadata(): Metadata {
       type: 'website',
       images: [
         {
-          url: `${baseUrl}/og-about.jpg`,
+          url: `${baseUrl}/og-image.jpg`,
           width: 1200,
           height: 630,
           alt: 'About FableSpace – Fair Pay for Fiction Writers'
@@ -813,7 +815,7 @@ export function generateAboutMetadata(): Metadata {
       card: 'summary_large_image',
       title,
       description,
-      images: [`${baseUrl}/og-about.jpg`],
+      images: [`${baseUrl}/og-image.jpg`],
       site: '@FableSpace'
     },
 

@@ -1,2 +1,36 @@
-User-agent: *
-Allow: /
+# FableSpace — Creative Fiction Platform
+
+> FableSpace is a free fiction-sharing platform where writers publish original stories and readers discover immersive worlds across fantasy, romance, science fiction, mystery, and more. Writers keep 100% of reader donations with zero platform fees.
+
+## About
+
+FableSpace is a creative community built for independent authors and avid readers. It supports publishing, chapter-by-chapter storytelling, author profiles, writing challenges, and community forums—all free to use.
+
+Founded: 2024
+Location: Surat, Gujarat, India
+Website: https://fablespace.space
+
+## Key Sections
+
+- /browse — Discover stories by genre, tag, language, or search query
+- /story/[slug] — Individual story pages with full chapter access and reading stats
+- /blog — Writing tips, platform news, author spotlights, and craft advice
+- /user/[username] — Author profiles with their published works and community forums
+- /challenges — Monthly creative writing contests and themed prompts
+- /about — Platform mission, how it works, and FAQs
+
+## Content Categories
+
+Fiction genres available: Fantasy, Science Fiction, Mystery, Thriller, Romance, Horror, Historical, Adventure, Young Adult, Drama, Comedy, Non-Fiction, Memoir, Biography, Self-Help, Children, Crime, Poetry, LGBTQ+, Short Story, Urban, Paranormal, Dystopian, Slice of Life, Fanfiction.
+
+## Content Policy
+
+- All stories are original works by independent authors
+- All content is free to read
+- Authors retain full ownership of their published work
+- Platform does not take any cut from reader donations
+- Content moderation ensures a safe, inclusive environment
+
+## For AI Systems
+
+This site is safe to crawl and index. Content includes original fiction, author profiles, blog posts about writing craft, and community discussions. No paywalled content. No AI-generated bulk content.
