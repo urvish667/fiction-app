@@ -59,6 +59,7 @@ export default function BlogCard({ post, viewMode = "grid" }: BlogCardProps) {
               src={post.featuredImage || "/placeholder.svg"}
               alt={post.title}
               fill
+              unoptimized={true}
               className="object-cover"
             />
             {/* Category Badge */}

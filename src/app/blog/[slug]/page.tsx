@@ -7,6 +7,8 @@ import { Metadata } from "next";
 import { Badge } from "@/components/ui/badge";
 import AdBanner from "@/components/ad-banner";
 import { generateBlogMetadata, generateBlogStructuredData, generateBlogBreadcrumbStructuredData } from "@/lib/seo/metadata";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 
 // Force dynamic rendering to ensure blog posts are fetched at request time
 export const dynamic = 'force-dynamic'
@@ -71,6 +73,12 @@ export default async function BlogPostPage({ params }: BlogPageProps) {
         <Navbar />
         <main className="container mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 lg:py-8">
           <div className="max-w-3xl mx-auto py-2">
+            <div className="mb-8">
+              <Link href="/blog" className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1">
+                <ArrowLeft className="h-4 w-4" />
+                Back to Blog
+              </Link>
+            </div>
             <article>
               <h1 className="text-4xl font-bold mb-4">{blog.title}</h1>
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
