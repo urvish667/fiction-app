@@ -845,6 +845,7 @@ export function generateBrowseMetadata(params?: {
   language?: string
   status?: string
   totalStories?: number
+  page?: number
 }): Metadata {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.space'
 
@@ -994,10 +995,10 @@ export function generateBrowseMetadata(params?: {
       site: '@FableSpace'
     },
     robots: {
-      index: true,
+      index: !(params?.page && params.page > 1) && !(params?.language && params?.status && params.status !== 'all'),
       follow: true,
       googleBot: {
-        index: true,
+        index: !(params?.page && params.page > 1) && !(params?.language && params?.status && params.status !== 'all'),
         follow: true,
         'max-video-preview': -1,
         'max-image-preview': 'large',

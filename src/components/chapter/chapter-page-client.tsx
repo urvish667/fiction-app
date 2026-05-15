@@ -442,6 +442,7 @@ export default function ChapterPageClient({
           <ChapterNavigation
             chapters={chapters}
             currentChapter={chapter}
+            storySlug={slug}
             navigateToChapter={navigateToChapter}
           />
 

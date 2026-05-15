@@ -36,7 +36,8 @@ export async function generateMetadata({ searchParams }: BrowsePageProps): Promi
     return generateBrowseMetadata({
       tag: params.tag,
       language: params.language,
-      status: params.status
+      status: params.status,
+      page: params.page ? parseInt(params.page) : undefined
     })
   }
 
@@ -44,7 +45,8 @@ export async function generateMetadata({ searchParams }: BrowsePageProps): Promi
     genre: params.genre,
     search: params.search,
     language: params.language,
-    status: params.status
+    status: params.status,
+    page: params.page ? parseInt(params.page) : undefined
   })
 }
 

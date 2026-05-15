@@ -7,6 +7,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { ChevronLeft, ChevronRight, ArrowLeft, List, AlignJustify, Minus, Plus } from "lucide-react"
 import ChapterList from "@/components/chapter-list"
 import { Chapter } from "@/types/story"
+import Link from "next/link"
 
 interface TopNavigationProps {
   slug: string
@@ -45,16 +46,35 @@ export function TopNavigation({
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => navigateToChapter("prev")}
-                  disabled={currentIndex <= 0}
-                  className="h-8 w-8 sm:h-10 sm:w-10"
-                >
-                  <ChevronLeft size={14} className="sm:w-4 sm:h-4" />
-                  <span className="sr-only">Previous Chapter</span>
-                </Button>
+                {currentIndex <= 0 ? (
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    disabled
+                    className="h-8 w-8 sm:h-10 sm:w-10"
+                  >
+                    <ChevronLeft size={14} className="sm:w-4 sm:h-4" />
+                    <span className="sr-only">Previous Chapter</span>
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    asChild
+                    className="h-8 w-8 sm:h-10 sm:w-10"
+                  >
+                    <Link
+                      href={`/story/${slug}/chapter/${chapters[currentIndex - 1].number}`}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        navigateToChapter("prev")
+                      }}
+                    >
+                      <ChevronLeft size={14} className="sm:w-4 sm:h-4" />
+                      <span className="sr-only">Previous Chapter</span>
+                    </Link>
+                  </Button>
+                )}
               </TooltipTrigger>
               <TooltipContent>Previous Chapter</TooltipContent>
             </Tooltip>
@@ -83,16 +103,35 @@ export function TopNavigation({
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => navigateToChapter("next")}
-                  disabled={currentIndex >= chapters.length - 1}
-                  className="h-8 w-8 sm:h-10 sm:w-10"
-                >
-                  <ChevronRight size={14} className="sm:w-4 sm:h-4" />
-                  <span className="sr-only">Next Chapter</span>
-                </Button>
+                {currentIndex >= chapters.length - 1 ? (
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    disabled
+                    className="h-8 w-8 sm:h-10 sm:w-10"
+                  >
+                    <ChevronRight size={14} className="sm:w-4 sm:h-4" />
+                    <span className="sr-only">Next Chapter</span>
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    asChild
+                    className="h-8 w-8 sm:h-10 sm:w-10"
+                  >
+                    <Link
+                      href={`/story/${slug}/chapter/${chapters[currentIndex + 1].number}`}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        navigateToChapter("next")
+                      }}
+                    >
+                      <ChevronRight size={14} className="sm:w-4 sm:h-4" />
+                      <span className="sr-only">Next Chapter</span>
+                    </Link>
+                  </Button>
+                )}
               </TooltipTrigger>
               <TooltipContent>Next Chapter</TooltipContent>
             </Tooltip>
