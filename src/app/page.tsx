@@ -5,6 +5,9 @@ import Navbar from "@/components/navbar"
 import { SiteFooter } from "@/components/site-footer"
 import { generateHomepageMetadata, generateHomepageStructuredData, generateOrganizationStructuredData } from "@/lib/seo/metadata"
 import MostViewedStories from "@/components/most-viewed-stories"
+import NewlyArrivedStories from "@/components/newly-arrived-stories"
+import PopularStories from "@/components/popular-stories"
+import ContinueReading from "@/components/continue-reading"
 import { slugify } from "@/lib/utils"
 
 // Generate metadata for SEO
@@ -69,8 +72,11 @@ export default function Home() {
           </section>
 
           <div className="container mx-auto px-4 py-12 space-y-16">
-            {/* Most Viewed Stories Section */}
+            {/* Home Page Sections */}
+            <NewlyArrivedStories />
             <MostViewedStories />
+            <PopularStories />
+            <ContinueReading />
 
             {/* Explore Categories Section */}
             <section className="bg-muted/30 rounded-3xl p-8 md:p-12">
