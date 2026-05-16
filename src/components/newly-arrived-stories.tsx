@@ -200,14 +200,11 @@ function StoryCard({ story }: { story: StoryResponse }) {
                 18+
               </Badge>
             )}
-            <Badge className="bg-green-600 hover:bg-green-700 text-white font-bold text-xs px-2 py-1">
-              New
-            </Badge>
           </div>
-          
+
           <Badge className="absolute top-2 right-2">
             {typeof story.genre === 'object' && story.genre !== null
-              ? (story.genre as {name: string}).name
+              ? (story.genre as { name: string }).name
               : (typeof story.genre === 'string' ? story.genre : 'General')}
           </Badge>
         </div>

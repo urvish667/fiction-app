@@ -71,11 +71,10 @@ export default function Home() {
             </div>
           </section>
 
-          <div className="container mx-auto px-4 py-12 space-y-16">
+          <div className="container mx-auto px-4 py-12 space-y-8">
             {/* Home Page Sections */}
             <NewlyArrivedStories />
             <MostViewedStories />
-            <PopularStories />
             <ContinueReading />
 
             {/* Explore Categories Section */}

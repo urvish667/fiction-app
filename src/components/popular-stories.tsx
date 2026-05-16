@@ -200,15 +200,11 @@ function StoryCard({ story }: { story: StoryResponse }) {
                 18+
               </Badge>
             )}
-            <div className="bg-blue-600 text-white px-2 py-1 rounded-md flex items-center gap-1">
-              <TrendingUp size={14} />
-              <span className="text-xs font-bold">Popular</span>
-            </div>
           </div>
-          
+
           <Badge className="absolute top-2 right-2">
             {typeof story.genre === 'object' && story.genre !== null
-              ? (story.genre as {name: string}).name
+              ? (story.genre as { name: string }).name
               : (typeof story.genre === 'string' ? story.genre : 'General')}
           </Badge>
         </div>
