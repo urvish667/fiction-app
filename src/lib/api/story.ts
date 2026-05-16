@@ -191,18 +191,12 @@ export const StoryService = {
       // Map sort options to backend expected values
       const sortBy = params.sortBy;
       if (sortBy) {
-        switch (sortBy) {
-          case 'newest':
-            apiParams.sortBy = 'newest';
-            break;
-          case 'popular':
-            apiParams.sortBy = 'popular';
-            break;
-          case 'mostRead':
-            apiParams.sortBy = 'mostViewed';
-            break;
-          default:
-            apiParams.sortBy = 'newest';
+        if (['newest', 'oldest', 'popular', 'trending', 'mostLiked', 'mostViewed', 'recentlyUpdated'].includes(sortBy)) {
+          apiParams.sortBy = sortBy;
+        } else if (sortBy === 'mostRead') {
+          apiParams.sortBy = 'mostViewed';
+        } else {
+          apiParams.sortBy = 'newest';
         }
       }
 
