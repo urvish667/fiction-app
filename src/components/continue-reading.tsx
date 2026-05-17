@@ -100,10 +100,12 @@ export default function ContinueReading({ className }: ContinueReadingProps) {
     }
   }, [readingHistory])
 
-  // Don't render anything if not logged in or still loading auth/initial data
-  if (!isAuthenticated || authLoading || loading) {
+  // Don't render anything if still loading auth
+  if (authLoading || (isAuthenticated && loading)) {
     return null
   }
+
+  const validHistory = readingHistory.filter(item => item && item.story);
 
   return (
     <section className={`py-8 bg-background ${className}`}>
@@ -115,9 +117,13 @@ export default function ContinueReading({ className }: ContinueReadingProps) {
           </div>
         </div>
 
-        {readingHistory.length === 0 ? (
+        {!isAuthenticated ? (
           <div className="text-center py-8 bg-muted/20 rounded-2xl border border-dashed border-muted">
-            <p className="text-muted-foreground italic">nothing show</p>
+            <p className="text-muted-foreground italic">Log in to track your reading progress</p>
+          </div>
+        ) : validHistory.length === 0 ? (
+          <div className="text-center py-8 bg-muted/20 rounded-2xl border border-dashed border-muted">
+            <p className="text-muted-foreground italic">No reading history yet</p>
           </div>
         ) : (
           <div className="relative">
@@ -125,10 +131,10 @@ export default function ContinueReading({ className }: ContinueReadingProps) {
               ref={scrollContainerRef}
               className="grid grid-flow-col auto-cols-[calc(100%-0.5rem)] sm:auto-cols-[calc(50%-0.5rem)] lg:auto-cols-[calc(33.33%-0.5rem)] xl:auto-cols-[calc(25%-0.5rem)] gap-2 overflow-x-auto scroll-smooth snap-x snap-mandatory scrollbar-hide"
             >
-              {readingHistory.map((historyItem) => {
+              {validHistory.map((historyItem) => {
                 const story = historyItem.story
                 const chapter = historyItem.chapter
-                
+
                 if (!story) return null;
 
                 return (
@@ -158,8 +164,8 @@ export default function ContinueReading({ className }: ContinueReadingProps) {
                       <CardContent className="pb-4 flex-grow">
                         {historyItem.progressPercentage > 0 && (
                           <div className="w-full bg-secondary rounded-full h-2.5 mt-2">
-                            <div 
-                              className="bg-primary h-2.5 rounded-full" 
+                            <div
+                              className="bg-primary h-2.5 rounded-full"
                               style={{ width: `${Math.min(100, Math.max(0, historyItem.progressPercentage))}%` }}
                             ></div>
                           </div>

@@ -200,6 +200,20 @@ export default function ChapterPageClient({
     return () => window.removeEventListener("scroll", handleScroll);
   }, [readingProgress])
 
+  // Sync reading progress to backend
+  useEffect(() => {
+    if (!isAuthenticated || !chapter) return;
+
+    // Debounce the API call to avoid spamming the backend
+    const timeoutId = setTimeout(() => {
+      ChapterService.updateReadingProgress(chapter.id, readingProgress).catch(err => {
+        console.error('Failed to sync reading progress:', err);
+      });
+    }, 2000);
+
+    return () => clearTimeout(timeoutId);
+  }, [readingProgress, chapter, isAuthenticated]);
+
   // Function to fetch chapter data without page navigation
   const fetchChapterData = useCallback(async (chapterNumber: number) => {
     if (!story) return false
