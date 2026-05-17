@@ -100,12 +100,12 @@ export default function ContinueReading({ className }: ContinueReadingProps) {
     }
   }, [readingHistory])
 
-  // Don't render anything if still loading auth
-  if (authLoading || (isAuthenticated && loading)) {
+  // Don't render anything if still loading auth or not authenticated
+  if (authLoading || !isAuthenticated || (isAuthenticated && loading)) {
     return null
   }
 
-  const validHistory = readingHistory.filter(item => item && item.story);
+  const validHistory = readingHistory.filter(item => item && item.chapter && item.chapter.story);
 
   return (
     <section className={`py-8 bg-background ${className}`}>
@@ -117,11 +117,7 @@ export default function ContinueReading({ className }: ContinueReadingProps) {
           </div>
         </div>
 
-        {!isAuthenticated ? (
-          <div className="text-center py-8 bg-muted/20 rounded-2xl border border-dashed border-muted">
-            <p className="text-muted-foreground italic">Log in to track your reading progress</p>
-          </div>
-        ) : validHistory.length === 0 ? (
+        {validHistory.length === 0 ? (
           <div className="text-center py-8 bg-muted/20 rounded-2xl border border-dashed border-muted">
             <p className="text-muted-foreground italic">No reading history yet</p>
           </div>
@@ -132,7 +128,7 @@ export default function ContinueReading({ className }: ContinueReadingProps) {
               className="grid grid-flow-col auto-cols-[calc(100%-0.5rem)] sm:auto-cols-[calc(50%-0.5rem)] lg:auto-cols-[calc(33.33%-0.5rem)] xl:auto-cols-[calc(25%-0.5rem)] gap-2 overflow-x-auto scroll-smooth snap-x snap-mandatory scrollbar-hide"
             >
               {validHistory.map((historyItem) => {
-                const story = historyItem.story
+                const story = historyItem.chapter?.story
                 const chapter = historyItem.chapter
 
                 if (!story) return null;
@@ -162,11 +158,11 @@ export default function ContinueReading({ className }: ContinueReadingProps) {
                         </p>
                       </CardHeader>
                       <CardContent className="pb-4 flex-grow">
-                        {historyItem.progressPercentage > 0 && (
+                        {historyItem.progress > 0 && (
                           <div className="w-full bg-secondary rounded-full h-2.5 mt-2">
                             <div
                               className="bg-primary h-2.5 rounded-full"
-                              style={{ width: `${Math.min(100, Math.max(0, historyItem.progressPercentage))}%` }}
+                              style={{ width: `${Math.min(100, Math.max(0, historyItem.progress))}%` }}
                             ></div>
                           </div>
                         )}
