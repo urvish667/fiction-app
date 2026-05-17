@@ -26,16 +26,18 @@ export function generateTimeIntervals() {
  */
 export function getNextQuarterHour() {
   const now = new Date()
-  const minutes = now.getMinutes()
+  // Add 15 minutes first to ensure we look into the future
+  const baseDate = new Date(now.getTime() + 15 * 60 * 1000)
+  const minutes = baseDate.getMinutes()
   const roundedMinutes = Math.ceil(minutes / 15) * 15
 
   if (roundedMinutes >= 60) {
-    now.setHours(now.getHours() + 1, 0, 0, 0)
+    baseDate.setHours(baseDate.getHours() + 1, 0, 0, 0)
   } else {
-    now.setMinutes(roundedMinutes, 0, 0)
+    baseDate.setMinutes(roundedMinutes, 0, 0)
   }
 
-  return now
+  return baseDate
 }
 
 /**
@@ -83,9 +85,9 @@ export function getSchedulingPresets() {
 
   return [
     {
-      label: "Next 15 minutes",
+      label: "Next available slot",
       value: nextQuarter,
-      description: format(nextQuarter, 'h:mm a')
+      description: format(nextQuarter, 'MMM d, h:mm a')
     },
     {
       label: "Tomorrow 9 AM",
@@ -107,12 +109,13 @@ export function getSchedulingPresets() {
  */
 export function validateScheduledTime(date: Date) {
   const now = new Date()
+  const minFuture = new Date(now.getTime() + 14 * 60 * 1000) // Allow 1 minute buffer for network latency
 
-  // Check if the date is in the future
-  if (date <= now) {
+  // Check if the date is at least 15 minutes in the future
+  if (date < minFuture) {
     return {
       isValid: false,
-      error: "Publication time must be in the future"
+      error: "Publication time must be at least 15 minutes in the future"
     }
   }
 

@@ -42,16 +42,16 @@ export default function ChapterList({ chapters, storySlug, currentChapter }: Cha
           <div className="divide-y">
             {chapters.map((chapter) => {
               const isCurrent = chapter.number === currentChapter
-              // "New" badge: chapter created within 48 hours
-              const isNew = chapter.status === 'published' && isWithin48Hours(chapter.createdAt)
+              // "New" badge: chapter published within 48 hours
+              const isNew = chapter.status === 'published' && isWithin48Hours(chapter.publishDate || chapter.createdAt)
               
-              // "Updated" badge: chapter updated (not created) within 2 days
+              // "Updated" badge: chapter updated (not created or published) within 2 days
               const daysSinceUpdate = Math.floor(
                 (Date.now() - new Date(chapter.updatedAt).getTime()) / (1000 * 60 * 60 * 24)
               );
               const isUpdated = chapter.status === 'published' && 
                 daysSinceUpdate <= 2 && 
-                new Date(chapter.updatedAt).getTime() > new Date(chapter.createdAt).getTime() &&
+                new Date(chapter.updatedAt).getTime() > new Date(chapter.publishDate || chapter.createdAt).getTime() + 60000 && // allow 1 minute buffer for latency
                 !isNew; // Don't show "Updated" if already showing "New"
 
               return (

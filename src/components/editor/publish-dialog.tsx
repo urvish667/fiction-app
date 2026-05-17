@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Check, Globe, Clock } from "lucide-react"
+import { Check, Globe, Clock, Sparkles } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -152,17 +152,14 @@ export const PublishDialog = React.memo(function PublishDialog({
 
           {publishSettings.schedulePublish && (
             <div className="space-y-4 pl-6 border-l-2 border-muted">
-              {/* Heads up message about publishing windows */}
-              <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-                <div className="flex items-start gap-2">
-                  <Clock className="h-5 w-5 text-amber-600 dark:text-amber-500 flex-shrink-0 mt-0.5" />
-                  <div className="space-y-2">
-                    <h4 className="font-semibold text-amber-900 dark:text-amber-100 text-sm">⏰ Heads Up!</h4>
-                    <p className="text-xs text-amber-800 dark:text-amber-200 leading-relaxed">
-                      You can schedule your chapter for any time shown below (in 15-minute intervals).
-                      However, chapters are actually published during our automated release windows — at <span className="font-medium">12:00 AM, 6:00 AM, 12:00 PM, and 6:00 PM (UTC)</span>.
-                      We&apos;re doing this to keep FableSpace fast and efficient while we grow.
-                      It will work seamlessly in real-time scheduling in the future as the platform expands. 💛
+              {/* High-Precision real-time scheduling confirmation */}
+              <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 rounded-lg p-4">
+                <div className="flex items-start gap-2.5">
+                  <Sparkles className="h-5 w-5 text-emerald-600 dark:text-emerald-500 flex-shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <h4 className="font-semibold text-emerald-900 dark:text-emerald-100 text-sm">⚡ High-Precision Scheduling</h4>
+                    <p className="text-xs text-emerald-800 dark:text-emerald-200/90 leading-relaxed">
+                      Your chapter will go live at the <span className="font-semibold">exact time</span> you select.
                     </p>
                   </div>
                 </div>
@@ -222,7 +219,7 @@ export const PublishDialog = React.memo(function PublishDialog({
                   }}
                   className="text-xs"
                 >
-                  Next 15 min
+                  Next slot
                 </Button>
                 <Button
                   type="button"

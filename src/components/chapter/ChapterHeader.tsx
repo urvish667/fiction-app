@@ -13,7 +13,7 @@ interface ChapterHeaderProps {
 }
 
 export function ChapterHeader({ story, chapter, formatDate }: ChapterHeaderProps) {
-  const isNew = chapter.status === 'published' && isWithin48Hours(chapter.updatedAt);
+  const isNew = chapter.status === 'published' && isWithin48Hours(chapter.publishDate || chapter.createdAt);
 
   return (
     <motion.div
