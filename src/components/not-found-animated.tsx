@@ -121,16 +121,6 @@ export function NotFoundAnimated() {
                         </Button>
                     </div>
 
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.6 }}
-                        className="pt-12 flex items-center justify-center gap-2 text-sm text-muted-foreground"
-                    >
-                        <Feather className="w-4 h-4" />
-                        <span>Every end is just a new beginning</span>
-                        <Feather className="w-4 h-4 transform scale-x-[-1]" />
-                    </motion.div>
                 </motion.div>
             </div>
         </div>
