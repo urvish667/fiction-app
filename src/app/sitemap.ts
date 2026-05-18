@@ -27,11 +27,12 @@ export async function generateSitemaps() {
 export default async function sitemap({
   id,
 }: {
-  id: number
+  id: number | string
 }): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.space'
+  const numericId = typeof id === 'number' ? id : parseInt(id, 10)
 
-  switch (id) {
+  switch (numericId) {
     case 0:
       return generateStaticSitemap(baseUrl)
     case 1:
