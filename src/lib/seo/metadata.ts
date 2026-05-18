@@ -380,18 +380,56 @@ function getGenreName(story: Story): string {
 }
 
 /**
- * Generate chapter metadata for SEO
+ * Minimum word count for a chapter to be indexed by search engines.
+ * Chapters below this threshold get `noindex` to avoid the
+ * "Crawled - currently not indexed" issue in Google Search Console.
+ * Covers character sheets, image-only chapters, and placeholder content.
+ */
+const CHAPTER_MIN_WORDS_FOR_INDEX = 200
+
+/**
+ * Strip HTML tags and return plain text content.
+ */
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]*>/g, '').trim()
+}
+
+/**
+ * Count words in a string of text.
+ */
+function countWords(text: string): number {
+  return text.split(/\s+/).filter(Boolean).length
+}
+
+/**
+ * Generate chapter metadata for SEO.
+ *
+ * Chapters with fewer than 200 words of actual text are marked `noindex`
+ * to prevent Google from wasting crawl budget on thin content pages.
+ * Links are still followed (`follow: true`) so Google can discover
+ * adjacent chapters and the parent story.
  */
 export function generateChapterMetadata(story: Story, chapter: any, chapterNumber: number): Metadata {
   const title = `${chapter.title} - Chapter ${chapterNumber} - ${story.title} - FableSpace`
-  const description = chapter.content
-    ? chapter.content.replace(/<[^>]*>/g, '').slice(0, 160) + (chapter.content.length > 160 ? '...' : '')
+
+  // Build a meaningful description from chapter content when available
+  const plainText = chapter.content ? stripHtml(chapter.content) : ''
+  const description = plainText.length > 0
+    ? plainText.slice(0, 155) + (plainText.length > 155 ? '...' : '')
     : `Read Chapter ${chapterNumber} of "${story.title}" by ${getAuthorName(story)} on FableSpace.`
 
   const authorName = getAuthorName(story)
   const genreName = getGenreName(story)
   const coverImage = story.coverImage || '/placeholder.svg'
   const canonicalUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.space'}/story/${story.slug}/chapter/${chapterNumber}`
+
+  // Determine indexability: use wordCount field if available, otherwise count from content
+  const wordCount = typeof chapter.wordCount === 'number'
+    ? chapter.wordCount
+    : (plainText ? countWords(plainText) : null)
+
+  // Default to indexing when word count can't be determined (fail-open)
+  const shouldIndex = wordCount === null || wordCount >= CHAPTER_MIN_WORDS_FOR_INDEX
 
   return {
     title,
@@ -442,10 +480,10 @@ export function generateChapterMetadata(story: Story, chapter: any, chapterNumbe
       site: '@FableSpace'
     },
     robots: {
-      index: true,
-      follow: true,
+      index: shouldIndex,
+      follow: true, // Always follow links to discover adjacent content
       googleBot: {
-        index: true,
+        index: shouldIndex,
         follow: true,
         'max-video-preview': -1,
         'max-image-preview': 'large',
