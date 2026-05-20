@@ -2,6 +2,7 @@ import { Metadata } from "next"
 import { Story } from "@/types/story"
 import { safeDecodeURIComponent } from "@/utils/safe-decode-uri-component"
 import { categoryDescriptions } from "./genre-descriptions"
+import { slugify } from "@/lib/utils"
 
 // A simplified Blog type based on usage in the page.tsx
 export interface Blog {
@@ -906,11 +907,17 @@ export function generateBrowseMetadata(params?: {
   if (params?.genre) {
     const genre = safeDecodeURIComponent(params.genre)
     if (genre) {
-      const genreInfo = categoryDescriptions[genre]
-      const genreLower = genre.toLowerCase()
-      const encodedGenre = encodeURIComponent(genre.replace(/\s/g, "+")).replace(/%2B/g, '+')
+      // Find matching key in categoryDescriptions by comparing slugified keys
+      const matchedGenreKey = Object.keys(categoryDescriptions).find(
+        key => slugify(key) === genre || key.toLowerCase() === genre.toLowerCase()
+      )
 
-      title = `${genre} Stories - FableSpace`
+      const genreKey = matchedGenreKey || genre
+      const genreInfo = categoryDescriptions[genreKey]
+      const genreLower = genreKey.toLowerCase()
+      const encodedGenre = slugify(genreKey)
+
+      title = `${genreKey} Stories - FableSpace`
       description = genreInfo?.description ||
         `Discover the best ${genreLower} stories on FableSpace. Read engaging ${genreLower} fiction from talented writers around the world.`
 
@@ -929,7 +936,7 @@ export function generateBrowseMetadata(params?: {
 
       // Add status-specific keywords if present
       if (params.status && params.status !== 'all') {
-        title = `${params.status === 'completed' ? 'Completed' : 'Ongoing'} ${genre} Stories - FableSpace`
+        title = `${params.status === 'completed' ? 'Completed' : 'Ongoing'} ${genreKey} Stories - FableSpace`
         description = `Find ${params.status} ${genreLower} stories on FableSpace. ${genreInfo?.description || `Browse ${genreLower} fiction that is ${params.status}.`}`
         keywords.push(`${params.status} ${genreLower}`, `${params.status} stories`)
       }

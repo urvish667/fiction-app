@@ -122,23 +122,34 @@ async function generateContentSitemap(baseUrl: string): Promise<MetadataRoute.Si
   try {
     const stories = await SitemapService.getStories()
 
-    const storyPages: MetadataRoute.Sitemap = stories.map(story => ({
-      url: `${baseUrl}/story/${encodeSitemapSlug(story.slug)}`,
-      lastModified: new Date(story.updatedAt),
-      changeFrequency: 'weekly' as const,
-      priority: 0.8,
-    }))
+    const now = new Date()
+    const storyPages: MetadataRoute.Sitemap = stories.map(story => {
+      const updatedAt = new Date(story.updatedAt)
+      const diffMs = now.getTime() - updatedAt.getTime()
+      const diffDays = diffMs / (1000 * 60 * 60 * 24)
 
-    const chapterPages: MetadataRoute.Sitemap = stories.flatMap(story =>
-      story.chapters.map(chapter => ({
-        url: `${baseUrl}/story/${encodeSitemapSlug(story.slug)}/chapter/${chapter.number}`,
-        lastModified: new Date(chapter.updatedAt),
-        changeFrequency: 'monthly' as const,
-        priority: 0.7,
-      }))
-    )
+      let changeFrequency: 'daily' | 'weekly' | 'monthly' = 'weekly'
+      let priority = 0.8
 
-    return validateSitemapEntries([...storyPages, ...chapterPages])
+      if (diffDays <= 7) {
+        // Active stories updated within the last week
+        changeFrequency = 'daily'
+        priority = 0.9
+      } else if (diffDays > 30) {
+        // Inactive stories with no updates in the last month
+        changeFrequency = 'monthly'
+        priority = 0.7
+      }
+
+      return {
+        url: `${baseUrl}/story/${encodeSitemapSlug(story.slug)}`,
+        lastModified: updatedAt,
+        changeFrequency,
+        priority,
+      }
+    })
+
+    return validateSitemapEntries(storyPages)
   } catch (error) {
     console.error('Error generating content sitemap:', error)
     return []

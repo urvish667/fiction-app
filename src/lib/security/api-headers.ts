@@ -7,7 +7,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { securityHeaders, applySecurityHeaders } from './headers';
+import { getSecurityHeaders, applySecurityHeaders } from './headers';
 
 // Cache control directives
 export enum CacheControl {
@@ -26,8 +26,8 @@ export enum CacheControl {
 }
 
 // API-specific security headers
-export const apiSecurityHeaders = {
-  ...securityHeaders,
+export const apiSecurityHeaders: Record<string, string> = {
+  ...getSecurityHeaders(),
   // Prevent browsers from MIME-sniffing
   'X-Content-Type-Options': 'nosniff',
   // Disable client-side caching by default for API responses
