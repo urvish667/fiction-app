@@ -175,14 +175,22 @@ async function generateCommunitySitemap(baseUrl: string): Promise<MetadataRoute.
       priority: 0.6,
     }))
 
-    const userPages: MetadataRoute.Sitemap = users.map(user => ({
+    // Guard: exclude users with missing or placeholder usernames
+    const validUsers = users.filter(
+      user => user.username && user.username !== 'undefined' && user.username !== 'null'
+    )
+    const userPages: MetadataRoute.Sitemap = validUsers.map(user => ({
       url: `${baseUrl}/user/${encodeSitemapSlug(user.username)}`,
       lastModified: new Date(user.updatedAt),
       changeFrequency: 'weekly' as const,
       priority: 0.6,
     }))
 
-    const forumPages: MetadataRoute.Sitemap = usersWithForums.map(user => ({
+    // Guard: same check for forum users
+    const validForumUsers = usersWithForums.filter(
+      user => user.username && user.username !== 'undefined' && user.username !== 'null'
+    )
+    const forumPages: MetadataRoute.Sitemap = validForumUsers.map(user => ({
       url: `${baseUrl}/user/${encodeSitemapSlug(user.username)}/forum`,
       lastModified: new Date(user.updatedAt),
       changeFrequency: 'daily' as const,
