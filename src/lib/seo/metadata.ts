@@ -19,6 +19,17 @@ export interface Blog {
 }
 
 /**
+ * Truncate a story/chapter title to fit within SEO-safe limits.
+ * Target: total <title> ≤ 70 chars including " | FableSpace" suffix (13 chars).
+ * Leaves 57 chars for the title itself before truncating with an ellipsis.
+ */
+function truncateTitle(rawTitle: string, suffixLen = 13): string {
+  const maxTitleChars = 70 - suffixLen
+  if (rawTitle.length <= maxTitleChars) return rawTitle
+  return rawTitle.slice(0, maxTitleChars - 1).trimEnd() + '\u2026'
+}
+
+/**
  * Safely convert a date to ISO string, handling both Date objects and string dates
  */
 function toISOString(date: Date | string | undefined): string | undefined {
@@ -32,7 +43,7 @@ function toISOString(date: Date | string | undefined): string | undefined {
  * Generate SEO metadata for a story page
  */
 export function generateStoryMetadata(story: Story, tags: string[] = []): Metadata {
-  const title = `${story.title} - FableSpace`
+  const title = `${truncateTitle(story.title)} | FableSpace`
   const description = story.description
     ? story.description.slice(0, 160) + (story.description.length > 160 ? '...' : '')
     : `Read "${story.title}" by ${getAuthorName(story)} on FableSpace. A ${getGenreName(story)} story with ${story.wordCount || 0} words.`
@@ -411,7 +422,8 @@ function countWords(text: string): number {
  * adjacent chapters and the parent story.
  */
 export function generateChapterMetadata(story: Story, chapter: any, chapterNumber: number): Metadata {
-  const title = `${chapter.title} - Chapter ${chapterNumber} - ${story.title} - FableSpace`
+  const chapterRaw = `${chapter.title} - Ch. ${chapterNumber} - ${story.title}`
+  const title = `${truncateTitle(chapterRaw)} | FableSpace`
 
   // Build a meaningful description from chapter content when available
   const plainText = chapter.content ? stripHtml(chapter.content) : ''

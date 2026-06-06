@@ -48,7 +48,7 @@ export default async function sitemap({
  * Segment 0: Static pages + browse category pages.
  * These are high-priority, stable pages.
  */
-function generateStaticSitemap(baseUrl: string): MetadataRoute.Sitemap {
+async function generateStaticSitemap(baseUrl: string): Promise<MetadataRoute.Sitemap> {
   const staticPages: MetadataRoute.Sitemap = [
     {
       url: baseUrl,
@@ -109,7 +109,22 @@ function generateStaticSitemap(baseUrl: string): MetadataRoute.Sitemap {
     priority: entry.priority || 0.6,
   }))
 
-  return validateSitemapEntries([...staticPages, ...browsePages])
+  // Tag browse pages — these provide real filtering value for readers
+  // and are distinct enough from genre pages to be worth indexing.
+  let tagPages: MetadataRoute.Sitemap = []
+  try {
+    const tags = await SitemapService.getTags()
+    tagPages = tags.map(tag => ({
+      url: `${baseUrl}/browse?tag=${encodeURIComponent(tag.slug)}`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly' as const,
+      priority: 0.5,
+    }))
+  } catch (error) {
+    console.error('Error fetching tags for sitemap:', error)
+  }
+
+  return validateSitemapEntries([...staticPages, ...browsePages, ...tagPages])
 }
 
 /**
