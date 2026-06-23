@@ -1,4 +1,6 @@
 # FableSpace — Creative Fiction Platform
+# Last-Updated: 2026-06-23
+# Version: 1.2
 
 > FableSpace is a free fiction-sharing platform where writers publish original stories and readers discover immersive worlds across fantasy, romance, science fiction, mystery, and more. Writers keep 100% of reader donations with zero platform fees.
 

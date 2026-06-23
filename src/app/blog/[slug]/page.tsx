@@ -82,7 +82,7 @@ export default async function BlogPostPage({ params }: BlogPageProps) {
             <article>
               <h1 className="text-4xl font-bold mb-4">{blog.title}</h1>
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
-                <span className="text-xs sm:text-sm">By {"FableSpace"}</span>
+                <a rel="author" href="/about" className="text-xs sm:text-sm hover:text-foreground hover:underline transition-colors">By FableSpace Team</a>
                 <span className="hidden xs:inline">•</span>
                 <Badge variant="outline" className="mr-1">
                   {formatString(blog.category)}

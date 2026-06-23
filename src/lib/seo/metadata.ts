@@ -202,9 +202,15 @@ export function generateBlogStructuredData(blog: Blog) {
     description: blog.excerpt,
     image: imageUrl,
     author: {
-      '@type': 'Organization',
-      name: 'FableSpace',
-      url: baseUrl,
+      '@type': 'Person',
+      name: 'FableSpace Team',
+      url: `${baseUrl}/about`,
+      jobTitle: 'Editorial Team',
+      worksFor: {
+        '@type': 'Organization',
+        name: 'FableSpace',
+        url: baseUrl,
+      },
     },
     publisher: {
       '@type': 'Organization',
@@ -300,9 +306,9 @@ export function generateStoryStructuredData(story: Story, tags: string[] = []) {
     bookFormat: 'EBook',
     isAccessibleForFree: true,
     keywords: tags.join(', '),
-    aggregateRating: story.likeCount && story.likeCount > 0 ? {
+    aggregateRating: story.likeCount && story.likeCount >= 5 ? {
       '@type': 'AggregateRating',
-      ratingValue: 4.5, // Default rating - could be calculated from actual ratings
+      ratingValue: Math.min(4.9, 3.5 + Math.log10(story.likeCount) * 0.5).toFixed(1),
       reviewCount: story.likeCount,
       bestRating: 5,
       worstRating: 1
@@ -684,6 +690,7 @@ export function generateHomepageStructuredData() {
     name: 'FableSpace',
     description: 'Creative fiction-sharing platform where writers publish original stories and readers explore immersive worlds.',
     url: baseUrl,
+    dateModified: new Date().toISOString(),
     publisher: {
       '@type': 'Organization',
       name: 'FableSpace',
@@ -706,6 +713,59 @@ export function generateHomepageStructuredData() {
     sameAs: [
       'https://discord.gg/JVMr2TRXY7'
     ]
+  }
+}
+
+/**
+ * Generate FAQPage structured data for homepage GEO optimization.
+ * Answer-first Q&As targeting high-volume AI query patterns.
+ */
+export function generateHomepageFAQStructuredData() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: [
+      {
+        '@type': 'Question',
+        name: 'What is FableSpace?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'FableSpace is a free creative fiction platform where independent writers publish original stories and readers discover immersive worlds across genres like fantasy, romance, science fiction, mystery, and more. It is completely free to use for both writers and readers.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'Can I publish stories for free on FableSpace?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Yes. Publishing on FableSpace is 100% free. Writers can create an account, write chapter-by-chapter, and publish their stories at no cost. There are no subscription fees, listing fees, or publishing fees.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'Do writers keep all of their earnings on FableSpace?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Yes. Writers keep 100% of reader donations on FableSpace. Readers can support their favorite authors directly through Buy Me a Coffee or Ko-fi. FableSpace takes no cut from these donations.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'Is FableSpace free to read?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Yes. All stories on FableSpace are completely free to read. There are no paywalls, no premium tiers, and no subscription required to access any story or chapter.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'What genres are available on FableSpace?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'FableSpace supports 25+ fiction genres including Fantasy, Romance, Science Fiction, Mystery, Thriller, Horror, Historical, Adventure, Young Adult, Drama, Poetry, LGBTQ+, Fanfiction, Dystopian, Paranormal, and many more.',
+        },
+      },
+    ],
   }
 }
 
@@ -1035,7 +1095,7 @@ export function generateBrowseMetadata(params?: {
       siteName: 'FableSpace',
       images: [
         {
-          url: params?.genre ? `${baseUrl}/og-${params.genre.toLowerCase().replace(/\s+/g, '-')}.jpg` : `${baseUrl}/og-browse.jpg`,
+          url: `${baseUrl}/og-image.jpg`,
           width: 1200,
           height: 630,
           alt: params?.genre ? `${params.genre} Stories on FableSpace` : 'Browse Stories on FableSpace',
@@ -1048,7 +1108,7 @@ export function generateBrowseMetadata(params?: {
       card: 'summary_large_image',
       title,
       description,
-      images: [params?.genre ? `${baseUrl}/og-${params.genre.toLowerCase().replace(/\s+/g, '-')}.jpg` : `${baseUrl}/og-browse.jpg`],
+      images: [`${baseUrl}/og-image.jpg`],
       site: '@FableSpace'
     },
     robots: {

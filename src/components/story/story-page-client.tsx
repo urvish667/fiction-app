@@ -335,7 +335,7 @@ export default function StoryPageClient({
         <Navbar />
         <div className="container mx-auto px-4 py-8">
           <div className="flex flex-col justify-center items-center h-[60vh]">
-            <h1 className="text-2xl font-bold mb-4">{error || "Story not found"}</h1>
+            <p className="text-2xl font-bold mb-4">{error || "Story not found"}</p>
             <p className="text-muted-foreground mb-6">
               The story you're looking for doesn't exist or has been removed.
             </p>

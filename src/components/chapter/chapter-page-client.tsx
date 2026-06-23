@@ -382,7 +382,7 @@ export default function ChapterPageClient({
         <Navbar />
         <div className="container mx-auto px-4 py-8">
           <div className="flex flex-col justify-center items-center h-[60vh]">
-            <h1 className="text-2xl font-bold mb-4">{error || "Chapter not found"}</h1>
+            <p className="text-2xl font-bold mb-4">{error || "Chapter not found"}</p>
             <p className="text-muted-foreground mb-6">
               {error === "This chapter is not yet published"
                 ? "This chapter is still being worked on by the author and is not yet available for reading."
@@ -421,6 +421,33 @@ export default function ChapterPageClient({
       )}
 
       <main className="max-w-7xl mx-auto px-4 py-8">
+        {/* Breadcrumb — visible nav that matches BreadcrumbList JSON-LD for Google rich results */}
+        <nav aria-label="breadcrumb" className="mb-4">
+          <ol className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted-foreground">
+            <li>
+              <a href="/" className="hover:text-foreground transition-colors">Home</a>
+            </li>
+            <li aria-hidden="true" className="select-none">›</li>
+            <li>
+              <a href="/browse" className="hover:text-foreground transition-colors">Browse</a>
+            </li>
+            <li aria-hidden="true" className="select-none">›</li>
+            <li className="max-w-[140px] sm:max-w-[220px] truncate">
+              <a
+                href={`/story/${slug}`}
+                className="hover:text-foreground transition-colors block truncate"
+                title={story.title}
+              >
+                {story.title}
+              </a>
+            </li>
+            <li aria-hidden="true" className="select-none">›</li>
+            <li className="font-medium text-foreground" aria-current="page">
+              Chapter {chapterNumber}
+            </li>
+          </ol>
+        </nav>
+
         {/* Top Navigation */}
         <TopNavigation
           slug={slug}
