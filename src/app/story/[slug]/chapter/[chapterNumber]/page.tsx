@@ -1,11 +1,11 @@
 import { Metadata } from "next"
 import { notFound } from "next/navigation"
+import { cache } from "react"
 import { StoryService } from "@/lib/api/story"
 import { ChapterService } from "@/lib/api/chapter"
 import { generateChapterMetadata, generateChapterStructuredData, generateChapterBreadcrumbStructuredData } from "@/lib/seo/metadata"
 import ChapterPageClient from "@/components/chapter/chapter-page-client"
 import StructuredData from "@/components/seo/structured-data"
-
 
 interface ChapterPageProps {
   params: Promise<{
@@ -13,6 +13,19 @@ interface ChapterPageProps {
     chapterNumber: string
   }>
 }
+
+// Memoized API calls for request-lifecycle caching (ponytail)
+const getCachedStory = cache(async (slug: string) => {
+  return StoryService.getStoryBySlug(slug)
+})
+
+const getCachedChaptersList = cache(async (storyId: string) => {
+  return ChapterService.getChapters(storyId)
+})
+
+const getCachedChapterDetail = cache(async (chapterId: string) => {
+  return ChapterService.getChapter(chapterId)
+})
 
 // ISR: Revalidate every 60 seconds for fresh content while maintaining performance
 export const revalidate = 60;
@@ -24,7 +37,7 @@ export async function generateMetadata({ params }: ChapterPageProps): Promise<Me
     const chapterNumber = Number.parseInt(chapterNumberStr, 10)
 
     // Fetch story data
-    const storyResponse = await StoryService.getStoryBySlug(slug)
+    const storyResponse = await getCachedStory(slug)
     if (!storyResponse.success || !storyResponse.data) {
       return {
         title: "Chapter Not Found - FableSpace",
@@ -34,7 +47,7 @@ export async function generateMetadata({ params }: ChapterPageProps): Promise<Me
     const story = storyResponse.data
 
     // Fetch chapters to find the specific chapter
-    const chaptersResponse = await ChapterService.getChapters(story.id)
+    const chaptersResponse = await getCachedChaptersList(story.id)
     if (!chaptersResponse.success || !chaptersResponse.data) {
       return {
         title: "Chapter Not Found - FableSpace",
@@ -52,9 +65,14 @@ export async function generateMetadata({ params }: ChapterPageProps): Promise<Me
       }
     }
 
-    // Use basic chapter info for metadata (avoid duplicate API call that tracks views)
-    // The full chapter with content will be fetched in the page component
-    return generateChapterMetadata(story, targetChapter as any, chapterNumber)
+    // Fetch full chapter detail to obtain chapter text content for high-quality SEO meta description
+    const chapterResponse = await getCachedChapterDetail(targetChapter.id)
+    if (!chapterResponse.success || !chapterResponse.data) {
+      return generateChapterMetadata(story, targetChapter as any, chapterNumber)
+    }
+    const fullChapter = chapterResponse.data
+
+    return generateChapterMetadata(story, fullChapter as any, chapterNumber)
   } catch (error) {
     return {
       title: "Chapter Not Found - FableSpace",
@@ -69,14 +87,14 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
     const chapterNumber = Number.parseInt(chapterNumberStr, 10)
 
     // Fetch story data
-    const storyResponse = await StoryService.getStoryBySlug(slug)
+    const storyResponse = await getCachedStory(slug)
     if (!storyResponse.success || !storyResponse.data) {
       notFound()
     }
     const story = storyResponse.data
 
     // Fetch chapters to find the specific chapter
-    const chaptersResponse = await ChapterService.getChapters(story.id)
+    const chaptersResponse = await getCachedChaptersList(story.id)
     if (!chaptersResponse.success || !chaptersResponse.data) {
       notFound()
     }
@@ -89,7 +107,7 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
     }
 
     // Fetch full chapter details
-    const chapterResponse = await ChapterService.getChapter(targetChapter.id)
+    const chapterResponse = await getCachedChapterDetail(targetChapter.id)
     if (!chapterResponse.success || !chapterResponse.data) {
       notFound()
     }

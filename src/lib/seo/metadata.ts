@@ -44,14 +44,17 @@ function toISOString(date: Date | string | undefined): string | undefined {
  */
 export function generateStoryMetadata(story: Story, tags: string[] = []): Metadata {
   const title = `${truncateTitle(story.title)} | FableSpace`
-  const description = story.description
-    ? story.description.slice(0, 160) + (story.description.length > 160 ? '...' : '')
-    : `Read "${story.title}" by ${getAuthorName(story)} on FableSpace. A ${getGenreName(story)} story with ${story.wordCount || 0} words.`
-
   const authorName = getAuthorName(story)
   const genreName = getGenreName(story)
   const coverImage = story.coverImage || '/placeholder.svg'
   const canonicalUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.space'}/story/${story.slug}`
+
+  // Build a unique and optimized 140-160 character description
+  let description = story.description ? cleanTextForDescription(story.description) : ''
+  if (!description) {
+    description = `Read "${story.title}" by ${authorName} on FableSpace. Immerse yourself in this ${genreName} story containing ${story.wordCount || 0} words. Explore original fiction, publish your own stories, and connect with writers.`
+  }
+  description = truncateDescription(description, 155)
 
   return {
     title,
@@ -131,8 +134,14 @@ export function generateStoryMetadata(story: Story, tags: string[] = []): Metada
  */
 export function generateBlogMetadata(blog: Blog): Metadata {
   const title = `${blog.title} - FableSpace Blog`;
-  const description = blog.excerpt;
   const canonicalUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.space'}/blog/${blog.slug}`;
+
+  // Build optimized description for blog post
+  let description = blog.excerpt ? cleanTextForDescription(blog.excerpt) : '';
+  if (!description) {
+    description = `${blog.title}. Read the latest articles, writing guides, and industry insights on the FableSpace Blog.`
+  }
+  description = truncateDescription(description, 155)
   const imageUrl = blog.featuredImage || `${process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.space'}/og-image.jpg`;
 
   return {
@@ -403,7 +412,59 @@ function getGenreName(story: Story): string {
  * "Crawled - currently not indexed" issue in Google Search Console.
  * Covers character sheets, image-only chapters, and placeholder content.
  */
-const CHAPTER_MIN_WORDS_FOR_INDEX = 200
+// ponytail: HTML tag and basic markdown stripping is sufficient for dynamic page metadata. Avoid importing full markdown parsers to prevent server build size overhead.
+function cleanTextForDescription(text: string): string {
+  if (!text) return ''
+  
+  // 1. Strip HTML tags
+  let clean = text.replace(/<[^>]*>/g, ' ')
+  
+  // 2. Strip Markdown syntax
+  clean = clean.replace(/!\[([^\]]*)\]\([^)]*\)/g, '') // remove images
+  clean = clean.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1') // keep link text
+  clean = clean.replace(/(\*\*|__)(.*?)\1/g, '$2') // bold
+  clean = clean.replace(/(\*|_)(.*?)\1/g, '$2') // italic
+  clean = clean.replace(/~~(.*?)~~/g, '$1') // strikethrough
+  clean = clean.replace(/`([^`]+)`/g, '$1') // inline code
+  clean = clean.replace(/^#+\s+/gm, '') // headings
+  clean = clean.replace(/^>\s+/gm, '') // blockquotes
+  clean = clean.replace(/^[-*+]\s+/gm, '') // bullet lists
+  clean = clean.replace(/^\d+\.\s+/gm, '') // numbered lists
+  
+  // 3. Collapse whitespace
+  return clean.replace(/\s+/g, ' ').trim()
+}
+
+/**
+ * Truncate description at sentence boundaries or word boundaries.
+ */
+function truncateDescription(text: string, maxLength = 155): string {
+  if (text.length <= maxLength) return text
+  
+  const minBufferLength = 110
+  const sentenceEndRegex = /[.!?]\s/g
+  let match
+  let lastSentenceEnd = -1
+  
+  while ((match = sentenceEndRegex.exec(text)) !== null) {
+    const endIndex = match.index + 1
+    if (endIndex >= minBufferLength && endIndex <= maxLength) {
+      lastSentenceEnd = endIndex
+    }
+  }
+  
+  if (lastSentenceEnd !== -1) {
+    return text.slice(0, lastSentenceEnd)
+  }
+  
+  const truncated = text.slice(0, maxLength - 3)
+  const lastSpace = truncated.lastIndexOf(' ')
+  if (lastSpace > minBufferLength) {
+    return text.slice(0, lastSpace).trim() + '...'
+  }
+  
+  return truncated.trim() + '...'
+}
 
 /**
  * Strip HTML tags and return plain text content.
@@ -422,33 +483,31 @@ function countWords(text: string): number {
 /**
  * Generate chapter metadata for SEO.
  *
- * Chapters with fewer than 200 words of actual text are marked `noindex`
- * to prevent Google from wasting crawl budget on thin content pages.
- * Links are still followed (`follow: true`) so Google can discover
- * adjacent chapters and the parent story.
+ * Indexing rules (ponytail): We avoid arbitrary word counts. Instead, we index all
+ * published chapters unless content is missing/placeholder or under 50 characters.
  */
 export function generateChapterMetadata(story: Story, chapter: any, chapterNumber: number): Metadata {
   const chapterRaw = `${chapter.title} - Ch. ${chapterNumber} - ${story.title}`
   const title = `${truncateTitle(chapterRaw)} | FableSpace`
-
-  // Build a meaningful description from chapter content when available
-  const plainText = chapter.content ? stripHtml(chapter.content) : ''
-  const description = plainText.length > 0
-    ? plainText.slice(0, 155) + (plainText.length > 155 ? '...' : '')
-    : `Read Chapter ${chapterNumber} of "${story.title}" by ${getAuthorName(story)} on FableSpace.`
 
   const authorName = getAuthorName(story)
   const genreName = getGenreName(story)
   const coverImage = story.coverImage || '/placeholder.svg'
   const canonicalUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://fablespace.space'}/story/${story.slug}/chapter/${chapterNumber}`
 
-  // Determine indexability: use wordCount field if available, otherwise count from content
-  const wordCount = typeof chapter.wordCount === 'number'
-    ? chapter.wordCount
-    : (plainText ? countWords(plainText) : null)
+  // Build high-quality description
+  const cleanContent = cleanTextForDescription(chapter.content || '')
+  let description = cleanContent
+  if (cleanContent.length < 140) {
+    const defaultFallback = `Continue reading Chapter ${chapterNumber} of "${story.title}", a ${genreName} novel by ${authorName}. Read online on FableSpace.`
+    description = cleanContent 
+      ? `${cleanContent} | ${defaultFallback}`
+      : defaultFallback
+  }
+  description = truncateDescription(description, 155)
 
-  // Default to indexing when word count can't be determined (fail-open)
-  const shouldIndex = wordCount === null || wordCount >= CHAPTER_MIN_WORDS_FOR_INDEX
+  // Quality-based indexing: index published chapters with at least 50 chars of meaningful content
+  const shouldIndex = chapter.status === 'published' && cleanContent.length >= 50
 
   return {
     title,
