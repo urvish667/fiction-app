@@ -1050,7 +1050,8 @@ export function generateBrowseMetadata(params?: {
 
       title = `${genreKey} Stories - FableSpace`
       description = genreInfo?.description ||
-        `Discover the best ${genreLower} stories on FableSpace. Read engaging ${genreLower} fiction from talented writers around the world.`
+        `Discover the best ${genreLower} stories on FableSpace. Read engaging, original ${genreLower} fiction from talented writers in our creative writing community. Start reading for free!`
+      description = truncateDescription(description, 155)
 
       canonicalUrl = `${baseUrl}/browse?genre=${encodedGenre}`
 
@@ -1068,7 +1069,8 @@ export function generateBrowseMetadata(params?: {
       // Add status-specific keywords if present
       if (params.status && params.status !== 'all') {
         title = `${params.status === 'completed' ? 'Completed' : 'Ongoing'} ${genreKey} Stories - FableSpace`
-        description = `Find ${params.status} ${genreLower} stories on FableSpace. ${genreInfo?.description || `Browse ${genreLower} fiction that is ${params.status}.`}`
+        description = `Find ${params.status} ${genreLower} stories on FableSpace. ${genreInfo?.description || `Browse original ${genreLower} fiction that is ${params.status}. Read and connect with authors for free.`}`
+        description = truncateDescription(description, 155)
         keywords.push(`${params.status} ${genreLower}`, `${params.status} stories`)
       }
     }
@@ -1082,7 +1084,8 @@ export function generateBrowseMetadata(params?: {
       const encodedTag = encodeURIComponent(tag.replace(/\s/g, "+")).replace(/%2B/g, '+')
 
       title = `${tagDisplay} Stories - FableSpace`
-      description = `Discover the best ${tagDisplay.toLowerCase()} stories on FableSpace. Read engaging ${tagDisplay.toLowerCase()} fiction from talented writers around the world.`
+      description = `Discover the best ${tagDisplay.toLowerCase()} stories on FableSpace. Read engaging, original ${tagDisplay.toLowerCase()} fiction from talented writers in our creative writing community. Start reading online for free!`
+      description = truncateDescription(description, 155)
       canonicalUrl = `${baseUrl}/browse?tag=${encodedTag}`
     }
 
@@ -1107,7 +1110,8 @@ export function generateBrowseMetadata(params?: {
     // Add status-specific keywords if present
     if (params.status && params.status !== 'all') {
       title = `${params.status === 'completed' ? 'Completed' : 'Ongoing'} ${tagDisplay} Stories - FableSpace`
-      description = `Find ${params.status} ${tagDisplay.toLowerCase()} stories on FableSpace. Browse ${tagDisplay.toLowerCase()} fiction that is ${params.status}.`
+      description = `Find ${params.status} ${tagDisplay.toLowerCase()} stories on FableSpace. Browse original ${tagDisplay.toLowerCase()} fiction that is ${params.status}. Read and connect with authors for free.`
+      description = truncateDescription(description, 155)
       keywords.push(`${params.status} ${tagDisplay.toLowerCase()}`, `${params.status} stories`)
     }
   }
@@ -1116,7 +1120,8 @@ export function generateBrowseMetadata(params?: {
   if (params?.search) {
     const searchTerm = params.search.trim()
     title = `"${searchTerm}" Stories - Search Results - FableSpace`
-    description = `Search results for "${searchTerm}" on FableSpace. Find stories, authors, and content matching "${searchTerm}".`
+    description = `Search results for "${searchTerm}" on FableSpace. Discover fiction stories, talented writers, and creative content matching the search term "${searchTerm}".`
+    description = truncateDescription(description, 155)
     canonicalUrl = `${baseUrl}/browse?search=${encodeURIComponent(searchTerm)}`
     keywords.push(searchTerm, `${searchTerm} stories`, `${searchTerm} fiction`)
   }
