@@ -1,6 +1,6 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Nunito, Cormorant_Garamond } from "next/font/google"
+import { Inter, Cormorant_Garamond } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import Providers from "./providers"
@@ -10,10 +10,9 @@ import { Analytics } from "@/components/analytics"
 import { OfflineBanner } from "@/components/offline-banner"
 import { GlobalErrorHandler } from "@/components/global-error-handler"
 
-const nunito = Nunito({
+const inter = Inter({
   subsets: ["latin"],
   variable: "--font-sans",
-  weight: ["400", "500", "600", "700"],
 })
 
 const cormorant = Cormorant_Garamond({
@@ -84,7 +83,7 @@ export default function RootLayout({
           />
         )}
       </head>
-      <body className={`${nunito.variable} ${cormorant.variable} font-sans`}>
+      <body className={`${inter.variable} ${cormorant.variable} font-sans`}>
         <Analytics />
         <GlobalErrorHandler />
         <OfflineBanner />
