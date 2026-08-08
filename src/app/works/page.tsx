@@ -11,7 +11,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { PenSquare, Eye, BarChart3, MoreVertical, Trash2, X, Heart, MessageSquare, BookOpen, Loader2, Clock } from "lucide-react"
+import { PenSquare, Eye, MoreVertical, Trash2, X, Heart, MessageSquare, BookOpen, Loader2, Clock } from "lucide-react"
 import StoryCardSkeleton from "@/components/story-card-skeleton"
 import Navbar from "@/components/navbar"
 import { useToast } from "@/hooks/use-toast"
@@ -59,6 +59,7 @@ export default function MyWorksPage() {
     try {
       const response = await StoryService.getStories({
         authorId: user.id,
+        status: ['draft', 'ongoing', 'completed'],
         page: page,
         limit: 12 // Explicitly set limit to match API
       });

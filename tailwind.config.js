@@ -63,6 +63,8 @@ module.exports = {
   		},
 		fontFamily: {
         	helvetica: ['"Helvetica Neue"', 'Helvetica', 'Arial', 'sans-serif'],
+        	sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
+        	serif: ['var(--font-serif)', 'Georgia', 'serif'],
       	},
 		
   	}

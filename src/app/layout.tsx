@@ -1,6 +1,6 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Inter } from "next/font/google"
+import { Nunito, Cormorant_Garamond } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import Providers from "./providers"
@@ -10,7 +10,17 @@ import { Analytics } from "@/components/analytics"
 import { OfflineBanner } from "@/components/offline-banner"
 import { GlobalErrorHandler } from "@/components/global-error-handler"
 
-const inter = Inter({ subsets: ["latin"] })
+const nunito = Nunito({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  weight: ["400", "500", "600", "700"],
+})
+
+const cormorant = Cormorant_Garamond({
+  subsets: ["latin"],
+  variable: "--font-serif",
+  weight: ["400", "500", "600", "700"],
+})
 
 export const metadata: Metadata = {
   metadataBase: new URL(
@@ -74,7 +84,7 @@ export default function RootLayout({
           />
         )}
       </head>
-      <body className={inter.className}>
+      <body className={`${nunito.variable} ${cormorant.variable} font-sans`}>
         <Analytics />
         <GlobalErrorHandler />
         <OfflineBanner />

@@ -2,13 +2,6 @@
 
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import {
-  NavigationMenu,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  navigationMenuTriggerStyle,
-} from "@/components/ui/navigation-menu"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Menu } from "lucide-react"
 import { motion } from "framer-motion"
@@ -93,20 +86,14 @@ export default function Navbar() {
 
         {/* Desktop Navigation */}
         <div className="hidden md:flex md:gap-6 items-center">
-          <NavigationMenu>
-            <NavigationMenuList>
-              <NavigationMenuItem>
-                <NavigationMenuLink asChild className={navigationMenuTriggerStyle()}>
-                  <Link href="/">Home</Link>
-                </NavigationMenuLink>
-              </NavigationMenuItem>
-              <NavigationMenuItem>
-                <NavigationMenuLink asChild className={navigationMenuTriggerStyle()}>
-                  <Link href="/browse">Browse</Link>
-                </NavigationMenuLink>
-              </NavigationMenuItem>
-            </NavigationMenuList>
-          </NavigationMenu>
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" asChild>
+              <Link href="/">Home</Link>
+            </Button>
+            <Button variant="ghost" asChild>
+              <Link href="/browse">Browse</Link>
+            </Button>
+          </div>
 
 
           {isAuthenticated && userWithAvatar ? (
@@ -144,13 +131,13 @@ export default function Navbar() {
               </Button>
             </SheetTrigger>
             <SheetContent side="right">
-              <div className="flex flex-col gap-6 py-6">
-                <Link href="/" className="text-lg font-medium hover:text-primary transition-colors">
-                  Home
-                </Link>
-                <Link href="/browse" className="text-lg font-medium hover:text-primary transition-colors">
-                  Browse
-                </Link>
+              <div className="flex flex-col gap-4 py-6">
+                <Button variant="ghost" className="justify-start text-lg font-medium" asChild>
+                  <Link href="/">Home</Link>
+                </Button>
+                <Button variant="ghost" className="justify-start text-lg font-medium" asChild>
+                  <Link href="/browse">Browse</Link>
+                </Button>
                 {!isAuthenticated && (
                   <>
                     <Link href="/signup" className="text-lg font-medium hover:text-primary transition-colors">

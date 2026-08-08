@@ -1,6 +1,7 @@
 import { Metadata } from "next"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
+import Image from "next/image"
 import Navbar from "@/components/navbar"
 import { SiteFooter } from "@/components/site-footer"
 import {
@@ -41,39 +42,49 @@ export default function Home() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqStructuredData) }}
       />
 
-      <div className="min-h-screen">
-        <Navbar />
-
+      <div>
         <main className="flex-1">
-          {/* Hero Section */}
-          <section className="relative py-16 md:py-24 lg:py-32 overflow-hidden bg-gradient-to-br from-primary/5 to-secondary/5">
-            <div className="container mx-auto px-4 text-center relative z-10">
-              <div className="max-w-3xl mx-auto">
-                <h1 className="text-4xl md:text-5xl lg:text-6xl font-semibold tracking-tight mb-6 leading-tight">
-                  Unleash Your Stories,<br />One Page at a Time
+          {/* Hero Section — full viewport height, image starts from very top */}
+          <section className="relative h-screen min-h-[600px] overflow-hidden flex items-center">
+            {/* Full-bleed background image */}
+            <Image
+              src="/hero-image.png"
+              alt="FableSpace hero — a world of stories"
+              fill
+              priority
+              className="object-cover object-center"
+            />
+
+            {/* Navbar floated over the image */}
+            <div className="absolute top-0 left-0 w-full z-50">
+              <Navbar />
+            </div>
+
+            {/* Dark gradient overlay — fades from left to transparent */}
+            <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/40 to-transparent" />
+
+            {/* Left-aligned content — pt-20 clears the navbar */}
+            <div className="relative z-10 container mx-auto px-6 md:px-12 pt-20">
+              <div className="max-w-xl">
+                <h1 className="text-3xl md:text-4xl lg:text-5xl font-serif font-bold tracking-tight mb-5 leading-tight text-white">
+                  Every Story Opens a New World
                 </h1>
-                <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto leading-relaxed">
-                  Join our community of writers and readers to discover, create, and share captivating stories.
+                <p className="text-lg md:text-xl text-white/80 mb-8 leading-relaxed">
+                  Discover your next obsession or create a world of your own.
                 </p>
-                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <div className="flex flex-col sm:flex-row gap-4">
                   <Link href="/browse">
                     <Button size="lg" className="text-base px-8 py-3 h-auto rounded-full shadow-lg hover:shadow-xl transition-all">
                       Start Reading
                     </Button>
                   </Link>
                   <Link href="/write/story-info">
-                    <Button size="lg" variant="outline" className="text-base px-8 py-3 h-auto rounded-full border-2 border-primary/20 hover:bg-primary/5 transition-all">
+                    <Button size="lg" variant="outline" className="text-base px-8 py-3 h-auto rounded-full border-2 border-white bg-transparent text-white hover:bg-white hover:text-black transition-all">
                       Start Writing
                     </Button>
                   </Link>
                 </div>
               </div>
-            </div>
-
-            {/* Abstract background elements */}
-            <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-              <div className="absolute top-[-10%] left-[-5%] w-[500px] h-[500px] rounded-full bg-primary/5 blur-3xl"></div>
-              <div className="absolute bottom-[-10%] right-[-5%] w-[600px] h-[600px] rounded-full bg-secondary/10 blur-3xl"></div>
             </div>
           </section>
 
