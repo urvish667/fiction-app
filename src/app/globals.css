@@ -12,6 +12,21 @@
   }
 }
 
+@keyframes logo-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.logo-slide-in {
+  animation: logo-slide-in 0.5s ease forwards;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;

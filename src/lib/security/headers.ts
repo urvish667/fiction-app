@@ -77,7 +77,8 @@ function buildCSP(): string {
     "https://tpc.googlesyndication.com https://securepubads.g.doubleclick.net " +
     "*.googlesyndication.com *.doubleclick.net *.adtrafficquality.google https://www.google.com " +
     "https://ads.fablespace.space *.pop.adsterra.com; " +
-    "object-src 'none';"
+    "object-src 'none'; " +
+    "media-src 'self' https://fablespace-assets-prod.s3.ap-south-1.amazonaws.com;"
   );
 }
 

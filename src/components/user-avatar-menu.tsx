@@ -95,9 +95,9 @@ export default function UserAvatarMenu({ user, onLogout }: UserAvatarMenuProps) 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
+        <Button variant="ghost" className="relative h-8 w-8 md:h-9 md:w-9 rounded-full p-0">
           <div className="relative flex items-center justify-center h-full w-full">
-            <Avatar className="h-10 w-10">
+            <Avatar className="h-8 w-8 md:h-9 md:w-9">
               <AvatarImage src={ImageService.getImageUrl(user.avatar) || "/placeholder-user.jpg"} alt={user.name} />
               <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
             </Avatar>
