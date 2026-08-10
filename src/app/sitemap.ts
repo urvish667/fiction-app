@@ -98,6 +98,12 @@ async function generateStaticSitemap(baseUrl: string): Promise<MetadataRoute.Sit
       changeFrequency: 'weekly',
       priority: 0.6,
     },
+    {
+      url: `${baseUrl}/community`,
+      lastModified: new Date(),
+      changeFrequency: 'daily',
+      priority: 0.8,
+    },
   ]
 
   // Genre browse pages (no language combinations — those are low-value)

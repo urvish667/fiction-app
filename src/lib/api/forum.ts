@@ -81,6 +81,28 @@ export interface CommentsResponse {
   };
 }
 
+export interface ForumDirectoryItem {
+  id: string;
+  username: string;
+  name: string | null;
+  image: string | null;
+  storyCount: number;
+  postCount: number;
+  lastActive: string | null;
+}
+
+export interface ActivityPost {
+  id: string;
+  title: string;
+  slug: string;
+  createdAt: string;
+  _count: { comments: number };
+  author: { id: string; username: string; name: string; image: string | null };
+  forum: {
+    author: { username: string; name: string; image: string | null };
+  };
+}
+
 /**
  * Forum API service for interacting with the REST API endpoints
  */
@@ -499,6 +521,47 @@ export const ForumService = {
         success: false,
         message: error.message || "Failed to fetch banned users"
       };
+    }
+  },
+
+  /**
+   * Get directory of authors with forum enabled (community page)
+   */
+  async getForumDirectory(params?: { page?: number; limit?: number }): Promise<ApiResponse<{
+    items: ForumDirectoryItem[];
+    pagination: { page: number; limit: number; totalCount: number; totalPages: number; hasMore: boolean };
+  }>> {
+    try {
+      const queryParams = new URLSearchParams();
+      if (params?.page) queryParams.append('page', String(params.page));
+      if (params?.limit) queryParams.append('limit', String(params.limit));
+      const query = queryParams.toString();
+      const url = query ? `/forum/directory?${query}` : '/forum/directory';
+      return await apiClient.get(url);
+    } catch (error: any) {
+      logError(error.message || "Failed to fetch forum directory", {
+        context: 'Fetching forum directory',
+        status: error.status,
+        errorDetails: error
+      });
+      return { success: false, message: error.message || "Failed to fetch forum directory" };
+    }
+  },
+
+  /**
+   * Get recent posts across all active author forums (community page activity feed)
+   */
+  async getRecentActivity(limit?: number): Promise<ApiResponse<ActivityPost[]>> {
+    try {
+      const url = limit ? `/forum/recent-activity?limit=${limit}` : '/forum/recent-activity';
+      return await apiClient.get(url);
+    } catch (error: any) {
+      logError(error.message || "Failed to fetch recent activity", {
+        context: 'Fetching recent forum activity',
+        status: error.status,
+        errorDetails: error
+      });
+      return { success: false, message: error.message || "Failed to fetch recent activity" };
     }
   },
 };
