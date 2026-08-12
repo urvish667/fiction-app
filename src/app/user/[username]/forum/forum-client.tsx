@@ -314,7 +314,7 @@ export default function ForumClient({ user, forumId, isOwner, currentUserId }: F
   // Show loading state
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-center min-h-[400px]">
           <Loader2 className="h-8 w-8 animate-spin" />
           <span className="ml-2">Loading forum...</span>
@@ -324,7 +324,7 @@ export default function ForumClient({ user, forumId, isOwner, currentUserId }: F
   }
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl sm:text-3xl font-semibold mb-2">The {user.username} Community</h1>

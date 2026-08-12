@@ -1,24 +1,31 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ChevronLeft, ChevronRight, BookOpen } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { BookOpen, ChevronLeft, ChevronRight } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { ImageService } from "@/lib/api/images"
 import { apiClient } from "@/lib/apiClient"
 import { useAuth } from "@/lib/auth-context"
+import StoryCardSkeleton from "@/components/story-card-skeleton"
 
 interface ContinueReadingProps {
   className?: string
 }
 
+function getGenreName(genre: any): string {
+  if (!genre) return "General"
+  if (typeof genre === "object" && "name" in genre) return genre.name
+  return String(genre)
+}
+
 export default function ContinueReading({ className }: ContinueReadingProps) {
-  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
+  const { isAuthenticated, isLoading: authLoading } = useAuth()
   const [readingHistory, setReadingHistory] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const [isOverflowing, setIsOverflowing] = useState(false)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
@@ -34,20 +41,18 @@ export default function ContinueReading({ className }: ContinueReadingProps) {
   const handleScroll = () => {
     if (scrollContainerRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current
-      setCanScrollLeft(scrollLeft > 0)
-      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 1)
+      setCanScrollLeft(scrollLeft > 2)
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 2)
     }
   }
 
-  const scrollLeft = () => {
+  const scrollByAmount = (direction: "left" | "right") => {
     if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollBy({ left: -300, behavior: 'smooth' })
-    }
-  }
-
-  const scrollRight = () => {
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollBy({ left: 300, behavior: 'smooth' })
+      const amount = scrollContainerRef.current.clientWidth * 0.75
+      scrollContainerRef.current.scrollBy({
+        left: direction === "left" ? -amount : amount,
+        behavior: "smooth",
+      })
     }
   }
 
@@ -63,7 +68,7 @@ export default function ContinueReading({ className }: ContinueReadingProps) {
         const response = await apiClient.get<{
           success: boolean;
           data: any[];
-        }>('/reading-progress/history?limit=10')
+        }>('/reading-progress/history?limit=8')
 
         if (response.success && response.data) {
           setReadingHistory(response.data)
@@ -100,100 +105,138 @@ export default function ContinueReading({ className }: ContinueReadingProps) {
     }
   }, [readingHistory])
 
-  // Don't render anything if still loading auth or not authenticated
-  if (authLoading || !isAuthenticated || (isAuthenticated && loading)) {
+  if (authLoading || !isAuthenticated) {
     return null
+  }
+
+  if (loading) {
+    return (
+      <section className={`py-6 sm:py-8 bg-background ${className}`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="mb-6">
+            <h2 className="text-xl sm:text-2xl font-semibold">Continue Reading</h2>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Jump right back into your stories</p>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <StoryCardSkeleton key={`skeleton-${index}`} variant="portrait-grid" overlayTitle={true} />
+            ))}
+          </div>
+        </div>
+      </section>
+    )
   }
 
   const validHistory = readingHistory.filter(item => item && item.chapter && item.chapter.story);
 
+  if (validHistory.length === 0) {
+    return null
+  }
+
   return (
-    <section className={`py-8 bg-background ${className}`}>
-      <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h2 className="text-3xl font-semibold">Continue Reading</h2>
-            <p className="text-muted-foreground mt-1">Jump right back into your stories</p>
-          </div>
+    <section className={`py-6 sm:py-8 bg-background ${className}`}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="mb-6">
+          <h2 className="text-xl sm:text-2xl font-semibold">Continue Reading</h2>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Jump right back into your stories</p>
         </div>
 
-        {validHistory.length === 0 ? (
-          <div className="text-center py-8 bg-muted/20 rounded-2xl border border-dashed border-muted">
-            <p className="text-muted-foreground italic">No reading history yet</p>
-          </div>
-        ) : (
-          <div className="relative">
-            <div
-              ref={scrollContainerRef}
-              className="grid grid-flow-col auto-cols-[calc(100%-0.5rem)] sm:auto-cols-[calc(50%-0.5rem)] lg:auto-cols-[calc(33.33%-0.5rem)] xl:auto-cols-[calc(25%-0.5rem)] gap-2 overflow-x-auto scroll-smooth snap-x snap-mandatory scrollbar-hide"
-            >
-              {validHistory.map((historyItem) => {
-                const story = historyItem.chapter?.story
-                const chapter = historyItem.chapter
+        <div className="relative group/carousel">
+          <div
+            ref={scrollContainerRef}
+            className="flex gap-3 sm:gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory scrollbar-hide py-1 px-0.5"
+          >
+            {validHistory.map((historyItem) => {
+              const story = historyItem.chapter?.story
+              const chapter = historyItem.chapter
 
-                if (!story) return null;
+              if (!story) return null;
 
-                return (
-                  <Link key={historyItem.id} href={`/story/${story.slug || story.id}/chapter/${chapter?.id || ''}`} className="block p-1">
-                    <Card className="h-full overflow-hidden flex flex-col hover:shadow-lg transition-shadow cursor-pointer border-primary/20 bg-primary/5">
-                      <div className="relative aspect-[3/2] overflow-hidden">
-                        <Image
-                          src={ImageService.getImageUrl(story.coverImage) || "/placeholder.svg"}
-                          alt={story.title}
-                          fill
-                          className="object-cover transition-transform hover:scale-105"
-                          unoptimized={true}
-                        />
-                        <div className="absolute top-2 left-2 flex items-center gap-2 z-10">
-                          <div className="bg-primary text-primary-foreground px-2 py-1 rounded-md flex items-center gap-1">
-                            <BookOpen size={14} />
-                            <span className="text-xs font-bold">Reading</span>
-                          </div>
-                        </div>
+              const imageUrl = ImageService.getImageUrl(story.coverImage) || "/placeholder.svg"
+              const genreName = getGenreName(story.genre)
+              const chapterTitle = chapter?.title || (chapter?.chapterNumber ? `Chapter ${chapter.chapterNumber}` : "Continue reading")
+              const progressPercent = Math.min(100, Math.max(0, historyItem.progress || 0))
+
+              return (
+                <div
+                  key={historyItem.id}
+                  className="w-[calc(50%-0.375rem)] sm:w-[calc(33.333%-0.5rem)] md:w-[calc(25%-0.5rem)] lg:w-[calc(16.666%-0.625rem)] shrink-0 snap-start"
+                >
+                  <Link
+                    href={`/story/${story.slug || story.id}/chapter/${chapter?.id || ''}`}
+                    className="group/card block h-full"
+                  >
+                    <div className="relative aspect-[2/3] overflow-hidden rounded-xl shadow-sm bg-muted">
+                      <Image
+                        src={imageUrl}
+                        alt={story.title || "Story Cover"}
+                        fill
+                        className="object-cover transition-transform duration-500 group-hover/card:scale-105"
+                        onError={(e) => { (e.target as HTMLImageElement).src = "/placeholder.svg" }}
+                        unoptimized
+                      />
+
+                      {/* Dark gradient overlay at bottom */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent pointer-events-none" />
+
+                      {/* Top-left Genre badge */}
+                      <Badge className="absolute top-2 left-2 text-xs font-medium bg-black/60 text-white border-0 backdrop-blur-sm z-10">
+                        {genreName}
+                      </Badge>
+
+                      {/* Top-right Reading Badge */}
+                      <div className="absolute top-2 right-2 bg-primary text-primary-foreground px-1.5 py-0.5 rounded-md flex items-center gap-1 z-10">
+                        <BookOpen size={11} />
+                        <span className="text-[10px] font-bold">Reading</span>
                       </div>
-                      <CardHeader className="pb-2">
-                        <h3 className="font-bold text-lg line-clamp-1">{story.title}</h3>
-                        <p className="text-sm text-muted-foreground line-clamp-1">
-                          {chapter?.title ? `Current: ${chapter.title}` : 'Continue reading'}
+
+                      {/* Bottom overlay: Chapter title & Progress bar (NO Story Title) */}
+                      <div className="absolute bottom-0 left-0 right-0 p-2.5 sm:p-3 text-white z-10">
+                        <p className="text-xs font-medium leading-snug line-clamp-1 text-white/90 mb-1.5 drop-shadow-md">
+                          {chapterTitle}
                         </p>
-                      </CardHeader>
-                      <CardContent className="pb-4 flex-grow">
-                        {historyItem.progress > 0 && (
-                          <div className="w-full bg-secondary rounded-full h-2.5 mt-2">
+                        {progressPercent > 0 && (
+                          <div className="w-full bg-white/30 rounded-full h-1.5 overflow-hidden backdrop-blur-sm">
                             <div
-                              className="bg-primary h-2.5 rounded-full"
-                              style={{ width: `${Math.min(100, Math.max(0, historyItem.progress))}%` }}
-                            ></div>
+                              className="bg-primary h-full rounded-full transition-all duration-300"
+                              style={{ width: `${progressPercent}%` }}
+                            />
                           </div>
                         )}
-                      </CardContent>
-                    </Card>
+                      </div>
+                    </div>
                   </Link>
-                )
-              })}
-            </div>
-            {isOverflowing && canScrollLeft && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute left-0 top-1/2 -translate-y-1/2 transform bg-background/50 hover:bg-background/80 rounded-full z-10"
-                onClick={scrollLeft}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-            )}
-            {isOverflowing && canScrollRight && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute right-0 top-1/2 -translate-y-1/2 transform bg-background/50 hover:bg-background/80 rounded-full z-10"
-                onClick={scrollRight}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            )}
+                </div>
+              )
+            })}
           </div>
-        )}
+
+          {/* Left Chevron */}
+          {isOverflowing && canScrollLeft && (
+            <Button
+              variant="outline"
+              size="icon"
+              className="absolute left-1 sm:-left-3 top-1/2 -translate-y-1/2 h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-background/80 hover:bg-background text-foreground shadow-md backdrop-blur-md z-20 border border-border/60"
+              onClick={() => scrollByAmount("left")}
+              aria-label="Scroll left"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+          )}
+
+          {/* Right Chevron */}
+          {isOverflowing && canScrollRight && (
+            <Button
+              variant="outline"
+              size="icon"
+              className="absolute right-1 sm:-right-3 top-1/2 -translate-y-1/2 h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-background/80 hover:bg-background text-foreground shadow-md backdrop-blur-md z-20 border border-border/60"
+              onClick={() => scrollByAmount("right")}
+              aria-label="Scroll right"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </div>
     </section>
   );

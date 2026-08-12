@@ -117,7 +117,7 @@ export default function Home() {
 
             {/* ── Hero copy ── */}
             <div className="relative z-10 w-full">
-              <div className="max-w-7xl mx-auto px-4">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="max-w-xl">
 
                   {/* H1 — Instrument Serif italic */}

@@ -33,6 +33,7 @@ export interface BrowseStory {
   commentCount: number;
   viewCount: number;
   wordCount: number;
+  chapterCount?: number;
   author: {
     id: string;
     name: string | null;

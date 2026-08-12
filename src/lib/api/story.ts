@@ -119,6 +119,7 @@ export const StoryService = {
       commentCount: number;
       viewCount: number;
       wordCount: number;
+      chapterCount?: number;
       author: {
         id: string;
         name: string | null;
@@ -260,8 +261,9 @@ export const StoryService = {
         updatedAt: story.updatedAt,
         likeCount: story.likeCount || 0,
         commentCount: story.commentCount || 0,
-        viewCount: story.readCount || 0,
+        viewCount: story.readCount || story.viewCount || 0,
         wordCount: story.wordCount || 0,
+        chapterCount: story.chapterCount ?? story._count?.chapters ?? 0,
         author: story.author,
         genre: story.genre,
         language: story.language,

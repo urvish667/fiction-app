@@ -285,9 +285,9 @@ export default function UserProfileClient({ user }: UserProfileClientProps) {
             </div>
           ) : userStories.length > 0 ? (
             <>
-              <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
                 {userStories.map((story) => (
-                  <StoryCard key={story.id} story={story} viewMode="grid" />
+                  <StoryCard key={story.id} story={story} variant="portrait-grid" showBookmark={false} overlayTitle={true} />
                 ))}
               </div>
 
@@ -337,9 +337,9 @@ export default function UserProfileClient({ user }: UserProfileClientProps) {
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : savedStories.length > 0 ? (
-            <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
               {savedStories.map(story => (
-                <StoryCard key={story.id} story={story} viewMode="grid" />
+                <StoryCard key={story.id} story={story} variant="portrait-grid" showBookmark={false} overlayTitle={true} />
               ))}
             </div>
           ) : (

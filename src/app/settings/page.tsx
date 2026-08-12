@@ -621,9 +621,9 @@ export default function SettingsPage() {
   return (
     <div className="min-h-screen">
       <Navbar />
-      <main className="container mx-auto px-4 py-8">
-        <div className="max-w-7xl mx-auto">
-          <h1 className="text-3xl font-semibold mb-8">Settings</h1>
+      <main className="py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h1 className="text-2xl sm:text-3xl font-semibold mb-8">Settings</h1>
 
           {/* Wrap the TabParamsHandler in a Suspense boundary */}
           <Suspense fallback={null}>

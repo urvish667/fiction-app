@@ -112,17 +112,17 @@ export default async function BrowsePage({ searchParams }: BrowsePageProps) {
       <div className="min-h-screen">
         <Navbar />
 
-        <main className="container mx-auto px-4 py-8">
+        <main className="py-8">
           <Suspense fallback={
-            <div className="max-w-7xl mx-auto px-4 lg:px-0">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <p className="text-xl sm:text-2xl font-semibold mb-6">Browse Stories</p>
               <div className="space-y-6">
                 <div className="flex justify-between items-center mb-6">
                   <p className="text-muted-foreground">Loading stories...</p>
                 </div>
-                <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
                   {Array.from({ length: 8 }).map((_, index) => (
-                    <StoryCardSkeleton key={`skeleton-${index}`} viewMode="grid" />
+                    <StoryCardSkeleton key={`skeleton-${index}`} variant="landscape-list" />
                   ))}
                 </div>
               </div>

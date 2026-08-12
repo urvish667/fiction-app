@@ -13,7 +13,10 @@ import type { NextRequest } from 'next/server';
  */
 function getApiUrl(): string {
   // Try to get from environment, fallback to localhost for development
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+  const apiUrl =
+    process.env.NEXT_PUBLIC_API_BASE_URL ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    'http://localhost:4000/api/v1';
   // Extract base URL (remove /api/v1 suffix if present)
   return apiUrl.replace(/\/api\/v\d+$/, '');
 }
@@ -58,7 +61,7 @@ function buildCSP(): string {
     "https://ad.doubleclick.net https://adservice.google.com " +
     "https://securepubads.g.doubleclick.net https://tpc.googlesyndication.com; " +
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
-    `img-src 'self' data: https: blob: https://ads.fablespace.space ${apiHost}${isDevelopment ? ' http://localhost:4000' : ''}; ` +
+    `img-src 'self' data: https: blob: https://ads.fablespace.space ${apiHost}${isDevelopment ? ' http:' : ''}; ` +
     "font-src 'self' https://fonts.gstatic.com; " +
     "connect-src 'self' ws: wss: " +
     "https://accounts.google.com https://apis.google.com https://www.googleapis.com https://securetoken.googleapis.com " +
@@ -67,7 +70,7 @@ function buildCSP(): string {
     "https://tpc.googlesyndication.com https://securepubads.g.doubleclick.net " +
     "https://www.google-analytics.com " +
     `${apiHost} ${wsHost} ${wsHostSecure} ` +
-    `${isDevelopment ? 'http://localhost:3500 http://localhost:3001 ws://localhost:3001 ' : ''}` +
+    `${isDevelopment ? 'http: ' : ''}` +
     "https://api.fablespace.com https://api.fablespace.space " +
     "*.google.com *.googlesyndication.com *.googleadservices.com *.adtrafficquality.google " +
     "*.adsterra.com *.pop.adsterra.com *.profitableratecpm.com *.highperformanceformat.com professionaltrafficmonitor.com; " +

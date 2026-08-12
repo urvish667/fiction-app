@@ -3,16 +3,13 @@
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import Image from "next/image"
 import { motion } from "framer-motion"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { PenSquare, Eye, MoreVertical, Trash2, X, Heart, MessageSquare, BookOpen, Loader2, Clock } from "lucide-react"
+import { PenSquare, X, Loader2 } from "lucide-react"
 import StoryCardSkeleton from "@/components/story-card-skeleton"
+import StoryCard from "@/components/story-card"
 import Navbar from "@/components/navbar"
 import { useToast } from "@/hooks/use-toast"
 import { StoryService } from "@/lib/api/story"
@@ -260,10 +257,10 @@ export default function MyWorksPage() {
     <div className="min-h-screen">
       <Navbar />
 
-      <main className="container mx-auto px-4 py-8">
-        <div className="max-w-7xl mx-auto">
+      <main className="py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-            <h1 className="text-3xl font-semibold">My Works</h1>
+            <h1 className="text-2xl sm:text-3xl font-semibold">My Works</h1>
 
             <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
               <div className="relative flex-1 sm:w-64">
@@ -384,59 +381,7 @@ interface WorksContentProps {
 function WorksContent({ works, searchQuery, isLoading, onDeleteStory }: WorksContentProps) {
   const router = useRouter()
 
-  // Format date for display - handles Date objects, strings, or null
-  const formatDate = (dateValue: any) => {
-    if (!dateValue) {
-      console.warn('formatDate: No date value provided');
-      return "Unknown date";
-    }
-
-    try {
-      let date: Date;
-
-      // If it's already a Date object
-      if (dateValue instanceof Date) {
-        date = dateValue;
-      }
-      // If it's a string, try to parse it
-      else if (typeof dateValue === 'string') {
-        date = new Date(dateValue);
-      }
-      // If it's an object (might have a $date field or similar)
-      else if (typeof dateValue === 'object') {
-        // Try different common date object formats
-        if (dateValue.$date) {
-          date = new Date(dateValue.$date);
-        } else if (dateValue._seconds) {
-          // MongoDB timestamp format
-          date = new Date(dateValue._seconds * 1000);
-        } else if (dateValue.toISOString) {
-          // Object with toISOString method (like Prisma Date)
-          date = new Date(dateValue.toISOString());
-        } else {
-          // Try to convert the whole object to date
-          date = new Date(dateValue);
-        }
-      } else {
-        // For other types, try direct conversion
-        date = new Date(dateValue);
-      }
-
-      // Check if the date is valid
-      if (isNaN(date.getTime())) {
-        console.warn('formatDate: Invalid date conversion:', { dateValue, parsedDate: date });
-        return "Unknown date";
-      }
-
-      return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-    } catch (error) {
-      console.error('formatDate: Error formatting date:', { dateValue, error });
-      return "Unknown date";
-    }
-  };
-
   const handleContinueEditing = (storyId: string) => {
-    // Redirect to story-metadata page instead of editor
     router.push(`/write/story-info?id=${storyId}`)
   }
 
@@ -444,16 +389,12 @@ function WorksContent({ works, searchQuery, isLoading, onDeleteStory }: WorksCon
     router.push(`/story/${slug}`)
   }
 
-  const handleViewAnalytics = (storyId: string) => {
-    router.push(`/dashboard/analytics/${storyId}`)
-  }
-
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {Array.from({ length: 8 }).map((_, index) => (
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
+        {Array.from({ length: 10 }).map((_, index) => (
           <div key={`skeleton-${index}`}>
-            <StoryCardSkeleton viewMode="grid" />
+            <StoryCardSkeleton variant="portrait-grid" />
           </div>
         ))}
       </div>
@@ -482,7 +423,7 @@ function WorksContent({ works, searchQuery, isLoading, onDeleteStory }: WorksCon
   return (
     <motion.div
       layout
-      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+      className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6"
     >
       {works.map((work) => (
         <motion.div
@@ -493,149 +434,30 @@ function WorksContent({ works, searchQuery, isLoading, onDeleteStory }: WorksCon
           exit={{ opacity: 0 }}
           transition={{ duration: 0.3 }}
         >
-          <Card className="overflow-hidden flex flex-col h-full">
-            <div className="relative aspect-[3/2] overflow-hidden bg-muted">
-              {/* Cover image */}
-              <Image
-                src={ImageService.getImageUrl(work.coverImage) || "/placeholder.svg"}
-                alt={work.title}
-                fill
-                className="object-cover"
-                unoptimized={true} // Always use unoptimized for external images
-              />
-              <div className="absolute top-2 right-2 flex flex-col gap-1">
-                {/* Show only one primary status badge */}
-                {work.status === "draft" ? (
-                  <Badge className="bg-amber-500">Draft</Badge>
-                ) : (
-                  <Badge
-                    className={`${work.status === "completed" ? "bg-blue-500" : "bg-purple-500"}`}
-                  >
-                    {work.status === "completed" ? "Completed" : "Ongoing"}
-                  </Badge>
-                )}
-              </div>
-
-              <div className="absolute bottom-0 left-0 right-0 bg-background/80 px-3 py-1 text-xs">
-                <div className="flex justify-between items-center">
-                  <span className="flex items-center gap-1">
-                    <BookOpen className="h-3.5 w-3.5" />
-                    <span>Published: {work.publishedChapters || 0}</span>
-                  </span>
-                  <div className="flex gap-2">
-                    {work.scheduledChapters > 0 && (
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-3.5 w-3.5" />
-                        <span>Scheduled: {work.scheduledChapters}</span>
-                      </span>
-                    )}
-                    {work.draftChapters > 0 && (
-                      <span className="flex items-center gap-1">
-                        <PenSquare className="h-3.5 w-3.5" />
-                        <span>Drafts: {work.draftChapters}</span>
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <CardContent className="flex-grow p-4 space-y-2">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="font-bold text-lg line-clamp-1">{work.title}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {(() => {
-                      if (typeof work.genre === 'string') {
-                        return work.genre;
-                      } else if (work.genre && typeof work.genre === 'object' && 'name' in work.genre) {
-                        return String(work.genre.name);
-                      }
-                      return 'General';
-                    })()}
-                  </p>
-                </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <MoreVertical className="h-4 w-4" />
-                      <span className="sr-only">More options</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => handleContinueEditing(work.id)}>
-                      <PenSquare className="h-4 w-4 mr-2" />
-                      Edit Story
-                    </DropdownMenuItem>
-                    {work.status !== "draft" && (
-                      <DropdownMenuItem onClick={() => handleViewStory(work.id, work.slug)}>
-                        <Eye className="h-4 w-4 mr-2" />
-                        View Story
-                      </DropdownMenuItem>
-                    )}
-                    {/* {work.status !== "draft" && (
-                      <DropdownMenuItem onClick={() => handleViewAnalytics(work.id)}>
-                        <BarChart3 className="h-4 w-4 mr-2" />
-                        Analytics
-                      </DropdownMenuItem>
-                    )} */}
-                    <DropdownMenuItem
-                      className="text-destructive"
-                      onClick={() => onDeleteStory({ id: work.id, title: work.title })}
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-
-              <div className="mt-2 text-xs text-muted-foreground">
-                Last edited: {formatDate(work.lastEdited)}
-              </div>
-
-              {work.status !== "draft" && (
-                <div className="flex gap-4 mt-3 text-sm">
-                  <div className="flex items-center gap-1">
-                    <Eye className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span>{work.viewCount?.toLocaleString() || 0}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Heart className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span>{work.likeCount?.toLocaleString() || 0}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span>{work.commentCount?.toLocaleString() || 0}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <BookOpen className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span>{work.publishedChapters?.toLocaleString() || 0} published</span>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-
-            <CardFooter className="p-4 pt-0 flex gap-2">
-              {work.status === "draft" ? (
-                <Button className="flex-1" onClick={() => handleContinueEditing(work.id)}>
-                  <PenSquare className="h-4 w-4 mr-2" />
-                  Continue Writing
-                </Button>
-              ) : (
-                <>
-                  <Button variant="outline" className="flex-1" onClick={() => handleViewStory(work.id, work.slug)}>
-                    <Eye className="h-4 w-4 mr-2" />
-                    View
-                  </Button>
-                  <Button onClick={() => handleContinueEditing(work.id)}>
-                    <PenSquare className="h-4 w-4 mr-2" />
-                    Edit
-                  </Button>
-                </>
-              )}
-            </CardFooter>
-          </Card>
+          <StoryCard
+            story={{
+              id: work.id,
+              title: work.title,
+              author: work.author || "Me",
+              genre: work.genre,
+              coverImage: ImageService.getImageUrl(work.coverImage) || "/placeholder.svg",
+              status: work.status,
+              publishedChapters: work.publishedChapters,
+              scheduledChapters: work.scheduledChapters,
+              draftChapters: work.draftChapters,
+              lastEdited: work.lastEdited,
+              viewCount: work.viewCount,
+              likeCount: work.likeCount,
+              commentCount: work.commentCount,
+              chapterCount: work.publishedChapters,
+              slug: work.slug,
+              isMature: work.isMature,
+            }}
+            variant="portrait-work"
+            onEdit={handleContinueEditing}
+            onView={(id, slug) => handleViewStory(id, slug || "")}
+            onDelete={onDeleteStory}
+          />
         </motion.div>
       ))}
     </motion.div>

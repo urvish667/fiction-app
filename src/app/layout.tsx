@@ -9,6 +9,7 @@ import Script from "next/script"
 import { Analytics } from "@/components/analytics"
 import { OfflineBanner } from "@/components/offline-banner"
 import { GlobalErrorHandler } from "@/components/global-error-handler"
+import BottomNav from "@/components/bottom-nav"
 
 const inter = Inter({
   subsets: ["latin"],
@@ -63,33 +64,25 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* Google AdSense Account Verification Meta Tag */}
+        {/* Head metadata and fonts */}
+      </head>
+      <body className={`${inter.variable} ${cormorant.variable} font-sans pb-16 md:pb-0`}>
+        {/* Google AdSense Script */}
         {process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_ID && (
           <Script
             id="adsense-script"
             strategy="afterInteractive"
-            async
             src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_ID}`}
             crossOrigin="anonymous"
           />
         )}
-
-        {/* Google AdSense Script - Only included in production */}
-        {process.env.NODE_ENV === 'production' && (
-          <script
-            async
-            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_ID}`}
-            crossOrigin="anonymous"
-          />
-        )}
-      </head>
-      <body className={`${inter.variable} ${cormorant.variable} font-sans`}>
         <Analytics />
         <GlobalErrorHandler />
         <OfflineBanner />
         <Providers>
           <ThemeProvider>
             {children}
+            <BottomNav />
           </ThemeProvider>
         </Providers>
         <Toaster />

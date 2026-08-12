@@ -1,51 +1,36 @@
 "use client"
-import { motion } from "framer-motion"
-import StoryCard from "@/components/story-card"
-import StoryCardSkeleton from "@/components/story-card-skeleton"
 
-type StoryItem = {
-  id: string | number
-  title: string
-  author: any
-  genre?: string | any
-  coverImage?: string
-  excerpt?: string
-  description?: string
-  likeCount?: number
-  commentCount?: number
-  viewCount?: number // Combined story + chapter views
-  readTime?: number
-  date?: Date
-  createdAt?: Date
-  updatedAt?: Date
-  slug?: string
-  [key: string]: any
-}
+import { Fragment } from "react"
+import { motion } from "framer-motion"
+import StoryCard, { type StoryCardData, type StoryCardVariant } from "@/components/story-card"
+import StoryCardSkeleton from "@/components/story-card-skeleton"
+import AdBanner from "@/components/ad-banner"
 
 interface StoryGridProps {
-  stories: StoryItem[]
+  stories: StoryCardData[]
   viewMode: "grid" | "list"
   isLoading?: boolean
+  onBookmark?: (id: string | number) => void
 }
 
 export default function StoryGrid({
   stories,
   viewMode,
   isLoading = false,
+  onBookmark,
 }: StoryGridProps) {
-  const gridClass = `grid gap-6 ${
+  const variant: StoryCardVariant = "landscape-list"
+
+  const gridClass =
     viewMode === "grid"
-      ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-      : "grid-cols-1"
-  }`
+      ? "grid grid-cols-1 md:grid-cols-2 gap-4"
+      : "flex flex-col gap-3.5"
 
   if (isLoading) {
     return (
       <div className={gridClass}>
-        {Array.from({ length: 8 }).map((_, index) => (
-          <div key={`skeleton-${index}`}>
-            <StoryCardSkeleton viewMode={viewMode} />
-          </div>
+        {Array.from({ length: 8 }).map((_, i) => (
+          <StoryCardSkeleton key={`skeleton-${i}`} variant={variant} />
         ))}
       </div>
     )
@@ -53,18 +38,36 @@ export default function StoryGrid({
 
   return (
     <motion.div layout className={gridClass}>
-      {stories.map((item) => (
-        <motion.div
-          key={item.id}
-          layout
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          <StoryCard story={item} viewMode={viewMode} />
-        </motion.div>
+      {stories.map((item, index) => (
+        <Fragment key={item.id}>
+          <motion.div
+            layout
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+          >
+            <StoryCard
+              story={item}
+              variant={variant}
+              showBookmark
+              onBookmark={onBookmark}
+            />
+          </motion.div>
+
+          {/* Ad Banner displayed every 4 story cards on smaller screens */}
+          {(index + 1) % 4 === 0 && (
+            <div className="col-span-full xl:hidden my-2 flex justify-center">
+              <AdBanner
+                type="banner"
+                className="w-full max-w-[728px] min-h-[90px]"
+                slot="6596765108"
+              />
+            </div>
+          )}
+        </Fragment>
       ))}
     </motion.div>
   )
 }
+

@@ -110,7 +110,7 @@ export default function StoryInfoPage() {
     language: "English",
     isMature: false,
     isOriginal: false,
-    coverImage: "/placeholder.svg?height=1600&width=900",
+    coverImage: "/placeholder.svg?height=900&width=600",
     status: "draft",
     license: "ALL_RIGHTS_RESERVED",
     lastSaved: null,
@@ -648,7 +648,7 @@ export default function StoryInfoPage() {
         // Update the state with the result
         setStoryData(prev => ({
           ...prev,
-          coverImage: "/placeholder.svg?height=1600&width=900",
+          coverImage: "/placeholder.svg?height=900&width=600",
           lastSaved: new Date()
         }));
 
@@ -660,7 +660,7 @@ export default function StoryInfoPage() {
         // If it's a new story, just update the local state
         setStoryData(prev => ({
           ...prev,
-          coverImage: "/placeholder.svg?height=1600&width=900",
+          coverImage: "/placeholder.svg?height=900&width=600",
           lastSaved: null
         }));
       }
@@ -815,7 +815,7 @@ export default function StoryInfoPage() {
     <div className="min-h-screen flex flex-col">
       <Navbar />
 
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header with Back button and Auto-save status on the same line */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 mb-8">
           <div className="flex items-center gap-2">
@@ -907,11 +907,11 @@ export default function StoryInfoPage() {
               <h2 className="text-xl font-bold">Cover Image</h2>
 
               <div
-                className="relative aspect-[16/9] sm:aspect-[16/9] rounded-lg overflow-hidden border cursor-pointer group"
+                className="relative aspect-[2/3] w-full max-w-[280px] mx-auto rounded-lg overflow-hidden border cursor-pointer group shadow-sm bg-muted/30"
                 onClick={handleCoverImageClick}
               >
                 {isUploading ? (
-                  <div className="absolute inset-0 flex items-center justify-center bg-background/80">
+                  <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
                     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
                   </div>
                 ) : (
@@ -923,8 +923,8 @@ export default function StoryInfoPage() {
                       className="object-cover transition-opacity group-hover:opacity-70"
                       unoptimized={true} // Always use unoptimized for external images
                     />
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <div className="bg-background/80 rounded-full p-3">
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30">
+                      <div className="bg-background/90 rounded-full p-3 shadow-md">
                         <Upload size={24} />
                       </div>
                     </div>
@@ -934,7 +934,7 @@ export default function StoryInfoPage() {
 
               <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
 
-              <div className="flex gap-2">
+              <div className="flex gap-2 max-w-[280px] mx-auto w-full">
                 <Button variant="outline" onClick={handleCoverImageClick} className="flex-1" disabled={isUploading}>
                   Upload Image
                 </Button>
@@ -942,14 +942,14 @@ export default function StoryInfoPage() {
                 <Button
                   variant="outline"
                   onClick={handleRemoveCoverImage}
-                  disabled={storyData.coverImage === "/placeholder.svg?height=1600&width=900" ||
-                    storyData.coverImage === "/placeholder.svg" ||
+                  disabled={!storyData.coverImage ||
+                    storyData.coverImage.includes("/placeholder.svg") ||
                     isUploading}
                 >
                   <Trash2 size={16} />
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground">Recommended size: 1600x900 pixels. Max file size: 5MB.</p>
+              <p className="text-xs text-muted-foreground max-w-[280px] mx-auto text-center">Recommended size: 600x900 pixels (2:3 ratio). Max file size: 5MB.</p>
             </motion.div>
           </div>
 
@@ -961,7 +961,7 @@ export default function StoryInfoPage() {
               transition={{ duration: 0.5, delay: 0.2 }}
               className="space-y-6"
             >
-              <h1 className="text-3xl font-bold">Story Details</h1>
+              <h1 className="text-2xl sm:text-3xl font-semibold">Story Details</h1>
 
               {/* Title */}
               <div className="space-y-2">

@@ -25,7 +25,7 @@ export default function ChallengesPage() {
             </div>
           </div>
           
-          <h1 className="text-4xl font-bold mb-6">Writing Challenges</h1>
+          <h1 className="text-2xl sm:text-3xl font-semibold mb-6">Writing Challenges</h1>
           
           <div className="bg-muted/30 rounded-lg p-8 mb-8">
             <h2 className="text-2xl font-semibold mb-4">Coming Soon...</h2>

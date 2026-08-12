@@ -16,17 +16,16 @@ import { ReportDialog } from "@/components/report/ReportDialog"
 import ChapterList from "@/components/chapter-list"
 import StoryMetadata from "@/components/story-metadata"
 import CommentSection from "@/components/comment-section"
+import StoryCover from "@/components/ui/story-cover"
 import AdBanner from "../ad-banner"
 import { SiteFooter } from "@/components/site-footer"
 import { StoryService } from "@/lib/api/story"
 import { UserService } from "@/lib/api/user"
-import { ImageService } from "@/lib/api/images"
 import { ViewAPI } from "@/lib/api/view"
 import { Story as StoryType, Chapter as ChapterType } from "@/types/story"
 import { SupportButton } from "@/components/SupportButton"
 import MatureContentDialog, { needsMatureContentConsent } from "@/components/mature-content-dialog"
 import { logError } from "@/lib/error-logger"
-import { isUser18OrOlder } from "@/utils/age"
 
 interface StoryPageClientProps {
   initialStory: StoryType
@@ -366,8 +365,8 @@ export default function StoryPageClient({
         storyId={story.id}
       />
 
-      <main className="container mx-auto px-4 py-8">
-        <div className="max-w-7xl mx-auto">
+      <main className="py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Back Button and Story Status */}
           <div className="flex justify-between items-center gap-3 mb-4 sm:mb-6">
             <Button variant="ghost" onClick={handleBack} className="pl-0 flex items-center gap-2 flex-shrink-0">
@@ -387,31 +386,19 @@ export default function StoryPageClient({
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 mb-8 lg:mb-12">
             {/* Left Column (Cover, Actions) */}
             <div className="lg:col-span-1">
-              {/* Cover Image - Better mobile aspect ratio */}
+              {/* Cover Image - Vertical portrait aspect ratio (2:3) */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
-                className="relative aspect-video w-full max-w-md mx-auto lg:mx-0 rounded-lg overflow-hidden shadow-lg mb-4 sm:mb-6"
+                className="w-full max-w-[280px] sm:max-w-[320px] mx-auto lg:mx-0 mb-4 sm:mb-6"
               >
-                <Image
-                  src={imageFallback ? "/placeholder.svg" : (ImageService.getImageUrl(story.coverImage) || "/placeholder.svg")}
+                <StoryCover
+                  src={story.coverImage}
                   alt={`${story.title} cover`}
-                  fill
-                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                  className="object-cover"
-                  onError={() => {
-                    logError(`Image loading failed`, { context: 'Cover image error', imageUrl: ImageService.getImageUrl(story.coverImage) });
-                    setImageFallback(true);
-                  }}
-                  unoptimized={true}
+                  isMature={story.isMature}
+                  priority={true}
                 />
-                {/* 18+ Tag for mature content */}
-                {story.isMature && (
-                  <Badge className="absolute top-3 left-3 bg-red-600 hover:bg-red-700 text-white font-bold text-sm px-3 py-1 z-10">
-                    18+
-                  </Badge>
-                )}
               </motion.div>
 
               {/* Start Reading Button (Mobile) */}

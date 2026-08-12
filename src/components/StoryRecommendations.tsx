@@ -1,14 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
-import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight, BookOpen } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import StoryCard, { type StoryCardData } from "@/components/story-card";
+import StoryCardSkeleton from "@/components/story-card-skeleton";
 import { logError } from "@/lib/error-logger";
 import { RecommendationService } from "@/lib/api/recommendations";
 import { ImageService } from "@/lib/api/images";
@@ -124,7 +121,12 @@ export default function StoryRecommendations({
 
   // Get cards per page based on screen size
   const getCardsPerPage = () => {
-    return isMobile ? 1 : 3;
+    if (typeof window !== 'undefined') {
+      if (window.innerWidth < 640) return 2;
+      if (window.innerWidth < 1024) return 3;
+      return 4;
+    }
+    return isMobile ? 2 : 4;
   };
 
   // Navigation functions
@@ -172,24 +174,10 @@ export default function StoryRecommendations({
           <p className="text-sm text-muted-foreground mt-2">Check back later for similar stories.</p>
         </div>
       ) : loading ? (
-        // Loading skeleton
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Card key={i} className="overflow-hidden">
-              <div className="aspect-[3/2] relative bg-muted">
-                <Skeleton className="h-full w-full" />
-              </div>
-              <CardContent className="p-4">
-                <Skeleton className="h-6 w-3/4 mb-2" />
-                <Skeleton className="h-4 w-1/2 mb-4" />
-                <Skeleton className="h-4 w-full mb-2" />
-                <Skeleton className="h-4 w-full mb-2" />
-                <div className="flex gap-2 mt-4">
-                  <Skeleton className="h-6 w-16" />
-                  <Skeleton className="h-6 w-16" />
-                </div>
-              </CardContent>
-            </Card>
+        // Loading skeleton matching 2:3 portrait grid cards
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <StoryCardSkeleton key={i} variant="portrait-grid" />
           ))}
         </div>
       ) : (
@@ -201,7 +189,7 @@ export default function StoryRecommendations({
               <Button
                 variant="outline"
                 size="icon"
-                className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-background/80 backdrop-blur-sm"
+                className="absolute -left-3 top-1/2 -translate-y-1/2 z-10 bg-background/90 backdrop-blur-sm shadow-md"
                 onClick={handlePrevious}
                 disabled={currentIndex === 0}
               >
@@ -210,7 +198,7 @@ export default function StoryRecommendations({
               <Button
                 variant="outline"
                 size="icon"
-                className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-background/80 backdrop-blur-sm"
+                className="absolute -right-3 top-1/2 -translate-y-1/2 z-10 bg-background/90 backdrop-blur-sm shadow-md"
                 onClick={handleNext}
                 disabled={currentIndex >= recommendations.length - getCardsPerPage()}
               >
@@ -228,7 +216,7 @@ export default function StoryRecommendations({
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.3 }}
-                className="grid grid-cols-1 md:grid-cols-3 gap-4"
+                className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6"
               >
                 {/* Display current page of recommendations */}
                 {(() => {
@@ -241,7 +229,7 @@ export default function StoryRecommendations({
                     if (index < recommendations.length) {
                       visibleCards.push(
                         <RecommendationCard
-                          key={index}
+                          key={recommendations[index].id || index}
                           story={recommendations[index]}
                         />
                       );
@@ -289,68 +277,23 @@ export default function StoryRecommendations({
   );
 }
 
-// Recommendation card component
+// Recommendation card component using the shared StoryCard
 function RecommendationCard({ story }: { story: RecommendedStory }) {
   const coverImageUrl = ImageService.getImageUrl(story.coverImage);
 
-  return (
-    <Card className="overflow-hidden transition-all hover:border-primary">
-      <Link href={`/story/${story.slug}`} className="block">
-        <div className="aspect-[3/2] relative bg-muted">
-          {coverImageUrl ? (
-            <Image
-              src={coverImageUrl}
-              alt={story.title}
-              fill
-              sizes="(max-width: 768px) 100vw, 33vw"
-              className="object-cover"
-              unoptimized={true} // Skip Next.js image optimization for external URLs
-            />
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <BookOpen className="text-muted-foreground" />
-            </div>
-          )}
-        </div>
-      </Link>
+  const cardData: StoryCardData = {
+    id: story.id,
+    title: story.title,
+    slug: story.slug,
+    author: story.author?.name || story.author?.username || "Unknown Author",
+    genre: story.genre,
+    coverImage: coverImageUrl || "/placeholder.svg",
+    excerpt: story.description || "",
+    likeCount: story.likeCount || 0,
+    commentCount: story.commentCount || 0,
+    chapterCount: story.chapterCount || 0,
+    status: story.status,
+  };
 
-      <CardContent className="p-4">
-        <Link href={`/story/${story.slug}`} className="block">
-          <h3 className="font-medium line-clamp-1 hover:text-primary transition-colors">
-            {story.title}
-          </h3>
-        </Link>
-
-        <Link href={`/user/${story.author.username || story.author.id}`}>
-          <p className="text-sm text-muted-foreground mb-2 hover:text-primary transition-colors">
-            by {story.author.name || story.author.username || "Unknown"}
-          </p>
-        </Link>
-
-        {story.description && (
-          <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
-            {story.description}
-          </p>
-        )}
-
-        <div className="flex flex-wrap gap-1 mt-2">
-          {story.genre && (
-            <Badge variant="outline" className="text-xs">
-              {story.genre}
-            </Badge>
-          )}
-          {story.tags.slice(0, 2).map((tag) => (
-            <Badge key={typeof tag === 'string' ? tag : tag.id} variant="secondary" className="text-xs">
-              {typeof tag === 'string' ? tag : tag.name}
-            </Badge>
-          ))}
-          {story.tags.length > 2 && (
-            <Badge variant="secondary" className="text-xs">
-              +{story.tags.length - 2}
-            </Badge>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
+  return <StoryCard story={cardData} variant="portrait-grid" showBookmark={true} />;
 }

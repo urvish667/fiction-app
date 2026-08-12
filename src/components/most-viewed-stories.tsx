@@ -2,24 +2,22 @@
 
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Heart, Flame, Eye, ChevronLeft, ChevronRight } from "lucide-react"
-import Image from "next/image"
+import { ChevronLeft, ChevronRight } from "lucide-react"
 import Link from "next/link"
+import StoryCard from "@/components/story-card"
 import StoryCardSkeleton from "@/components/story-card-skeleton"
 import { StoryService } from "@/lib/api/story"
 import { ImageService } from "@/lib/api/images"
-import type { StoryResponse } from "@/types/story"
 
 interface MostViewedStoriesProps {
   className?: string
 }
 
 export default function MostViewedStories({ className }: MostViewedStoriesProps) {
-  const [stories, setStories] = useState<StoryResponse[]>([])
+  const [stories, setStories] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const [isOverflowing, setIsOverflowing] = useState(false)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
@@ -35,20 +33,18 @@ export default function MostViewedStories({ className }: MostViewedStoriesProps)
   const handleScroll = () => {
     if (scrollContainerRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current
-      setCanScrollLeft(scrollLeft > 0)
-      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 1)
+      setCanScrollLeft(scrollLeft > 2)
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 2)
     }
   }
 
-  const scrollLeft = () => {
+  const scrollByAmount = (direction: "left" | "right") => {
     if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollBy({ left: -300, behavior: 'smooth' })
-    }
-  }
-
-  const scrollRight = () => {
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollBy({ left: 300, behavior: 'smooth' })
+      const amount = scrollContainerRef.current.clientWidth * 0.75
+      scrollContainerRef.current.scrollBy({
+        left: direction === "left" ? -amount : amount,
+        behavior: "smooth",
+      })
     }
   }
 
@@ -60,14 +56,22 @@ export default function MostViewedStories({ className }: MostViewedStoriesProps)
 
         const response = await StoryService.getStories({
           sortBy: 'mostViewed',
-          limit: 4
+          limit: 8
         })
 
         if (!response.success) {
           throw new Error(response.message || 'Failed to fetch most viewed stories')
         }
 
-        setStories(response.data?.stories || [])
+        const rawStories = response.data?.stories || []
+        const formatted = rawStories.map((story: any) => ({
+          ...story,
+          author: story.author?.name || story.author?.username || "Unknown Author",
+          coverImage: ImageService.getImageUrl(story.coverImage) || "/placeholder.svg",
+          viewCount: story.viewCount || story.readCount || 0,
+        }))
+
+        setStories(formatted)
       } catch (err) {
         console.error('Error fetching most viewed stories:', err)
         setError('Failed to load stories')
@@ -101,21 +105,21 @@ export default function MostViewedStories({ className }: MostViewedStoriesProps)
 
   if (loading) {
     return (
-      <section className={`py-16 bg-background ${className}`}>
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-center mb-10">
+      <section className={`py-6 sm:py-8 bg-background ${className}`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center mb-6">
             <div>
               <h2 className="text-xl sm:text-2xl font-semibold">Most Read Stories</h2>
-              <p className="text-muted-foreground mt-1">Most read stories of all time</p>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Most read stories of all time</p>
             </div>
             <Link href="/browse?sortBy=mostRead">
-              <Button variant="ghost">View All</Button>
+              <Button variant="ghost" size="sm">View All</Button>
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {Array.from({ length: 4 }).map((_, index) => (
-              <StoryCardSkeleton key={`skeleton-${index}`} viewMode="grid" />
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <StoryCardSkeleton key={`skeleton-${index}`} variant="portrait-grid" overlayTitle={true} />
             ))}
           </div>
         </div>
@@ -123,108 +127,64 @@ export default function MostViewedStories({ className }: MostViewedStoriesProps)
     )
   }
 
-  if (error) {
-    return (
-      <section className={`py-16 bg-background ${className}`}>
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-center mb-10">
-            <div>
-              <h2 className="text-xl sm:text-2xl font-semibold">Most Read Stories</h2>
-              <p className="text-muted-foreground mt-1">Most read stories of all time</p>
-            </div>
-            <Link href="/browse?sortBy=mostRead">
-              <Button variant="ghost">View All</Button>
-            </Link>
-          </div>
-
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">Failed to load stories. Please try again later.</p>
-            <div className="mt-4 flex justify-center gap-4">
-              <Link href="/browse">
-                <Button>Browse Stories</Button>
-              </Link>
-              <Link href="/write/story-info">
-                <Button variant="outline">Start Writing</Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-    )
-  }
-
-  if (stories.length === 0) {
-    return (
-      <section className={`py-16 bg-background ${className}`}>
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-center mb-10">
-            <div>
-              <h2 className="text-xl sm:text-2xl font-semibold">Most Read Stories</h2>
-              <p className="text-muted-foreground mt-1">Most read stories of all time</p>
-            </div>
-            <Link href="/browse?sortBy=mostRead">
-              <Button variant="ghost">View All</Button>
-            </Link>
-          </div>
-
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">No stories available yet. Start reading or writing to see stories here!</p>
-            <div className="mt-4 flex justify-center gap-4">
-              <Link href="/browse">
-                <Button>Browse Stories</Button>
-              </Link>
-              <Link href="/write/story-info">
-                <Button variant="outline">Start Writing</Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-    )
+  if (error || stories.length === 0) {
+    return null
   }
 
   return (
-    <section className={`py-16 bg-background ${className}`}>
-      <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-10">
+    <section className={`py-6 sm:py-8 bg-background ${className}`}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center mb-6">
           <div>
-            <h2 className="text-3xl font-semibold">Most Read Stories</h2>
-            <p className="text-muted-foreground mt-1">Most read stories of all time</p>
+            <h2 className="text-xl sm:text-2xl font-semibold">Most Read Stories</h2>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Most read stories of all time</p>
           </div>
           <Link href="/browse?sortBy=mostRead">
-            <Button variant="ghost">View All</Button>
+            <Button variant="ghost" size="sm">View All</Button>
           </Link>
         </div>
 
-        <div className="relative">
+        <div className="relative group/carousel">
           <div
             ref={scrollContainerRef}
-            className="grid grid-flow-col auto-cols-[calc(100%-0.5rem)] sm:auto-cols-[calc(50%-0.5rem)] lg:auto-cols-[calc(33.33%-0.5rem)] xl:auto-cols-[calc(25%-0.5rem)] gap-2 overflow-x-auto scroll-smooth snap-x snap-mandatory scrollbar-hide"
+            className="flex gap-3 sm:gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory scrollbar-hide py-1 px-0.5"
           >
-            {stories.map((story, index) => (
-              <StoryCard
+            {stories.map((story) => (
+              <div
                 key={story.id}
-                story={story}
-                isTopStory={index === 0}
-              />
+                className="w-[calc(50%-0.375rem)] sm:w-[calc(33.333%-0.5rem)] md:w-[calc(25%-0.5rem)] lg:w-[calc(16.666%-0.625rem)] shrink-0 snap-start"
+              >
+                <StoryCard
+                  story={story}
+                  variant="portrait-grid"
+                  showBookmark={false}
+                  overlayTitle={true}
+                />
+              </div>
             ))}
           </div>
+
+          {/* Left Chevron */}
           {isOverflowing && canScrollLeft && (
             <Button
-              variant="ghost"
+              variant="outline"
               size="icon"
-              className="absolute left-0 top-1/2 -translate-y-1/2 transform bg-background/50 hover:bg-background/80 rounded-full"
-              onClick={scrollLeft}
+              className="absolute left-1 sm:-left-3 top-1/2 -translate-y-1/2 h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-background/80 hover:bg-background text-foreground shadow-md backdrop-blur-md z-20 border border-border/60"
+              onClick={() => scrollByAmount("left")}
+              aria-label="Scroll left"
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
           )}
+
+          {/* Right Chevron */}
           {isOverflowing && canScrollRight && (
             <Button
-              variant="ghost"
+              variant="outline"
               size="icon"
-              className="absolute right-0 top-1/2 -translate-y-1/2 transform bg-background/50 hover:bg-background/80 rounded-full"
-              onClick={scrollRight}
+              className="absolute right-1 sm:-right-3 top-1/2 -translate-y-1/2 h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-background/80 hover:bg-background text-foreground shadow-md backdrop-blur-md z-20 border border-border/60"
+              onClick={() => scrollByAmount("right")}
+              aria-label="Scroll right"
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
@@ -232,64 +192,5 @@ export default function MostViewedStories({ className }: MostViewedStoriesProps)
         </div>
       </div>
     </section>
-  )
-}
-
-// StoryCard component for client-side rendering
-function StoryCard({ story, isTopStory = false }: { story: StoryResponse, isTopStory?: boolean }) {
-  return (
-    <Link href={`/story/${story.slug || story.id}`} className="block p-1">
-      <Card className={`h-full overflow-hidden flex flex-col hover:shadow-lg transition-shadow cursor-pointer ${isTopStory ? 'ring-2 ring-primary' : ''}`}>
-        <div className="relative aspect-[3/2] overflow-hidden">
-          <Image
-            src={ImageService.getImageUrl(story.coverImage) || "/placeholder.svg"}
-            alt={story.title}
-            fill
-            className="object-cover transition-transform hover:scale-105"
-            unoptimized={true}
-          />
-          {/* Top left badges - 18+ and Most Read side by side */}
-          <div className="absolute top-2 left-2 flex items-center gap-2 z-10">
-            {story.isMature && (
-              <Badge className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs px-2 py-1">
-                18+
-              </Badge>
-            )}
-            {isTopStory && (
-              <div className="bg-primary text-primary-foreground px-2 py-1 rounded-md flex items-center gap-1">
-                <Flame size={14} />
-                <span className="text-xs font-medium">Most Read</span>
-              </div>
-            )}
-          </div>
-          
-          {/* Genre badge on top right */}
-          <Badge className="absolute top-2 right-2">
-            {typeof story.genre === 'object' && story.genre !== null
-              ? (story.genre as {name: string}).name
-              : (typeof story.genre === 'string' ? story.genre : 'General')}
-          </Badge>
-        </div>
-        <CardHeader className="pb-2">
-          <h3 className="font-bold text-lg line-clamp-1">{story.title}</h3>
-          <p className="text-sm text-muted-foreground">
-            by {story.author?.name || story.author?.username || "Unknown Author"}
-          </p>
-        </CardHeader>
-        <CardContent className="pb-2 flex-grow">
-          <p className="text-sm text-muted-foreground line-clamp-2">{story.description}</p>
-        </CardContent>
-        <CardFooter className="pt-0 flex justify-between">
-          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-            <Heart size={16} className="text-muted-foreground" />
-            <span>{story.likeCount.toLocaleString()}</span>
-          </div>
-          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-            <Eye size={16} className="text-muted-foreground" />
-            <span>{(story.viewCount || 0).toLocaleString()} views</span>
-          </div>
-        </CardFooter>
-      </Card>
-    </Link>
   )
 }

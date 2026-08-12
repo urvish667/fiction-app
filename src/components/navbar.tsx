@@ -2,8 +2,6 @@
 
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { Menu } from "lucide-react"
 import { motion } from "framer-motion"
 import UserAvatarMenu from "./user-avatar-menu"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -70,7 +68,7 @@ export default function Navbar() {
   if (isLoading) {
     return (
       <header className={headerClass}>
-        <div className="max-w-7xl mx-auto px-6 md:px-10 flex h-16 items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex h-16 items-center justify-between">
           <LogoMark color={logoColor} />
           <Skeleton className="h-8 w-48 opacity-40" />
         </div>
@@ -80,7 +78,7 @@ export default function Navbar() {
 
   return (
     <header className={headerClass}>
-      <div className="max-w-7xl mx-auto px-6 md:px-10 flex h-16 items-center justify-between gap-4 relative">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex h-16 items-center justify-between gap-4 relative">
 
         {/* ── Logo ── */}
         <LogoMark color={logoColor} />
@@ -128,7 +126,7 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* ── Mobile: avatar + hamburger ── */}
+        {/* ── Mobile: avatar or login ── */}
         <div
           className="md:hidden flex items-center gap-2 ml-auto"
           style={{ fontFamily: "'Inter', sans-serif" }}
@@ -138,50 +136,11 @@ export default function Navbar() {
           ) : (
             <Link
               href="/login"
-              className={`text-sm font-medium px-3 py-1 rounded-full transition-colors ${linkClass}`}
+              className={`text-sm font-medium px-4 py-1.5 rounded-full transition-colors duration-150 ${linkClass}`}
             >
               Login
             </Link>
           )}
-
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className={`rounded-full ${isHero ? "text-white hover:bg-white/10" : ""}`}
-                aria-label="Open menu"
-              >
-                <Menu className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-
-            <SheetContent side="right" className="w-64">
-              <div
-                className="flex flex-col gap-1 pt-8"
-                style={{ fontFamily: "'Inter', sans-serif" }}
-              >
-                {NAV_LINKS.map(({ label, href }) => (
-                  <Link
-                    key={href}
-                    href={href}
-                    className="px-4 py-2.5 rounded-lg text-base font-medium text-foreground hover:bg-muted transition-colors"
-                  >
-                    {label}
-                  </Link>
-                ))}
-                {!isAuthenticated && (
-                  <Link
-                    href="/signup"
-                    className="mt-4 mx-4 py-2.5 rounded-full text-center text-sm font-semibold
-                      bg-[#125ba5] text-white hover:bg-[#0e4a8a] transition-colors"
-                  >
-                    Sign Up
-                  </Link>
-                )}
-              </div>
-            </SheetContent>
-          </Sheet>
         </div>
 
       </div>
@@ -194,6 +153,7 @@ function LogoMark({ color }: { color: string }) {
   return (
     <Link href="/" className="flex-shrink-0">
       <span
+        suppressHydrationWarning
         className="text-xl md:text-2xl font-bold select-none logo-slide-in"
         style={{
           color,

@@ -1,60 +1,31 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import { motion } from "framer-motion"
+import { useState, useEffect, useCallback, useRef } from "react"
+import { motion, AnimatePresence } from "framer-motion"
 import { useRouter, usePathname } from "next/navigation"
+import { Loader2 } from "lucide-react"
 import HorizontalFilterBar from "@/components/horizontal-filter-bar"
 import StoryGrid from "@/components/story-grid"
 import StoryCardSkeleton from "@/components/story-card-skeleton"
-import Pagination from "@/components/pagination"
 import CategoryDescription from "@/components/category-description"
-import { Button } from "@/components/ui/button"
-import { Grid, List } from "lucide-react"
 import { StoryService } from "@/lib/api/story"
 import { MetaService } from "@/lib/api/meta"
 import { ImageService } from "@/lib/api/images"
 import { useToast } from "@/hooks/use-toast"
-import { UserSummary } from "@/types/user"
 import { safeDecodeURIComponent } from "@/utils/safe-decode-uri-component"
 import AdBanner from "@/components/ad-banner"
 import { BrowseResult } from "@/lib/server/browse-data"
+import type { StoryCardData } from "@/components/story-card"
 
-// Define a type for stories in the browse page
-type BrowseStory = {
-  id: string | number
-  title: string
-  author: string | UserSummary
-  genre?: string
+// ─── Types ─────────────────────────────────────────────────────────────────
+
+type BrowseStory = StoryCardData & {
   language?: string
   status?: string
-  coverImage?: string
-  excerpt?: string
-  description?: string
-  likeCount?: number
-  commentCount?: number
-  viewCount?: number
-  readTime?: number
-  date?: Date
-  createdAt?: Date
-  updatedAt?: Date
-  slug?: string
-  tags?: string[]
-  isMature?: boolean
 }
 
-// Tag type
-interface TagOption {
-  id: string;
-  name: string;
-  slug: string;
-}
-
-// Genre option type
-interface GenreOption {
-  id: string;
-  name: string;
-  slug: string;
-}
+interface TagOption { id: string; name: string; slug: string }
+interface GenreOption { id: string; name: string; slug: string }
 
 interface BrowseContentProps {
   initialParams: {
@@ -70,41 +41,86 @@ interface BrowseContentProps {
   initialData: BrowseResult
 }
 
+// ─── Story transformer ────────────────────────────────────────────────────────
+
+function useStoryTransformer() {
+  const transformServerStory = useCallback((story: BrowseResult["stories"][0]): BrowseStory => ({
+    id: story.id,
+    title: story.title,
+    author: story.author.username || story.author.name || "Unknown Author",
+    genre: story.genre?.name || "General",
+    language: story.language?.name || "",
+    status: story.status || "ongoing",
+    coverImage: story.coverImage
+      ? ImageService.getImageUrl(story.coverImage) || "/placeholder.svg"
+      : "/placeholder.svg",
+    excerpt: story.description || undefined,
+    description: story.description || undefined,
+    likeCount: story.likeCount || 0,
+    commentCount: story.commentCount || 0,
+    viewCount: story.viewCount || 0,
+    chapterCount: story.chapterCount ?? (story as any)._count?.chapters ?? undefined,
+    readTime: Math.ceil((story.wordCount || 0) / 200),
+    date: story.createdAt ? new Date(story.createdAt) : undefined,
+    createdAt: story.createdAt ? new Date(story.createdAt) : undefined,
+    updatedAt: story.updatedAt ? new Date(story.createdAt) : undefined,
+    slug: story.slug || undefined,
+    tags: story.tags.map((t) => t.tag.name),
+    isMature: story.isMature || false,
+    isBookmarked: false,
+  }), [])
+
+  const formatApiStory = useCallback((story: Record<string, any>): BrowseStory => {
+    const genreName = typeof story.genre === "object" ? story.genre?.name : (story.genre || "General")
+    const languageName = typeof story.language === "object" ? story.language?.name : (story.language || "")
+    const tags = Array.isArray(story.tags)
+      ? story.tags.map((t: any) => t?.name || t?.tag?.name || (typeof t === "string" ? t : "")).filter(Boolean)
+      : []
+
+    return {
+      id: story.id,
+      title: story.title,
+      author: story.author || "Unknown Author",
+      genre: genreName,
+      language: languageName,
+      status: story.status || "ongoing",
+      coverImage: story.coverImage
+        ? ImageService.getImageUrl(story.coverImage) || "/placeholder.svg"
+        : "/placeholder.svg",
+      excerpt: story.description,
+      description: story.description,
+      likeCount: story.likeCount || 0,
+      commentCount: story.commentCount || 0,
+      viewCount: story.viewCount || story.readCount || 0,
+      chapterCount: story.chapterCount ?? story._count?.chapters ?? undefined,
+      readTime: Math.ceil((story.wordCount || 0) / 200),
+      date: story.createdAt ? new Date(story.createdAt) : new Date(),
+      createdAt: story.createdAt ? new Date(story.createdAt) : new Date(),
+      updatedAt: story.updatedAt ? new Date(story.updatedAt) : new Date(),
+      slug: story.slug,
+      tags,
+      isMature: story.isMature || false,
+      isBookmarked: false,
+    }
+  }, [])
+
+  return { transformServerStory, formatApiStory }
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
 export default function BrowseContent({ initialParams, initialData }: BrowseContentProps) {
   const { toast } = useToast()
   const router = useRouter()
   const pathname = usePathname()
-  
-  // Transform server-side data to client format
-  const transformServerStory = useCallback((story: BrowseResult['stories'][0]): BrowseStory => {
-    return {
-      id: story.id,
-      title: story.title,
-      author: story.author.username || story.author.name || "Unknown Author",
-      genre: story.genre?.name || "General",
-      language: story.language?.name || "",
-      status: story.status || "ongoing",
-      coverImage: story.coverImage ? ImageService.getImageUrl(story.coverImage) || "/placeholder.svg" : "/placeholder.svg",
-      excerpt: story.description || undefined,
-      description: story.description || undefined,
-      likeCount: story.likeCount || 0,
-      commentCount: story.commentCount || 0,
-      viewCount: story.viewCount || 0,
-      readTime: Math.ceil((story.wordCount || 0) / 200),
-      date: story.createdAt ? new Date(story.createdAt) : undefined,
-      createdAt: story.createdAt ? new Date(story.createdAt) : undefined,
-      updatedAt: story.updatedAt ? new Date(story.createdAt) : undefined,
-      slug: story.slug || undefined,
-      tags: story.tags.map(t => t.tag.name),
-      isMature: story.isMature || false
-    };
-  }, []);
+  const { transformServerStory, formatApiStory } = useStoryTransformer()
 
-  // Initialize with server-side data
+  // ── State ──────────────────────────────────────────────────────────────────
   const [stories, setStories] = useState<BrowseStory[]>(
     initialData.stories.map(transformServerStory)
   )
   const [loading, setLoading] = useState(false)
+  const [isFetchingMore, setIsFetchingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState(initialParams.search || "")
   const [allGenres, setAllGenres] = useState<GenreOption[]>([])
@@ -115,75 +131,45 @@ export default function BrowseContent({ initialParams, initialData }: BrowseCont
     (initialParams.status as "all" | "ongoing" | "completed") || "all"
   )
   const [sortBy, setSortBy] = useState(initialParams.sortBy || "newest")
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [currentPage, setCurrentPage] = useState(parseInt(initialParams.page || "1"))
   const [totalPages, setTotalPages] = useState(initialData.pagination.totalPages)
   const [totalStories, setTotalStories] = useState(initialData.pagination.total)
-  const storiesPerPage = 16
-
-  // Track if we've done the initial data fetch to avoid duplicate API calls
   const [initialFetchDone, setInitialFetchDone] = useState(false)
+  
+  const observerTargetRef = useRef<HTMLDivElement>(null)
+  const storiesPerPage = 16
+  const hasMore = currentPage < totalPages
 
-  // Fetch all genres and tags on mount
-  useEffect(() => {
-    async function fetchGenres() {
-      try {
-        const response = await MetaService.getGenres()
-        if (response.success && response.data) {
-          setAllGenres(response.data)
-        }
-      } catch {
-        // fallback: do nothing
-      }
-    }
-
-    async function fetchTags() {
-      try {
-        const response = await MetaService.getTags()
-        if (response.success && response.data) {
-          setAllTags(response.data)
-        }
-      } catch {
-        // fallback: do nothing
-      }
-    }
-    fetchGenres()
-    fetchTags()
-  }, [])
-
-  // Initialize selectedGenres from URL params
-  useEffect(() => {
-    if (initialParams.genre && allGenres.length > 0) {
-      const genreSlug = safeDecodeURIComponent(initialParams.genre)
-      if (genreSlug) {
-        const found = allGenres.find(g => g.slug === genreSlug)
-        if (found) {
-          setSelectedGenres([found.slug])
-        }
-      }
-    }
-  }, [initialParams.genre, allGenres])
-
-  // Initialize selectedTags from tag/tags params, using slug-to-name mapping
   const [selectedTags, setSelectedTags] = useState<string[]>(() => {
-    if (initialParams.tag && allTags.length > 0) {
-      const decodedTag = safeDecodeURIComponent(initialParams.tag!)
-      if (decodedTag) {
-        const found = allTags.find(t => t.slug === decodedTag)
-        return found ? [found.name] : []
-      }
-    } else if (initialParams.tags) {
-      return initialParams.tags.split(',').map(t => safeDecodeURIComponent(t.trim())).filter((t): t is string => t !== null)
+    if (initialParams.tags) {
+      return initialParams.tags.split(",").map((t) => safeDecodeURIComponent(t.trim())).filter((t): t is string => t !== null)
     }
     return []
   })
 
-  // When allTags or initialParams.tag changes, update selectedTags if needed
+  // ── Fetch genres & tags ───────────────────────────────────────────────────
+  useEffect(() => {
+    MetaService.getGenres().then((r) => r.success && r.data && setAllGenres(r.data)).catch(() => {})
+    MetaService.getTags().then((r) => r.success && r.data && setAllTags(r.data)).catch(() => {})
+  }, [])
+
+  // ── Sync genre from URL ───────────────────────────────────────────────────
+  useEffect(() => {
+    if (initialParams.genre && allGenres.length > 0) {
+      const slug = safeDecodeURIComponent(initialParams.genre)
+      if (slug) {
+        const found = allGenres.find((g) => g.slug === slug)
+        if (found) setSelectedGenres([found.slug])
+      }
+    }
+  }, [initialParams.genre, allGenres])
+
+  // ── Sync tag from URL ─────────────────────────────────────────────────────
   useEffect(() => {
     if (initialParams.tag && allTags.length > 0) {
-      const decodedTag = safeDecodeURIComponent(initialParams.tag!)
-      if (decodedTag) {
-        const found = allTags.find(t => t.slug === decodedTag)
+      const decoded = safeDecodeURIComponent(initialParams.tag!)
+      if (decoded) {
+        const found = allTags.find((t) => t.slug === decoded)
         if (found && (!selectedTags.length || selectedTags[0] !== found.name)) {
           setSelectedTags([found.name])
         }
@@ -191,303 +177,154 @@ export default function BrowseContent({ initialParams, initialData }: BrowseCont
     }
   }, [initialParams.tag, allTags])
 
-  // Function to update URL based on current filters
+  // ── URL sync ──────────────────────────────────────────────────────────────
   const updateURL = useCallback(() => {
     const params = new URLSearchParams()
-
     if (selectedGenres.length === 1) {
-      const genre = allGenres.find(g => g.slug === selectedGenres[0])
-      if (genre) {
-        params.set('genre', genre.slug)
-      }
+      const genre = allGenres.find((g) => g.slug === selectedGenres[0])
+      if (genre) params.set("genre", genre.slug)
     }
-    if (searchQuery) {
-      params.set('search', searchQuery)
-    }
-    if (currentPage > 1) {
-      params.set('page', currentPage.toString())
-    }
-    if (sortBy !== 'newest') {
-      params.set('sortBy', sortBy)
-    }
-    if (storyStatus !== 'all') {
-      params.set('status', storyStatus)
-    }
-    if (selectedLanguage) {
-      params.set('language', selectedLanguage)
-    }
-    if (selectedTags.length > 0) {
-      params.set('tags', selectedTags.join(','))
-    }
+    if (searchQuery) params.set("search", searchQuery)
+    if (currentPage > 1) params.set("page", currentPage.toString())
+    if (sortBy !== "newest") params.set("sortBy", sortBy)
+    if (storyStatus !== "all") params.set("status", storyStatus)
+    if (selectedLanguage) params.set("language", selectedLanguage)
+    if (selectedTags.length > 0) params.set("tags", selectedTags.join(","))
 
-    const queryString = params.toString()
-    const newPath = pathname || '/browse'
-    const newURL = queryString ? `${newPath}?${queryString}` : newPath
-
-    router.replace(newURL, { scroll: false })
+    const qs = params.toString()
+    const base = pathname || "/browse"
+    router.replace(qs ? `${base}?${qs}` : base, { scroll: false })
   }, [pathname, router, selectedGenres, selectedTags, searchQuery, currentPage, sortBy, storyStatus, selectedLanguage, allGenres])
 
-  // Helper function to format API parameters
-  const formatApiParams = () => {
-    const params: {
-      page: number;
-      limit: number;
-      genre?: string;
-      search?: string;
-      status?: string;
-      tags?: string[];
-      sortBy?: string;
-      language?: string;
-    } = {
-      page: currentPage,
-      limit: storiesPerPage,
-      status: storyStatus,
-      sortBy: sortBy
-    }
+  useEffect(() => { updateURL() }, [updateURL])
 
-    if (searchQuery) {
-      params.search = searchQuery
-    }
-
-    if (selectedGenres.length > 0) {
-      if (selectedGenres.length === 1) {
-        // Find the genre name from the slug
-        const genre = allGenres.find(g => g.slug === selectedGenres[0])
-        if (genre) {
-          params.genre = genre.name
-        }
-      }
-    }
-
-    if (selectedTags.length > 0) {
-      params.tags = selectedTags
-    }
-
-    if (selectedLanguage) {
-      params.language = selectedLanguage
-    }
-
-    return params
-  }
-
-  // Helper function to map API story to BrowseStory type
-  const formatStory = useCallback((story: Record<string, any>): BrowseStory => {
-    let genreName = "General";
-    if (story.genre) {
-      if (typeof story.genre === 'object') {
-        if (story.genre.name) {
-          genreName = story.genre.name;
-        }
-      } else if (typeof story.genre === 'string') {
-        genreName = story.genre;
-      }
-    }
-
-    let languageName = "";
-    if (story.language) {
-      if (typeof story.language === 'object') {
-        if (story.language.name) {
-          languageName = story.language.name;
-        }
-      } else if (typeof story.language === 'string') {
-        languageName = story.language;
-      }
-    }
-
-    let tags: string[] = [];
-    if (story.tags && Array.isArray(story.tags)) {
-      tags = story.tags.map((tag: any) => {
-        if (tag && typeof tag === 'object' && tag.name) {
-          return tag.name;
-        }
-        if (typeof tag === 'string') {
-          return tag;
-        }
-        if (tag && tag.tag && tag.tag.name) {
-          return tag.tag.name;
-        }
-        return '';
-      }).filter(Boolean);
-    }
-
-    return {
-      id: story.id,
-      title: story.title,
-      author: story.author || "Unknown Author",
-      genre: genreName,
-      language: languageName,
-      status: story.status || "ongoing",
-      coverImage: story.coverImage ? ImageService.getImageUrl(story.coverImage) || "/placeholder.svg" : "/placeholder.svg",
-      excerpt: story.description,
-      description: story.description,
-      likeCount: story.likeCount || 0,
-      commentCount: story.commentCount || 0,
-      viewCount: story.viewCount || story.readCount || 0,
-      readTime: Math.ceil(story.wordCount / 200),
-      date: story.createdAt ? new Date(story.createdAt) : new Date(),
-      createdAt: story.createdAt ? new Date(story.createdAt) : new Date(),
-      updatedAt: story.updatedAt ? new Date(story.updatedAt) : new Date(),
-      slug: story.slug,
-      tags: tags,
-      isMature: story.isMature || false
-    };
-  }, [])
-
-  // Fetch stories from the API - avoid duplicate calls on initial load
-  useEffect(() => {
-    const fetchStories = async () => {
+  // ── Fetch stories (Page 1 replacement vs Append) ─────────────────────────
+  const fetchStories = useCallback(async (pageToFetch: number, isReset: boolean = false) => {
+    if (isReset) {
       setLoading(true)
-      setError(null)
+    } else {
+      setIsFetchingMore(true)
+    }
+    setError(null)
 
-      try {
-        const params = formatApiParams()
-        const response = await StoryService.getStories(params)
+    try {
+      const params: Record<string, any> = {
+        page: pageToFetch,
+        limit: storiesPerPage,
+        status: storyStatus,
+        sortBy,
+      }
+      if (searchQuery) params.search = searchQuery
+      if (selectedGenres.length === 1) {
+        const genre = allGenres.find((g) => g.slug === selectedGenres[0])
+        if (genre) params.genre = genre.name
+      }
+      if (selectedTags.length > 0) params.tags = selectedTags
+      if (selectedLanguage) params.language = selectedLanguage
 
-        if (response.success && response.data) {
-          const formattedStories = response.data.stories.map((story: any) => formatStory(story));
-          setStories(formattedStories)
-
-          if (selectedGenres.length > 0 || selectedTags.length > 0) {
-            setTotalStories(response.data.pagination.total)
-            setTotalPages(response.data.pagination.totalPages)
-          } else {
-            setTotalPages(response.data.pagination.totalPages)
-            setTotalStories(response.data.pagination.total)
-          }
+      const response = await StoryService.getStories(params)
+      if (response.success && response.data) {
+        const fetchedStories = response.data.stories.map((s: any) => formatApiStory(s))
+        if (isReset) {
+          setStories(fetchedStories)
         } else {
-          throw new Error(response.message || "Failed to fetch stories")
+          setStories((prev) => {
+            const existingIds = new Set(prev.map((s) => s.id))
+            const newUnique = fetchedStories.filter((s: BrowseStory) => !existingIds.has(s.id))
+            return [...prev, ...newUnique]
+          })
         }
-      } catch (err) {
-        setError("Failed to load stories. Please try again later.")
-        toast({
-          title: "Error",
-          description: "Failed to load stories. Please try again later.",
-          variant: "destructive"
-        })
-      } finally {
-        setLoading(false)
+        setCurrentPage(pageToFetch)
+        setTotalPages(response.data.pagination.totalPages)
+        setTotalStories(response.data.pagination.total)
+      } else {
+        throw new Error(response.message || "Failed to fetch stories")
       }
+    } catch {
+      setError("Failed to load stories. Please try again later.")
+      toast({ title: "Error", description: "Failed to load stories.", variant: "destructive" })
+    } finally {
+      setLoading(false)
+      setIsFetchingMore(false)
     }
+  }, [storyStatus, sortBy, searchQuery, selectedGenres, allGenres, selectedTags, selectedLanguage, storiesPerPage, formatApiStory, toast])
 
-    // Check if this is the initial load with matching params - if so, skip fetch
-    const hasInitialParamsMatch = () => {
-      const currentParams = formatApiParams()
-      const initialPage = parseInt(initialParams.page || "1")
-      const initialSearch = initialParams.search || ""
-      const initialGenre = initialParams.genre
-      const initialLanguage = initialParams.language || ""
-      const initialStatus = initialParams.status || "all"
-      const initialSortBy = initialParams.sortBy || "newest"
+  // ── Filter change effect ─────────────────────────────────────────────────
+  useEffect(() => {
+    const isInitialMatch =
+      currentPage === parseInt(initialParams.page || "1") &&
+      searchQuery === (initialParams.search || "") &&
+      selectedLanguage === (initialParams.language || "") &&
+      storyStatus === ((initialParams.status as any) || "all") &&
+      sortBy === (initialParams.sortBy || "newest") &&
+      selectedTags.length === 0
 
-      // Convert initial genre slug to name for comparison
-      let initialGenreName = ""
-      if (initialGenre && allGenres.length > 0) {
-        const genre = allGenres.find(g => g.slug === initialGenre)
-        initialGenreName = genre?.name || ""
-      }
-
-      const paramsMatch =
-        currentPage === initialPage &&
-        searchQuery === initialSearch &&
-        (!initialGenreName || (selectedGenres.length === 1 && allGenres.find(g => g.slug === selectedGenres[0])?.name === initialGenreName)) &&
-        selectedLanguage === initialLanguage &&
-        storyStatus === initialStatus &&
-        sortBy === initialSortBy &&
-        selectedTags.length === 0 // Initial tags are handled differently and may not match exactly
-
-      return paramsMatch
-    }
-
-    if (!initialFetchDone && hasInitialParamsMatch()) {
-      // Skip initial fetch - we already have data from SSR
+    if (!initialFetchDone && isInitialMatch) {
       setInitialFetchDone(true)
       setLoading(false)
     } else {
-      fetchStories()
+      fetchStories(1, true)
     }
-  }, [currentPage, searchQuery, selectedGenres, selectedTags, selectedLanguage, storyStatus, sortBy, toast, initialFetchDone, initialParams, allGenres])
+  }, [searchQuery, selectedGenres, selectedTags, selectedLanguage, storyStatus, sortBy])
 
-  // Update URL when filters change
+  // ── Intersection Observer for Auto-Fetching (Infinite Scroll) ─────────────
+  const fetchNextPage = useCallback(() => {
+    if (loading || isFetchingMore || !hasMore) return
+    fetchStories(currentPage + 1, false)
+  }, [loading, isFetchingMore, hasMore, currentPage, fetchStories])
+
   useEffect(() => {
-    updateURL()
-  }, [updateURL])
+    const target = observerTargetRef.current
+    if (!target || !hasMore || loading || isFetchingMore) return
 
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          fetchNextPage()
+        }
+      },
+      { threshold: 0.1, rootMargin: "250px" }
+    )
 
-  // Handle genre selection
-  const handleGenreChange = (genres: string[]) => {
-    setSelectedGenres(genres)
-    setCurrentPage(1)
-  }
+    observer.observe(target)
+    return () => observer.disconnect()
+  }, [hasMore, loading, isFetchingMore, fetchNextPage])
 
-  // Handle tag selection
-  const handleTagChange = (tags: string[]) => {
-    setSelectedTags(tags)
-    setCurrentPage(1)
-  }
+  // ── Handlers ──────────────────────────────────────────────────────────────
+  const handleGenreChange = (genres: string[]) => { setSelectedGenres(genres) }
+  const handleTagChange = (tags: string[]) => { setSelectedTags(tags) }
+  const handleLanguageChange = (language: string) => { setSelectedLanguage(language) }
+  const handleStatusChange = (status: "all" | "ongoing" | "completed") => { setStoryStatus(status) }
+  const handleSortChange = (sort: string) => { setSortBy(sort) }
 
-  // Handle language selection
-  const handleLanguageChange = (language: string) => {
-    setSelectedLanguage(language)
-    setCurrentPage(1)
-  }
+  const handleBookmark = useCallback((id: string | number) => {
+    setStories((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, isBookmarked: !s.isBookmarked } : s))
+    )
+  }, [])
 
-  // Handle status selection
-  const handleStatusChange = (status: "all" | "ongoing" | "completed") => {
-    setStoryStatus(status)
-    setCurrentPage(1)
-  }
-
-  // Handle sort selection
-  const handleSortChange = (sort: string) => {
-    setSortBy(sort)
-    setCurrentPage(1)
-  }
-
-  // Handle page change
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page)
-    window.scrollTo({ top: 0, behavior: "smooth" })
-  }
+  // ─────────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="max-w-7xl mx-auto">
-      <div className="mb-8">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-          <h1 className="text-2xl sm:text-3xl font-semibold">Browse Stories</h1>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setViewMode("grid")}
-              className={viewMode === "grid" ? "bg-primary/10" : ""}
-              aria-label="Grid view"
-            >
-              <Grid className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setViewMode("list")}
-              className={viewMode === "list" ? "bg-primary/10" : ""}
-              aria-label="List view"
-            >
-              <List className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
+      {/* ── Page Header ──────────────────────────────────────────────── */}
+      <div className="flex justify-between items-center gap-4 mb-4">
+        <h1 className="text-2xl sm:text-3xl font-semibold">Browse Stories</h1>
+      </div>
 
-        {/* Category Description for genre pages */}
-        {selectedGenres.length === 1 && (
-          <CategoryDescription
-            genre={allGenres.find(g => g.slug === selectedGenres[0])?.name || selectedGenres[0]}
-            totalStories={totalStories}
-            language={selectedLanguage}
-            status={storyStatus}
-          />
-        )}
+      {/* ── Genre category description ────────────────────────────────── */}
+      {selectedGenres.length === 1 && (
+        <CategoryDescription
+          genre={allGenres.find((g) => g.slug === selectedGenres[0])?.name || selectedGenres[0]}
+          totalStories={totalStories}
+          language={selectedLanguage}
+          status={storyStatus}
+        />
+      )}
 
-        {/* Horizontal Filter Bar */}
+      {/* ── Full-width filter bar ─────────────────────────────────────── */}
+      <div className="mb-6">
         <HorizontalFilterBar
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
@@ -504,62 +341,99 @@ export default function BrowseContent({ initialParams, initialData }: BrowseCont
         />
       </div>
 
-      {/* Stories Grid */}
-      <div className="w-full">
-        {loading ? (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center mb-6">
-              <p className="text-muted-foreground">Loading stories...</p>
-            </div>
-            <div className={`grid gap-6 ${
-              viewMode === "grid" ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" : "grid-cols-1"
-            }`}>
-              {Array.from({ length: 8 }).map((_, index) => (
-                <motion.div
-                  key={`skeleton-${index}`}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.3, delay: index * 0.1 }}
-                >
-                  <StoryCardSkeleton viewMode={viewMode} />
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        ) : error ? (
-          <div className="text-center py-16">
-            <h3 className="text-xl font-semibold mb-2 text-destructive">Error</h3>
-            <p className="text-muted-foreground">{error}</p>
-          </div>
-        ) : (
-          <>
-            <div className="flex justify-between items-center mb-6">
-              <p className="text-muted-foreground">
-                {totalStories} {totalStories === 1 ? 'story' : 'stories'} found
-              </p>
-            </div>
+      {/* ── Three-column layout: stories + sidebar ────────────────────── */}
+      <div className="flex gap-6 items-start">
 
-            <StoryGrid stories={stories} viewMode={viewMode} />
+        {/* Main content area */}
+        <main className="flex-1 min-w-0">
+          {loading ? (
+            <div>
+              <div className="text-sm text-muted-foreground mb-4">Loading stories...</div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <StoryCardSkeleton
+                    key={`skeleton-${i}`}
+                    variant="landscape-list"
+                  />
+                ))}
+              </div>
+            </div>
+          ) : error ? (
+            <div className="text-center py-20">
+              <p className="text-lg font-semibold text-destructive mb-2">Something went wrong</p>
+              <p className="text-muted-foreground text-sm">{error}</p>
+            </div>
+          ) : (
+            <AnimatePresence mode="wait">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                {/* Story count */}
+                <p className="text-sm text-muted-foreground mb-4">
+                  {totalStories.toLocaleString()} {totalStories === 1 ? "story" : "stories"} found
+                </p>
 
-            <div className="w-full py-4">
+                {/* Story grid */}
+                <StoryGrid
+                  stories={stories}
+                  viewMode="grid"
+                  onBookmark={handleBookmark}
+                />
+
+                {/* Infinite Scroll Sentinel & Auto-fetching loader */}
+                <div ref={observerTargetRef} className="my-8 flex flex-col items-center justify-center min-h-[60px]">
+                  {isFetchingMore && (
+                    <div className="flex items-center gap-2.5 text-sm text-muted-foreground animate-pulse">
+                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                      <span>Loading more stories...</span>
+                    </div>
+                  )}
+                  {!hasMore && stories.length > 0 && !loading && (
+                    <p className="text-xs text-muted-foreground opacity-70">
+                      You've reached the end of stories.
+                    </p>
+                  )}
+                </div>
+
+                {/* Bottom banner ad (full width, between content) */}
+                <div className="mt-8">
+                  <AdBanner
+                    type="banner"
+                    className="w-full max-w-[728px] h-[90px] mx-auto"
+                    slot="6596765108"
+                  />
+                </div>
+              </motion.div>
+            </AnimatePresence>
+          )}
+        </main>
+
+        {/* ── Right sticky sidebar ad (hidden on mobile/tablet) ─────── */}
+        <aside className="hidden xl:block w-[300px] shrink-0">
+          <div className="sticky top-24 flex flex-col gap-6">
+            {/* Primary sidebar ad */}
+            <AdBanner
+              type="sidebar"
+              className="w-[300px] min-h-[250px]"
+              slot="6596765108"
+            />
+
+            {/* Optional: second ad unit lower in sidebar */}
+            <div className="mt-4">
               <AdBanner
-                type="banner"
-                className="w-full max-w-[720px] h-[90px] mx-auto"
+                type="sidebar"
+                className="w-[300px] min-h-[250px]"
                 slot="6596765108"
               />
             </div>
+          </div>
+        </aside>
 
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={handlePageChange}
-              />
-            )}
-          </>
-        )}
       </div>
     </div>
   )
 }
+

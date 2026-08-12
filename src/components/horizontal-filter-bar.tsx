@@ -13,10 +13,18 @@ import {
   DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
-import { ChevronDown, X, Loader2 } from "lucide-react"
+import { ChevronDown, X, Loader2, SlidersHorizontal } from "lucide-react"
 import { logError } from "@/lib/error-logger"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+  SheetClose,
+} from "@/components/ui/sheet"
 import { GENRES, LANGUAGES } from "@/lib/constants/genres-and-languages"
 import SearchBar from "@/components/search-bar"
 import { MetaService } from "@/lib/api/meta"
@@ -180,6 +188,13 @@ export default function HorizontalFilterBar({
     }
   }
 
+  const activeFilterCount =
+    selectedGenres.length +
+    selectedTags.length +
+    (selectedLanguage ? 1 : 0) +
+    (storyStatus !== "all" ? 1 : 0) +
+    (sortBy !== "newest" ? 1 : 0)
+
   return (
     <div className="w-full space-y-4">
       {/* Search Bar with Suggestions */}
@@ -190,8 +205,178 @@ export default function HorizontalFilterBar({
         placeholder="Search stories, authors, genres, or tags..."
       />
 
-      {/* Filter Dropdowns */}
-      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+      {/* Mobile Compact Filter Trigger & Sheet Drawer */}
+      <div className="flex sm:hidden items-center justify-between gap-2">
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button variant="outline" size="sm" className="h-9 gap-2 text-sm flex-1">
+              <SlidersHorizontal className="h-4 w-4" />
+              <span>Filters & Sort</span>
+              {activeFilterCount > 0 && (
+                <Badge variant="secondary" className="px-1.5 py-0 text-xs">
+                  {activeFilterCount}
+                </Badge>
+              )}
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="bottom" className="h-[85vh] rounded-t-xl px-4 py-6 overflow-y-auto">
+            <SheetHeader className="text-left mb-4">
+              <SheetTitle className="text-lg font-semibold flex items-center justify-between">
+                <span>Filter & Sort Stories</span>
+                {hasActiveFilters && (
+                  <Button variant="ghost" size="sm" onClick={clearAllFilters} className="text-xs h-8">
+                    Clear All
+                  </Button>
+                )}
+              </SheetTitle>
+            </SheetHeader>
+
+            <div className="space-y-6 pb-6">
+              {/* Sort By */}
+              <div>
+                <label className="text-sm font-medium mb-2 block text-muted-foreground">Sort By</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: "newest", label: "Newest" },
+                    { id: "popular", label: "Popular" },
+                    { id: "mostRead", label: "Most Read" },
+                  ].map((item) => (
+                    <Button
+                      key={item.id}
+                      variant={sortBy === item.id ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => onSortChange(item.id)}
+                      className="text-xs"
+                    >
+                      {item.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Story Status */}
+              <div>
+                <label className="text-sm font-medium mb-2 block text-muted-foreground">Status</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: "all", label: "All" },
+                    { id: "ongoing", label: "Ongoing" },
+                    { id: "completed", label: "Completed" },
+                  ].map((item) => (
+                    <Button
+                      key={item.id}
+                      variant={storyStatus === item.id ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => onStatusChange(item.id as any)}
+                      className="text-xs"
+                    >
+                      {item.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Language */}
+              <div>
+                <label className="text-sm font-medium mb-2 block text-muted-foreground">Language</label>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant={selectedLanguage === "" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => onLanguageChange("")}
+                    className="text-xs"
+                  >
+                    All
+                  </Button>
+                  {languages.map((lang) => (
+                    <Button
+                      key={lang}
+                      variant={selectedLanguage === lang ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => onLanguageChange(lang)}
+                      className="text-xs"
+                    >
+                      {lang}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Genre */}
+              <div>
+                <label className="text-sm font-medium mb-2 block text-muted-foreground">Genres</label>
+                <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto p-1">
+                  {genres.map((genre) => {
+                    const isSelected = selectedGenres.includes(genre.slug)
+                    return (
+                      <Button
+                        key={genre.id}
+                        variant={isSelected ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => handleGenreToggle(genre.slug)}
+                        className="text-xs"
+                      >
+                        {genre.name}
+                      </Button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Tags */}
+              <div>
+                <label className="text-sm font-medium mb-2 block text-muted-foreground">Tags</label>
+                <Command className="border rounded-md">
+                  <CommandInput
+                    placeholder="Search tags..."
+                    value={tagSearchQuery}
+                    onValueChange={setTagSearchQuery}
+                  />
+                  <CommandEmpty>No tags found.</CommandEmpty>
+                  <CommandGroup className="max-h-40 overflow-y-auto">
+                    {loadingTags ? (
+                      <div className="flex justify-center items-center py-4">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      </div>
+                    ) : (
+                      filteredTags.map((tag) => (
+                        <CommandItem
+                          key={tag.id}
+                          onSelect={() => handleTagToggle(tag.name)}
+                          className="cursor-pointer"
+                        >
+                          <div className="flex items-center gap-2 w-full">
+                            <input
+                              type="checkbox"
+                              checked={selectedTags.includes(tag.name)}
+                              onChange={() => handleTagToggle(tag.name)}
+                              className="h-4 w-4"
+                            />
+                            <span>{tag.name}</span>
+                          </div>
+                        </CommandItem>
+                      ))
+                    )}
+                  </CommandGroup>
+                </Command>
+              </div>
+            </div>
+
+            <SheetClose asChild>
+              <Button className="w-full mt-4">Apply Filters</Button>
+            </SheetClose>
+          </SheetContent>
+        </Sheet>
+
+        {hasActiveFilters && (
+          <Button variant="ghost" size="sm" onClick={clearAllFilters} className="h-9 text-xs">
+            Clear All
+          </Button>
+        )}
+      </div>
+
+      {/* Desktop Filter Dropdowns */}
+      <div className="hidden sm:flex flex-wrap items-center gap-2 sm:gap-3">
         {/* Sort By Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

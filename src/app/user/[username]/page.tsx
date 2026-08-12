@@ -199,8 +199,8 @@ export default async function UserProfilePage({ params }: UserPageParams) {
       <div className="min-h-screen">
         <Navbar />
 
-        <main className="container mx-auto px-4 py-8">
-          <div className="max-w-7xl mx-auto">
+        <main className="py-8">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="mb-4 md:mb-8">
               <div className="relative h-32 sm:h-48 md:h-64 w-full rounded-lg overflow-hidden mb-8 sm:mb-12 md:mb-16">
                 <img

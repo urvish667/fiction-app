@@ -1,7 +1,21 @@
 import axios, { AxiosInstance, AxiosResponse, AxiosError } from 'axios';
 import { toast } from '@/hooks/use-toast';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.fablespace.com/api/v1';
+export const getApiBaseUrl = (): string => {
+  const envUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.fablespace.com/api/v1';
+  if (typeof window !== 'undefined') {
+    try {
+      const url = new URL(envUrl);
+      if (url.hostname === 'localhost' || url.hostname === '127.0.0.1' || /^192\.168\.\d+\.\d+$/.test(url.hostname)) {
+        url.hostname = window.location.hostname;
+        return url.toString().replace(/\/$/, '');
+      }
+    } catch {
+      return envUrl;
+    }
+  }
+  return envUrl;
+};
 
 class ApiClient {
   private client: AxiosInstance;
@@ -13,7 +27,7 @@ class ApiClient {
 
   constructor() {
     this.client = axios.create({
-      baseURL: API_BASE_URL,
+      baseURL: getApiBaseUrl(),
       withCredentials: true, // Include cookies
       headers: {
         'Content-Type': 'application/json',
@@ -27,6 +41,9 @@ class ApiClient {
     // Request interceptor for CSRF and logging
     this.client.interceptors.request.use(
       async (config) => {
+        const currentBaseUrl = getApiBaseUrl();
+        config.baseURL = currentBaseUrl;
+
         // Log in dev mode
         if (process.env.NODE_ENV !== 'production') {
           console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`, config);
@@ -51,7 +68,7 @@ class ApiClient {
           if (!csrfToken) {
             try {
               // Use a separate axios instance or fetch to avoid interceptor loop
-              const response = await axios.get(`${API_BASE_URL}/csrf/token`, { withCredentials: true });
+              const response = await axios.get(`${currentBaseUrl}/csrf/token`, { withCredentials: true });
 
               // Prefer getting token from response data as it's more reliable than reading cookie immediately
               if (response.data?.data?.csrfToken) {

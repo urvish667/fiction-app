@@ -1,10 +1,11 @@
-﻿"use client"
+"use client"
 
 import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
-import Image from "next/image"
 import { MessageSquare, BookOpen, Users, ArrowRight, Clock, ExternalLink, Search, ChevronLeft, ChevronRight } from "lucide-react"
 import { ForumService, ForumDirectoryItem, ActivityPost } from "@/lib/api/forum"
+import { ImageService } from "@/lib/api/images"
+import { Avatar as UiAvatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import AdBanner from "@/components/ad-banner"
 
 const FORUMS_PER_PAGE = 12
@@ -60,25 +61,12 @@ function timeAgo(dateStr: string): string {
 
 function Avatar({ src, name, size = 40 }: { src: string | null; name: string | null; size?: number }) {
   const initials = (name ?? "?").slice(0, 2).toUpperCase()
-  if (src) {
-    return (
-      <Image
-        src={src}
-        alt={name ?? "Author"}
-        width={size}
-        height={size}
-        className="rounded-full object-cover flex-shrink-0"
-        style={{ width: size, height: size }}
-      />
-    )
-  }
+  const imageUrl = ImageService.getImageUrl(src)
   return (
-    <div
-      className="rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold flex-shrink-0 text-xs"
-      style={{ width: size, height: size }}
-    >
-      {initials}
-    </div>
+    <UiAvatar style={{ width: size, height: size }} className="flex-shrink-0">
+      <AvatarImage src={imageUrl || "/placeholder-user.jpg"} alt={name ?? "Author"} className="object-cover" />
+      <AvatarFallback className="bg-primary/10 text-primary font-semibold text-xs">{initials}</AvatarFallback>
+    </UiAvatar>
   )
 }
 
@@ -117,7 +105,7 @@ export default function CommunityClient() {
   const paginated = filtered.slice((page - 1) * FORUMS_PER_PAGE, page * FORUMS_PER_PAGE)
 
   return (
-    <div className="max-w-7xl mx-auto px-6 md:px-10 py-12 space-y-14">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-14">
 
       <section className="text-center space-y-3">
         <h1 className="text-4xl md:text-5xl font-bold tracking-tight" style={{ fontFamily: "Georgia, serif" }}>

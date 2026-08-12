@@ -102,7 +102,7 @@ export default function PopularStories({ className }: PopularStoriesProps) {
   if (loading) {
     return (
       <section className={`py-8 bg-background ${className}`}>
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center mb-8">
             <div>
               <h2 className="text-xl sm:text-2xl font-semibold">Most Popular</h2>
@@ -115,7 +115,7 @@ export default function PopularStories({ className }: PopularStoriesProps) {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {Array.from({ length: 4 }).map((_, index) => (
-              <StoryCardSkeleton key={`skeleton-${index}`} viewMode="grid" />
+              <StoryCardSkeleton key={`skeleton-${index}`} variant="portrait-grid" />
             ))}
           </div>
         </div>
@@ -133,7 +133,7 @@ export default function PopularStories({ className }: PopularStoriesProps) {
 
   return (
     <section className={`py-8 bg-background ${className}`}>
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center mb-8">
           <div>
             <h2 className="text-3xl font-semibold">Most Popular</h2>
