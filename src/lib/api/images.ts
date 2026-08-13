@@ -13,37 +13,46 @@ export const ImageService = {
   getImageUrl: (imageInput?: string | null): string | null => {
     if (!imageInput) return null;
 
-    // If it's already a full URL (starts with http), return as-is
-    if (imageInput.startsWith('http://') || imageInput.startsWith('https://')) {
-      return imageInput;
+    const trimmed = imageInput.trim();
+    if (!trimmed) return null;
+
+    // If it's already a full HTTP/HTTPS URL, return as-is
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return trimmed;
     }
 
     const apiPrefix = '/api/v1/images/';
 
-    // If it's a local path (starts with /) but not our API prefix, return as-is
-    // This handles static assets like /placeholder.svg
-    if (imageInput.startsWith('/') && !imageInput.startsWith(apiPrefix)) {
-      return imageInput;
+    // If it's a local static asset (e.g. /placeholder.svg, /default-avatar.png) not starting with /api/v1/images/, return as-is
+    if (trimmed.startsWith('/') && !trimmed.startsWith(apiPrefix)) {
+      return trimmed;
     }
 
-    let imageKey = imageInput;
-
-    // Check if it's a full API path (backend proxy URL from database)
-    if (imageInput.startsWith(apiPrefix)) {
-      // Extract the key part after the prefix and decode it
-      const encodedKey = imageInput.substring(apiPrefix.length);
-      imageKey = decodeURIComponent(encodedKey);
-
-      // Always return the original proxy URL to ensure requests go through 
-      // the backend proxy (which handles IAM auth to the private S3 bucket)
-      return imageInput;
+    let imageKey = trimmed;
+    if (imageKey.startsWith(apiPrefix)) {
+      imageKey = imageKey.substring(apiPrefix.length);
     }
 
-    // Otherwise, construct the URL from the image key
-    const baseUrl = process.env.NODE_ENV === 'development'
-      ? '' // Use relative URLs in development (proxied through Next.js)
-      : (process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.fablespace.com/api/v1');
-    return `${baseUrl}/api/v1/images/${encodeURIComponent(imageKey)}`;
+    // Decode URL-encoded characters (like %2F -> /)
+    try {
+      imageKey = decodeURIComponent(imageKey);
+    } catch {}
+
+    // Clean leading slashes
+    imageKey = imageKey.replace(/^\/+/, '');
+    if (!imageKey) return null;
+
+    // Encode each path segment safely so directory slashes '/' stay intact
+    const safePath = imageKey.split('/').map(segment => encodeURIComponent(segment)).join('/');
+
+    // Construct base API origin (strip trailing /api/v1 if present)
+    const rawBaseUrl = process.env.NODE_ENV === 'development'
+      ? ''
+      : (process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.fablespace.space/api/v1');
+
+    const baseOrigin = rawBaseUrl.replace(/\/api\/v1\/?$/, '');
+
+    return `${baseOrigin}/api/v1/images/${safePath}`;
   },
 
   /**
