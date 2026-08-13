@@ -16,43 +16,24 @@ export const ImageService = {
     const trimmed = imageInput.trim();
     if (!trimmed) return null;
 
-    // If it's already a full HTTP/HTTPS URL, return as-is
-    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-      return trimmed;
+    // Full external URLs or static local assets (/placeholder.svg) are returned as-is
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+    if (trimmed.startsWith('/') && !trimmed.includes('api/v1/images/')) return trimmed;
+
+    // Clean key (strip proxy prefix if any)
+    let key = trimmed;
+    if (key.includes('api/v1/images/')) {
+      key = key.substring(key.indexOf('api/v1/images/') + 'api/v1/images/'.length);
     }
+    key = key.replace(/^\/+/, '');
 
-    const apiPrefix = '/api/v1/images/';
-
-    // If it's a local static asset (e.g. /placeholder.svg, /default-avatar.png) not starting with /api/v1/images/, return as-is
-    if (trimmed.startsWith('/') && !trimmed.startsWith(apiPrefix)) {
-      return trimmed;
-    }
-
-    let imageKey = trimmed;
-    if (imageKey.startsWith(apiPrefix)) {
-      imageKey = imageKey.substring(apiPrefix.length);
-    }
-
-    // Decode URL-encoded characters (like %2F -> /)
-    try {
-      imageKey = decodeURIComponent(imageKey);
-    } catch {}
-
-    // Clean leading slashes
-    imageKey = imageKey.replace(/^\/+/, '');
-    if (!imageKey) return null;
-
-    // Encode each path segment safely so directory slashes '/' stay intact
-    const safePath = imageKey.split('/').map(segment => encodeURIComponent(segment)).join('/');
-
-    // Construct base API origin (strip trailing /api/v1 if present)
     const rawBaseUrl = process.env.NODE_ENV === 'development'
       ? ''
       : (process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.fablespace.space/api/v1');
 
     const baseOrigin = rawBaseUrl.replace(/\/api\/v1\/?$/, '');
 
-    return `${baseOrigin}/api/v1/images/${safePath}`;
+    return `${baseOrigin}/api/v1/images/${key}`;
   },
 
   /**

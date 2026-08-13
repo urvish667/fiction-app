@@ -154,7 +154,8 @@ export default function ContinueReading({ className }: ContinueReadingProps) {
 
               const imageUrl = ImageService.getImageUrl(story.coverImage) || "/placeholder.svg"
               const genreName = getGenreName(story.genre)
-              const chapterTitle = chapter?.title || (chapter?.chapterNumber ? `Chapter ${chapter.chapterNumber}` : "Continue reading")
+              const chapterNum = chapter?.number ?? chapter?.chapterNumber ?? chapter?.id ?? 1
+              const chapterTitle = chapter?.title || (chapter?.number ? `Chapter ${chapter.number}` : chapter?.chapterNumber ? `Chapter ${chapter.chapterNumber}` : "Continue reading")
               const progressPercent = Math.min(100, Math.max(0, historyItem.progress || 0))
 
               return (
@@ -163,7 +164,7 @@ export default function ContinueReading({ className }: ContinueReadingProps) {
                   className="w-[calc(50%-0.375rem)] sm:w-[calc(33.333%-0.5rem)] md:w-[calc(25%-0.5rem)] lg:w-[calc(16.666%-0.625rem)] shrink-0 snap-start"
                 >
                   <Link
-                    href={`/story/${story.slug || story.id}/chapter/${chapter?.id || ''}`}
+                    href={`/story/${story.slug || story.id}/chapter/${chapterNum}`}
                     className="group/card block h-full"
                   >
                     <div className="relative aspect-[2/3] overflow-hidden rounded-xl shadow-sm bg-muted">

@@ -24,18 +24,18 @@ export const ImageUpload = {
       // Upload directly to backend API
       const response = await apiClient.post<{
         success: boolean;
-        data: { url: string };
+        data: { key: string; url: string };
       }>('/upload/image', {
         key: imageKey,
         contentType: file.type,
         data: Array.from(new Uint8Array(arrayBuffer)),
       });
 
-      if (!response.success || !response.data.url) {
+      if (!response.success) {
         throw new Error('Failed to upload profile image');
       }
 
-      return response.data.url;
+      return response.data.key || imageKey;
     } catch (error) {
       logError(error, { context: 'Uploading profile image' })
       throw error;
@@ -61,18 +61,18 @@ export const ImageUpload = {
       // Upload directly to backend API
       const response = await apiClient.post<{
         success: boolean;
-        data: { url: string };
+        data: { key: string; url: string };
       }>('/upload/image', {
         key: imageKey,
         contentType: file.type,
         data: Array.from(new Uint8Array(arrayBuffer)),
       });
 
-      if (!response.success || !response.data.url) {
+      if (!response.success) {
         throw new Error('Failed to upload banner image');
       }
 
-      return response.data.url;
+      return response.data.key || imageKey;
     } catch (error) {
       logError(error, { context: 'Uploading banner image' })
       throw error;
