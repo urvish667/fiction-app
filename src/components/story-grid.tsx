@@ -55,8 +55,8 @@ export default function StoryGrid({
             />
           </motion.div>
 
-          {/* Ad Banner displayed every 4 story cards on smaller screens */}
-          {(index + 1) % 4 === 0 && (
+          {/* Ad Banner displayed every 8 story cards on smaller screens */}
+          {(index + 1) % 8 === 0 && (
             <div className="col-span-full xl:hidden my-2 flex justify-center">
               <AdBanner
                 type="banner"

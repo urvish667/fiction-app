@@ -135,7 +135,7 @@ export default function BrowseContent({ initialParams, initialData }: BrowseCont
   const [totalPages, setTotalPages] = useState(initialData.pagination.totalPages)
   const [totalStories, setTotalStories] = useState(initialData.pagination.total)
   const [initialFetchDone, setInitialFetchDone] = useState(false)
-  
+
   const observerTargetRef = useRef<HTMLDivElement>(null)
   const storiesPerPage = 16
   const hasMore = currentPage < totalPages
@@ -149,8 +149,8 @@ export default function BrowseContent({ initialParams, initialData }: BrowseCont
 
   // ── Fetch genres & tags ───────────────────────────────────────────────────
   useEffect(() => {
-    MetaService.getGenres().then((r) => r.success && r.data && setAllGenres(r.data)).catch(() => {})
-    MetaService.getTags().then((r) => r.success && r.data && setAllTags(r.data)).catch(() => {})
+    MetaService.getGenres().then((r) => r.success && r.data && setAllGenres(r.data)).catch(() => { })
+    MetaService.getTags().then((r) => r.success && r.data && setAllTags(r.data)).catch(() => { })
   }, [])
 
   // ── Sync genre from URL ───────────────────────────────────────────────────
@@ -342,7 +342,7 @@ export default function BrowseContent({ initialParams, initialData }: BrowseCont
       </div>
 
       {/* ── Three-column layout: stories + sidebar ────────────────────── */}
-      <div className="flex gap-6 items-start">
+      <div className="flex gap-6">
 
         {/* Main content area */}
         <main className="flex-1 min-w-0">
@@ -398,14 +398,6 @@ export default function BrowseContent({ initialParams, initialData }: BrowseCont
                   )}
                 </div>
 
-                {/* Bottom banner ad (full width, between content) */}
-                <div className="mt-8">
-                  <AdBanner
-                    type="banner"
-                    className="w-full max-w-[728px] h-[90px] mx-auto"
-                    slot="6596765108"
-                  />
-                </div>
               </motion.div>
             </AnimatePresence>
           )}

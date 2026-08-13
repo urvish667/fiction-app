@@ -19,7 +19,7 @@ export default function CommunityPage() {
   return (
     <div className="min-h-screen">
       <Navbar />
-      <main>
+      <main className="py-8">
         <CommunityClient />
       </main>
       <SiteFooter />
