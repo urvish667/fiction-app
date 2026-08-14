@@ -34,29 +34,33 @@ export default function AdBanner({ type, className = "", slot, width, height }: 
     const pushAd = () => {
       if (pushedRef.current) return
       try {
-        if (adRef.current && adRef.current.offsetWidth > 0) {
-          (window.adsbygoogle = window.adsbygoogle || []).push({})
+        // Use rAF to ensure layout is settled before AdSense measures the slot
+        requestAnimationFrame(() => {
+          if (pushedRef.current) return
+          ;(window.adsbygoogle = window.adsbygoogle || []).push({})
           pushedRef.current = true
-        }
+        })
       } catch (error) {
         console.error('AdSense error:', error)
       }
     }
 
-    if (adRef.current && adRef.current.offsetWidth > 0) {
-      pushAd()
-    } else if (adRef.current && typeof ResizeObserver !== 'undefined') {
-      const observer = new ResizeObserver((entries) => {
-        for (const entry of entries) {
-          if (entry.contentRect.width > 0 && !pushedRef.current) {
-            pushAd()
-            observer.disconnect()
+    if (adRef.current) {
+      // If the element is already visible, push immediately (after layout)
+      if (adRef.current.offsetWidth > 0) {
+        pushAd()
+      } else if (typeof ResizeObserver !== 'undefined') {
+        // Wait until the container gets a real width
+        const observer = new ResizeObserver((entries) => {
+          for (const entry of entries) {
+            if (entry.contentRect.width > 0 && !pushedRef.current) {
+              pushAd()
+              observer.disconnect()
+            }
           }
-        }
-      })
-      observer.observe(adRef.current)
-      return () => {
-        observer.disconnect()
+        })
+        observer.observe(adRef.current)
+        return () => observer.disconnect()
       }
     }
   }, [slot])
@@ -86,6 +90,7 @@ export default function AdBanner({ type, className = "", slot, width, height }: 
         style={{
           display: "block",
           width: "100%",
+          minWidth: "1px", // Prevents AdSense "availableWidth=0" error
           maxWidth: width ? `${width}px` : "720px",
           height: height ? `${height}px` : "90px"
         }}
