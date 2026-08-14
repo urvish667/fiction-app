@@ -124,8 +124,23 @@ export default function BrowseContent({ initialParams, initialData }: BrowseCont
   const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState(initialParams.search || "")
   const [allGenres, setAllGenres] = useState<GenreOption[]>([])
-  const [selectedGenres, setSelectedGenres] = useState<string[]>([])
+  // Initialize directly from URL slug — no API needed, it's just a string
+  const [selectedGenres, setSelectedGenres] = useState<string[]>(() => {
+    const slug = initialParams.genre ? safeDecodeURIComponent(initialParams.genre) : null
+    return slug ? [slug] : []
+  })
   const [allTags, setAllTags] = useState<TagOption[]>([])
+  // Handle both ?tags=a,b and single ?tag=x URL params at init time
+  const [selectedTags, setSelectedTags] = useState<string[]>(() => {
+    if (initialParams.tags) {
+      return initialParams.tags.split(",").map((t) => safeDecodeURIComponent(t.trim())).filter((t): t is string => t !== null)
+    }
+    if (initialParams.tag) {
+      const decoded = safeDecodeURIComponent(initialParams.tag)
+      return decoded ? [decoded] : []
+    }
+    return []
+  })
   const [selectedLanguage, setSelectedLanguage] = useState<string>(initialParams.language || "")
   const [storyStatus, setStoryStatus] = useState<"all" | "ongoing" | "completed">(
     (initialParams.status as "all" | "ongoing" | "completed") || "all"
@@ -137,45 +152,26 @@ export default function BrowseContent({ initialParams, initialData }: BrowseCont
   const [initialFetchDone, setInitialFetchDone] = useState(false)
 
   const observerTargetRef = useRef<HTMLDivElement>(null)
+  const abortControllerRef = useRef<AbortController | null>(null)
   const storiesPerPage = 16
   const hasMore = currentPage < totalPages
 
-  const [selectedTags, setSelectedTags] = useState<string[]>(() => {
-    if (initialParams.tags) {
-      return initialParams.tags.split(",").map((t) => safeDecodeURIComponent(t.trim())).filter((t): t is string => t !== null)
-    }
-    return []
-  })
-
-  // ── Fetch genres & tags ───────────────────────────────────────────────────
+  // ── Fetch genres & tags (single source of truth) ─────────────────────────
   useEffect(() => {
-    MetaService.getGenres().then((r) => r.success && r.data && setAllGenres(r.data)).catch(() => { })
-    MetaService.getTags().then((r) => r.success && r.data && setAllTags(r.data)).catch(() => { })
+    MetaService.getGenres().then((r) => r.success && r.data && setAllGenres(r.data)).catch(() => {})
+    MetaService.getTags().then((r) => r.success && r.data && setAllTags(r.data)).catch(() => {})
   }, [])
 
-  // ── Sync genre from URL ───────────────────────────────────────────────────
+  // ── Sync tag name from slug (only needed when ?tag= is used, after tags load) ─
+  // selectedTags is pre-initialized with the raw slug; once tags load we refine to the display name
   useEffect(() => {
-    if (initialParams.genre && allGenres.length > 0) {
-      const slug = safeDecodeURIComponent(initialParams.genre)
-      if (slug) {
-        const found = allGenres.find((g) => g.slug === slug)
-        if (found) setSelectedGenres([found.slug])
+    if (initialParams.tag && allTags.length > 0 && selectedTags.length === 1) {
+      const found = allTags.find((t) => t.slug === selectedTags[0])
+      if (found && found.name !== selectedTags[0]) {
+        setSelectedTags([found.name])
       }
     }
-  }, [initialParams.genre, allGenres])
-
-  // ── Sync tag from URL ─────────────────────────────────────────────────────
-  useEffect(() => {
-    if (initialParams.tag && allTags.length > 0) {
-      const decoded = safeDecodeURIComponent(initialParams.tag!)
-      if (decoded) {
-        const found = allTags.find((t) => t.slug === decoded)
-        if (found && (!selectedTags.length || selectedTags[0] !== found.name)) {
-          setSelectedTags([found.name])
-        }
-      }
-    }
-  }, [initialParams.tag, allTags])
+  }, [allTags]) // only runs once when tags first load
 
   // ── URL sync ──────────────────────────────────────────────────────────────
   const updateURL = useCallback(() => {
@@ -201,6 +197,9 @@ export default function BrowseContent({ initialParams, initialData }: BrowseCont
   // ── Fetch stories (Page 1 replacement vs Append) ─────────────────────────
   const fetchStories = useCallback(async (pageToFetch: number, isReset: boolean = false) => {
     if (isReset) {
+      // Cancel any in-flight request before starting a new one
+      abortControllerRef.current?.abort()
+      abortControllerRef.current = new AbortController()
       setLoading(true)
     } else {
       setIsFetchingMore(true)
@@ -249,22 +248,24 @@ export default function BrowseContent({ initialParams, initialData }: BrowseCont
     }
   }, [storyStatus, sortBy, searchQuery, selectedGenres, allGenres, selectedTags, selectedLanguage, storiesPerPage, formatApiStory, toast])
 
-  // ── Filter change effect ─────────────────────────────────────────────────
+  // ── Filter change effect (debounced to batch rapid changes) ─────────────
   useEffect(() => {
     const isInitialMatch =
+      selectedGenres.length === (initialParams.genre ? 1 : 0) &&
       currentPage === parseInt(initialParams.page || "1") &&
       searchQuery === (initialParams.search || "") &&
       selectedLanguage === (initialParams.language || "") &&
       storyStatus === ((initialParams.status as any) || "all") &&
       sortBy === (initialParams.sortBy || "newest") &&
-      selectedTags.length === 0
+      selectedTags.length === (initialParams.tag || initialParams.tags ? selectedTags.length : 0)
 
     if (!initialFetchDone && isInitialMatch) {
       setInitialFetchDone(true)
-      setLoading(false)
-    } else {
-      fetchStories(1, true)
+      return
     }
+
+    const timer = setTimeout(() => fetchStories(1, true), 400)
+    return () => clearTimeout(timer)
   }, [searchQuery, selectedGenres, selectedTags, selectedLanguage, storyStatus, sortBy])
 
   // ── Intersection Observer for Auto-Fetching (Infinite Scroll) ─────────────
@@ -332,6 +333,7 @@ export default function BrowseContent({ initialParams, initialData }: BrowseCont
           onGenreChange={handleGenreChange}
           selectedTags={selectedTags}
           onTagChange={handleTagChange}
+          availableTags={allTags}
           selectedLanguage={selectedLanguage}
           onLanguageChange={handleLanguageChange}
           storyStatus={storyStatus}

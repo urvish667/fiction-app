@@ -11,11 +11,12 @@ import { ImageService } from "@/lib/api/images"
 
 interface MostViewedStoriesProps {
   className?: string
+  initialData?: any[]
 }
 
-export default function MostViewedStories({ className }: MostViewedStoriesProps) {
-  const [stories, setStories] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+export default function MostViewedStories({ className, initialData }: MostViewedStoriesProps) {
+  const [stories, setStories] = useState<any[]>(initialData || [])
+  const [loading, setLoading] = useState(!initialData)
   const [error, setError] = useState<string | null>(null)
 
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -49,6 +50,7 @@ export default function MostViewedStories({ className }: MostViewedStoriesProps)
   }
 
   useEffect(() => {
+    if (initialData) return // already have server data
     async function fetchMostViewedStories() {
       try {
         setLoading(true)

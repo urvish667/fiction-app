@@ -13,6 +13,8 @@ import NewlyArrivedStories from "@/components/newly-arrived-stories"
 import ContinueReading from "@/components/continue-reading"
 import { Button } from "@/components/ui/button"
 import { slugify } from "@/lib/utils"
+import { StoryService } from "@/lib/api/story"
+import { ImageService } from "@/lib/api/images"
 
 // ── Fonts ─────────────────────────────────────────────────────────────────
 // Loaded via <link> in the section head rather than next/font so we keep
@@ -32,10 +34,27 @@ const HERO_VIDEO_MOBILE =
 const HERO_FALLBACK =
   "https://fablespace-assets-prod.s3.ap-south-1.amazonaws.com/site/hero/fablespace-hero.png"
 
-export default function Home() {
+export default async function Home() {
   const homepageStructuredData = generateHomepageStructuredData()
   const organizationStructuredData = generateOrganizationStructuredData()
   const faqStructuredData = generateHomepageFAQStructuredData()
+
+  // Fetch both story sections in parallel server-side — zero client API calls on home load
+  const [newestRes, mostViewedRes] = await Promise.all([
+    StoryService.getStories({ sortBy: 'newest', limit: 8 }).catch(() => null),
+    StoryService.getStories({ sortBy: 'mostViewed', limit: 8 }).catch(() => null),
+  ])
+
+  const formatStories = (res: typeof newestRes) =>
+    (res?.data?.stories || []).map((s: any) => ({
+      ...s,
+      author: s.author?.name || s.author?.username || "Unknown Author",
+      coverImage: ImageService.getImageUrl(s.coverImage) || "/placeholder.svg",
+      viewCount: s.viewCount || s.readCount || 0,
+    }))
+
+  const newestStories = formatStories(newestRes)
+  const mostViewedStories = formatStories(mostViewedRes)
 
   return (
     <>
@@ -176,8 +195,8 @@ export default function Home() {
           {/* ══════════════════════════════════════════════════════════════ */}
 
           <div className="container mx-auto px-4 py-12 space-y-8">
-            <NewlyArrivedStories />
-            <MostViewedStories />
+            <NewlyArrivedStories initialData={newestStories} />
+            <MostViewedStories initialData={mostViewedStories} />
             <ContinueReading />
 
             {/* Explore Categories */}

@@ -11,11 +11,12 @@ import { ImageService } from "@/lib/api/images"
 
 interface NewlyArrivedStoriesProps {
   className?: string
+  initialData?: any[]
 }
 
-export default function NewlyArrivedStories({ className }: NewlyArrivedStoriesProps) {
-  const [stories, setStories] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+export default function NewlyArrivedStories({ className, initialData }: NewlyArrivedStoriesProps) {
+  const [stories, setStories] = useState<any[]>(initialData ?? [])
+  const [loading, setLoading] = useState(initialData === undefined)
   const [error, setError] = useState<string | null>(null)
 
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -49,6 +50,7 @@ export default function NewlyArrivedStories({ className }: NewlyArrivedStoriesPr
   }
 
   useEffect(() => {
+    if (initialData !== undefined) return // already have server data
     async function fetchStories() {
       try {
         setLoading(true)

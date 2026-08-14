@@ -53,42 +53,28 @@ export default function StoryRecommendations({
   const [includesSameAuthor, setIncludesSameAuthor] = useState(false);
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
 
-  // Fetch recommendations
+  // Fetch recommendations — single call, detect same-author client-side
   useEffect(() => {
     const fetchRecommendations = async () => {
+      if (!storyId) return
       try {
         setLoading(true);
         setError(null);
-        setIncludesSameAuthor(false); // Reset this flag when fetching new recommendations
+        setIncludesSameAuthor(false);
 
-        // First try with excludeSameAuthor as specified
         const response = await RecommendationService.getRecommendations(storyId, {
           limit,
-          excludeSameAuthor
+          excludeSameAuthor: false, // fetch all; filter/detect client-side
         });
 
-        // If we got recommendations, use them
         if (response.success && response.data && response.data.length > 0) {
           setRecommendations(response.data);
-        }
-        // If we got no recommendations and we were excluding same author, try again including same author
-        else if (excludeSameAuthor) {
-
-          // Try again with excludeSameAuthor=false
-          const fallbackResponse = await RecommendationService.getRecommendations(storyId, {
-            limit,
-            excludeSameAuthor: false
-          });
-
-          if (fallbackResponse.success && fallbackResponse.data) {
-            setRecommendations(fallbackResponse.data);
-            setIncludesSameAuthor(true);
-          } else {
-            // No recommendations found even with same author included
-            setRecommendations([]);
+          // If the caller wanted same-author excluded, flag it so the UI can show the note
+          if (excludeSameAuthor) {
+            const hasStrictResults = response.data.some(r => r.similarityScore > 0)
+            setIncludesSameAuthor(!hasStrictResults)
           }
         } else {
-          // No recommendations found even with same author included
           setRecommendations([]);
         }
       } catch (err) {
@@ -99,9 +85,7 @@ export default function StoryRecommendations({
       }
     };
 
-    if (storyId) {
-      fetchRecommendations();
-    }
+    fetchRecommendations();
   }, [storyId, limit, excludeSameAuthor]);
 
   // Handle window resize

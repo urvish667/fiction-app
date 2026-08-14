@@ -13,6 +13,9 @@ interface Suggestion {
   stories: { id: string; title: string; slug?: string }[];
 }
 
+// Module-level cache — persists across re-renders, cleared on page unload
+const suggestionCache = new Map<string, Suggestion>();
+
 // Helper function to handle both flat and nested API response data structures
 function unwrapApiData<T>(apiResponseData: any): T {
   if (typeof apiResponseData === 'object' && apiResponseData !== null && 'data' in apiResponseData) {
@@ -42,28 +45,35 @@ export default function SearchBar({
 
   useEffect(() => {
     const fetchSuggestions = async () => {
-      if (query.length > 1) {
-        try {
-          setShowSuggestions(true);
-          setIsLoading(true);
-          const response = await SearchService.getSuggestions(query);
-          if (response.success && response.data) {
-            // Handle both flat and nested data structures
-            const data = unwrapApiData<Suggestion>(response.data);
-            setSuggestions(data);
-          } else {
-            setShowSuggestions(false);
-            setSuggestions(null);
-          }
-        } catch (error) {
-          setShowSuggestions(false);
-          setSuggestions(null);
-        } finally {
-          setIsLoading(false);
-        }
-      } else {
+      if (query.length <= 1) {
         setShowSuggestions(false);
         setSuggestions(null);
+        return;
+      }
+
+      // Return cached result immediately
+      if (suggestionCache.has(query)) {
+        setSuggestions(suggestionCache.get(query)!);
+        setShowSuggestions(true);
+        return;
+      }
+
+      try {
+        setShowSuggestions(true);
+        setIsLoading(true);
+        const response = await SearchService.getSuggestions(query);
+        if (response.success && response.data) {
+          const data = unwrapApiData<Suggestion>(response.data);
+          suggestionCache.set(query, data);
+          setSuggestions(data);
+        } else {
+          setShowSuggestions(false);
+          setSuggestions(null);
+        }
+      } catch {
+        setShowSuggestions(false);
+        setSuggestions(null);
+      } finally {
         setIsLoading(false);
       }
     };

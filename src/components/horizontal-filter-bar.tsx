@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { ChevronDown, X, Loader2, SlidersHorizontal } from "lucide-react"
-import { logError } from "@/lib/error-logger"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
@@ -27,7 +26,6 @@ import {
 } from "@/components/ui/sheet"
 import { GENRES, LANGUAGES } from "@/lib/constants/genres-and-languages"
 import SearchBar from "@/components/search-bar"
-import { MetaService } from "@/lib/api/meta"
 
 // Genre option type
 interface GenreOption {
@@ -60,6 +58,7 @@ interface HorizontalFilterBarProps {
   onGenreChange: (genres: string[]) => void
   selectedTags: string[]
   onTagChange: (tags: string[]) => void
+  availableTags: TagOption[]
   selectedLanguage: string
   onLanguageChange: (language: string) => void
   storyStatus: "all" | "ongoing" | "completed"
@@ -75,6 +74,7 @@ export default function HorizontalFilterBar({
   onGenreChange,
   selectedTags,
   onTagChange,
+  availableTags,
   selectedLanguage,
   onLanguageChange,
   storyStatus,
@@ -83,34 +83,13 @@ export default function HorizontalFilterBar({
   onSortChange,
 }: HorizontalFilterBarProps) {
   const [genres] = useState<GenreOption[]>(genresWithIds)
-  const [tags, setTags] = useState<TagOption[]>([])
+  const tags = availableTags
   const [languages] = useState<string[]>(languagesFromConstants)
-  const [loadingTags, setLoadingTags] = useState(false)
+  const [loadingTags] = useState(false)
   const [tagSearchOpen, setTagSearchOpen] = useState(false)
   const [tagSearchQuery, setTagSearchQuery] = useState("")
 
-  // Genres are now loaded from constants - no API call needed
-
-  // Fetch tags from the API
-  useEffect(() => {
-    const fetchTags = async () => {
-      setLoadingTags(true)
-      try {
-        const response = await MetaService.getTags()
-        if (response.success && response.data) {
-          setTags(response.data)
-        }
-      } catch (error) {
-        logError(error, { context: "Fetching tags" })
-      } finally {
-        setLoadingTags(false)
-      }
-    }
-
-    fetchTags()
-  }, [])
-
-  // Languages are now loaded from constants - no API call needed
+  // Tags and genres are sourced from constants or parent props — no API calls needed here
 
   const handleGenreToggle = (genreSlug: string) => {
     if (selectedGenres.includes(genreSlug)) {
