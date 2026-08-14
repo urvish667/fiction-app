@@ -2,80 +2,103 @@ import { apiClient } from "./apiClient";
 import { logError } from "./error-logger";
 
 /**
+ * Extract a human-readable, specific error message from an API or network error
+ */
+function getErrorMessage(error: any, fallback: string): string {
+  if (typeof error === 'string') return error;
+  if (error?.response?.data?.error?.message) return error.response.data.error.message;
+  if (error?.response?.data?.message) return error.response.data.message;
+  if (error?.message) return error.message;
+  return fallback;
+}
+
+/**
  * Utility for handling image uploads
  */
 export const ImageUpload = {
   /**
-   * Upload a profile image to Azure Blob Storage
+   * Upload a profile image
    * @param userId The user ID
    * @param file The image file
    * @returns The URL of the uploaded image
    */
   async uploadProfileImage(userId: string, file: File): Promise<string> {
     try {
-      // Read the file as an ArrayBuffer
-      const arrayBuffer = await file.arrayBuffer();
+      // Validate file size client-side first
+      if (file.size > 10 * 1024 * 1024) {
+        throw new Error('Image size exceeds the 10MB limit. Please choose a smaller image.');
+      }
 
       // Generate a unique key for the image
       const timestamp = Date.now();
       const fileExtension = file.name.split('.').pop() || 'jpg';
       const imageKey = `users/${userId}/profile-${timestamp}.${fileExtension}`;
 
-      // Upload directly to backend API
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('key', imageKey);
+
+      // Upload binary multipart directly to backend API
       const response = await apiClient.post<{
         success: boolean;
         data: { key: string; url: string };
-      }>('/upload/image', {
-        key: imageKey,
-        contentType: file.type,
-        data: Array.from(new Uint8Array(arrayBuffer)),
-      });
+        error?: { message?: string };
+        message?: string;
+      }>('/upload/image', formData);
 
-      if (!response.success) {
-        throw new Error('Failed to upload profile image');
+      if (!response || !response.success) {
+        const msg = response?.error?.message || response?.message || 'Failed to upload profile image';
+        throw new Error(msg);
       }
 
-      return response.data.key || imageKey;
-    } catch (error) {
-      logError(error, { context: 'Uploading profile image' })
-      throw error;
+      return response.data.url || response.data.key || imageKey;
+    } catch (error: any) {
+      const message = getErrorMessage(error, 'Failed to upload profile picture. Please try again.');
+      logError(error, { context: 'Uploading profile image', message });
+      throw new Error(message);
     }
   },
 
   /**
-   * Upload a banner image to Azure Blob Storage
+   * Upload a banner image
    * @param userId The user ID
    * @param file The image file
    * @returns The URL of the uploaded image
    */
   async uploadBannerImage(userId: string, file: File): Promise<string> {
     try {
-      // Read the file as an ArrayBuffer
-      const arrayBuffer = await file.arrayBuffer();
+      // Validate file size client-side first
+      if (file.size > 10 * 1024 * 1024) {
+        throw new Error('Image size exceeds the 10MB limit. Please choose a smaller image.');
+      }
 
       // Generate a unique key for the image
       const timestamp = Date.now();
       const fileExtension = file.name.split('.').pop() || 'jpg';
       const imageKey = `users/${userId}/banner-${timestamp}.${fileExtension}`;
 
-      // Upload directly to backend API
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('key', imageKey);
+
+      // Upload binary multipart directly to backend API
       const response = await apiClient.post<{
         success: boolean;
         data: { key: string; url: string };
-      }>('/upload/image', {
-        key: imageKey,
-        contentType: file.type,
-        data: Array.from(new Uint8Array(arrayBuffer)),
-      });
+        error?: { message?: string };
+        message?: string;
+      }>('/upload/image', formData);
 
-      if (!response.success) {
-        throw new Error('Failed to upload banner image');
+      if (!response || !response.success) {
+        const msg = response?.error?.message || response?.message || 'Failed to upload banner image';
+        throw new Error(msg);
       }
 
-      return response.data.key || imageKey;
-    } catch (error) {
-      logError(error, { context: 'Uploading banner image' })
-      throw error;
+      return response.data.url || response.data.key || imageKey;
+    } catch (error: any) {
+      const message = getErrorMessage(error, 'Failed to upload banner image. Please try again.');
+      logError(error, { context: 'Uploading banner image', message });
+      throw new Error(message);
     }
   },
 
@@ -133,7 +156,7 @@ export const ImageUpload = {
           // Draw the image on the canvas
           const ctx = canvas.getContext('2d');
           if (!ctx) {
-            reject(new Error('Failed to get canvas context'));
+            reject(new Error('Failed to process image: Canvas context unavailable'));
             return;
           }
 
@@ -143,7 +166,7 @@ export const ImageUpload = {
           canvas.toBlob(
             (blob) => {
               if (!blob) {
-                reject(new Error('Failed to create blob'));
+                reject(new Error('Failed to compress image'));
                 return;
               }
 
@@ -162,7 +185,7 @@ export const ImageUpload = {
 
         img.onerror = () => {
           URL.revokeObjectURL(url);
-          reject(new Error('Failed to load image'));
+          reject(new Error('Failed to load image file. The file may be corrupt.'));
         };
 
         img.src = url;
@@ -173,38 +196,44 @@ export const ImageUpload = {
   },
 
   /**
-   * Upload an editor image to Azure Blob Storage
+   * Upload an editor image
    * @param file The image file
    * @returns The URL of the uploaded image
    */
   async uploadEditorImage(file: File): Promise<string> {
     try {
-      // Read the file as an ArrayBuffer
-      const arrayBuffer = await file.arrayBuffer();
+      if (file.size > 10 * 1024 * 1024) {
+        throw new Error('Image size exceeds the 10MB limit. Please choose a smaller image.');
+      }
 
       // Generate a unique key for the image
       const timestamp = Date.now();
       const fileExtension = file.name.split('.').pop() || 'jpg';
       const imageKey = `editor/images/${timestamp}-${Math.random().toString(36).substring(2, 10)}.${fileExtension}`;
 
-      // Upload directly to backend API
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('key', imageKey);
+
+      // Upload binary multipart directly to backend API
       const response = await apiClient.post<{
         success: boolean;
         data: { url: string };
-      }>('/upload/image', {
-        key: imageKey,
-        contentType: file.type,
-        data: Array.from(new Uint8Array(arrayBuffer)),
-      });
+        error?: { message?: string };
+        message?: string;
+      }>('/upload/image', formData);
 
-      if (!response.success || !response.data.url) {
-        throw new Error('Failed to upload editor image');
+      if (!response || !response.success || !response.data?.url) {
+        const msg = response?.error?.message || response?.message || 'Failed to upload editor image';
+        throw new Error(msg);
       }
 
       return response.data.url;
-    } catch (error) {
-      logError(error, { context: 'Uploading editor image' })
-      throw error;
+    } catch (error: any) {
+      const message = getErrorMessage(error, 'Failed to upload image into editor. Please try again.');
+      logError(error, { context: 'Uploading editor image', message });
+      throw new Error(message);
     }
   }
 };
+

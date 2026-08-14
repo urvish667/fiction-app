@@ -57,11 +57,11 @@ export const BannerImageUpload = ({
           description: "Your profile banner has been updated successfully",
         });
       }
-    } catch (error) {
-      logError(error, { context: "Error uploading banner image" })
+    } catch (error: any) {
+      logError(error, { context: "Error uploading banner image" });
       toast({
         title: "Upload failed",
-        description: "Failed to upload banner image. Please try again.",
+        description: error?.message || "Failed to upload banner image. Please try again.",
         variant: "destructive",
       });
     } finally {

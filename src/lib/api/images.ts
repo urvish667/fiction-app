@@ -89,17 +89,21 @@ export const ImageService = {
    * @returns Upload result with URL
    */
   /**
-   * Upload an image to the backend
+   * Upload an image to the backend using FormData multipart upload
    * @param imageData The image file to upload
    * @param metadata Optional metadata including custom key
-   * @returns Upload result with URL
+   * @returns Upload result with URL and detailed error message if failed
    */
   async uploadImage(imageData: File, metadata?: {
     key?: string;
   }): Promise<{ success: boolean; url?: string; error?: string }> {
     try {
-      // Read file as ArrayBuffer
-      const arrayBuffer = await imageData.arrayBuffer();
+      if (imageData.size > 10 * 1024 * 1024) {
+        return {
+          success: false,
+          error: 'Image size exceeds the 10MB limit. Please choose a smaller image.',
+        };
+      }
 
       // Generate key if not provided
       let imageKey = metadata?.key;
@@ -109,37 +113,43 @@ export const ImageService = {
         imageKey = `uploads/${timestamp}.${fileExtension}`;
       }
 
-      // Prepare payload matching backend expectation: { key, contentType, data: number[] }
-      const payload = {
-        key: imageKey,
-        contentType: imageData.type,
-        data: Array.from(new Uint8Array(arrayBuffer))
-      };
+      const formData = new FormData();
+      formData.append('file', imageData);
+      formData.append('key', imageKey);
 
       const response = await apiClient.post<{
         success: boolean;
-        data: { url: string };
-        error?: string;
-      }>('/upload/image', payload);
+        data: { key: string; url: string };
+        error?: { message?: string };
+        message?: string;
+      }>('/upload/image', formData);
 
-      if (response.success && response.data?.url) {
+      if (response && response.success && response.data?.url) {
         return {
           success: true,
-          url: response.data.url
+          url: response.data.url,
         };
       } else {
+        const errorMsg = response?.error?.message || response?.message || 'Failed to upload image';
         return {
           success: false,
-          error: response.error || 'Failed to upload image'
+          error: errorMsg,
         };
       }
     } catch (error: any) {
+      const errorMsg =
+        error?.response?.data?.error?.message ||
+        error?.response?.data?.message ||
+        error?.message ||
+        'Failed to upload image. Please check your connection and try again.';
+
       return {
         success: false,
-        error: error.message || 'Failed to upload image'
+        error: errorMsg,
       };
     }
   }
 };
 
 export default ImageService;
+

@@ -56,11 +56,11 @@ export const ProfileImageUpload = ({
           description: "Your profile picture has been updated successfully",
         });
       }
-    } catch (error) {
-      logError(error, { context: "Error uploading profile image" })
+    } catch (error: any) {
+      logError(error, { context: "Error uploading profile image" });
       toast({
         title: "Upload failed",
-        description: "Failed to upload profile picture. Please try again.",
+        description: error?.message || "Failed to upload profile picture. Please try again.",
         variant: "destructive",
       });
     } finally {

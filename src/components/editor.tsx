@@ -147,13 +147,13 @@ export function Editor({ content, onChange, readOnly = false }: EditorProps) {
           description: "Image has been added to your chapter.",
         })
       }
-    } catch (error) {
+    } catch (error: any) {
       logError(error, { context: 'Uploading image' });
       toast({
         title: "Upload failed",
-        description: "Failed to upload image. Please try again.",
+        description: error?.message || "Failed to upload image. Please try again.",
         variant: "destructive",
-      })
+      });
     } finally {
       setIsUploading(false)
       // Reset the input so the same file can be selected again

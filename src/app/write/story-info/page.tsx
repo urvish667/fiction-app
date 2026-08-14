@@ -612,15 +612,15 @@ export default function StoryInfoPage() {
           await saveAllStoryData(updatedData, tags, false); // Don't show toast, we already showed one
         }, 500);
       }
-    } catch (error) {
+    } catch (error: any) {
       logError(error, { context: 'Uploading cover image', storyId: storyData.id });
       toast({
         title: "Upload failed",
-        description: "Failed to upload the image. Please try again.",
+        description: error?.message || "Failed to upload the cover image. Please try again.",
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsUploading(false)
+      setIsUploading(false);
     }
   }, [storyData.id, toast, tags, saveAllStoryData]);
 

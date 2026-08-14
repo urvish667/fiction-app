@@ -49,6 +49,14 @@ class ApiClient {
           console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`, config);
         }
 
+        // If request payload is FormData, remove Content-Type so browser/axios sets multipart boundary
+        if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+          if (config.headers) {
+            delete config.headers['Content-Type'];
+            delete config.headers['content-type'];
+          }
+        }
+
         // CSRF Protection
         // Only for state-changing methods
         if (
@@ -191,7 +199,13 @@ class ApiClient {
   private handleError(error: AxiosError): never {
     if (error.response) {
       const { status, data } = error.response;
-      const message = (data as any)?.message || `Request failed with status ${status}`;
+      const dataObj = data as any;
+      const message =
+        dataObj?.error?.message ||
+        dataObj?.message ||
+        (typeof dataObj?.error === 'string' ? dataObj.error : null) ||
+        `Request failed with status ${status}`;
+
       throw { success: false, message, status, data };
     } else if (error.request) {
       throw { success: false, message: 'Network error - please check your connection' };

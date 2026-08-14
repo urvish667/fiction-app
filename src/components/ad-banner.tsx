@@ -19,18 +19,47 @@ interface AdBannerProps {
 export default function AdBanner({ type, className = "", slot, width, height }: AdBannerProps) {
   const adRef = useRef<HTMLModElement>(null)
 
+  const pushedRef = useRef(false)
+
   useEffect(() => {
-    if (process.env.NODE_ENV === 'production' &&
-        typeof window !== 'undefined' &&
-        window.adsbygoogle &&
-        adRef.current) {
+    if (
+      process.env.NODE_ENV !== 'production' ||
+      typeof window === 'undefined' ||
+      !slot ||
+      pushedRef.current
+    ) {
+      return
+    }
+
+    const pushAd = () => {
+      if (pushedRef.current) return
       try {
-        (window.adsbygoogle = window.adsbygoogle || []).push({})
+        if (adRef.current && adRef.current.offsetWidth > 0) {
+          (window.adsbygoogle = window.adsbygoogle || []).push({})
+          pushedRef.current = true
+        }
       } catch (error) {
         console.error('AdSense error:', error)
       }
     }
-  }, [])
+
+    if (adRef.current && adRef.current.offsetWidth > 0) {
+      pushAd()
+    } else if (adRef.current && typeof ResizeObserver !== 'undefined') {
+      const observer = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          if (entry.contentRect.width > 0 && !pushedRef.current) {
+            pushAd()
+            observer.disconnect()
+          }
+        }
+      })
+      observer.observe(adRef.current)
+      return () => {
+        observer.disconnect()
+      }
+    }
+  }, [slot])
 
   if (process.env.NODE_ENV !== 'production' || !slot) {
     return (
