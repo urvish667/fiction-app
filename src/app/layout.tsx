@@ -5,7 +5,6 @@ import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import Providers from "./providers"
 import { Toaster } from "@/components/ui/toaster"
-import Script from "next/script"
 import { Analytics } from "@/components/analytics"
 import { OfflineBanner } from "@/components/offline-banner"
 import { GlobalErrorHandler } from "@/components/global-error-handler"
@@ -65,12 +64,10 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         {/* Head metadata and fonts */}
-        {/* Google AdSense Script - must be in head to avoid data-nscript warning */}
+        {/* Google AdSense Script - native script avoids AdSense data-nscript warning */}
         {process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_ID && (
-          <Script
-            id="adsense-script"
+          <script
             async
-            strategy="afterInteractive"
             src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_ID}`}
             crossOrigin="anonymous"
           />

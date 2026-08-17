@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 
 declare global {
   interface Window {
@@ -17,55 +17,86 @@ interface AdBannerProps {
 }
 
 export default function AdBanner({ type, className = "", slot, width, height }: AdBannerProps) {
+  const containerRef = useRef<HTMLDivElement>(null)
   const adRef = useRef<HTMLModElement>(null)
-
+  const [isVisible, setIsVisible] = useState(false)
   const pushedRef = useRef(false)
 
+  // Step 1: Detect when container is actually visible in DOM with width > 0
+  // (Prevents rendering <ins> tags inside display:none or 0-width containers, which causes AdSense availableWidth=0 TagError)
   useEffect(() => {
     if (
-      process.env.NODE_ENV !== 'production' ||
-      typeof window === 'undefined' ||
+      process.env.NODE_ENV !== "production" ||
+      typeof window === "undefined" ||
       !slot ||
       pushedRef.current
     ) {
       return
     }
 
-    const pushAd = () => {
-      if (pushedRef.current) return
-      try {
-        // Use rAF to ensure layout is settled before AdSense measures the slot
-        requestAnimationFrame(() => {
-          if (pushedRef.current) return
-          ;(window.adsbygoogle = window.adsbygoogle || []).push({})
-          pushedRef.current = true
-        })
-      } catch (error) {
-        console.error('AdSense error:', error)
+    const checkVisibility = () => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect()
+        const computedStyle = window.getComputedStyle(containerRef.current)
+        if (
+          computedStyle.display !== "none" &&
+          computedStyle.visibility !== "hidden" &&
+          rect.width > 0
+        ) {
+          setIsVisible(true)
+          return true
+        }
       }
+      return false
     }
 
-    if (adRef.current) {
-      // If the element is already visible, push immediately (after layout)
-      if (adRef.current.offsetWidth > 0) {
-        pushAd()
-      } else if (typeof ResizeObserver !== 'undefined') {
-        // Wait until the container gets a real width
-        const observer = new ResizeObserver((entries) => {
-          for (const entry of entries) {
-            if (entry.contentRect.width > 0 && !pushedRef.current) {
-              pushAd()
-              observer.disconnect()
-            }
+    if (checkVisibility()) {
+      return
+    }
+
+    if (typeof ResizeObserver !== "undefined" && containerRef.current) {
+      const observer = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          if (entry.contentRect.width > 0) {
+            setIsVisible(true)
+            observer.disconnect()
+            break
           }
-        })
-        observer.observe(adRef.current)
-        return () => observer.disconnect()
-      }
+        }
+      })
+      observer.observe(containerRef.current)
+      return () => observer.disconnect()
     }
   }, [slot])
 
-  if (process.env.NODE_ENV !== 'production' || !slot) {
+  // Step 2: Once <ins> is mounted and has measured width, safely push ad
+  useEffect(() => {
+    if (!isVisible || pushedRef.current || !slot) {
+      return
+    }
+
+    const pushAd = () => {
+      if (pushedRef.current) return
+      try {
+        if (adRef.current && adRef.current.offsetWidth > 0) {
+          ;(window.adsbygoogle = window.adsbygoogle || []).push({})
+          pushedRef.current = true
+        }
+      } catch (error) {
+        console.error("AdSense push error:", error)
+      }
+    }
+
+    const rafId = requestAnimationFrame(() => {
+      pushAd()
+    })
+
+    return () => {
+      cancelAnimationFrame(rafId)
+    }
+  }, [isVisible, slot])
+
+  if (process.env.NODE_ENV !== "production" || !slot) {
     return (
       <div
         className={`bg-muted/30 border border-dashed border-muted-foreground/20 rounded flex items-center justify-center min-h-[90px] ${className}`}
@@ -82,23 +113,27 @@ export default function AdBanner({ type, className = "", slot, width, height }: 
     )
   }
 
+  const defaultHeight = type === "sidebar" ? 250 : 90
+  const defaultMaxWidth = type === "sidebar" ? "300px" : "720px"
+
   return (
-    <div className={`overflow-hidden ${className}`}>
-      <ins
-        ref={adRef}
-        className="adsbygoogle"
-        style={{
-          display: "block",
-          width: "100%",
-          minWidth: "1px", // Prevents AdSense "availableWidth=0" error
-          maxWidth: width ? `${width}px` : "720px",
-          height: height ? `${height}px` : "90px"
-        }}
-        data-ad-client={process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_ID}
-        data-ad-slot={slot}
-        data-ad-format="auto"
-        data-full-width-responsive="true"
-      />
+    <div ref={containerRef} className={`overflow-hidden ${className}`}>
+      {isVisible && (
+        <ins
+          ref={adRef}
+          className="adsbygoogle"
+          style={{
+            display: "block",
+            width: "100%",
+            maxWidth: width ? `${width}px` : defaultMaxWidth,
+            height: height ? `${height}px` : `${defaultHeight}px`,
+          }}
+          data-ad-client={process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_ID}
+          data-ad-slot={slot}
+          data-ad-format="auto"
+          data-full-width-responsive="true"
+        />
+      )}
     </div>
   )
 }
