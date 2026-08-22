@@ -68,11 +68,17 @@ export default function DiscordCallbackPage() {
                 });
 
                 if (user.isProfileComplete === false) {
-                    router.push('/complete-profile');
+                    const callbackUrl = sessionStorage.getItem('discord_oauth_callback_url');
+                    const target = callbackUrl ? `/complete-profile?callbackUrl=${encodeURIComponent(callbackUrl)}` : '/complete-profile';
+                    router.push(target);
                 } else {
                     const callbackUrl = sessionStorage.getItem('discord_oauth_callback_url') || '/';
                     sessionStorage.removeItem('discord_oauth_callback_url');
-                    router.push(callbackUrl);
+                    if (callbackUrl.startsWith('http://') || callbackUrl.startsWith('https://')) {
+                        window.location.href = callbackUrl;
+                    } else {
+                        router.push(callbackUrl);
+                    }
                 }
             } catch (error: any) {
                 toast({
