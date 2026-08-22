@@ -2,11 +2,12 @@
 
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { BookOpen, Heart, MessageSquare, Users, DollarSign, AlertCircle } from "lucide-react"
+import { BookOpen, Heart, MessageSquare, Users, DollarSign, AlertCircle, Sparkles, ExternalLink } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { getStudioUrl } from "@/lib/utils"
 import {
   LineChart,
   BarChart,
@@ -228,12 +229,14 @@ export function OverviewTab({ timeRange }: OverviewTabProps) {
               <Skeleton className="h-20 w-full" />
             </div>
           ) : !storiesData || storiesData.length === 0 ? (
-            <div className="text-center py-6 text-muted-foreground">
+            <div className="text-center py-8 text-muted-foreground space-y-3">
               <p>You don't have any stories yet.</p>
-              <Button asChild className="mt-4">
-                <Link href="/write/story-info">
-                  Create your first story
-                </Link>
+              <Button asChild className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700">
+                <a href={getStudioUrl()} className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4" />
+                  <span>Create in Studio</span>
+                  <ExternalLink className="h-3.5 w-3.5 opacity-70" />
+                </a>
               </Button>
             </div>
           ) : isMobile ? (

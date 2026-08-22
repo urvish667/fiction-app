@@ -12,7 +12,7 @@ import MostViewedStories from "@/components/most-viewed-stories"
 import NewlyArrivedStories from "@/components/newly-arrived-stories"
 import ContinueReading from "@/components/continue-reading"
 import { Button } from "@/components/ui/button"
-import { slugify } from "@/lib/utils"
+import { slugify, getStudioUrl } from "@/lib/utils"
 import { StoryService } from "@/lib/api/story"
 import { ImageService } from "@/lib/api/images"
 
@@ -179,14 +179,14 @@ export default async function Home() {
                         Start Reading
                       </button>
                     </Link>
-                    <Link href="/write/story-info">
+                    <a href={getStudioUrl()}>
                       <button
                         className="px-6 py-2.5 rounded-full text-sm font-semibold text-white/90 transition-all duration-150
                           border border-white/50 bg-white/10 backdrop-blur-md hover:bg-white/20 hover:text-white active:scale-95"
                       >
                         Start Writing
                       </button>
-                    </Link>
+                    </a>
                   </div>
                 </div>
               </div>

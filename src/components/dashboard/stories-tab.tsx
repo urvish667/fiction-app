@@ -2,12 +2,13 @@
 
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { BookText, AlertCircle, ArrowUp, ArrowDown } from "lucide-react"
+import { BookText, AlertCircle, ArrowUp, ArrowDown, ExternalLink, Sparkles } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { getStudioUrl } from "@/lib/utils"
 
 import { useUserStories } from "@/hooks/use-user-stories"
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -71,12 +72,12 @@ export function StoriesTab({ timeRange }: StoriesTabProps) {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
         <h2 className="text-xl md:text-2xl font-bold">Your Stories</h2>
         <div className="flex items-center gap-2">
-          <Button asChild className="w-full sm:w-auto">
-            <Link href="/works">
-              <BookText className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">Manage All Stories</span>
-              <span className="sm:hidden">Manage All</span>
-            </Link>
+          <Button asChild variant="outline" className="w-full sm:w-auto">
+            <a href={getStudioUrl()} className="flex items-center gap-1.5">
+              <BookText className="h-4 w-4" />
+              <span>Manage in Studio</span>
+              <ExternalLink className="h-3.5 w-3.5 opacity-60 ml-0.5" />
+            </a>
           </Button>
         </div>
       </div>
@@ -105,12 +106,14 @@ export function StoriesTab({ timeRange }: StoriesTabProps) {
                 <Skeleton className="h-20 w-full" />
               </div>
             ) : !sortedStories || sortedStories.length === 0 ? (
-              <div className="text-center py-6 text-muted-foreground">
+              <div className="text-center py-8 text-muted-foreground space-y-3">
                 <p>You don't have any stories yet.</p>
-                <Button asChild className="mt-4">
-                  <Link href="/write/story-info">
-                    Create your first story
-                  </Link>
+                <Button asChild className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700">
+                  <a href={getStudioUrl()} className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4" />
+                    <span>Create in Studio</span>
+                    <ExternalLink className="h-3.5 w-3.5 opacity-70" />
+                  </a>
                 </Button>
               </div>
             ) : isMobile ? (

@@ -10,7 +10,6 @@ export default function robots(): MetadataRoute.Robots {
         allow: ['/'],
         disallow: [
           '/api/',          // All API routes — crawlers use rendered HTML, not raw API
-          '/write',
           '/settings',
           '/dashboard',
           '/library',

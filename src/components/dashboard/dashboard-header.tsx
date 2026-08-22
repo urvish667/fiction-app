@@ -1,9 +1,9 @@
 "use client"
 
-import Link from "next/link"
-import { PenSquare } from "lucide-react"
+import { Sparkles, ExternalLink } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { getStudioUrl } from "@/lib/utils"
 
 interface DashboardHeaderProps {
   timeRange: string
@@ -32,12 +32,15 @@ export function DashboardHeader({ timeRange, setTimeRange }: DashboardHeaderProp
           </SelectContent>
         </Select>
 
-        <Button asChild className="border-2 border-primary w-full sm:w-auto">
-          <Link href="/write/story-info">
-            <PenSquare className="h-4 w-4 mr-2" />
-            <span className="hidden sm:inline">New Story</span>
-            <span className="sm:hidden">New</span>
-          </Link>
+        <Button
+          asChild
+          className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-sm font-medium transition-all"
+        >
+          <a href={getStudioUrl()} className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-sky-200" />
+            <span>FableSpace Studio</span>
+            <ExternalLink className="h-3.5 w-3.5 opacity-75" />
+          </a>
         </Button>
       </div>
     </div>

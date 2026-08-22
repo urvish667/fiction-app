@@ -1,6 +1,7 @@
 import { Sparkles, Heart } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { getStudioUrl } from "@/lib/utils";
 import Navbar from "@/components/navbar";
 import { SiteFooter } from "@/components/site-footer";
 import { generateAboutMetadata, generateOrganizationStructuredData } from "@/lib/seo/metadata";
@@ -206,7 +207,7 @@ export default function AboutPage() {
             <h2 className={`${ubuntu.className} text-4xl font-bold mb-6`}>Ready to write your first story?</h2>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button asChild size="lg">
-                <Link href="/write/story-info">Start Writing</Link>
+                <a href={getStudioUrl()}>Start Writing</a>
               </Button>
               <Button asChild variant="outline" size="lg">
                 <Link href="/browse">Explore Stories</Link>

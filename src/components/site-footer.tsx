@@ -2,6 +2,7 @@
 
 import React from "react"
 import Link from "next/link"
+import { getStudioUrl } from "@/lib/utils"
 
 export interface SiteFooterProps {
   // You can add props here if needed in the future
@@ -93,9 +94,9 @@ export function SiteFooter() {
                   </Link>
                 </li>
                 <li>
-                  <Link href="/write/story-info" className="text-muted-foreground hover:text-foreground">
+                  <a href={getStudioUrl()} className="text-muted-foreground hover:text-foreground">
                     Write
-                  </Link>
+                  </a>
                 </li>
                 <li>
                   <Link href="/challenges" className="text-muted-foreground hover:text-foreground">

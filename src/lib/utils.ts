@@ -68,3 +68,21 @@ export function countWords(text: string): number {
   
   return words.length
 }
+
+/**
+ * Get the FableSpace Studio URL
+ * @param path Optional relative path or route
+ * @returns The full studio URL
+ */
+export function getStudioUrl(path = ''): string {
+  const base =
+    process.env.NEXT_PUBLIC_STUDIO_URL ||
+    (typeof window !== 'undefined' && window.location.hostname === 'localhost'
+      ? 'http://localhost:3001'
+      : 'https://studio.fablespace.space')
+
+  if (!path) return base
+  const cleanPath = path.startsWith('/') ? path : `/${path}`
+  return `${base}${cleanPath}`
+}
+

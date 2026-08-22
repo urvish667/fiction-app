@@ -59,8 +59,6 @@ export async function middleware(request: NextRequest) {
   const protectedRoutes = [
     '/settings',
     '/library',
-    '/works',
-    '/write',
     '/dashboard',
     '/notifications',
     '/complete-profile',
