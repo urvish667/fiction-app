@@ -20,7 +20,7 @@ export default function PrivacyPolicyPage() {
           transition={{ duration: 0.5 }}
         >
           <div className="max-w-4xl mx-auto">
-            <h1 className="text-4xl font-bold mb-6">Privacy Policy</h1>
+            <h1 className="text-3xl sm:text-4xl font-serif font-bold tracking-tight mb-6">Privacy Policy</h1>
             <p className="text-muted-foreground mb-8">Last updated: 05/12/2025</p>
             
             <div className="bg-card rounded-lg shadow-sm p-6 md:p-8">

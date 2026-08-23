@@ -25,10 +25,10 @@ export default function ChallengesPage() {
             </div>
           </div>
           
-          <h1 className="text-2xl sm:text-3xl font-semibold mb-6">Writing Challenges</h1>
+          <h1 className="text-2xl sm:text-3xl font-serif font-bold tracking-tight mb-6">Writing Challenges</h1>
           
           <div className="bg-muted/30 rounded-lg p-8 mb-8">
-            <h2 className="text-2xl font-semibold mb-4">Coming Soon...</h2>
+            <h2 className="text-2xl font-serif font-bold tracking-tight mb-4">Coming Soon...</h2>
             <p className="text-lg text-muted-foreground mb-6">
               We&apos;re working on exciting writing challenges to help you improve your skills, 
               connect with other writers, and unleash your creativity.

@@ -1,0 +1,110 @@
+openapi: 3.1.0
+info:
+  title: FableSpace Public REST API
+  version: 1.2.0
+  description: Public REST API and developer endpoints for FableSpace (https://fablespace.space), an open platform for creative fiction, serialized web novels, independent authors, and writing challenges.
+  contact:
+    name: FableSpace Developer Support
+    url: https://fablespace.space/developers
+    email: contact@fablespace.space
+  license:
+    name: MIT
+    url: https://fablespace.space/terms
+servers:
+  - url: https://api.fablespace.space/api/v1
+    description: Production API Server
+  - url: https://fablespace.space/api/v1
+    description: Web Gateway Proxy
+paths:
+  /stories:
+    get:
+      summary: List and filter published stories
+      description: Retrieve paginated stories with optional filters for genre, tag, author, language, completion status, or search keywords.
+      operationId: getStories
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: genre
+          in: query
+          schema:
+            type: string
+        - name: tag
+          in: query
+          schema:
+            type: string
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            enum: [newest, mostViewed, popular, topRated]
+            default: newest
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [ongoing, completed]
+            default: ongoing
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Successful list of stories
+  /stories/{slug}:
+    get:
+      summary: Get story details by slug
+      operationId: getStoryBySlug
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Detailed story object
+        '404':
+          description: Story not found
+  /stories/{slug}/chapters/{chapterNumber}:
+    get:
+      summary: Get chapter content
+      operationId: getChapterContent
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: chapterNumber
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Chapter content object
+        '404':
+          description: Chapter not found
+  /challenges:
+    get:
+      summary: List writing challenges
+      operationId: getChallenges
+      responses:
+        '200':
+          description: List of challenges
+  /blog:
+    get:
+      summary: List blog posts
+      operationId: getBlogPosts
+      responses:
+        '200':
+          description: List of blog posts

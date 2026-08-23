@@ -327,7 +327,7 @@ export default function ForumClient({ user, forumId, isOwner, currentUserId }: F
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl sm:text-3xl font-semibold mb-2">The {user.username} Community</h1>
+        <h1 className="text-2xl sm:text-3xl font-serif font-bold tracking-tight mb-2">The {user.username} Community</h1>
         <Link href={`/user/${user.username}`} className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1">
           <ArrowLeft className="h-4 w-4" />
           Back to Author Profile

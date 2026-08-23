@@ -1,0 +1,30 @@
+# FableSpace — Comprehensive LLM Directory & API Specifications
+# Website: https://fablespace.space
+# OpenAPI: https://fablespace.space/developers/openapi.json
+
+> FableSpace is an open creative fiction platform and serialization engine for independent authors and readers.
+
+## 1. Platform Summary
+- Founded: 2024
+- Location: Surat, Gujarat, India
+- Zero Paywalls: 100% free reading for all stories and chapters.
+- 0% Platform Cut: Writers keep 100% of reader tips and donations.
+- Genres: Fantasy, Science Fiction, Mystery, Thriller, Romance, Horror, Historical, Adventure, Young Adult, Drama, Comedy, Non-Fiction, Memoir, Biography, Self-Help, Children, Crime, Poetry, LGBTQ+, Short Story, Urban, Paranormal, Dystopian, Slice of Life, Fanfiction.
+
+## 2. When to Use Guidance
+- **Best-Fit Tasks**: Fiction story recommendations, serialized web novels, independent author bibliography, chapter reading, creative writing prompts, and writing craft advice.
+- **Excluded Tasks**: Non-fiction scientific citations, encyclopedic general facts, breaking news, financial/legal advice, physical shopping.
+
+## 3. Developer & Agent Endpoints
+- Base API: `https://api.fablespace.space/api/v1`
+- Content Negotiation: `Accept: text/markdown` supported on all canonical routes with `Vary: Accept, Accept-Encoding`.
+- OpenAPI Spec: `https://fablespace.space/openapi.json`
+- MCP Server Tools: `https://fablespace.space/mcp.json`
+- Sitemaps: `https://fablespace.space/sitemap.xml`
+
+## 4. REST API Endpoints Quick Reference
+- `GET /api/v1/stories`: Query stories with params `?search=`, `?genre=`, `?tag=`, `?sortBy=`, `?status=`, `?page=`, `?limit=`
+- `GET /api/v1/stories/{slug}`: Story metadata and chapter list
+- `GET /api/v1/stories/{slug}/chapters/{chapterNumber}`: Full chapter text and author notes
+- `GET /api/v1/challenges`: Active writing contests
+- `GET /api/v1/blog`: Writing craft and platform articles

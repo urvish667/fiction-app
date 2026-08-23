@@ -422,7 +422,7 @@ export default function StoryPageClient({
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
               >
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold mb-3 sm:mb-2 leading-tight">{story.title}</h1>
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-serif font-bold mb-3 sm:mb-2 leading-tight tracking-tight">{story.title}</h1>
 
                 {/* Author Info Section with Genre */}
                 {author && (
@@ -601,7 +601,7 @@ export default function StoryPageClient({
 
                 {/* Description */}
                 <div className="mb-4 sm:mb-6">
-                  <h2 className="text-lg sm:text-xl font-semibold mb-2 sm:mb-3">Description</h2>
+                  <h2 className="text-lg sm:text-xl font-serif font-bold mb-2 sm:mb-3">Description</h2>
                   <p className="text-muted-foreground text-sm sm:text-base leading-relaxed">
                     {story.description || "No description available for this story."}
                   </p>
@@ -623,7 +623,7 @@ export default function StoryPageClient({
                   transition={{ duration: 0.5, delay: 0.4 }}
                   className="mb-8 sm:mb-12 py-4"
                 >
-                  <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Table of Contents</h2>
+                  <h2 className="text-xl sm:text-2xl font-serif font-bold mb-4 sm:mb-6">Table of Contents</h2>
                   <ChapterList chapters={chapters} storySlug={slug} currentChapter={null} />
                 </motion.div>
 
@@ -635,7 +635,7 @@ export default function StoryPageClient({
                   className="mb-8 sm:mb-12"
                 >
                   <div className="flex flex-col gap-2 mb-4 sm:mb-6">
-                    <h2 className="text-xl sm:text-2xl font-bold">Story Comments</h2>
+                    <h2 className="text-xl sm:text-2xl font-serif font-bold">Story Comments</h2>
                     <p className="text-sm text-muted-foreground">
                       Share your thoughts about the story as a whole. For chapter-specific comments, please use the comment section available in each chapter.
                     </p>
@@ -668,7 +668,7 @@ export default function StoryPageClient({
                 </div>
               ) : author.donationLink ? (
                 <>
-                  <h2 className="text-lg sm:text-xl font-bold mb-2">Support the Author</h2>
+                  <h2 className="text-lg sm:text-xl font-serif font-bold mb-2">Support the Author</h2>
                   <p className="text-muted-foreground mb-4 text-sm sm:text-base">
                     If you enjoyed this story, consider supporting the author to help them create more amazing content.
                   </p>

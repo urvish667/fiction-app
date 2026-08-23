@@ -70,7 +70,7 @@ export function ContactForm() {
             </div>
           </div>
 
-          <h1 className="text-4xl font-bold text-center mb-6">Contact Us</h1>
+          <h1 className="text-3xl sm:text-4xl font-serif font-bold tracking-tight text-center mb-6">Contact Us</h1>
           <p className="text-center text-muted-foreground mb-8">
             Have questions, suggestions, or feedback? We&apos;d love to hear from you!
           </p>

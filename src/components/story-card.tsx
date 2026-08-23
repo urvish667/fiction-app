@@ -197,7 +197,7 @@ function PortraitGridCard({
                 Completed
               </Badge>
             )}
-            <h3 className="text-xs sm:text-sm font-semibold leading-snug line-clamp-2 text-white drop-shadow-md group-hover:text-primary-foreground transition-colors">
+            <h3 className="font-serif font-bold text-xs sm:text-sm leading-snug line-clamp-2 text-white drop-shadow-md group-hover:text-primary-foreground transition-colors">
               {story.title}
             </h3>
           </div>
@@ -207,7 +207,7 @@ function PortraitGridCard({
       {/* Info — Title below story cover when NOT overlaid */}
       {!overlayTitle && showTitle && (
         <div className="flex flex-col flex-1 min-w-0">
-          <h3 className="text-sm font-semibold leading-snug line-clamp-2 text-foreground group-hover:text-primary transition-colors duration-200">
+          <h3 className="font-serif font-bold text-sm leading-snug line-clamp-2 text-foreground group-hover:text-primary transition-colors duration-200">
             {story.title}
           </h3>
           {showStats && (
@@ -278,7 +278,7 @@ function LandscapeListCard({ story, showBookmark, onBookmark }: {
         <div>
           {/* Title + Bookmark */}
           <div className="flex items-start justify-between gap-1.5 mb-0.5">
-            <h3 className="text-xs sm:text-sm font-semibold leading-snug line-clamp-2 text-foreground group-hover:text-primary transition-colors">
+            <h3 className="font-serif font-bold text-xs sm:text-sm leading-snug line-clamp-2 text-foreground group-hover:text-primary transition-colors">
               {story.title}
             </h3>
             {showBookmark && (
@@ -356,7 +356,7 @@ function MiniHorizontalCard({ story }: { story: StoryCardData }) {
         />
       </div>
       <div className="min-w-0 flex-1">
-        <h4 className="text-sm font-medium line-clamp-2 group-hover:text-primary transition-colors leading-snug">
+        <h4 className="font-serif font-bold text-sm line-clamp-2 group-hover:text-primary transition-colors leading-snug">
           {story.title}
         </h4>
         <p className="text-xs text-muted-foreground truncate mt-0.5">{authorName}</p>
@@ -407,7 +407,7 @@ function FeaturedCard({ story, showBookmark, onBookmark }: {
 
         {/* Info overlay at bottom */}
         <div className="absolute bottom-0 left-0 right-0 p-4">
-          <h3 className="text-white font-bold text-base leading-snug line-clamp-2 mb-1">
+          <h3 className="font-serif font-bold text-white text-base leading-snug line-clamp-2 mb-1">
             {story.title}
           </h3>
           <p className="text-white/70 text-xs mb-3">by {authorName}</p>
@@ -555,7 +555,7 @@ function PortraitWorkCard({
       <div className="flex flex-col flex-1 min-w-0">
         {/* Title + Options Dropdown */}
         <div className="flex items-start justify-between gap-1 mb-1">
-          <h3 className="text-sm font-semibold leading-snug line-clamp-2 text-foreground group-hover:text-primary transition-colors">
+          <h3 className="font-serif font-bold text-sm leading-snug line-clamp-2 text-foreground group-hover:text-primary transition-colors">
             {story.title}
           </h3>
 

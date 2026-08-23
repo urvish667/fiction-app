@@ -105,7 +105,7 @@ export default function PopularStories({ className }: PopularStoriesProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center mb-8">
             <div>
-              <h2 className="text-xl sm:text-2xl font-semibold">Most Popular</h2>
+              <h2 className="text-xl sm:text-2xl font-serif font-bold tracking-tight">Most Popular</h2>
               <p className="text-muted-foreground mt-1">Trending within the community</p>
             </div>
             <Link href="/browse?sortBy=popular">
@@ -136,7 +136,7 @@ export default function PopularStories({ className }: PopularStoriesProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h2 className="text-3xl font-semibold">Most Popular</h2>
+            <h2 className="text-xl sm:text-2xl font-serif font-bold tracking-tight">Most Popular</h2>
             <p className="text-muted-foreground mt-1">Trending within the community</p>
           </div>
           <Link href="/browse?sortBy=popular">
@@ -209,7 +209,7 @@ function StoryCard({ story }: { story: StoryResponse }) {
           </Badge>
         </div>
         <CardHeader className="pb-2">
-          <h3 className="font-bold text-lg line-clamp-1">{story.title}</h3>
+          <h3 className="font-serif font-bold text-lg line-clamp-1">{story.title}</h3>
           <p className="text-sm text-muted-foreground">
             by {story.author?.name || story.author?.username || "Unknown Author"}
           </p>

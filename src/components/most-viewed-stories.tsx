@@ -111,7 +111,7 @@ export default function MostViewedStories({ className, initialData }: MostViewed
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center mb-6">
             <div>
-              <h2 className="text-xl sm:text-2xl font-semibold">Most Read Stories</h2>
+              <h2 className="text-xl sm:text-2xl font-serif font-bold tracking-tight">Most Read Stories</h2>
               <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Most read stories of all time</p>
             </div>
             <Link href="/browse?sortBy=mostRead">
@@ -138,7 +138,7 @@ export default function MostViewedStories({ className, initialData }: MostViewed
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h2 className="text-xl sm:text-2xl font-semibold">Most Read Stories</h2>
+            <h2 className="text-xl sm:text-2xl font-serif font-bold tracking-tight">Most Read Stories</h2>
             <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Most read stories of all time</p>
           </div>
           <Link href="/browse?sortBy=mostRead">

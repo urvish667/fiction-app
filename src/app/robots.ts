@@ -7,9 +7,15 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: '*',
-        allow: ['/'],
+        allow: [
+          '/',
+          '/openapi.json',
+          '/agent-instructions.md',
+          '/llms.txt',
+          '/llms-full.txt',
+        ],
         disallow: [
-          '/api/',          // All API routes — crawlers use rendered HTML, not raw API
+          '/api/',          // Internal API routes — crawlers use rendered HTML or public developer docs
           '/settings',
           '/dashboard',
           '/library',

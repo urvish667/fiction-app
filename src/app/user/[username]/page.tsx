@@ -234,7 +234,7 @@ export default async function UserProfilePage({ params }: UserPageParams) {
               <div className="flex flex-col md:flex-row justify-between items-start md:items-end pl-2 sm:pl-4 md:pl-40">
                 <div className="mb-4 md:mb-0">
                   <div className="flex items-center gap-3 mb-1">
-                    <h1 className="text-xl sm:text-2xl md:text-3xl font-semibold">{user.name || user.username}</h1>
+                    <h1 className="text-xl sm:text-2xl md:text-3xl font-serif font-bold tracking-tight">{user.name || user.username}</h1>
                   </div>
                   <p className="text-sm sm:text-base text-muted-foreground">@{user.username}</p>
 

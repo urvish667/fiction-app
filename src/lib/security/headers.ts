@@ -108,6 +108,9 @@ export function getSecurityHeaders() {
 
     // Control referrer information
     'Referrer-Policy': 'strict-origin-when-cross-origin',
+
+    // Content negotiation caching (acceptmarkdown.com standard)
+    'Vary': 'Accept, Accept-Encoding',
   };
 }
 

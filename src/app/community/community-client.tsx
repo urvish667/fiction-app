@@ -108,7 +108,7 @@ export default function CommunityClient() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col gap-10">
 
       <div>
-        <h1 className="text-2xl sm:text-3xl font-semibold">Community</h1>
+        <h1 className="text-2xl sm:text-3xl font-serif font-bold tracking-tight">Community</h1>
         <p className="text-muted-foreground text-sm sm:text-base mt-1">
           Where FableSpace writers and readers connect, discuss, and grow together.
         </p>
@@ -142,7 +142,7 @@ export default function CommunityClient() {
 
         <section className="lg:col-span-3 space-y-5">
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-            <h2 className="text-xl font-semibold flex items-center gap-2 flex-shrink-0">
+            <h2 className="text-xl font-serif font-bold tracking-tight flex items-center gap-2 flex-shrink-0">
               <Users className="w-5 h-5 text-primary" />
               Author Forums
             </h2>
@@ -261,7 +261,7 @@ export default function CommunityClient() {
         </section>
 
         <section className="lg:col-span-2 space-y-5">
-          <h2 className="text-xl font-semibold flex items-center gap-2">
+          <h2 className="text-xl font-serif font-bold tracking-tight flex items-center gap-2">
             <Clock className="w-5 h-5 text-primary" />
             Recent Activity
           </h2>

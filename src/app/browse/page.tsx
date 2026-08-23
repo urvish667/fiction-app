@@ -115,7 +115,7 @@ export default async function BrowsePage({ searchParams }: BrowsePageProps) {
         <main className="py-8">
           <Suspense fallback={
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <p className="text-xl sm:text-2xl font-semibold mb-6">Browse Stories</p>
+              <h1 className="text-2xl sm:text-3xl font-serif font-bold tracking-tight mb-6">Browse Stories</h1>
               <div className="space-y-6">
                 <div className="flex justify-between items-center mb-6">
                   <p className="text-muted-foreground">Loading stories...</p>

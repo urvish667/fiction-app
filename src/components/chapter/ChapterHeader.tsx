@@ -23,7 +23,7 @@ export function ChapterHeader({ story, chapter, formatDate }: ChapterHeaderProps
       className="mb-8"
     >
       <div className="flex items-center gap-2 mb-2">
-        <h1 className="text-2xl sm:text-3xl font-bold">{chapter.title}</h1>
+        <h1 className="text-2xl sm:text-3xl font-serif font-bold tracking-tight">{chapter.title}</h1>
         {isNew && (
           <Badge variant="default" className="bg-green-500 hover:bg-green-600">
             New

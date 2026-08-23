@@ -311,7 +311,7 @@ export default function BrowseContent({ initialParams, initialData }: BrowseCont
 
       {/* ── Page Header ──────────────────────────────────────────────── */}
       <div className="flex justify-between items-center gap-4 mb-4">
-        <h1 className="text-2xl sm:text-3xl font-semibold">Browse Stories</h1>
+        <h1 className="text-2xl sm:text-3xl font-serif font-bold tracking-tight">Browse Stories</h1>
       </div>
 
       {/* ── Genre category description ────────────────────────────────── */}

@@ -83,7 +83,7 @@ export default function BlogCard({ post, viewMode = "grid" }: BlogCardProps) {
               </div>
             </div>
 
-            <h3 className="text-xl font-bold line-clamp-2 group-hover:text-primary transition-colors">
+            <h3 className="text-xl font-serif font-bold line-clamp-2 group-hover:text-primary transition-colors">
               <Link href={`/blog/${post.slug}`}>{post.title}</Link>
             </h3>
 

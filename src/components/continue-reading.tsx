@@ -114,7 +114,7 @@ export default function ContinueReading({ className }: ContinueReadingProps) {
       <section className={`py-6 sm:py-8 bg-background ${className}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-6">
-            <h2 className="text-xl sm:text-2xl font-semibold">Continue Reading</h2>
+            <h2 className="text-xl sm:text-2xl font-serif font-bold tracking-tight">Continue Reading</h2>
             <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Jump right back into your stories</p>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
@@ -137,7 +137,7 @@ export default function ContinueReading({ className }: ContinueReadingProps) {
     <section className={`py-6 sm:py-8 bg-background ${className}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-6">
-          <h2 className="text-xl sm:text-2xl font-semibold">Continue Reading</h2>
+          <h2 className="text-xl sm:text-2xl font-serif font-bold tracking-tight">Continue Reading</h2>
           <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Jump right back into your stories</p>
         </div>
 

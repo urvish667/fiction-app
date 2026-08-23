@@ -219,7 +219,7 @@ export default function PostPageClient({ post, user, forumRules, isOwner, curren
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       {/* Header */}
       <div className="mb-8">
-        <h2 className="text-3xl font-bold mb-2">The {user.username} Community</h2>
+        <h2 className="text-3xl font-serif font-bold tracking-tight mb-2">The {user.username} Community</h2>
         <Link href={`/user/${user.username}/forum`} className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1">
           <ArrowLeft className="h-4 w-4" />
           Back to forum
@@ -275,7 +275,7 @@ export default function PostPageClient({ post, user, forumRules, isOwner, curren
               </div>
             </CardHeader>
             <CardContent>
-              <h1 className="text-2xl font-bold mb-4">{post.title}</h1>
+              <h1 className="text-2xl font-serif font-bold tracking-tight mb-4">{post.title}</h1>
               <div className="text-sm mb-4 prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: post.content }} />
             </CardContent>
           </Card>

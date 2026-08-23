@@ -170,7 +170,7 @@ export default function LibraryPage() {
           
           {/* Page Header & Filter Options (Old Page Filter UX) */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-            <h1 className="text-2xl sm:text-3xl font-semibold">My Library</h1>
+            <h1 className="text-2xl sm:text-3xl font-serif font-bold tracking-tight">My Library</h1>
 
             <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
               {/* Search Library Input */}

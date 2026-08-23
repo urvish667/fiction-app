@@ -1,6 +1,6 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Inter, Cormorant_Garamond } from "next/font/google"
+import { Inter, Merriweather } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import Providers from "./providers"
@@ -15,10 +15,11 @@ const inter = Inter({
   variable: "--font-sans",
 })
 
-const cormorant = Cormorant_Garamond({
+const merriweather = Merriweather({
   subsets: ["latin"],
   variable: "--font-serif",
-  weight: ["400", "500", "600", "700"],
+  weight: ["300", "400", "700", "900"],
+  style: ["normal", "italic"],
 })
 
 export const metadata: Metadata = {
@@ -64,6 +65,8 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         {/* Head metadata and fonts */}
+        {/* Alternate link for AcceptMarkdown content discovery */}
+        <link rel="alternate" type="text/markdown" href="/llms.txt" title="FableSpace LLM & Agent Directory" />
         {/* Google AdSense Script - native script avoids AdSense data-nscript warning */}
         {process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_ID && (
           <script
@@ -73,7 +76,7 @@ export default function RootLayout({
           />
         )}
       </head>
-      <body className={`${inter.variable} ${cormorant.variable} font-sans pb-16 md:pb-0`}>
+      <body className={`${inter.variable} ${merriweather.variable} font-sans pb-16 md:pb-0`}>
 
         <Analytics />
         <GlobalErrorHandler />

@@ -103,6 +103,10 @@ const nextConfig: NextConfig = {
             key: 'Referrer-Policy',
             value: 'origin-when-cross-origin',
           },
+          {
+            key: 'Vary',
+            value: 'Accept, Accept-Encoding',
+          },
         ],
       },
       // Long-term caching for Next.js static assets

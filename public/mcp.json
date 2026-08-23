@@ -1,0 +1,82 @@
+{
+  "name": "fablespace-mcp-server",
+  "version": "1.0.0",
+  "description": "FableSpace Model Context Protocol (MCP) server for discovering, reading, and searching creative fiction web novels and writing prompts.",
+  "homepage": "https://fablespace.space/developers/mcp",
+  "tools": [
+    {
+      "name": "search_stories",
+      "description": "Search published original stories on FableSpace by keyword, genre, completion status, or tags.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Search keyword for story title, synopsis, or keywords"
+          },
+          "genre": {
+            "type": "string",
+            "description": "Genre filter (e.g., 'fantasy', 'romance', 'science-fiction', 'mystery', 'horror')"
+          },
+          "sortBy": {
+            "type": "string",
+            "enum": ["newest", "mostViewed", "popular", "topRated"],
+            "description": "Sort ordering"
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Number of stories to return (default 10, max 30)"
+          }
+        }
+      }
+    },
+    {
+      "name": "get_story_details",
+      "description": "Fetch detailed synopsis, author information, chapter list, and reading statistics for a specific story slug.",
+      "parameters": {
+        "type": "object",
+        "required": ["slug"],
+        "properties": {
+          "slug": {
+            "type": "string",
+            "description": "The URL slug identifier of the story"
+          }
+        }
+      }
+    },
+    {
+      "name": "get_chapter_content",
+      "description": "Retrieve full readable text and author notes for a specific chapter of a story.",
+      "parameters": {
+        "type": "object",
+        "required": ["storySlug", "chapterNumber"],
+        "properties": {
+          "storySlug": {
+            "type": "string",
+            "description": "The URL slug identifier of the story"
+          },
+          "chapterNumber": {
+            "type": "integer",
+            "description": "The chapter number (1-based index)"
+          }
+        }
+      }
+    },
+    {
+      "name": "list_genres",
+      "description": "Get all available fiction genres and categories on FableSpace.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "get_writing_prompts",
+      "description": "Fetch active creative writing challenges and monthly themed prompts from FableSpace.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    }
+  ]
+}

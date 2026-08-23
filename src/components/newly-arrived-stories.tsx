@@ -111,7 +111,7 @@ export default function NewlyArrivedStories({ className, initialData }: NewlyArr
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center mb-6">
             <div>
-              <h2 className="text-xl sm:text-2xl font-semibold">Newly Arrived</h2>
+              <h2 className="text-xl sm:text-2xl font-serif font-bold tracking-tight">Newly Arrived</h2>
               <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Fresh stories just for you</p>
             </div>
             <Link href="/browse?sortBy=newest">
@@ -138,7 +138,7 @@ export default function NewlyArrivedStories({ className, initialData }: NewlyArr
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h2 className="text-xl sm:text-2xl font-semibold">Newly Arrived</h2>
+            <h2 className="text-xl sm:text-2xl font-serif font-bold tracking-tight">Newly Arrived</h2>
             <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Fresh stories just for you</p>
           </div>
           <Link href="/browse?sortBy=newest">

@@ -80,7 +80,7 @@ export default async function BlogPostPage({ params }: BlogPageProps) {
               </Link>
             </div>
             <article>
-              <h1 className="text-4xl font-bold mb-4">{blog.title}</h1>
+              <h1 className="text-3xl sm:text-4xl font-serif font-bold tracking-tight mb-4">{blog.title}</h1>
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
                 <a rel="author" href="/about" className="text-xs sm:text-sm hover:text-foreground hover:underline transition-colors">By FableSpace Team</a>
                 <span className="hidden xs:inline">•</span>

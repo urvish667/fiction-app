@@ -6,23 +6,12 @@ import Navbar from "@/components/navbar";
 import { SiteFooter } from "@/components/site-footer";
 import { generateAboutMetadata, generateOrganizationStructuredData } from "@/lib/seo/metadata";
 import type { Metadata } from "next";
-import { Ubuntu, Merriweather } from 'next/font/google';
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-
-const ubuntu = Ubuntu({
-  weight: ['400', '700'],
-  subsets: ['latin'],
-});
-
-const merriweather = Merriweather({
-  weight: ["400", "700"],
-  subsets: ['latin'],
-})
 
 export const metadata: Metadata = generateAboutMetadata();
 
@@ -118,16 +107,15 @@ export default function AboutPage() {
         <main className="flex-1 container mx-auto px-8 py-12">
           {/* Hero Section */}
           <div className="max-w-4xl mx-auto text-center mb-16">
-
-            <h1 className={`${merriweather.className} text-5xl font-bold mb-6`}>About Us</h1>
-            <p className={`${merriweather.className} text-xl text-muted-foreground`}>
+            <h1 className="text-4xl sm:text-5xl font-bold font-serif mb-6">About Us</h1>
+            <p className="text-xl text-muted-foreground font-serif">
               A cozy corner of the internet for storytellers, dreamers, and readers alike.
             </p>
           </div>
 
           {/* Our Mission */}
           <section className="max-w-3xl mx-auto mb-16">
-            <h2 className={`${ubuntu.className} text-4xl font-bold text-center mb-6`}>Our Mission</h2>
+            <h2 className="text-3xl sm:text-4xl font-bold font-serif text-center mb-6">Our Mission</h2>
             <div className="bg-muted/30 rounded-lg p-8 text-center">
               <p className="text-lg mb-4">
                 At FableSpace, we believe in the power of storytelling—and in the storytellers who bring worlds to life. Our mission is to create a space where writers can share their imagination freely, connect with readers, and eventually earn from their creative work.
@@ -138,7 +126,7 @@ export default function AboutPage() {
               <p className="text-lg mb-4">
                 But this is just the beginning. As our community grows, so will our support for writers. We&apos;re committed to launching new ways for creators to earn—starting with ad revenue sharing once we reach scale, and expanding into more features designed to help writers thrive.
               </p>
-              <p className={`${ubuntu.className} text-lg font-semibold text-primary`}>
+              <p className="text-lg font-semibold text-primary">
                 FableSpace is more than a platform—it&apos;s a promise to uplift the voices of tomorrow. 🌱✍️
               </p>
             </div>
@@ -146,11 +134,11 @@ export default function AboutPage() {
 
           {/* FAQ Section */}
           <section id="faq" className="max-w-3xl mx-auto mb-16">
-            <h2 className={`${ubuntu.className} text-4xl font-bold text-center mb-8`}>Frequently Asked Questions</h2>
+            <h2 className="text-3xl sm:text-4xl font-bold font-serif text-center mb-8">Frequently Asked Questions</h2>
             <Accordion type="single" collapsible className="w-full">
               {faqItems.map((item, index) => (
                 <AccordionItem value={`item-${index}`} key={index}>
-                  <AccordionTrigger className={`${ubuntu.className} text-xl`}>{item.question}</AccordionTrigger>
+                  <AccordionTrigger className="text-xl font-medium">{item.question}</AccordionTrigger>
                   <AccordionContent className="text-lg">
                     {item.answer}
                   </AccordionContent>
@@ -161,7 +149,7 @@ export default function AboutPage() {
 
           {/* What Makes Us Different */}
           <section className="max-w-4xl mx-auto mb-16">
-            <h2 className={`${ubuntu.className} text-4xl font-bold text-center mb-8`}>What Makes FableSpace Different</h2>
+            <h2 className="text-3xl sm:text-4xl font-bold font-serif text-center mb-8">What Makes FableSpace Different</h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/60 dark:to-emerald-950/60 rounded-lg p-6 border border-green-200 dark:border-green-800">
@@ -169,7 +157,7 @@ export default function AboutPage() {
                   <div className="p-2 rounded-full bg-green-100 dark:bg-green-900 mr-3">
                     <Heart className="h-6 w-6 text-green-600 dark:text-green-400" />
                   </div>
-                  <h3 className={`${ubuntu.className} font-bold text-xl text-green-800 dark:text-green-200`}>Get Paid by Readers</h3>
+                  <h3 className="font-bold font-serif text-xl text-green-800 dark:text-green-200">Get Paid by Readers</h3>
                 </div>
                 <p className="text-green-700 dark:text-green-300 mb-3">
                   Readers can directly support their favorite authors through platforms like Buy Me a Coffee and Ko-fi.
@@ -187,7 +175,7 @@ export default function AboutPage() {
                   <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-900 mr-3">
                     <Sparkles className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                   </div>
-                  <h3 className={`${ubuntu.className} font-bold text-xl text-blue-800 dark:text-blue-200`}>Creator-First Platform</h3>
+                  <h3 className="font-bold font-serif text-xl text-blue-800 dark:text-blue-200">Creator-First Platform</h3>
                 </div>
                 <p className="text-blue-700 dark:text-blue-300 mb-3">
                   Unlike other platforms that prioritize algorithms and ads, we put creators first.
@@ -204,7 +192,7 @@ export default function AboutPage() {
 
           {/* Call to Action */}
           <section className="max-w-3xl mx-auto text-center">
-            <h2 className={`${ubuntu.className} text-4xl font-bold mb-6`}>Ready to write your first story?</h2>
+            <h2 className="text-3xl sm:text-4xl font-bold font-serif mb-6">Ready to write your first story?</h2>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button asChild size="lg">
                 <a href={getStudioUrl()}>Start Writing</a>

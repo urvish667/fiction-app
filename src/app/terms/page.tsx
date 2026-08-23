@@ -20,7 +20,7 @@ export default function TermsPage() {
           transition={{ duration: 0.5 }}
         >
           <div className="max-w-4xl mx-auto">
-            <h1 className="text-4xl font-bold mb-6">Terms and Conditions</h1>
+            <h1 className="text-3xl sm:text-4xl font-serif font-bold tracking-tight mb-6">Terms and Conditions</h1>
             <p className="text-muted-foreground mb-8">Last updated: 06/18/2025</p>
             <div className="bg-card rounded-lg shadow-sm p-6 md:p-8">
               <ScrollArea className="h-[600px] pr-4">
