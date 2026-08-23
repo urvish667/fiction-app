@@ -3,8 +3,7 @@
 import { motion } from "framer-motion"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import Navbar from "@/components/navbar"
-import { SiteFooter } from "@/components/site-footer"
+import { Navbar, SiteFooter } from "@/components/layout"
 import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
 
@@ -20,7 +19,7 @@ export default function ContentPolicyPage() {
           transition={{ duration: 0.5 }}
         >
           <div className="max-w-4xl mx-auto">
-            <h1 className="text-4xl font-bold mb-6">Content & Monetization Policy</h1>
+            <h1 className="text-4xl font-bold mb-6">Content &amp; Monetization Policy</h1>
             <p className="text-muted-foreground mb-8">Last updated: 10/21/2025</p>
             
             <div className="bg-card rounded-lg shadow-sm p-6 md:p-8">
@@ -113,10 +112,10 @@ export default function ContentPolicyPage() {
                   <section>
                     <h2 className="text-2xl font-semibold mb-4">6. Content Removal and Disputes</h2>
                     <p className="mb-4">
-                      If a copyright holder contacts us about a potential infringement, we'll review and, if necessary, remove or restrict access to the content.
+                      If a copyright holder contacts us about a potential infringement, we&apos;ll review and, if necessary, remove or restrict access to the content.
                     </p>
                     <p className="mb-4">
-                      We'll notify the author when possible, giving them a chance to respond or revise their story.
+                      We&apos;ll notify the author when possible, giving them a chance to respond or revise their story.
                     </p>
                     <p>
                       Repeat copyright violations may lead to account suspension.

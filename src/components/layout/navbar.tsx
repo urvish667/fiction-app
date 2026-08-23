@@ -1,0 +1,154 @@
+"use client"
+
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { motion } from "framer-motion"
+import UserAvatarMenu from "./user-avatar-menu"
+import { Skeleton } from "@/components/ui/skeleton"
+import { clientLogger } from "@/lib/logger/client-logger"
+import { useAuth } from "@/contexts/auth-context"
+import { useNotificationContext } from "@/contexts/notification-context"
+import { usePathname } from "next/navigation"
+
+import { BrandLogo } from "@/components/common/brand-logo"
+
+const NAV_LINKS = [
+  { label: "Home", href: "/" },
+  { label: "Browse", href: "/browse" },
+  { label: "Community", href: "/community" },
+]
+
+/** Returns true when the navbar is overlaid on top of the hero (home page). */
+function useIsHero() {
+  const pathname = usePathname()
+  return pathname === "/"
+}
+
+export function Navbar() {
+  const { user, isLoading, isAuthenticated, logout } = useAuth()
+  const { unreadCount } = useNotificationContext()
+  const isHero = useIsHero()
+
+  const navLogger = clientLogger.child("navbar")
+  navLogger.debug("Auth status", { isAuthenticated, hasUser: !!user })
+
+  const userWithAvatar = user
+    ? {
+      id: user.id,
+      name: user.name?.trim() || "User",
+      username:
+        user.username ||
+        user.name?.split(" ")[0].toLowerCase() ||
+        "user",
+      avatar: user.image || "/placeholder-user.jpg",
+      unreadNotifications: unreadCount,
+    }
+    : null
+
+  const handleLogout = async () => {
+    try {
+      await logout()
+    } catch (error) {
+      navLogger.error("Logout failed", { error })
+    }
+  }
+
+  // ── Shared styles ──────────────────────────────────────────────────────────
+  // On the hero page the navbar sits absolutely on top of the video.
+  // Everywhere else it's a normal sticky header.
+  const headerClass = isHero
+    ? "absolute top-0 left-0 w-full z-50 bg-transparent"
+    : "sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-sm"
+
+  const linkClass = isHero
+    ? "text-white/90 hover:text-white hover:bg-white/10"
+    : "text-foreground/80 hover:text-foreground hover:bg-muted"
+
+  const logoColor = isHero ? "#ffffff" : "#125ba5"
+
+  // ── Loading skeleton ───────────────────────────────────────────────────────
+  if (isLoading) {
+    return (
+      <header className={headerClass}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex h-16 items-center justify-between">
+          <BrandLogo color={logoColor} size="xl" animated />
+          <Skeleton className="h-8 w-48 opacity-40" />
+        </div>
+      </header>
+    )
+  }
+
+  return (
+    <header className={headerClass}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex h-16 items-center justify-between gap-4 relative">
+
+        {/* ── Logo ── */}
+        <BrandLogo color={logoColor} size="xl" animated />
+
+        {/* ── Desktop centre nav ── */}
+        <nav
+          className="hidden md:flex items-center gap-1 absolute left-1/2 -translate-x-1/2"
+          style={{ fontFamily: "'Inter', sans-serif" }}
+          aria-label="Primary navigation"
+        >
+          {NAV_LINKS.map(({ label, href }) => (
+            <Link
+              key={href}
+              href={href}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors duration-150 ${linkClass}`}
+            >
+              {label}
+            </Link>
+          ))}
+        </nav>
+
+        {/* ── Desktop right: auth ── */}
+        <div
+          className="hidden md:flex items-center gap-2"
+          style={{ fontFamily: "'Inter', sans-serif" }}
+        >
+          {isAuthenticated && userWithAvatar ? (
+            <UserAvatarMenu user={userWithAvatar} onLogout={handleLogout} />
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors duration-150 ${linkClass}`}
+              >
+                Login
+              </Link>
+              <Link
+                href="/signup"
+                className="px-5 py-1.5 rounded-full text-sm font-semibold transition-all duration-150
+                  bg-[#125ba5] hover:bg-[#0e4a8a] active:scale-95 text-white shadow-sm"
+              >
+                Sign Up
+              </Link>
+            </>
+          )}
+        </div>
+
+        {/* ── Mobile: avatar or login ── */}
+        <div
+          className="md:hidden flex items-center gap-2 ml-auto"
+          style={{ fontFamily: "'Inter', sans-serif" }}
+        >
+          {isAuthenticated && userWithAvatar ? (
+            <UserAvatarMenu user={userWithAvatar} onLogout={handleLogout} />
+          ) : (
+            <Link
+              href="/login"
+              className={`text-sm font-medium px-4 py-1.5 rounded-full transition-colors duration-150 ${linkClass}`}
+            >
+              Login
+            </Link>
+          )}
+        </div>
+
+      </div>
+    </header>
+  )
+}
+
+export default Navbar
+

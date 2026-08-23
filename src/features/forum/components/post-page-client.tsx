@@ -1,0 +1,328 @@
+"use client"
+
+import { useState } from "react"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { Textarea } from "@/components/ui/textarea"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
+import { Pin, MessageSquare, ArrowLeft, Loader2 } from "lucide-react"
+import { formatDistanceToNow } from "date-fns/formatDistanceToNow"
+import { ForumRules } from "./forum-rules"
+import { AdBanner } from "@/components/common"
+import { CommentOptions } from "./comment-options"
+import { InstructionForum } from "./instruction-forum"
+import { ImageService } from "@/lib/api/images"
+import { usePostComments } from "../hooks/use-post-comments"
+import type { ForumUser, ForumPost } from "../types/forum.types"
+
+export interface PostPageClientProps {
+  post: ForumPost
+  user: ForumUser
+  forumRules: string[]
+  isOwner: boolean
+  currentUserId: string | null
+}
+
+export function PostPageClient({ post, user, forumRules, isOwner, currentUserId }: PostPageClientProps) {
+  const [displayedComments, setDisplayedComments] = useState(3)
+  const [newComment, setNewComment] = useState("")
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null)
+  const [editingCommentContent, setEditingCommentContent] = useState("")
+
+  const {
+    comments,
+    submittingComment,
+    updatingComment,
+    createComment,
+    updateComment,
+    deleteComment,
+  } = usePostComments(user.username, post.id, post.comments)
+
+  const hasMoreComments = displayedComments < comments.length
+
+  const loadMoreComments = () => {
+    setDisplayedComments((prev) => Math.min(prev + 3, comments.length))
+  }
+
+  const handleComment = async () => {
+    if (!newComment.trim() || submittingComment) return
+
+    const success = await createComment(newComment.trim())
+    if (success) {
+      setNewComment("")
+      if (displayedComments >= comments.length) {
+        setDisplayedComments((prev) => prev + 1)
+      }
+    }
+  }
+
+  const handleEditComment = async (commentId: string) => {
+    const targetComment = comments.find((c) => c.id === commentId)
+    if (targetComment) {
+      setEditingCommentId(commentId)
+      setEditingCommentContent(targetComment.content)
+    }
+  }
+
+  const handleSaveEditComment = async () => {
+    if (!editingCommentId || !editingCommentContent.trim() || updatingComment) return
+
+    const success = await updateComment(editingCommentId, editingCommentContent.trim())
+    if (success) {
+      setEditingCommentId(null)
+      setEditingCommentContent("")
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setEditingCommentId(null)
+    setEditingCommentContent("")
+  }
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Header */}
+      <div className="mb-8">
+        <h2 className="text-3xl font-serif font-bold tracking-tight mb-2">The {user.username} Community</h2>
+        <Link
+          href={`/user/${user.username}/forum`}
+          className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to forum
+        </Link>
+      </div>
+
+      {/* Mobile buttons for rules - Only visible on smaller screens */}
+      <div className="flex gap-2 mb-6 lg:hidden">
+        <ForumRules rules={forumRules} asDialog />
+        <InstructionForum asDialog />
+      </div>
+
+      {/* Three Column Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left Sidebar - Rules */}
+        <div className="hidden lg:block lg:col-span-3 space-y-6">
+          <ForumRules rules={forumRules} />
+          <div className="sticky top-16">
+            <AdBanner
+              type="sidebar"
+              width={300}
+              height={600}
+              slot="3146074170"
+            />
+          </div>
+        </div>
+
+        {/* Middle Section - Single Post */}
+        <div className="lg:col-span-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3 flex-1">
+                  <Avatar>
+                    <AvatarImage src={ImageService.getImageUrl(post.author.image) || undefined} />
+                    <AvatarFallback>{post.author.name.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-semibold">{post.author.username}</p>
+                      {post.pinned && (
+                        <Badge variant="secondary" className="flex items-center gap-1">
+                          <Pin className="h-3 w-3" />
+                          Pinned
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <h1 className="text-2xl font-serif font-bold tracking-tight mb-4">{post.title}</h1>
+              <div
+                className="text-sm mb-4 prose prose-sm dark:prose-invert max-w-none"
+                dangerouslySetInnerHTML={{ __html: post.content }}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Comments Section */}
+          <div className="mt-6">
+            <Card>
+              <CardContent className="space-y-4">
+                {/* Comment Input at Top - Only for logged-in users */}
+                {currentUserId && (
+                  <div className="flex gap-3 border-b pb-4 mt-6">
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback>You</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <Textarea
+                        placeholder="Write a comment..."
+                        value={newComment}
+                        onChange={(e) => setNewComment(e.target.value)}
+                        className="min-h-[60px] text-sm"
+                        maxLength={2000}
+                        disabled={submittingComment}
+                      />
+                      <Button
+                        size="sm"
+                        className="mt-2"
+                        onClick={handleComment}
+                        disabled={!newComment.trim() || submittingComment}
+                      >
+                        {submittingComment ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Posting...
+                          </>
+                        ) : (
+                          "Comment"
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Comment Count */}
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <MessageSquare className="h-4 w-4" />
+                  <span>{comments.length} Comments</span>
+                </div>
+
+                {/* Comments List - Latest First */}
+                {comments
+                  .slice(0, displayedComments)
+                  .reverse()
+                  .map((comment, index) => (
+                    <div key={comment.id}>
+                      <div className="flex gap-3">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={ImageService.getImageUrl(comment.author.image) || undefined} />
+                          <AvatarFallback>{comment.author.name.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 relative">
+                          <div className="bg-muted rounded-lg p-3">
+                            <div className="flex items-center justify-between">
+                              <p className="font-semibold text-sm">{comment.author.name}</p>
+                              <CommentOptions
+                                comment={comment}
+                                forumOwnerUsername={user.username}
+                                postId={post.id}
+                                currentUserId={currentUserId}
+                                isForumOwner={isOwner}
+                                onEditComment={handleEditComment}
+                                onDeleteComment={deleteComment}
+                              />
+                            </div>
+                            {editingCommentId === comment.id ? (
+                              <div className="mt-2">
+                                <Textarea
+                                  value={editingCommentContent}
+                                  onChange={(e) => setEditingCommentContent(e.target.value)}
+                                  className="min-h-[80px] text-sm"
+                                  maxLength={3000}
+                                  disabled={updatingComment}
+                                />
+                                <div className="flex gap-2 mt-2">
+                                  <Button
+                                    size="sm"
+                                    onClick={handleSaveEditComment}
+                                    disabled={!editingCommentContent.trim() || updatingComment}
+                                  >
+                                    {updatingComment ? (
+                                      <>
+                                        <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                                        Saving...
+                                      </>
+                                    ) : (
+                                      "Save"
+                                    )}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={handleCancelEdit}
+                                    disabled={updatingComment}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="text-sm mt-1 text-foreground">{comment.content}</p>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1 ml-3">
+                            {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
+                            {comment.editedAt && (
+                              <span className="ml-1">
+                                (edited {formatDistanceToNow(new Date(comment.editedAt), { addSuffix: true })})
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Horizontal Ad after every 2 comments */}
+                      {(index + 1) % 2 === 0 && index + 1 < displayedComments && (
+                        <div className="mt-6 w-full">
+                          <AdBanner
+                            type="banner"
+                            className="w-full"
+                            slot="6596765108"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                {/* Horizontal Ad if fewer than 2 comments */}
+                {comments.length < 2 && (
+                  <div className="w-full py-2">
+                    <AdBanner
+                      type="banner"
+                      className="w-full"
+                      slot="6596765108"
+                    />
+                  </div>
+                )}
+
+                {hasMoreComments && (
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={loadMoreComments}
+                  >
+                    Load More Comments ({comments.length - displayedComments} remaining)
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* Right Sidebar - Instructions */}
+        <div className="hidden lg:block lg:col-span-3 space-y-6">
+          <InstructionForum />
+          <div className="sticky top-16">
+            <AdBanner
+              type="sidebar"
+              width={300}
+              height={600}
+              slot="3146074170"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default PostPageClient

@@ -1,64 +1,55 @@
-import { notFound } from "next/navigation";
-import { BlogService } from "@/lib/api/blog";
-import MarkdownRenderer from "@/components/MarkdownRenderer";
-import Navbar from "@/components/navbar";
-import { SiteFooter } from "@/components/site-footer";
-import { Metadata } from "next";
-import { Badge } from "@/components/ui/badge";
-import AdBanner from "@/components/ad-banner";
-import { generateBlogMetadata, generateBlogStructuredData, generateBlogBreadcrumbStructuredData } from "@/lib/seo/metadata";
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { notFound } from "next/navigation"
+import { BlogService } from "@/lib/api/blog"
+import { MarkdownRenderer, AdBanner } from "@/components/common"
+import { Navbar, SiteFooter } from "@/components/layout"
+import { Metadata } from "next"
+import { Badge } from "@/components/ui/badge"
+import { generateBlogMetadata, generateBlogStructuredData, generateBlogBreadcrumbStructuredData } from "@/lib/seo"
+import { formatString } from "@/features/blog"
+import Link from "next/link"
+import { ArrowLeft } from "lucide-react"
 
-// Force dynamic rendering to ensure blog posts are fetched at request time
-export const dynamic = 'force-dynamic'
+export const dynamic = "force-dynamic"
 export const revalidate = 0
 
 interface BlogPageProps {
   params: Promise<{
-    slug: string;
-  }>;
-}
-
-const formatString = (str: string) => {
-  return str
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(" ")
+    slug: string
+  }>
 }
 
 export async function generateMetadata({ params }: BlogPageProps): Promise<Metadata> {
   try {
-    const { slug } = await params;
-    const response = await BlogService.getBlogBySlug(slug);
-    const blog = response.success && response.data ? response.data : null;
+    const { slug } = await params
+    const response = await BlogService.getBlogBySlug(slug)
+    const blog = response.success && response.data ? response.data : null
     if (!blog) {
       return {
         title: "Blog Post Not Found - FableSpace",
         description: "The blog post you're looking for could not be found.",
-      };
+      }
     }
-    return generateBlogMetadata(blog);
+    return generateBlogMetadata(blog)
   } catch (error) {
     return {
       title: "Blog Post Not Found - FableSpace",
       description: "The blog post you're looking for could not be found.",
-    };
+    }
   }
 }
 
 export default async function BlogPostPage({ params }: BlogPageProps) {
   try {
-    const { slug } = await params;
-    const response = await BlogService.getBlogBySlug(slug);
-    const blog = response.success && response.data ? response.data : null;
+    const { slug } = await params
+    const response = await BlogService.getBlogBySlug(slug)
+    const blog = response.success && response.data ? response.data : null
 
     if (!blog || blog.status !== "published") {
-      notFound();
+      notFound()
     }
 
-    const structuredData = generateBlogStructuredData(blog);
-    const breadcrumbData = generateBlogBreadcrumbStructuredData(blog);
+    const structuredData = generateBlogStructuredData(blog)
+    const breadcrumbData = generateBlogBreadcrumbStructuredData(blog)
 
     return (
       <div className="min-h-screen">
@@ -74,21 +65,34 @@ export default async function BlogPostPage({ params }: BlogPageProps) {
         <main className="container mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 lg:py-8">
           <div className="max-w-3xl mx-auto py-2">
             <div className="mb-8">
-              <Link href="/blog" className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1">
+              <Link
+                href="/blog"
+                className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
+              >
                 <ArrowLeft className="h-4 w-4" />
                 Back to Blog
               </Link>
             </div>
             <article>
-              <h1 className="text-3xl sm:text-4xl font-serif font-bold tracking-tight mb-4">{blog.title}</h1>
+              <h1 className="text-3xl sm:text-4xl font-serif font-bold tracking-tight mb-4">
+                {blog.title}
+              </h1>
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
-                <a rel="author" href="/about" className="text-xs sm:text-sm hover:text-foreground hover:underline transition-colors">By FableSpace Team</a>
+                <a
+                  rel="author"
+                  href="/about"
+                  className="text-xs sm:text-sm hover:text-foreground hover:underline transition-colors"
+                >
+                  By FableSpace Team
+                </a>
                 <span className="hidden xs:inline">•</span>
                 <Badge variant="outline" className="mr-1">
                   {formatString(blog.category)}
                 </Badge>
                 <span className="hidden xs:inline">•</span>
-                <span className="text-xs sm:text-sm">Created {blog.publishDate ? new Date(blog.publishDate).toLocaleDateString() : 'Unknown'}</span>
+                <span className="text-xs sm:text-sm">
+                  Created {blog.publishDate ? new Date(blog.publishDate).toLocaleDateString() : "Unknown"}
+                </span>
               </div>
               {blog.featuredImage && (
                 <img
@@ -106,16 +110,14 @@ export default async function BlogPostPage({ params }: BlogPageProps) {
                   slot="6596765108"
                 />
               </div>
-
             </article>
           </div>
-
         </main>
         <SiteFooter />
       </div>
-    );
+    )
   } catch (error) {
-    console.error("Error loading blog post page:", error);
-    notFound();
+    console.error("Error loading blog post page:", error)
+    notFound()
   }
 }

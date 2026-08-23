@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth-context';
-import { useToast } from "@/components/ui/use-toast"
+import { useAuth } from '@/contexts/auth-context';
+import { useToast } from "@/hooks/use-toast"
 import { Loader2 } from 'lucide-react';
 
 export default function GoogleCallbackPage() {

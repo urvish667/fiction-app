@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Loader2 } from "lucide-react"
 import Link from "next/link"
-import StoryCard from "@/components/story-card"
+import { StoryCard } from "@/features/story"
 import { StoryService } from "@/lib/api/story"
 import { ImageService } from "@/lib/api/images"
 import { UserService } from "@/lib/api/user"
@@ -34,9 +34,9 @@ type UserProfile = {
   isCurrentUser: boolean
   followers?: number
   following?: number
-  donationsEnabled?: boolean | null;
-  donationMethod?: string | null;
-  donationLink?: string | null;
+  donationsEnabled?: boolean | null
+  donationMethod?: string | null
+  donationLink?: string | null
   preferences?: {
     privacySettings?: {
       showLocation?: boolean
@@ -273,7 +273,7 @@ export default function UserProfileClient({ user }: UserProfileClientProps) {
           Library
         </TabsTrigger>
         <TabsTrigger value="followers" className="text-xs sm:text-sm">
-          Followers & Following
+          Followers &amp; Following
         </TabsTrigger>
       </TabsList>
 
@@ -320,7 +320,7 @@ export default function UserProfileClient({ user }: UserProfileClientProps) {
           ) : (
             <div className="text-center py-12 bg-muted/30 rounded-lg">
               <h3 className="text-xl font-semibold mb-2">No stories published yet</h3>
-              <p className="text-muted-foreground">This user hasn't published any stories yet.</p>
+              <p className="text-muted-foreground">This user hasn&apos;t published any stories yet.</p>
             </div>
           )}
         </motion.div>
@@ -346,7 +346,7 @@ export default function UserProfileClient({ user }: UserProfileClientProps) {
             <div className="text-center py-12 bg-muted/30 rounded-lg">
               <h3 className="text-xl font-semibold mb-2">No saved stories</h3>
               <p className="text-muted-foreground">
-                This user hasn't saved any stories to their library.
+                This user hasn&apos;t saved any stories to their library.
               </p>
             </div>
           )}
@@ -389,7 +389,7 @@ export default function UserProfileClient({ user }: UserProfileClientProps) {
               ) : (
                 <div className="text-center py-12 bg-muted/30 rounded-lg">
                   <h3 className="text-xl font-semibold mb-2">No followers yet</h3>
-                  <p className="text-muted-foreground">This user doesn't have any followers yet.</p>
+                  <p className="text-muted-foreground">This user doesn&apos;t have any followers yet.</p>
                 </div>
               )}
             </div>
@@ -427,7 +427,7 @@ export default function UserProfileClient({ user }: UserProfileClientProps) {
               ) : (
                 <div className="text-center py-12 bg-muted/30 rounded-lg">
                   <h3 className="text-xl font-semibold mb-2">Not following anyone</h3>
-                  <p className="text-muted-foreground">This user isn't following anyone yet.</p>
+                  <p className="text-muted-foreground">This user isn&apos;t following anyone yet.</p>
                 </div>
               )}
             </div>

@@ -3,8 +3,7 @@
 import { motion } from "framer-motion"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import Navbar from "@/components/navbar"
-import { SiteFooter } from "@/components/site-footer"
+import { Navbar, SiteFooter } from "@/components/layout"
 import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
 
@@ -240,7 +239,7 @@ export default function PrivacyPolicyPage() {
                   
                   {/* Children's Privacy */}
                   <section>
-                    <h2 className="text-2xl font-semibold mb-4">8. Children's Privacy</h2>
+                    <h2 className="text-2xl font-semibold mb-4">8. Children&apos;s Privacy</h2>
                     <p className="mb-4">
                       Our service is not intended for anyone under the age of 13. We do not knowingly collect personal information from children under 13. If you are a parent or guardian and you are aware that your child has provided us with personal information, please contact us so that we can take necessary actions.
                     </p>
@@ -265,7 +264,7 @@ export default function PrivacyPolicyPage() {
                   <section>
                     <h2 className="text-2xl font-semibold mb-4">10. Changes to This Privacy Policy</h2>
                     <p className="mb-4">
-                      We may update our Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the "Last updated" date at the top of this Privacy Policy.
+                      We may update our Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the &quot;Last updated&quot; date at the top of this Privacy Policy.
                     </p>
                     <p className="mb-4">
                       You are advised to review this Privacy Policy periodically for any changes. Changes to this Privacy Policy are effective when they are posted on this page.

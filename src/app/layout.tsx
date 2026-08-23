@@ -2,13 +2,10 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Inter, Merriweather } from "next/font/google"
 import "./globals.css"
-import { ThemeProvider } from "@/components/theme-provider"
+import { ThemeProvider, BottomNav } from "@/components/layout"
 import Providers from "./providers"
 import { Toaster } from "@/components/ui/toaster"
-import { Analytics } from "@/components/analytics"
-import { OfflineBanner } from "@/components/offline-banner"
-import { GlobalErrorHandler } from "@/components/global-error-handler"
-import BottomNav from "@/components/bottom-nav"
+import { Analytics, OfflineBanner, GlobalErrorHandler } from "@/components/common"
 
 const inter = Inter({
   subsets: ["latin"],

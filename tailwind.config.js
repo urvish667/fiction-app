@@ -65,6 +65,8 @@ module.exports = {
         	helvetica: ['"Helvetica Neue"', 'Helvetica', 'Arial', 'sans-serif'],
         	sans: ['var(--font-sans)', 'Inter', 'system-ui', 'sans-serif'],
         	serif: ['var(--font-serif)', 'Merriweather', 'Georgia', 'serif'],
+        	brand: ['Georgia', 'serif'],
+        	logo: ['Georgia', 'serif'],
       	},
 		
   	}

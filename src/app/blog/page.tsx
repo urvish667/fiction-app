@@ -1,15 +1,12 @@
-import Navbar from "@/components/navbar"
-import { SiteFooter } from "@/components/site-footer"
-import BlogContent from "./blog-content"
-import AdBanner from "@/components/ad-banner"
+import { Navbar, SiteFooter } from "@/components/layout"
+import { BlogContent } from "@/features/blog"
+import { AdBanner } from "@/components/common"
 import { fetchPublishedBlogs } from "@/lib/server/blog-data"
 
-// Force dynamic rendering to ensure blogs are fetched at request time
-export const dynamic = 'force-dynamic'
+export const dynamic = "force-dynamic"
 export const revalidate = 0
 
 export default async function BlogPage() {
-  // Fetch initial blog data server-side for SEO
   const initialBlogs = await fetchPublishedBlogs()
 
   return (

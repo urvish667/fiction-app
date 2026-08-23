@@ -11,7 +11,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
-import { useAuth } from '@/lib/auth-context';
+import { useAuth } from '@/contexts/auth-context';
 import { Notification } from '@/types/notification';
 import { NotificationService } from '@/lib/api/notification';
 import { AuthService } from '@/lib/api/auth';

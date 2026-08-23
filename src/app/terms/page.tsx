@@ -3,8 +3,7 @@
 import { motion } from "framer-motion"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import Navbar from "@/components/navbar"
-import { SiteFooter } from "@/components/site-footer"
+import { Navbar, SiteFooter } from "@/components/layout"
 import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
 
@@ -29,13 +28,13 @@ export default function TermsPage() {
                   <section>
                     <h2 className="text-2xl font-semibold mb-4">1. Introduction</h2>
                     <p className="mb-4">
-                      Welcome to FableSpace ("we," "our," or "us"). FableSpace is a storytelling platform that empowers creativity and connects people through stories.
+                      Welcome to FableSpace (&quot;we,&quot; &quot;our,&quot; or &quot;us&quot;). FableSpace is a storytelling platform that empowers creativity and connects people through stories.
                     </p>
                     <p className="mb-4">
-                      These Terms and Conditions govern your access to and use of the FableSpace website, services, and applications (collectively, the "Service"). By accessing or using the Service, you agree to be bound by these Terms.
+                      These Terms and Conditions govern your access to and use of the FableSpace website, services, and applications (collectively, the &quot;Service&quot;). By accessing or using the Service, you agree to be bound by these Terms.
                     </p>
                     <p className="mb-4">
-                      For more details on how we handle your data, please review our <Link href="/privacy" className="text-primary hover:underline">Privacy Policy</Link>. Additionally, our <Link href="/content" className="text-primary hover:underline">Content & Monetization Policy</Link> outlines guidelines for content ownership, copyright, and platform monetization.
+                      For more details on how we handle your data, please review our <Link href="/privacy" className="text-primary hover:underline">Privacy Policy</Link>. Additionally, our <Link href="/content" className="text-primary hover:underline">Content &amp; Monetization Policy</Link> outlines guidelines for content ownership, copyright, and platform monetization.
                     </p>
                   </section>
 
@@ -48,7 +47,7 @@ export default function TermsPage() {
                       By creating an account, accessing, or using our Service, you acknowledge that you have read, understood, and agree to be bound by these Terms. If you do not agree to these Terms, you may not access or use the Service.
                     </p>
                     <p>
-                      You must be at least 13 years old to use the Service. If you are under 18, you represent that you have your parent or guardian's permission to use the Service and they have read and agree to these Terms on your behalf.
+                      You must be at least 13 years old to use the Service. If you are under 18, you represent that you have your parent or guardian&apos;s permission to use the Service and they have read and agree to these Terms on your behalf.
                     </p>
                   </section>
 
@@ -74,7 +73,7 @@ export default function TermsPage() {
                   <section>
                     <h2 className="text-2xl font-semibold mb-4">4. Content Guidelines and Ownership</h2>
                     <p className="mb-4">
-                      You retain ownership of all content you create, post, or share on FableSpace ("User Content"). By posting User Content, you grant us a non-exclusive, royalty-free, worldwide license to use, store, display, reproduce, modify, and distribute your User Content solely for the purpose of operating and improving the Service.
+                      You retain ownership of all content you create, post, or share on FableSpace (&quot;User Content&quot;). By posting User Content, you grant us a non-exclusive, royalty-free, worldwide license to use, store, display, reproduce, modify, and distribute your User Content solely for the purpose of operating and improving the Service.
                     </p>
                     <p className="mb-4">
                       You are solely responsible for your User Content and the consequences of posting it. You represent and warrant that:
@@ -227,7 +226,7 @@ export default function TermsPage() {
                   <section>
                     <h2 className="text-2xl font-semibold mb-4">12. Changes to Terms</h2>
                     <p className="mb-4">
-                      We reserve the right to modify or replace these Terms at any time. If a revision is material, we will provide at least 30 days' notice prior to any new terms taking effect.
+                      We reserve the right to modify or replace these Terms at any time. If a revision is material, we will provide at least 30 days&apos; notice prior to any new terms taking effect.
                     </p>
                     <p>
                       By continuing to access or use our Service after any revisions become effective, you agree to be bound by the revised terms. If you do not agree to the new terms, you are no longer authorized to use the Service.

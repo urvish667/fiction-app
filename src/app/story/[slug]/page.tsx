@@ -1,7 +1,7 @@
 import { Metadata } from "next"
 import { notFound } from "next/navigation"
 import { generateStoryMetadata, generateStoryStructuredData, generateStoryBreadcrumbStructuredData } from "@/lib/seo/metadata"
-import StoryPageClient from "@/components/story/story-page-client"
+import { StoryPageClient } from "@/features/story"
 import StructuredData from "@/components/seo/structured-data"
 import { fetchStoryData } from "@/lib/server/story-data"
 
@@ -20,7 +20,7 @@ export async function generateMetadata({ params }: StoryPageProps): Promise<Meta
     const { slug } = await params
 
     // Use the centralized fetchStoryData function for consistent data fetching and caching
-    const storyData = await fetchStoryData(slug);
+    const storyData = await fetchStoryData(slug)
 
     if (!storyData) {
       return {
@@ -30,7 +30,7 @@ export async function generateMetadata({ params }: StoryPageProps): Promise<Meta
     }
 
     // Extract tags from the story data
-    const tags = (storyData.tags || []).map(tag => tag.name);
+    const tags = (storyData.tags || []).map(tag => tag.name)
 
     return generateStoryMetadata(storyData, tags)
   } catch (error) {
@@ -46,7 +46,7 @@ export default async function StoryInfoPage({ params }: StoryPageProps) {
     const { slug } = await params
 
     // Use the centralized fetchStoryData function with caching and proper data fetching
-    const storyData = await fetchStoryData(slug);
+    const storyData = await fetchStoryData(slug)
 
     if (!storyData) {
       notFound()
@@ -58,7 +58,7 @@ export default async function StoryInfoPage({ params }: StoryPageProps) {
       license: 'all-rights-reserved', // Default license
       readCount: storyData.chapters.reduce((total: number, chapter: any) => total + chapter.readCount, 0),
       authorId: storyData.author?.id || '',
-    };
+    }
 
     // Generate structured data for SEO
     const structuredData = generateStoryStructuredData(

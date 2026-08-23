@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import { generateContactMetadata } from "@/lib/seo/page-metadata"
-import { ContactForm } from "@/app/contact/contact-form"
+import { ContactForm } from "@/features/contact"
 
 export const metadata: Metadata = generateContactMetadata()
 

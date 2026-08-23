@@ -1,13 +1,25 @@
 import { UserSummary } from "./user";
 
+export type GenreSummary = {
+  id: string;
+  name: string;
+  slug: string | null;
+};
+
+export type TagSummary = {
+  id: string;
+  name: string;
+  slug: string | null;
+};
+
 export type Story = {
   id: string;
   title: string;
   slug: string;
   description?: string;
   coverImage?: string;
-  genre?: string;
-  language: string;
+  genre: GenreSummary | null;
+  language: string | { id: string; name: string } | null;
   isMature: boolean;
   isOriginal: boolean;
   status: string; // "draft", "ongoing", or "completed"
@@ -17,9 +29,9 @@ export type Story = {
   authorId: string;
   author?: UserSummary;
   chapters?: Chapter[];
-  tags?: { id: string; name: string }[]; // Tags associated with the story
-  createdAt: Date;
-  updatedAt: Date;
+  tags: TagSummary[]; // Tags associated with the story
+  createdAt: Date | string;
+  updatedAt: Date | string;
   // Interaction properties
   isLiked?: boolean;
   isBookmarked?: boolean;
@@ -153,8 +165,8 @@ export type StoryRecommendation = {
     username: string;
     image?: string;
   };
-  genre: string | null;
-  tags: string[];
+  genre: GenreSummary | null;
+  tags: TagSummary[];
   likeCount: number;
   commentCount: number;
   bookmarkCount: number;

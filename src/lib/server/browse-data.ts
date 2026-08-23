@@ -6,6 +6,7 @@
 
 import { logger } from '@/lib/logger';
 import { StoryService } from '@/lib/api/story';
+import type { GenreSummary, TagSummary } from '@/types/story';
 
 export interface BrowseParams {
   genre?: string;
@@ -40,22 +41,12 @@ export interface BrowseStory {
     username: string | null;
     image: string | null;
   };
-  genre: {
-    id: string;
-    name: string;
-    slug: string | null;
-  } | null;
+  genre: GenreSummary | null;
   language: {
     id: string;
     name: string;
   } | null;
-  tags: Array<{
-    tag: {
-      id: string;
-      name: string;
-      slug: string | null;
-    };
-  }>;
+  tags: TagSummary[];
 }
 
 export interface BrowseResult {

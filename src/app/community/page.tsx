@@ -1,7 +1,6 @@
 import { Metadata } from "next"
-import Navbar from "@/components/navbar"
-import { SiteFooter } from "@/components/site-footer"
-import CommunityClient from "./community-client"
+import { Navbar, SiteFooter } from "@/components/layout"
+import { CommunityClient } from "@/features/forum"
 
 export const metadata: Metadata = {
   title: "Community",

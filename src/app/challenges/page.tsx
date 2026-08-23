@@ -4,8 +4,7 @@ import { motion } from "framer-motion"
 import { CalendarClock } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import Navbar from "@/components/navbar"
-import { SiteFooter } from "@/components/site-footer"
+import { Navbar, SiteFooter } from "@/components/layout"
 
 export default function ChallengesPage() {
   return (
@@ -48,7 +47,7 @@ export default function ChallengesPage() {
           </div>
           
           <div className="text-sm text-muted-foreground">
-            Have ideas for challenges you'd like to see? 
+            Have ideas for challenges you&apos;d like to see? 
             <Link href="/contact" className="text-primary hover:underline ml-1">
               Let us know!
             </Link>

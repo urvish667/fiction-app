@@ -1,5 +1,6 @@
 import { apiClient } from "@/lib/apiClient";
 import { logError } from "@/lib/error-logger";
+import type { GenreSummary, TagSummary } from "@/types/story";
 import type { ApiResponse } from "./story";
 
 // Types for recommendations
@@ -16,8 +17,8 @@ export interface RecommendedStory {
     username: string | null;
     image: string | null;
   };
-  genre: string | null;
-  tags: (string | { id: string; name: string })[];
+  genre: GenreSummary | null;
+  tags: TagSummary[];
   likeCount: number;
   commentCount: number;
   bookmarkCount: number;

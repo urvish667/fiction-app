@@ -2,61 +2,58 @@
 
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
-import PostPageClient from "./post-page-client"
-import Navbar from "@/components/navbar"
-import { SiteFooter } from "@/components/site-footer"
-import { getForumPostData } from "@/lib/forum-data"
-import { useAuth } from "@/lib/auth-context"
+import { PostPageClient } from "@/features/forum"
+import { Navbar, SiteFooter } from "@/components/layout"
+import { getForumPostData } from "@/lib/server/forum-data"
+import { useAuth } from "@/contexts/auth-context"
 import { Loader2 } from "lucide-react"
+import { logError } from "@/lib/error-logger"
 
-// Mock data for forum rules and banned users
 const forumRules = [
   "Be respectful to all members",
   "No spam or self-promotion",
   "Use appropriate language",
   "Stay on topic",
   "No harassment or bullying",
-  "Respect author's creative choices"
+  "Respect author's creative choices",
 ]
 
-type PostPageParams = { username: string; slug: string };
+type PostPageParams = { username: string; slug: string }
 
 export default function PostPage() {
-  const params = useParams() as PostPageParams;
-  const router = useRouter();
-  const { user } = useAuth();
+  const params = useParams() as PostPageParams
+  const router = useRouter()
+  const { user } = useAuth()
   const [postData, setPostData] = useState<{
-    post: any;
-    user: any;
-  } | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+    post: any
+    user: any
+  } | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
 
   useEffect(() => {
     async function loadPostData() {
-      if (!params.username || !params.slug) return;
+      if (!params.username || !params.slug) return
 
       try {
-        const data = await getForumPostData(params.username, params.slug);
+        const data = await getForumPostData(params.username, params.slug)
 
         if (!data) {
-          router.replace('/404');
-          return;
+          router.replace("/404")
+          return
         }
 
-        setPostData(data);
-      } catch (error) {
-        console.error('Error loading post data:', error);
-        setError(true);
+        setPostData(data)
+      } catch (err) {
+        logError(err, { context: "Loading forum post data" })
+        setError(true)
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
     }
 
-    if (params.username && params.slug) {
-      loadPostData();
-    }
-  }, [params.username, params.slug, router]);
+    loadPostData()
+  }, [params.username, params.slug, router])
 
   if (loading) {
     return (
@@ -67,7 +64,7 @@ export default function PostPage() {
           <span className="ml-2">Loading post...</span>
         </div>
       </div>
-    );
+    )
   }
 
   if (error || !postData) {
@@ -78,12 +75,11 @@ export default function PostPage() {
           <p>Post not found or unavailable</p>
         </div>
       </div>
-    );
+    )
   }
 
-  // Use auth context user for current user determination
-  const currentUserId = user?.id || null;
-  const isOwner = currentUserId !== null && postData.user.id === currentUserId;
+  const currentUserId = user?.id || null
+  const isOwner = currentUserId !== null && postData.user.id === currentUserId
 
   return (
     <div className="min-h-screen">
@@ -106,5 +102,5 @@ export default function PostPage() {
 
       <SiteFooter />
     </div>
-  );
+  )
 }

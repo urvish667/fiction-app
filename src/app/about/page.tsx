@@ -1,22 +1,21 @@
-import { Sparkles, Heart } from "lucide-react";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { getStudioUrl } from "@/lib/utils";
-import Navbar from "@/components/navbar";
-import { SiteFooter } from "@/components/site-footer";
-import { generateAboutMetadata, generateOrganizationStructuredData } from "@/lib/seo/metadata";
-import type { Metadata } from "next";
+import { Sparkles, Heart } from "lucide-react"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { getStudioUrl } from "@/lib/utils"
+import { Navbar, SiteFooter } from "@/components/layout"
+import { generateAboutMetadata, generateOrganizationStructuredData } from "@/lib/seo/metadata"
+import type { Metadata } from "next"
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@/components/ui/accordion";
+} from "@/components/ui/accordion"
 
-export const metadata: Metadata = generateAboutMetadata();
+export const metadata: Metadata = generateAboutMetadata()
 
 export default function AboutPage() {
-  const organizationSchema = generateOrganizationStructuredData();
+  const organizationSchema = generateOrganizationStructuredData()
 
   const faqItems = [
     {
@@ -132,19 +131,45 @@ export default function AboutPage() {
             </div>
           </section>
 
-          {/* FAQ Section */}
-          <section id="faq" className="max-w-3xl mx-auto mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold font-serif text-center mb-8">Frequently Asked Questions</h2>
-            <Accordion type="single" collapsible className="w-full">
-              {faqItems.map((item, index) => (
-                <AccordionItem value={`item-${index}`} key={index}>
-                  <AccordionTrigger className="text-xl font-medium">{item.question}</AccordionTrigger>
-                  <AccordionContent className="text-lg">
-                    {item.answer}
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
+          {/* Platform Features & Reader Experience (Relocated from Homepage) */}
+          <section className="max-w-5xl mx-auto mb-16" aria-labelledby="platform-features-heading">
+            <div className="text-center max-w-3xl mx-auto mb-10">
+              <h2 id="platform-features-heading" className="text-3xl sm:text-4xl font-bold font-serif tracking-tight mb-4">
+                Discover Original Stories &amp; Serialized Web Fiction
+              </h2>
+              <p className="text-base text-muted-foreground leading-relaxed">
+                FableSpace is an open creative storytelling ecosystem designed for fiction readers and independent authors. Read full web novels chapter-by-chapter with zero subscriptions, paywalls, or fees.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
+              <div className="bg-card p-6 rounded-2xl border border-border/50 shadow-sm">
+                <h3 className="text-lg font-semibold mb-2 text-foreground font-serif">
+                  Immersive Genres &amp; Diverse Worlds
+                </h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  From high fantasy magic and interstellar science fiction to slow-burn romance and gripping psychological thrillers, discover unique voices and serialized fiction not found anywhere else.
+                </p>
+              </div>
+
+              <div className="bg-card p-6 rounded-2xl border border-border/50 shadow-sm">
+                <h3 className="text-lg font-semibold mb-2 text-foreground font-serif">
+                  Continuous Chapter Updates
+                </h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Follow ongoing serials with real-time release schedules, bookmark favorite works, track your reading progress, and receive instant notifications when fresh chapters drop.
+                </p>
+              </div>
+
+              <div className="bg-card p-6 rounded-2xl border border-border/50 shadow-sm">
+                <h3 className="text-lg font-semibold mb-2 text-foreground font-serif">
+                  Direct Community Interaction
+                </h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Leave paragraph comments, share chapter reviews, discuss theories in dedicated author forums, and participate in lively creative writing discussions.
+                </p>
+              </div>
+            </div>
           </section>
 
           {/* What Makes Us Different */}
@@ -188,6 +213,21 @@ export default function AboutPage() {
                 </p>
               </div>
             </div>
+          </section>
+
+          {/* FAQ Section */}
+          <section id="faq" className="max-w-3xl mx-auto mb-16">
+            <h2 className="text-3xl sm:text-4xl font-bold font-serif text-center mb-8">Frequently Asked Questions</h2>
+            <Accordion type="single" collapsible className="w-full">
+              {faqItems.map((item, index) => (
+                <AccordionItem value={`item-${index}`} key={index}>
+                  <AccordionTrigger className="text-xl font-medium">{item.question}</AccordionTrigger>
+                  <AccordionContent className="text-lg">
+                    {item.answer}
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
           </section>
 
           {/* Call to Action */}

@@ -5,7 +5,9 @@ import type {
   CreateStoryRequest,
   UpdateStoryRequest,
   StoryResponse,
-  StoryRecommendation
+  StoryRecommendation,
+  GenreSummary,
+  TagSummary,
 } from "@/types/story";
 
 export interface ApiResponse<T> {
@@ -120,22 +122,12 @@ export const StoryService = {
         username: string | null;
         image: string | null;
       };
-      genre: {
-        id: string;
-        name: string;
-        slug: string | null;
-      } | null;
+      genre: GenreSummary | null;
       language: {
         id: string;
         name: string;
       } | null;
-      tags: Array<{
-        tag: {
-          id: string;
-          name: string;
-          slug: string | null;
-        };
-      }>;
+      tags: TagSummary[];
     }>;
     pagination: {
       page: number;
@@ -145,10 +137,6 @@ export const StoryService = {
     };
   }> {
     const { serverSide = false, enableCache = true, logger } = options || {};
-
-    // Note: Redis caching has been removed. Relying on Next.js built-in caching
-    // and backend Cache-Control headers for performance.
-
 
     try {
       // Build API parameters
@@ -205,69 +193,38 @@ export const StoryService = {
       const { stories, pagination } = response.data;
 
       // Transform stories to browse format
-      const transformedStories: Array<{
-        id: string;
-        title: string;
-        slug: string | null;
-        description: string | null;
-        coverImage: string | null;
-        status: string;
-        isMature: boolean;
-        isOriginal?: boolean;
-        createdAt: string;
-        updatedAt: string;
-        likeCount: number;
-        commentCount: number;
-        viewCount: number;
-        wordCount: number;
-        author: {
-          id: string;
-          name: string | null;
-          username: string | null;
-          image: string | null;
-        };
-        genre: {
-          id: string;
-          name: string;
-          slug: string | null;
-        } | null;
-        language: {
-          id: string;
-          name: string;
-        } | null;
-        tags: Array<{
-          tag: {
-            id: string;
-            name: string;
-            slug: string | null;
-          };
-        }>;
-      }> = stories.map((story: any) => ({
+      const transformedStories = stories.map((story: any) => ({
         id: story.id,
         title: story.title,
-        slug: story.slug,
-        description: story.description,
-        coverImage: story.coverImage,
+        slug: story.slug ?? null,
+        description: story.description ?? null,
+        coverImage: story.coverImage ?? null,
         status: story.status,
         isMature: story.isMature,
         isOriginal: story.isOriginal,
         createdAt: story.createdAt,
         updatedAt: story.updatedAt,
-        likeCount: story.likeCount || 0,
-        commentCount: story.commentCount || 0,
-        viewCount: story.readCount || story.viewCount || 0,
-        wordCount: story.wordCount || 0,
+        likeCount: story.likeCount ?? 0,
+        commentCount: story.commentCount ?? 0,
+        viewCount: story.readCount ?? story.viewCount ?? 0,
+        wordCount: story.wordCount ?? 0,
         chapterCount: story.chapterCount ?? story._count?.chapters ?? 0,
         author: story.author,
-        genre: story.genre,
-        language: story.language,
-        tags: story.tags?.map((tag: any) => ({
-          tag: {
-            id: tag.id,
-            name: tag.name,
-            slug: tag.slug,
+        genre: story.genre
+          ? {
+            id: story.genre.id,
+            name: story.genre.name,
+            slug: story.genre.slug ?? null,
           }
-        })) || [],
+          : null,
+        language: story.language,
+        tags: Array.isArray(story.tags)
+          ? story.tags.map((tag: any) => ({
+            id: tag.id ?? tag.tag?.id,
+            name: tag.name ?? tag.tag?.name,
+            slug: tag.slug ?? tag.tag?.slug ?? null,
+          }))
+          : [],
       }));
 
       const result = {

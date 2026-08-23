@@ -1,15 +1,14 @@
 import { Metadata } from "next"
 import { Suspense } from "react"
-import Navbar from "@/components/navbar"
-import { SiteFooter } from "@/components/site-footer"
-import StoryCardSkeleton from "@/components/story-card-skeleton"
+import { Navbar, SiteFooter } from "@/components/layout"
+import { StoryCardSkeleton } from "@/features/story"
 import {
   generateBrowseMetadata,
   generateBrowseStructuredData,
   generateCategoryFAQStructuredData,
   generateCategoryWebPageStructuredData
 } from "@/lib/seo/metadata"
-import BrowseContent from "./browse-content"
+import { BrowseContent } from "@/features/browse"
 import { getAllGenreNames } from "@/lib/seo/genre-descriptions"
 import { fetchBrowseStories } from "@/lib/server/browse-data"
 
@@ -65,7 +64,6 @@ export default async function BrowsePage({ searchParams }: BrowsePageProps) {
       language: params.language,
       status: params.status
     })
-    // Optionally, add tag-specific FAQ or WebPage structured data here if desired
   } else {
     browseStructuredData = generateBrowseStructuredData({
       genre: params.genre,
@@ -75,7 +73,7 @@ export default async function BrowsePage({ searchParams }: BrowsePageProps) {
 
     if (params.genre) {
       // Add FAQ structured data for popular genres
-      const allGenres = getAllGenreNames();
+      const allGenres = getAllGenreNames()
       if (allGenres.includes(params.genre)) {
         additionalStructuredData.push(generateCategoryFAQStructuredData(params.genre))
       }

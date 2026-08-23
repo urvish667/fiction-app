@@ -7,7 +7,7 @@
 import { logger } from '@/lib/logger';
 import { StoryService } from '@/lib/api/story';
 import { ChapterService } from '@/lib/api/chapter';
-import { StoryResponse, ChapterResponse } from '@/types/story';
+import { StoryResponse, ChapterResponse, GenreSummary, TagSummary } from '@/types/story';
 
 interface StoryParams {
   slug: string;
@@ -37,19 +37,12 @@ export interface ServerStory {
     donationMethod: string | null;
     donationLink: string | null;
   };
-  genre: {
-    id: string;
-    name: string;
-  } | null;
+  genre: GenreSummary | null;
   language: {
     id: string;
     name: string;
   } | null;
-  tags: Array<{
-    id: string;
-    name: string;
-    slug: string | null;
-  }>;
+  tags: TagSummary[];
   chapters: Array<{
     id: string;
     number: number;

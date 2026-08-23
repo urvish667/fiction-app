@@ -61,3 +61,24 @@ export function isWithin48Hours(dateString: string | Date | undefined | null): b
     return false;
   }
 }
+
+/**
+ * Format date to standard readable string (e.g. "Jan 15, 2026")
+ */
+export function formatDate(dateInput: Date | string | undefined | null): string {
+  if (!dateInput) return "Unknown time";
+
+  try {
+    const date = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
+    if (isNaN(date.getTime())) return "Unknown time";
+
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }).format(date);
+  } catch {
+    return "Unknown time";
+  }
+}
+

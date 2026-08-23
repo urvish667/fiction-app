@@ -4,7 +4,7 @@ import { cache } from "react"
 import { StoryService } from "@/lib/api/story"
 import { ChapterService } from "@/lib/api/chapter"
 import { generateChapterMetadata, generateChapterStructuredData, generateChapterBreadcrumbStructuredData } from "@/lib/seo/metadata"
-import ChapterPageClient from "@/components/chapter/chapter-page-client"
+import { ChapterPageClient } from "@/features/reader"
 import StructuredData from "@/components/seo/structured-data"
 
 interface ChapterPageProps {
