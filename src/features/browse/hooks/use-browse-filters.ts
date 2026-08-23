@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
-import { useRouter, usePathname } from "next/navigation"
+import { usePathname } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 import { StoryService } from "@/lib/api/story"
 import { MetaService } from "@/lib/api/meta"
@@ -81,7 +81,6 @@ export function useStoryTransformer() {
 
 export function useBrowseFilters(initialParams: BrowseParams, initialData: BrowseResult) {
   const { toast } = useToast()
-  const router = useRouter()
   const pathname = usePathname()
   const { transformServerStory, formatApiStory } = useStoryTransformer()
 
@@ -123,7 +122,7 @@ export function useBrowseFilters(initialParams: BrowseParams, initialData: Brows
   const [currentPage, setCurrentPage] = useState(parseInt(initialParams.page || "1", 10))
   const [totalPages, setTotalPages] = useState(initialData.pagination.totalPages)
   const [totalStories, setTotalStories] = useState(initialData.pagination.total)
-  const [initialFetchDone, setInitialFetchDone] = useState(false)
+  const isInitialMount = useRef(true)
 
   const observerTargetRef = useRef<HTMLDivElement>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -165,7 +164,6 @@ export function useBrowseFilters(initialParams: BrowseParams, initialData: Brows
     }
 
     if (searchQuery) params.set("search", searchQuery)
-    if (currentPage > 1) params.set("page", currentPage.toString())
     if (sortBy !== "newest") params.set("sortBy", sortBy)
     if (storyStatus !== "all") params.set("status", storyStatus)
     if (selectedLanguage) params.set("language", selectedLanguage)
@@ -173,14 +171,15 @@ export function useBrowseFilters(initialParams: BrowseParams, initialData: Brows
 
     const qs = params.toString()
     const base = pathname || "/browse"
-    router.replace(qs ? `${base}?${qs}` : base, { scroll: false })
+    const target = qs ? `${base}?${qs}` : base
+    if (typeof window !== "undefined") {
+      window.history.replaceState(null, "", target)
+    }
   }, [
     pathname,
-    router,
     selectedGenres,
     selectedTags,
     searchQuery,
-    currentPage,
     sortBy,
     storyStatus,
     selectedLanguage,
@@ -265,17 +264,8 @@ export function useBrowseFilters(initialParams: BrowseParams, initialData: Brows
 
   // ── Debounced Filter Change Effect ──────────────────────────────────────
   useEffect(() => {
-    const isInitialMatch =
-      selectedGenres.length === (initialParams.genre ? 1 : 0) &&
-      currentPage === parseInt(initialParams.page || "1", 10) &&
-      searchQuery === (initialParams.search || "") &&
-      selectedLanguage === (initialParams.language || "") &&
-      storyStatus === ((initialParams.status as any) || "all") &&
-      sortBy === (initialParams.sortBy || "newest") &&
-      selectedTags.length === (initialParams.tag || initialParams.tags ? selectedTags.length : 0)
-
-    if (!initialFetchDone && isInitialMatch) {
-      setInitialFetchDone(true)
+    if (isInitialMount.current) {
+      isInitialMount.current = false
       return
     }
 
@@ -288,9 +278,6 @@ export function useBrowseFilters(initialParams: BrowseParams, initialData: Brows
     selectedLanguage,
     storyStatus,
     sortBy,
-    currentPage,
-    initialFetchDone,
-    initialParams,
     fetchStories,
   ])
 
