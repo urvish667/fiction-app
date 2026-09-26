@@ -356,11 +356,21 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
             return;
         }
 
-        // TRIGGER 1: Fetch on login
-        fetchNotifications();
-        fetchUnreadCount();
+        // Defer unread count fetch so initial page rendering and navigation aren't blocked
+        const scheduleFetch = () => {
+            fetchUnreadCount();
+        };
 
-        // TRIGGER 3: Fetch when tab becomes visible after being hidden
+        let timerId: any = null;
+        let idleHandle: any = null;
+
+        if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+            idleHandle = (window as any).requestIdleCallback(scheduleFetch, { timeout: 2000 });
+        } else {
+            timerId = setTimeout(scheduleFetch, 1000);
+        }
+
+        // Fetch when tab becomes visible after being hidden
         // Throttled to once every 5 minutes (300,000 ms)
         const THROTTLE_DURATION = 5 * 60 * 1000;
 
@@ -368,8 +378,10 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
             if (document.visibilityState === 'visible') {
                 const now = Date.now();
                 if (now - lastFetchTime.current > THROTTLE_DURATION) {
-                    fetchNotifications();
                     fetchUnreadCount();
+                    if (notifications.length > 0) {
+                        fetchNotifications();
+                    }
                     lastFetchTime.current = now;
                 }
             }
@@ -379,6 +391,12 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
 
         // Cleanup on unmount
         return () => {
+            if (idleHandle && typeof window !== 'undefined' && 'cancelIdleCallback' in window) {
+                (window as any).cancelIdleCallback(idleHandle);
+            }
+            if (timerId) {
+                clearTimeout(timerId);
+            }
             document.removeEventListener('visibilitychange', handleVisibilityChange);
         };
 

@@ -147,13 +147,6 @@ export function BrowseContent({ initialParams, initialData }: BrowseContentProps
               className="w-[300px] min-h-[250px]"
               slot="6596765108"
             />
-            <div className="mt-4">
-              <AdBanner
-                type="sidebar"
-                className="w-[300px] min-h-[250px]"
-                slot="6596765108"
-              />
-            </div>
           </div>
         </aside>
       </div>

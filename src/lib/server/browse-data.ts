@@ -65,11 +65,8 @@ export interface BrowseResult {
  * Relies on backend Cache-Control headers and Next.js built-in caching for performance
  */
 export async function fetchBrowseStories(params: BrowseParams): Promise<BrowseResult> {
-  // Use the unified StoryService method
-  // Next.js will automatically cache based on backend Cache-Control headers
   return await StoryService.getBrowseStories(params, {
     serverSide: true,
-    enableCache: false, // Disable Redis caching, rely on Next.js caching
-    logger: logger,
+    logger,
   });
 }

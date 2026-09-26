@@ -13,92 +13,131 @@ import type { BrowseResult } from "@/lib/server/browse-data"
 
 const STORIES_PER_PAGE = 16
 
-export function useStoryTransformer() {
-  const transformServerStory = useCallback((story: BrowseResult["stories"][0]): BrowseStory => ({
+// ── Module-Level Singletons for Genres & Tags ─────────────────────────────
+let cachedGenres: GenreOption[] | null = null
+let cachedTags: TagOption[] | null = null
+let genresInFlight: Promise<GenreOption[]> | null = null
+let tagsInFlight: Promise<TagOption[]> | null = null
+
+const CACHE_TTL_MS = 30 * 60 * 1000 // 30 minutes
+let cachedGenresTime = 0
+let cachedTagsTime = 0
+
+async function getCachedGenres(): Promise<GenreOption[]> {
+  const now = Date.now()
+  if (cachedGenres && now - cachedGenresTime < CACHE_TTL_MS) return cachedGenres
+  if (genresInFlight) return genresInFlight
+
+  genresInFlight = MetaService.getGenres()
+    .then(r => {
+      if (r.success && r.data) {
+        cachedGenres = r.data
+        cachedGenresTime = Date.now()
+        return r.data
+      }
+      return cachedGenres || []
+    })
+    .catch(() => cachedGenres || [])
+    .finally(() => {
+      genresInFlight = null
+    })
+
+  return genresInFlight
+}
+
+async function getCachedTags(): Promise<TagOption[]> {
+  const now = Date.now()
+  if (cachedTags && now - cachedTagsTime < CACHE_TTL_MS) return cachedTags
+  if (tagsInFlight) return tagsInFlight
+
+  tagsInFlight = MetaService.getTags()
+    .then(r => {
+      if (r.success && r.data) {
+        cachedTags = r.data
+        cachedTagsTime = Date.now()
+        return r.data
+      }
+      return cachedTags || []
+    })
+    .catch(() => cachedTags || [])
+    .finally(() => {
+      tagsInFlight = null
+    })
+
+  return tagsInFlight
+}
+
+/**
+ * Unified pure function for transforming story objects into BrowseStory format
+ * Eliminates double-transformation overhead between server and client.
+ */
+export function formatBrowseStory(story: any): BrowseStory {
+  const genreName = typeof story.genre === "object" && story.genre !== null
+    ? (story.genre.name ?? "General")
+    : getGenreName(story.genre)
+
+  const languageName = typeof story.language === "object" && story.language !== null
+    ? (story.language.name ?? "")
+    : (story.language ?? "")
+
+  const tags: string[] = Array.isArray(story.tags)
+    ? story.tags.map((t: any) => (typeof t === "string" ? t : (t?.name ?? ""))).filter(Boolean)
+    : []
+
+  const authorName = typeof story.author === "object" && story.author !== null
+    ? (story.author.name || story.author.username || "Unknown Author")
+    : (story.author || "Unknown Author")
+
+  const viewCount = story.viewCount ?? story.readCount ?? 0
+  const chapterCount = story.chapterCount ?? story._count?.chapters ?? undefined
+
+  return {
     id: story.id,
     title: story.title,
-    author: story.author.username || story.author.name || "Unknown Author",
-    genre: story.genre?.name ?? "General",
-    language: story.language?.name ?? "",
+    author: authorName,
+    genre: genreName,
+    language: languageName,
     status: story.status || "ongoing",
     coverImage: story.coverImage
       ? ImageService.getImageUrl(story.coverImage) || "/placeholder.svg"
       : "/placeholder.svg",
-    excerpt: story.description ?? undefined,
+    excerpt: story.description ?? story.excerpt ?? undefined,
     description: story.description ?? undefined,
     likeCount: story.likeCount ?? 0,
     commentCount: story.commentCount ?? 0,
-    viewCount: story.viewCount ?? 0,
-    chapterCount: story.chapterCount,
+    viewCount,
+    chapterCount,
     readTime: Math.ceil((story.wordCount || 0) / 200),
-    date: story.createdAt ? new Date(story.createdAt) : undefined,
-    createdAt: story.createdAt ? new Date(story.createdAt) : undefined,
-    updatedAt: story.updatedAt ? new Date(story.updatedAt) : undefined,
+    date: story.createdAt ? new Date(story.createdAt) : new Date(),
+    createdAt: story.createdAt ? new Date(story.createdAt) : new Date(),
+    updatedAt: story.updatedAt ? new Date(story.updatedAt) : new Date(),
     slug: story.slug ?? undefined,
-    tags: story.tags.map(t => t.name),
+    tags,
     isMature: story.isMature || false,
     isBookmarked: false,
-  }), [])
-
-  const formatApiStory = useCallback((story: Record<string, any>): BrowseStory => {
-    const genreName = getGenreName(story.genre)
-    const languageName = (typeof story.language === "object" && story.language !== null ? story.language.name : story.language) ?? ""
-    const tags: string[] = Array.isArray(story.tags)
-      ? story.tags.map((t: any) => typeof t === "string" ? t : (t?.name ?? "")).filter(Boolean)
-      : []
-
-    return {
-      id: story.id,
-      title: story.title,
-      author: typeof story.author === "object" && story.author !== null
-        ? story.author.name || story.author.username || "Unknown Author"
-        : story.author || "Unknown Author",
-      genre: genreName,
-      language: languageName,
-      status: story.status || "ongoing",
-      coverImage: story.coverImage
-        ? ImageService.getImageUrl(story.coverImage) || "/placeholder.svg"
-        : "/placeholder.svg",
-      excerpt: story.description ?? undefined,
-      description: story.description ?? undefined,
-      likeCount: story.likeCount ?? 0,
-      commentCount: story.commentCount ?? 0,
-      viewCount: story.viewCount ?? story.readCount ?? 0,
-      chapterCount: story.chapterCount ?? story._count?.chapters ?? undefined,
-      readTime: Math.ceil((story.wordCount || 0) / 200),
-      date: story.createdAt ? new Date(story.createdAt) : new Date(),
-      createdAt: story.createdAt ? new Date(story.createdAt) : new Date(),
-      updatedAt: story.updatedAt ? new Date(story.updatedAt) : new Date(),
-      slug: story.slug ?? undefined,
-      tags,
-      isMature: story.isMature || false,
-      isBookmarked: false,
-    }
-  }, [])
-
-  return { transformServerStory, formatApiStory }
+  }
 }
+
 
 export function useBrowseFilters(initialParams: BrowseParams, initialData: BrowseResult) {
   const { toast } = useToast()
   const pathname = usePathname()
-  const { transformServerStory, formatApiStory } = useStoryTransformer()
 
   const [stories, setStories] = useState<BrowseStory[]>(() =>
-    initialData.stories.map(transformServerStory)
+    initialData.stories.map(formatBrowseStory)
   )
   const [loading, setLoading] = useState(false)
   const [isFetchingMore, setIsFetchingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState(initialParams.search || "")
-  const [allGenres, setAllGenres] = useState<GenreOption[]>([])
+  const [allGenres, setAllGenres] = useState<GenreOption[]>(() => cachedGenres || [])
 
   const [selectedGenres, setSelectedGenres] = useState<string[]>(() => {
     const slug = initialParams.genre ? safeDecodeURIComponent(initialParams.genre) : null
     return slug ? [slug] : []
   })
 
-  const [allTags, setAllTags] = useState<TagOption[]>([])
+  const [allTags, setAllTags] = useState<TagOption[]>(() => cachedTags || [])
 
   const [selectedTags, setSelectedTags] = useState<string[]>(() => {
     if (initialParams.tags) {
@@ -129,19 +168,18 @@ export function useBrowseFilters(initialParams: BrowseParams, initialData: Brows
 
   const hasMore = currentPage < totalPages
 
-  // ── Load Genres & Tags ──────────────────────────────────────────────────
+  // ── Load Genres & Tags with Singleton Cache ──────────────────────────────
   useEffect(() => {
-    MetaService.getGenres()
-      .then(r => {
-        if (r.success && r.data) setAllGenres(r.data)
+    if (!cachedGenres) {
+      getCachedGenres().then(genres => {
+        if (genres.length > 0) setAllGenres(genres)
       })
-      .catch(() => {})
-
-    MetaService.getTags()
-      .then(r => {
-        if (r.success && r.data) setAllTags(r.data)
+    }
+    if (!cachedTags) {
+      getCachedTags().then(tags => {
+        if (tags.length > 0) setAllTags(tags)
       })
-      .catch(() => {})
+    }
   }, [])
 
   // ── Sync Tag Name from Slug ─────────────────────────────────────────────
@@ -153,6 +191,27 @@ export function useBrowseFilters(initialParams: BrowseParams, initialData: Brows
       setSelectedTags([found.name])
     }
   }, [allTags, initialParams.tag, selectedTags])
+
+  // ── Keep Stable Ref for Filter State ─────────────────────────────────────
+  const currentFiltersRef = useRef({
+    searchQuery,
+    selectedGenres,
+    allGenres,
+    selectedTags,
+    selectedLanguage,
+    storyStatus,
+    sortBy,
+  })
+
+  currentFiltersRef.current = {
+    searchQuery,
+    selectedGenres,
+    allGenres,
+    selectedTags,
+    selectedLanguage,
+    storyStatus,
+    sortBy,
+  }
 
   // ── URL Synchronization ─────────────────────────────────────────────────
   const updateURL = useCallback(() => {
@@ -190,7 +249,7 @@ export function useBrowseFilters(initialParams: BrowseParams, initialData: Brows
     updateURL()
   }, [updateURL])
 
-  // ── Fetch Stories ───────────────────────────────────────────────────────
+  // ── Fetch Stories (Stable callback via currentFiltersRef) ─────────────────
   const fetchStories = useCallback(
     async (pageToFetch: number, isReset = false) => {
       if (isReset) {
@@ -202,23 +261,33 @@ export function useBrowseFilters(initialParams: BrowseParams, initialData: Brows
       }
       setError(null)
 
+      const {
+        searchQuery: currentSearch,
+        selectedGenres: currentGenres,
+        allGenres: currentAllGenres,
+        selectedTags: currentTags,
+        selectedLanguage: currentLang,
+        storyStatus: currentStatus,
+        sortBy: currentSort,
+      } = currentFiltersRef.current
+
       try {
         const queryParams: Record<string, any> = {
           page: pageToFetch,
           limit: STORIES_PER_PAGE,
-          status: storyStatus,
-          sortBy,
+          status: currentStatus,
+          sortBy: currentSort,
         }
 
-        if (searchQuery) queryParams.search = searchQuery
+        if (currentSearch) queryParams.search = currentSearch
 
-        if (selectedGenres.length === 1) {
-          const genre = allGenres.find(g => g.slug === selectedGenres[0])
+        if (currentGenres.length === 1) {
+          const genre = currentAllGenres.find(g => g.slug === currentGenres[0])
           if (genre) queryParams.genre = genre.name
         }
 
-        if (selectedTags.length > 0) queryParams.tags = selectedTags
-        if (selectedLanguage) queryParams.language = selectedLanguage
+        if (currentTags.length > 0) queryParams.tags = currentTags
+        if (currentLang) queryParams.language = currentLang
 
         const response = await StoryService.getStories(queryParams)
 
@@ -226,7 +295,7 @@ export function useBrowseFilters(initialParams: BrowseParams, initialData: Brows
           throw new Error(response.message || "Failed to fetch stories")
         }
 
-        const fetchedStories = response.data.stories.map((s: any) => formatApiStory(s))
+        const fetchedStories = response.data.stories.map((s: any) => formatBrowseStory(s))
 
         if (isReset) {
           setStories(fetchedStories)
@@ -249,17 +318,7 @@ export function useBrowseFilters(initialParams: BrowseParams, initialData: Brows
         setIsFetchingMore(false)
       }
     },
-    [
-      storyStatus,
-      sortBy,
-      searchQuery,
-      selectedGenres,
-      allGenres,
-      selectedTags,
-      selectedLanguage,
-      formatApiStory,
-      toast,
-    ]
+    [toast]
   )
 
   // ── Debounced Filter Change Effect ──────────────────────────────────────

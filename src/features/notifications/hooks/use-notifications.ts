@@ -152,6 +152,12 @@ export function useNotifications({
   }, [notifications])
 
   useEffect(() => {
+    if (user && contextNotifications.length === 0) {
+      contextRefetch()
+    }
+  }, [user, contextNotifications.length, contextRefetch])
+
+  useEffect(() => {
     if (contextNotifications.length > 0 && pagination.total === 0) {
       setPagination((prev) => ({ ...prev, hasMore: true }))
     }

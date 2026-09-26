@@ -2,6 +2,7 @@
 
 import { AuthService, AuthUser, LoginData, SignupData } from '@/lib/api/auth';
 import { saveAuthUser, getAuthUser, clearAuthUser } from '@/lib/auth-storage';
+import { prefetchCsrfToken, clearCsrfToken } from '@/lib/apiClient';
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 
 // Auth Context and Hook
@@ -44,6 +45,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Check for existing session on mount
   useEffect(() => {
+    // Proactively prefetch CSRF token so subsequent mutations are instant
+    prefetchCsrfToken();
+
     // Synchronously restore cached user for immediate UI feedback after hydration
     const cachedUser = getAuthUser();
     if (cachedUser) {
@@ -134,6 +138,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await AuthService.logout();
     setUser(null);
     clearAuthUser(); // Clear localStorage
+    clearCsrfToken(); // Clear in-memory CSRF token
     lastRefreshTimeRef.current = 0;
   };
 

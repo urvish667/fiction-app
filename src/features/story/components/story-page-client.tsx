@@ -12,18 +12,40 @@ import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { ArrowLeft, BookOpen, Heart, Bookmark, CheckCircle, UserPlus, UserCheck, Loader2, Flag, Users } from "lucide-react"
 import { Navbar, SiteFooter } from "@/components/layout"
-import { ReportDialog } from "@/components/common"
+import dynamic from "next/dynamic"
 import { ChapterList } from "./chapter-list"
 import { StoryMetadata } from "./story-metadata"
-import { CommentSection } from "@/features/comments"
 import StoryCover from "@/components/ui/story-cover"
-import { AdBanner, MatureContentDialog, needsMatureContentConsent } from "@/components/common"
+import { AdBanner, needsMatureContentConsent } from "@/components/common"
 import { StoryService } from "@/lib/api/story"
 import { UserService } from "@/lib/api/user"
 import { ViewAPI } from "@/lib/api/view"
 import { Story as StoryType, Chapter as ChapterType } from "@/types/story"
-import { SupportButton } from "./support-button"
 import { logError } from "@/lib/error-logger"
+
+const CommentSection = dynamic(
+  () => import("@/features/comments").then((m) => m.CommentSection),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex justify-center items-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    ),
+  }
+)
+
+const ReportDialog = dynamic(
+  () => import("@/components/common").then((m) => m.ReportDialog),
+  { ssr: false }
+)
+
+const MatureContentDialog = dynamic(
+  () => import("@/components/common").then((m) => m.MatureContentDialog),
+  { ssr: false }
+)
+
+import { SupportButton } from "./support-button"
 
 export interface StoryPageClientProps {
   initialStory: StoryType
@@ -46,7 +68,6 @@ export function StoryPageClient({
   const [story, setStory] = useState<StoryType>(initialStory)
   const [chapters, setChapters] = useState<ChapterType[]>(initialChapters)
   const [storyTags, setStoryTags] = useState<{ id: string, name: string }[]>(initialTags)
-  const [pageLoading, setPageLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [imageFallback, setImageFallback] = useState(false)
   const [isFollowing, setIsFollowing] = useState(false)
@@ -59,7 +80,7 @@ export function StoryPageClient({
   const [isForumEnabled, setIsForumEnabled] = useState(false)
   const [forumLoading, setForumLoading] = useState(true)
 
-  // Track story view on mount
+  // Track story view on mount - deferred to idle/timeout to avoid blocking initial hydration/paint
   useEffect(() => {
     const trackView = async () => {
       try {
@@ -70,7 +91,13 @@ export function StoryPageClient({
       }
     }
 
-    trackView()
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      const handle = (window as any).requestIdleCallback(trackView, { timeout: 2000 })
+      return () => (window as any).cancelIdleCallback(handle)
+    } else {
+      const timer = setTimeout(trackView, 1000)
+      return () => clearTimeout(timer)
+    }
   }, [story.id])
 
   // Check mature content consent on mount
@@ -89,14 +116,18 @@ export function StoryPageClient({
 
   // Fetch like and bookmark status when user is authenticated
   useEffect(() => {
-    const fetchInteractionStatus = async () => {
-      if (!user || !story) return
+    if (!user || !story?.id) return
 
+    let isMounted = true
+
+    const fetchInteractionStatus = async () => {
       try {
         const [likeResponse, bookmarkResponse] = await Promise.all([
           StoryService.checkStoryLike(story.id),
           StoryService.checkStoryBookmark(story.id)
         ])
+
+        if (!isMounted) return
 
         if (likeResponse.success && likeResponse.data !== undefined) {
           setStory(s => ({
@@ -115,28 +146,40 @@ export function StoryPageClient({
     }
 
     fetchInteractionStatus()
-  }, [user, story.id])
 
-  // Combined check for follow status and forum settings to minimize API calls
+    return () => {
+      isMounted = false
+    }
+  }, [user?.id, story?.id])
+
+  // Combined check for follow status and forum settings
+  // Uses specific primitive ids to avoid re-triggering when setStory modifies like/bookmark
+  const authorId = story?.author?.id
+  const authorUsername = story?.author?.username
+
   useEffect(() => {
+    if (!user || !authorId) {
+      setForumLoading(false)
+      return
+    }
+
+    // Don't check follow status if the author is the current user
+    if (authorId === user.id) {
+      setForumLoading(false)
+      return
+    }
+
+    let isMounted = true
+
     const checkAuthorData = async () => {
-      if (!user || !story || !story.author || typeof story.author !== 'object') {
-        setForumLoading(false)
-        return
-      }
-
       try {
-        // Don't check follow status if the author is the current user
-        if (story.author.id === user.id) {
-          setForumLoading(false)
-          return
-        }
-
         // Batch the follow status and profile checks
         const [followResponse, profileResponse] = await Promise.all([
-          story.author.username ? StoryService.isFollowingUser(story.author.username) : Promise.resolve({ success: false } as const),
-          story.author.username ? UserService.getUserProfile(story.author.username) : Promise.resolve({ success: false } as const)
+          authorUsername ? StoryService.isFollowingUser(authorUsername) : Promise.resolve({ success: false } as const),
+          authorUsername ? UserService.getUserProfile(authorUsername) : Promise.resolve({ success: false } as const)
         ])
+
+        if (!isMounted) return
 
         // Set follow status
         if (followResponse.success && 'data' in followResponse && followResponse.data !== undefined) {
@@ -149,14 +192,20 @@ export function StoryPageClient({
           setIsForumEnabled(forumEnabled)
         }
       } catch (err) {
-        logError(err, { context: "Error checking author data", authorId: story.author.id, userId: user?.id })
+        logError(err, { context: "Error checking author data", authorId, userId: user?.id })
       } finally {
-        setForumLoading(false)
+        if (isMounted) {
+          setForumLoading(false)
+        }
       }
     }
 
     checkAuthorData()
-  }, [user, story])
+
+    return () => {
+      isMounted = false
+    }
+  }, [user?.id, authorId, authorUsername])
 
   // Handle back button
   const handleBack = () => {
@@ -305,18 +354,7 @@ export function StoryPageClient({
     setShowMatureDialog(false)
   }
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen">
-        <Navbar />
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex justify-center items-center h-[60vh]">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-          </div>
-        </div>
-      </div>
-    )
-  }
+
 
   if (error || !story) {
     return (
@@ -348,11 +386,13 @@ export function StoryPageClient({
           onConsent={handleMatureContentConsent}
         />
       )}
-      <ReportDialog
-        isOpen={isReportModalOpen}
-        onClose={() => setReportModalOpen(false)}
-        storyId={story.id}
-      />
+      {isReportModalOpen && (
+        <ReportDialog
+          isOpen={isReportModalOpen}
+          onClose={() => setReportModalOpen(false)}
+          storyId={story.id}
+        />
+      )}
 
       <main className="py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
